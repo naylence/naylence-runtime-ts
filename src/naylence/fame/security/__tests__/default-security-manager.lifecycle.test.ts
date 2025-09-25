@@ -12,6 +12,7 @@ import type { NodeLike } from '../../node/node-like.js';
 import type { EncryptionManager } from '../encryption/encryption-manager.js';
 import type { Authorizer } from '../auth/authorizer.js';
 import type { CertificateManager } from '../cert/certificate-manager.js';
+import * as cryptoProviderModule from '../crypto/providers/crypto-provider.js';
 
 const createKeyManagementInstance = () => ({
   start: jest.fn(async () => undefined),
@@ -114,25 +115,6 @@ jest.mock(
       __mockInstances: instances,
     };
   },
-  { virtual: true }
-);
-
-jest.mock(
-  '../crypto/providers/crypto-provider.js',
-  () => ({
-    __esModule: true,
-    getCryptoProvider: jest.fn(() => ({
-      encryptionKeyId: 'enc-key',
-      signatureKeyId: 'sig-key',
-      nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
-      getJwks: () => ({
-        keys: [
-          { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
-          { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
-        ],
-      }),
-    })),
-  }),
   { virtual: true }
 );
 
@@ -248,6 +230,10 @@ describe('DefaultSecurityManager lifecycle', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('throws when overlay security is enabled without key validator', async () => {
     const keyManagerStub = { onNodeStarted: jest.fn() };
     const manager = createManager({
@@ -272,15 +258,14 @@ describe('DefaultSecurityManager lifecycle', () => {
       secureChannelManager: {},
       keyValidator: { validate: jest.fn() },
     });
+    const handlerInstance = createKeyManagementInstance();
+    KeyManagementHandlerMock.mockImplementationOnce(() => handlerInstance);
 
     await manager.onNodeStarted(createNode());
 
-    const keyHandlerInstance = KeyManagementHandlerMock.mock.results[0]?.value as
-      | ReturnType<typeof createKeyManagementInstance>
-      | undefined;
-    expect(keyHandlerInstance).toBeDefined();
     expect(KeyManagementHandlerMock).toHaveBeenCalledTimes(1);
-    expect(keyHandlerInstance!.start).toHaveBeenCalledTimes(1);
+    expect(handlerInstance.start).toHaveBeenCalledTimes(1);
+    expect(KeyManagementHandlerMock).toHaveBeenCalledTimes(1);
     expect(manager.envelopeSecurityHandler).not.toBeNull();
     expect(manager.secureChannelFrameHandler).not.toBeNull();
   });
@@ -339,24 +324,34 @@ describe('DefaultSecurityManager lifecycle', () => {
       keyValidator: { validate: jest.fn() },
       secureChannelManager: {},
     });
+    const handlerInstance = createKeyManagementInstance();
+    KeyManagementHandlerMock.mockImplementationOnce(() => handlerInstance);
 
     await manager.onNodeStarted(createNode());
     await manager.onNodeStopped(createNode());
 
-    const keyHandlerInstance = KeyManagementHandlerMock.mock.results[0]?.value as
-      | ReturnType<typeof createKeyManagementInstance>
-      | undefined;
-    expect(keyHandlerInstance).toBeDefined();
-    expect(keyHandlerInstance!.stop).toHaveBeenCalledTimes(1);
+    expect(handlerInstance.stop).toHaveBeenCalledTimes(1);
   });
 
   it('shares keys when signer is configured', () => {
+    const providerSpy = jest.spyOn(cryptoProviderModule, 'getCryptoProvider').mockReturnValue({
+      encryptionKeyId: 'enc-key',
+      signatureKeyId: 'sig-key',
+      nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
+      getJwks: () => ({
+        keys: [
+          { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
+          { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
+        ],
+      }),
+    });
     const manager = createManager({ envelopeSigner: {} });
     const keys = manager.getShareableKeys();
     expect(keys).toEqual([
       { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
       { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
     ]);
+    providerSpy.mockRestore();
   });
 
   it('returns undefined shareable keys when signer is missing', () => {
@@ -380,8 +375,15 @@ describe('DefaultSecurityManager lifecycle', () => {
   });
 
   it('returns encryption key id when crypto provider exposes it', () => {
+    const providerSpy = jest.spyOn(cryptoProviderModule, 'getCryptoProvider').mockReturnValue({
+      encryptionKeyId: 'enc-key',
+      signatureKeyId: 'sig-key',
+      nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
+      getJwks: () => ({ keys: [] }),
+    });
     const manager = createManager({ envelopeSigner: {} });
     expect(manager.getEncryptionKeyId()).toBe('enc-key');
+    providerSpy.mockRestore();
   });
 
   it('reports overlay security support correctly', () => {
