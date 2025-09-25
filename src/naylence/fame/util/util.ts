@@ -207,6 +207,26 @@ export function urlsafeBase64Encode(data: Uint8Array): string {
     .replace(/=+$/, "");
 }
 
+export function urlsafeBase64Decode(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+
+  if (typeof atob === "function") {
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  if (typeof Buffer !== "undefined") {
+    return new Uint8Array(Buffer.from(padded, "base64"));
+  }
+
+  throw new Error("Base64 decoding is not available in this environment");
+}
+
 /**
  * Convert CamelCase string to snake_case.
  */

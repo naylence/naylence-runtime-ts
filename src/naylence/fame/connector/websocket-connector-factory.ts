@@ -1,456 +1,395 @@
-/**
- * WebSocket Connector Factory
- * 
- * Factory for creating WebSocket connectors that work across Node.js and browser environments.
- * Supports multiple authentication strategies and automatic WebSocket client creation.
- */
-
-import { WebSocketConnector, WebSocketConnectorConfig, WebSocketLike, AuthorizationContext } from './websocket-connector.js';
-import { 
-  ConnectorFactory, 
-  ConnectionGrant, 
-  ExpressionEvaluationPolicy 
-} from './connector-factory.js';
-import { ConnectorConfig } from './connector-config.js';
+import { WebSocketConnector, type WebSocketLike, type WebSocketConnectorConfig, type AuthorizationContext } from './websocket-connector.js';
+import { ConnectorFactory, ExpressionEvaluationPolicy } from './connector-factory.js';
+import type { ConnectorConfig } from './connector-config.js';
 import { FameConnectError } from '../errors/errors.js';
 import { getLogger } from '../util/logging.js';
+import type { ConnectionGrant } from '../grants/connection-grant.js';
+import {
+	normalizeWebSocketConnectionGrant,
+	websocketGrantToConnectorConfig,
+	WEBSOCKET_CONNECTION_GRANT_TYPE,
+	type WebSocketConnectionGrant,
+	type WebSocketConnectionGrantLike,
+	type WebSocketConnectionGrantAuth,
+} from '../grants/websocket-connection-grant.js';
+import {
+	AuthInjectionStrategyFactory,
+	type AuthInjectionStrategyConfig,
+} from '../security/auth/auth-injection-strategy-factory.js';
+import type { AuthInjectionStrategy } from '../security/auth/auth-injection-strategy.js';
 
 const logger = getLogger('websocket-connector-factory');
 
-/**
- * WebSocket connection grant configuration
- */
-export interface WebSocketConnectionGrant extends ConnectionGrant {
-  type: 'WebSocketConnectionGrant';
-  purpose: string;
-  url?: string | undefined;
-  auth?: AuthInjectionStrategyConfig | undefined;
-}
-
-/**
- * Auth injection strategy configuration
- */
-export interface AuthInjectionStrategyConfig {
-  type: string;
-  [key: string]: any;
-}
-
-/**
- * Configuration for WebSocket connector factory
- */
 export interface WebSocketConnectorFactoryConfig extends ConnectorConfig {
-  type: 'WebSocketConnector';
-  url?: string | undefined;
-  auth?: AuthInjectionStrategyConfig | undefined;
+	type: 'WebSocketConnector';
+	url?: string;
+	auth?: WebSocketConnectionGrantAuth;
 }
 
-/**
- * Options for creating WebSocket connectors
- */
 export interface CreateWebSocketConnectorOptions {
-  /** Pre-existing WebSocket instance */
-  websocket?: WebSocketLike;
-  /** System ID to append to URL */
-  systemId?: string;
-  /** Custom WebSocket client factory function */
-  clientFactory?: (url: string, protocols?: string[], headers?: Record<string, string>) => Promise<WebSocketLike>;
+	websocket?: WebSocketLike;
+	systemId?: string;
+	clientFactory?: (url: string, subprotocols?: string[], headers?: Record<string, string>) => Promise<WebSocketLike>;
+	headers?: Record<string, string>;
 }
 
-/**
- * WebSocket connection grant implementation
- */
 class WebSocketConnectionGrantImpl implements WebSocketConnectionGrant {
-  type: 'WebSocketConnectionGrant' = 'WebSocketConnectionGrant';
-  purpose: string = 'connection';
-  url?: string;
-  auth?: AuthInjectionStrategyConfig;
-  
-  [key: string]: unknown;
+	public type = WEBSOCKET_CONNECTION_GRANT_TYPE;
+	public purpose = 'connection';
+	public url?: string;
+	public auth?: WebSocketConnectionGrantAuth;
+	[key: string]: unknown;
 }
 
-/**
- * Auth injection strategy interface
- */
-export interface AuthInjectionStrategy {
-  /** Get subprotocols for WebSocket connection */
-  getSubprotocols?(): Promise<string[]> | string[];
-  /** Modify connection URL */
-  modifyUrl?(url: string): Promise<string> | string;
-  /** Apply auth strategy to connector after connection */
-  apply(connector: WebSocketConnector): Promise<void>;
-}
+type SubprotocolCapableStrategy = AuthInjectionStrategy & {
+	getSubprotocols?: () => Promise<string[] | string> | string[] | string;
+};
 
-/**
- * Factory for creating WebSocket connectors with authentication support
- */
+type UrlMutatingStrategy = AuthInjectionStrategy & {
+	modifyUrl?: (url: string) => Promise<string> | string;
+};
+
 export class WebSocketConnectorFactory extends ConnectorFactory<WebSocketConnector, WebSocketConnectorFactoryConfig> {
-  readonly type = 'WebSocketConnector';
-  
-  private readonly _clientFactory: (url: string, protocols?: string[], headers?: Record<string, string>) => Promise<WebSocketLike>;
+	public readonly type = 'WebSocketConnector';
 
-  constructor(clientFactory?: (url: string, protocols?: string[], headers?: Record<string, string>) => Promise<WebSocketLike>) {
-    super();
-    this._clientFactory = clientFactory || this._defaultWebSocketClient;
-  }
+	private readonly _clientFactory: (url: string, subprotocols?: string[], headers?: Record<string, string>) => Promise<WebSocketLike>;
 
-  /**
-   * Return list of connection grant types that this factory can handle.
-   */
-  public supportedGrantTypes(): string[] {
-    return ['WebSocketConnectionGrant', 'WebSocketConnector'];
-  }
+	public constructor(
+		clientFactory?: (url: string, subprotocols?: string[], headers?: Record<string, string>) => Promise<WebSocketLike>
+	) {
+		super();
+		this._clientFactory = clientFactory ?? this._defaultWebSocketClient.bind(this);
+	}
 
-  /**
-   * Return mapping of connection grant types to their classes.
-   */
-  public supportedGrants(): Record<string, new () => ConnectionGrant> {
-    return {
-      'WebSocketConnectionGrant': WebSocketConnectionGrantImpl,
-    };
-  }
+	public supportedGrantTypes(): string[] {
+		return [WEBSOCKET_CONNECTION_GRANT_TYPE, 'WebSocketConnector'];
+	}
 
-  /**
-   * Create a ConnectorConfig instance from a connection grant or dictionary.
-   */
-  public configFromGrant(
-    grant: ConnectionGrant | Record<string, unknown>,
-    _expressionEvaluationPolicy?: ExpressionEvaluationPolicy
-  ): WebSocketConnectorFactoryConfig {
-    let websocketGrant: WebSocketConnectionGrant;
+	public supportedGrants(): Record<string, new () => ConnectionGrant> {
+		return {
+			[WEBSOCKET_CONNECTION_GRANT_TYPE]: WebSocketConnectionGrantImpl,
+		};
+	}
 
-    // Handle dictionary case - validate and convert
-    if ('type' in grant && typeof grant === 'object') {
-      if (grant.type !== 'WebSocketConnectionGrant') {
-        throw new Error(
-          `WebSocketConnectorFactory only supports WebSocketConnectionGrant, got type ${grant.type}`
-        );
-      }
-      websocketGrant = grant as WebSocketConnectionGrant;
-    } else {
-      throw new Error(
-        `WebSocketConnectorFactory only supports WebSocketConnectionGrant, got ${typeof grant}`
-      );
-    }
+	public configFromGrant(
+		grant: ConnectionGrant | Record<string, unknown>,
+		_expressionEvaluationPolicy: ExpressionEvaluationPolicy = ExpressionEvaluationPolicy.ERROR
+	): WebSocketConnectorFactoryConfig {
+		const normalizedGrant = normalizeWebSocketConnectionGrant(grant as WebSocketConnectionGrantLike);
+		const candidate = websocketGrantToConnectorConfig(normalizedGrant);
 
-    return {
-      type: 'WebSocketConnector',
-      url: websocketGrant.url,
-      auth: websocketGrant.auth,
-    };
-  }
+		const config: WebSocketConnectorFactoryConfig = {
+			type: 'WebSocketConnector',
+		};
 
-  /**
-   * Create a ConnectionGrant instance from a connector config or dictionary.
-   */
-  public grantFromConfig(
-    config: WebSocketConnectorFactoryConfig | Record<string, unknown>,
-    _expressionEvaluationPolicy?: ExpressionEvaluationPolicy
-  ): WebSocketConnectionGrant {
-    let websocketConfig: WebSocketConnectorFactoryConfig;
+		if (typeof candidate.url === 'string') {
+			config.url = candidate.url;
+		}
 
-    // Handle dictionary case - validate and convert
-    if ('type' in config && typeof config === 'object') {
-      if (config.type !== 'WebSocketConnector') {
-        throw new Error(
-          `WebSocketConnectorFactory only supports WebSocketConnector config, got type ${config.type}`
-        );
-      }
-      websocketConfig = config as WebSocketConnectorFactoryConfig;
-    } else {
-      throw new Error(
-        `WebSocketConnectorFactory only supports WebSocketConnector config, got ${typeof config}`
-      );
-    }
+		if (candidate.auth !== undefined) {
+			config.auth = candidate.auth;
+		}
 
-    return {
-      type: 'WebSocketConnectionGrant',
-      purpose: 'connection',
-      url: websocketConfig.url,
-      auth: websocketConfig.auth,
-    };
-  }
+		return config;
+	}
 
-  /**
-   * Create a WebSocket connector
-   */
-  async create(
-    config: WebSocketConnectorFactoryConfig | Record<string, any>,
-    options: CreateWebSocketConnectorOptions = {}
-  ): Promise<WebSocketConnector> {
-    let connectorConfig: WebSocketConnectorFactoryConfig;
+	public grantFromConfig(
+		config: WebSocketConnectorFactoryConfig | Record<string, unknown>,
+		_expressionEvaluationPolicy: ExpressionEvaluationPolicy = ExpressionEvaluationPolicy.ERROR
+	): WebSocketConnectionGrant {
+		if (!this._isWebSocketConnectorConfig(config)) {
+			const type = (config as { type?: unknown }).type;
+			throw new Error(
+				`WebSocketConnectorFactory only supports WebSocketConnector config, got type ${
+					typeof type === 'string' ? type : String(type)
+				}`
+			);
+		}
 
-    // Convert dictionary to typed config if needed
-    if ('type' in config) {
-      connectorConfig = config as WebSocketConnectorFactoryConfig;
-    } else {
-      throw new Error('Config must have a type field');
-    }
+		const grantCandidate: WebSocketConnectionGrantLike = {
+			type: WEBSOCKET_CONNECTION_GRANT_TYPE,
+			purpose: 'connection',
+			url: config.url,
+			auth: config.auth,
+		};
 
-    // Create auth strategy if configured
-    let authStrategy: AuthInjectionStrategy | undefined;
-    if (connectorConfig.auth) {
-      authStrategy = await this._createAuthStrategy(connectorConfig.auth);
-    }
+		return normalizeWebSocketConnectionGrant(grantCandidate);
+	}
 
-    let authorizationContext: AuthorizationContext | undefined;
-    let websocket: WebSocketLike;
+	public async create(
+		config: WebSocketConnectorFactoryConfig | Record<string, unknown>,
+		options: CreateWebSocketConnectorOptions = {}
+	): Promise<WebSocketConnector> {
+		const normalizedConfig = this._normalizeConfig(config);
 
-    if (options.websocket) {
-      // Use provided WebSocket instance
-      websocket = options.websocket;
-    } else {
-      // Create new WebSocket connection
-      if (!connectorConfig.url) {
-        throw new Error('WebSocket URL must be provided in config');
-      }
+		const headers = options.headers;
 
-      let url = connectorConfig.url;
-      let subprotocols: string[] | undefined;
-      let headers: Record<string, string> | undefined;
+		let authStrategy: AuthInjectionStrategy | undefined;
+		if (normalizedConfig.auth !== undefined) {
+			const authConfig = this._normalizeAuthConfig(normalizedConfig.auth);
+			authStrategy = await AuthInjectionStrategyFactory.createAuthInjectionStrategy(authConfig);
+		}
 
-      // Apply auth strategy to modify connection parameters
-      if (authStrategy) {
-        if (authStrategy.getSubprotocols) {
-          const protocols = await authStrategy.getSubprotocols();
-          subprotocols = Array.isArray(protocols) ? protocols : [protocols];
-        }
-        if (authStrategy.modifyUrl) {
-          url = await authStrategy.modifyUrl(url);
-        }
-      }
+		let websocket = options.websocket;
+		let authorizationContext: AuthorizationContext | undefined;
 
-      // Append system ID if provided
-      if (options.systemId) {
-        url = url + `/${options.systemId}`;
-      }
+		if (!websocket) {
+			const baseUrl = normalizedConfig.url;
+			if (!baseUrl) {
+				throw new Error('WebSocket URL must be provided in config when websocket instance is not supplied');
+			}
 
-      // Use custom client factory if provided, otherwise use default
-      const clientFactory = options.clientFactory || this._clientFactory;
-      websocket = await clientFactory(url, subprotocols, headers);
-      
-      authorizationContext = {
-        authenticated: true,
-        authorized: true,
-        claims: {},
-        grantedScopes: [],
-        restrictions: {},
-      };
-    }
+			const subprotocols = await this._maybeGetSubprotocols(authStrategy);
+			let url = await this._maybeModifyUrl(authStrategy, baseUrl);
 
-    // Create connector
-    const finalConfig: WebSocketConnectorConfig = {
-      // Map the factory config to connector config
-      // WebSocketConnectorConfig extends BaseAsyncConnectorConfig and has authorizationContext
-      authorizationContext,
-    };
-    
-    const connector = new WebSocketConnector(websocket, finalConfig);
+			if (options.systemId) {
+				url = this._appendSystemId(url, options.systemId);
+			}
 
-    // Apply post-connection auth strategy if needed
-    if (authStrategy) {
-      await authStrategy.apply(connector);
-    }
+			const clientFactory = options.clientFactory ?? this._clientFactory;
+			websocket = await clientFactory(url, subprotocols, headers);
+			authorizationContext = this._buildAuthorizationContext();
+		}
 
-    return connector;
-  }
+		const connectorConfig: WebSocketConnectorConfig = {
+			authorizationContext,
+		};
 
-  /**
-   * Create auth strategy from configuration
-   */
-  private async _createAuthStrategy(config: AuthInjectionStrategyConfig): Promise<AuthInjectionStrategy> {
-    switch (config.type) {
-      case 'WebSocketSubprotocolStrategy':
-        return new WebSocketSubprotocolStrategy(config);
-      case 'QueryParamStrategy':
-        return new QueryParamStrategy(config);
-      case 'HeaderStrategy':
-        return new HeaderStrategy(config);
-      default:
-        logger.warning('unknown_auth_strategy', { type: config.type });
-        return new NoOpAuthStrategy();
-    }
-  }
+		const connector = new WebSocketConnector(websocket, connectorConfig);
 
-  /**
-   * Default WebSocket client factory
-   */
-  private async _defaultWebSocketClient(
-    url: string,
-    subprotocols?: string[],
-    headers?: Record<string, string>
-  ): Promise<WebSocketLike> {
-    try {
-      logger.debug('websocket_connector_connecting', { url });
+		if (authStrategy) {
+			await authStrategy.apply(connector);
+		}
 
-      // Detect environment and create appropriate WebSocket
-      if (typeof window !== 'undefined' && window.WebSocket) {
-        // Browser environment
-        const ws = new WebSocket(url, subprotocols);
-        
-        // Wait for connection to open
-        return new Promise<WebSocketLike>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new FameConnectError(`Connection timeout to ${url}`));
-          }, 5000);
+		return connector;
+	}
 
-          ws.onopen = () => {
-            clearTimeout(timeoutId);
-            resolve(ws as WebSocketLike);
-          };
+	private _normalizeConfig(config: WebSocketConnectorFactoryConfig | Record<string, unknown>): WebSocketConnectorFactoryConfig {
+		if (!this._isWebSocketConnectorConfig(config)) {
+			const type = (config as { type?: unknown }).type;
+			throw new Error(
+				`WebSocketConnectorFactory only supports WebSocketConnector config, got type ${
+					typeof type === 'string' ? type : String(type)
+				}`
+			);
+		}
 
-          ws.onerror = (event) => {
-            clearTimeout(timeoutId);
-            reject(new FameConnectError(`Failed to connect to ${url}: ${event}`));
-          };
-        });
-      } else {
-        // Node.js environment - try to use ws library
-        try {
-          // Dynamic import to avoid bundling issues - only try if in Node.js
-          let wsModule: any;
-          try {
-            // Use eval to prevent TypeScript from analyzing the import at compile time
-            const dynamicImport = new Function('specifier', 'return import(specifier)');
-            wsModule = await dynamicImport('ws');
-          } catch (importError) {
-            throw new Error('ws package not found');
-          }
-          
-          const WebSocket = wsModule.default || (wsModule as any).WebSocket || wsModule;
-          
-          const ws = new (WebSocket as any)(url, subprotocols, {
-            headers,
-            handshakeTimeout: 5000,
-            // Support custom SSL certificates via environment
-            ...(process.env.SSL_CERT_FILE && url.startsWith('wss://') && {
-              ca: await this._loadSslCertificate(),
-            }),
-          });
+		const normalized: WebSocketConnectorFactoryConfig = {
+			type: 'WebSocketConnector',
+		};
 
-          return new Promise<WebSocketLike>((resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-              reject(new FameConnectError(`Connection timeout to ${url}`));
-            }, 5000);
+		if (typeof config.url === 'string' && config.url.length > 0) {
+			normalized.url = config.url;
+		}
 
-            ws.on('open', () => {
-              clearTimeout(timeoutId);
-              resolve(ws as any);
-            });
+		if (config.auth !== undefined) {
+			normalized.auth = config.auth;
+		}
 
-            ws.on('error', (error: Error) => {
-              clearTimeout(timeoutId);
-              reject(new FameConnectError(`Failed to connect to ${url}: ${error.message}`));
-            });
-          });
-        } catch (error) {
-          throw new FameConnectError(
-            `WebSocket library not available. Install 'ws' package for Node.js support: ${error}`
-          );
-        }
-      }
-    } catch (error) {
-      if (error instanceof FameConnectError) {
-        throw error;
-      }
-      throw new FameConnectError(`Cannot connect to ${url}: ${error}`);
-    }
-  }
+		return normalized;
+	}
 
-  /**
-   * Load SSL certificate from SSL_CERT_FILE environment variable
-   */
-  private async _loadSslCertificate(): Promise<Buffer | undefined> {
-    const certFile = process.env.SSL_CERT_FILE;
-    if (!certFile) return undefined;
+	private _normalizeAuthConfig(auth: WebSocketConnectionGrantAuth): AuthInjectionStrategyConfig {
+		if (!auth || typeof auth !== 'object') {
+			throw new Error('Authentication configuration must be an object with a type property');
+		}
 
-    try {
-      const fs = await import('fs');
-      return fs.readFileSync(certFile);
-    } catch (error) {
-      logger.warning('ssl_certificate_load_failed', {
-        cert_file: certFile,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return undefined;
-    }
-  }
-}
+		const type = (auth as { type?: unknown }).type;
+		if (typeof type !== 'string' || type.length === 0) {
+			throw new Error('Authentication configuration requires a non-empty "type" property');
+		}
 
-// -------------------------------------------------------------------------
-// Auth Strategy Implementations
-// -------------------------------------------------------------------------
+		return auth as AuthInjectionStrategyConfig;
+	}
 
-/**
- * No-op auth strategy that does nothing
- */
-class NoOpAuthStrategy implements AuthInjectionStrategy {
-  async apply(_connector: WebSocketConnector): Promise<void> {
-    // Do nothing
-  }
-}
+	private async _maybeGetSubprotocols(strategy: AuthInjectionStrategy | undefined): Promise<string[] | undefined> {
+		if (!strategy) {
+			return undefined;
+		}
 
-/**
- * WebSocket subprotocol auth strategy
- */
-class WebSocketSubprotocolStrategy implements AuthInjectionStrategy {
-  constructor(private config: AuthInjectionStrategyConfig) {}
+		const candidate = strategy as SubprotocolCapableStrategy;
+		if (typeof candidate.getSubprotocols !== 'function') {
+			return undefined;
+		}
 
-  async getSubprotocols(): Promise<string[]> {
-    const token = this.config.token || this.config.accessToken;
-    if (!token) {
-      throw new Error('Token required for WebSocket subprotocol auth strategy');
-    }
-    return [`access_token.${token}`];
-  }
+		const result = await candidate.getSubprotocols();
+		if (Array.isArray(result)) {
+			return result;
+		}
 
-  async apply(_connector: WebSocketConnector): Promise<void> {
-    // Subprotocol auth is applied during connection
-  }
-}
+		if (typeof result === 'string' && result.length > 0) {
+			return [result];
+		}
 
-/**
- * Query parameter auth strategy
- */
-class QueryParamStrategy implements AuthInjectionStrategy {
-  constructor(private config: AuthInjectionStrategyConfig) {}
+		return undefined;
+	}
 
-  async modifyUrl(url: string): Promise<string> {
-    const token = this.config.token || this.config.accessToken;
-    if (!token) {
-      throw new Error('Token required for query param auth strategy');
-    }
+	private async _maybeModifyUrl(strategy: AuthInjectionStrategy | undefined, url: string): Promise<string> {
+		if (!strategy) {
+			return url;
+		}
 
-    const separator = url.includes('?') ? '&' : '?';
-    const paramName = this.config.paramName || 'access_token';
-    return `${url}${separator}${paramName}=${encodeURIComponent(token)}`;
-  }
+		const candidate = strategy as UrlMutatingStrategy;
+		if (typeof candidate.modifyUrl !== 'function') {
+			return url;
+		}
 
-  async apply(_connector: WebSocketConnector): Promise<void> {
-    // Query param auth is applied during connection
-  }
-}
+		const result = await candidate.modifyUrl(url);
+		return typeof result === 'string' && result.length > 0 ? result : url;
+	}
 
-/**
- * Header auth strategy (mainly for server-side WebSockets)
- */
-class HeaderStrategy implements AuthInjectionStrategy {
-  constructor(private config: AuthInjectionStrategyConfig) {}
+	private _appendSystemId(url: string, systemId: string): string {
+		if (!systemId) {
+			return url;
+		}
 
-  async apply(connector: WebSocketConnector): Promise<void> {
-    const token = this.config.token || this.config.accessToken;
-    if (!token) {
-      throw new Error('Token required for header auth strategy');
-    }
+		if (url.endsWith('/')) {
+			return `${url}${systemId}`;
+		}
 
-    // Set authorization context
-    connector.authorizationContext = {
-      authenticated: true,
-      authorized: true,
-      principal: this.config.principal,
-      claims: { token },
-      grantedScopes: this.config.scopes || [],
-      restrictions: {},
-      authMethod: 'header',
-    };
-  }
+		return `${url}/${systemId}`;
+	}
+
+	private _buildAuthorizationContext(): AuthorizationContext {
+		const context = {
+			authenticated: true,
+			authorized: true,
+			claims: {},
+			grantedScopes: [],
+			restrictions: {},
+		} as AuthorizationContext;
+
+		return context;
+	}
+
+	private _isWebSocketConnectorConfig(candidate: unknown): candidate is WebSocketConnectorFactoryConfig {
+		if (!candidate || typeof candidate !== 'object') {
+			return false;
+		}
+
+		const type = (candidate as { type?: unknown }).type;
+		if (type !== 'WebSocketConnector') {
+			return false;
+		}
+
+		const url = (candidate as { url?: unknown }).url;
+		if (url !== undefined && typeof url !== 'string') {
+			return false;
+		}
+
+		return true;
+	}
+
+	private async _defaultWebSocketClient(
+		url: string,
+		subprotocols?: string[],
+		headers?: Record<string, string>
+	): Promise<WebSocketLike> {
+		try {
+			logger.debug('websocket_connector_connecting', { url, subprotocols });
+
+			if (typeof window !== 'undefined' && typeof window.WebSocket !== 'undefined') {
+				return await this._createBrowserWebSocket(url, subprotocols);
+			}
+
+			return await this._createNodeWebSocket(url, subprotocols, headers);
+		} catch (error) {
+			if (error instanceof FameConnectError) {
+				throw error;
+			}
+			throw new FameConnectError(`Cannot connect to ${url}: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	private async _createBrowserWebSocket(url: string, subprotocols?: string[]): Promise<WebSocketLike> {
+		return await new Promise<WebSocketLike>((resolve, reject) => {
+			try {
+				const websocket = new WebSocket(url, subprotocols);
+
+				const timeoutId = setTimeout(() => {
+					websocket.close();
+					reject(new FameConnectError(`Connection timeout to ${url}`));
+				}, 5000);
+
+				websocket.onopen = () => {
+					clearTimeout(timeoutId);
+					resolve(websocket as unknown as WebSocketLike);
+				};
+
+				websocket.onerror = (event: Event) => {
+					clearTimeout(timeoutId);
+					reject(new FameConnectError(`Failed to connect to ${url}: ${event}`));
+				};
+			} catch (error) {
+				reject(new FameConnectError(`Failed to create WebSocket: ${error instanceof Error ? error.message : String(error)}`));
+			}
+		});
+	}
+
+		private async _createNodeWebSocket(
+			url: string,
+			subprotocols?: string[],
+			headers?: Record<string, string>
+		): Promise<WebSocketLike> {
+		try {
+			const wsModule = await import('ws');
+			const WebSocketConstructor = (wsModule as { default?: unknown }).default ?? (wsModule as unknown as { WebSocket: unknown }).WebSocket ?? wsModule;
+
+				const ca = url.startsWith('wss://') ? await this._loadSslCertificate() : undefined;
+
+			return await new Promise<WebSocketLike>((resolve, reject) => {
+				try {
+					const websocket = new (WebSocketConstructor as new (...args: unknown[]) => WebSocketLike)(url, subprotocols, {
+						headers,
+						handshakeTimeout: 5000,
+							...(ca ? { ca } : {}),
+					});
+
+					const timeoutId = setTimeout(() => {
+						reject(new FameConnectError(`Connection timeout to ${url}`));
+					}, 5000);
+
+					(websocket as any).on('open', () => {
+						clearTimeout(timeoutId);
+						resolve(websocket);
+					});
+
+					(websocket as any).on('error', (connectionError: Error) => {
+						clearTimeout(timeoutId);
+						reject(new FameConnectError(`Failed to connect to ${url}: ${connectionError.message}`));
+					});
+				} catch (error) {
+					reject(error);
+				}
+			});
+		} catch (importError) {
+			throw new FameConnectError(
+				`WebSocket library not available. Install 'ws' package for Node.js support: ${
+					importError instanceof Error ? importError.message : String(importError)
+				}`
+			);
+		}
+	}
+
+			private async _loadSslCertificate(): Promise<Buffer | undefined> {
+				if (typeof process === 'undefined') {
+					return undefined;
+				}
+
+				const certFile = process.env.SSL_CERT_FILE;
+				if (!certFile) {
+					return undefined;
+				}
+
+				try {
+					const fs = await import('fs');
+					return fs.readFileSync(certFile);
+				} catch (error) {
+					logger.warning('ssl_certificate_load_failed', {
+						cert_file: certFile,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					return undefined;
+				}
+			}
 }

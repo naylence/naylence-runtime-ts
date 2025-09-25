@@ -8,6 +8,8 @@
 import { ConnectorConfig, ResourceConfig } from './connector-config.js';
 import { FameConnector } from 'naylence-core';
 import { getLogger } from '../util/logging.js';
+import type { ConnectionGrant } from '../grants/index.js';
+export type { ConnectionGrant } from '../grants/index.js';
 
 const logger = getLogger('connector-factory');
 
@@ -37,23 +39,6 @@ export interface ResourceFactory<T, C extends ResourceConfig> {
    * Create a resource instance from the provided configuration.
    */
   create(config: C, ...kwargs: unknown[]): Promise<T>;
-}
-
-/**
- * Base class for connection grants.
- * 
- * A connection grant represents a permission to establish a connection
- * with specific configuration parameters.
- */
-export interface ConnectionGrant {
-  /** Type of connection grant */
-  type: string;
-  
-  /** Purpose of the grant (e.g., 'node.attach') */
-  purpose: string;
-  
-  /** Additional properties */
-  [key: string]: unknown;
 }
 
 /**

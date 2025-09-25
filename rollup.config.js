@@ -10,6 +10,7 @@ export default defineConfig({
     format: 'umd',
     name: 'NaylenceRuntime',
     sourcemap: true,
+    inlineDynamicImports: true,
     globals: {
       'async_hooks': 'null',
       'pino': 'null',

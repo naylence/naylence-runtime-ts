@@ -1,4 +1,14 @@
-import { FameAddress, FameDeliveryContext, FameEnvelope, localDeliveryContext, parseAddress } from 'naylence-core';
+import {
+  DEFAULT_INVOKE_TIMEOUT_MILLIS,
+  DeliveryOriginType,
+  FameAddress,
+  FameDeliveryContext,
+  FameEnvelope,
+  FameResponseType,
+  formatAddress,
+  localDeliveryContext,
+  parseAddress,
+} from 'naylence-core';
 import type { DeliveryAckFrame, FameConnector, FameEnvelopeHandler, FameRPCHandler } from 'naylence-core';
 import { generateId } from 'naylence-core';
 import { secureDigest } from '../util/util.js';
@@ -13,7 +23,29 @@ import type { EnvelopeFactory } from 'naylence-core';
 import { BindingManager } from './binding-manager.js';
 import { EnvelopeListenerManager } from './envelope-listener-manager.js';
 import { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
+import type { RetryPolicy } from '../delivery/retry-policy.js';
+import type { RetryEventHandler } from '../delivery/retry-event-handler.js';
 import type { NodeLike } from './node-like.js';
+
+const SYSTEM_INBOX = '__sys__';
+
+class DefaultRetryHandler implements RetryEventHandler {
+  constructor(
+    private readonly deliveryFn: (
+      envelope: FameEnvelope,
+      context?: FameDeliveryContext
+    ) => Promise<unknown>
+  ) {}
+
+  async onRetryNeeded(
+    envelope: FameEnvelope,
+    _attempt: number,
+    _nextDelayMs: number,
+    context?: FameDeliveryContext
+  ): Promise<void> {
+    await this.deliveryFn(envelope, context);
+  }
+}
 
 export interface FameNodeOptions {
   systemId?: string;
@@ -66,11 +98,11 @@ export class FameNode implements NodeLike {
     const envelopeFactory = options.envelopeFactory ?? new NodeEnvelopeFactory(() => this.sid ?? '');
     this._envelopeFactory = envelopeFactory;
 
-  const tracker = new DefaultDeliveryTracker(this._storageProvider);
-  this._deliveryTracker = tracker;
+    const tracker = new DefaultDeliveryTracker(this._storageProvider);
+    this._deliveryTracker = tracker;
 
-  const listeners = options.eventListeners ? [...options.eventListeners, tracker] : [tracker];
-  this._eventListeners = sortListeners(listeners);
+    const listeners = options.eventListeners ? [...options.eventListeners, tracker] : [tracker];
+    this._eventListeners = sortListeners(listeners);
 
     this._bindingManager = new BindingManager({
       hasUpstream: this._hasParent,
@@ -83,7 +115,12 @@ export class FameNode implements NodeLike {
       getEncryptionKeyId: () => this._securityManager?.getEncryptionKeyId() ?? null,
     });
 
-    this._envelopeListenerManager = new EnvelopeListenerManager(this._bindingManager);
+    this._envelopeListenerManager = new EnvelopeListenerManager({
+      bindingManager: this._bindingManager,
+      nodeLike: this,
+      envelopeFactory: this._envelopeFactory,
+      deliveryTracker: this._deliveryTracker,
+    });
 
     this._defaultBindingPath = this._physicalPath;
     this._sid = this.computeSid(this._physicalPath);
@@ -195,53 +232,85 @@ export class FameNode implements NodeLike {
   async listen(
     recipient: string,
     handler: FameEnvelopeHandler,
-    _pollTimeoutMs?: number
+    pollTimeoutMs?: number
   ): Promise<FameAddress> {
-    return this._envelopeListenerManager.listen(recipient, handler);
+    return this._envelopeListenerManager.listen(recipient, handler, {
+      pollTimeoutMs: pollTimeoutMs ?? null,
+    });
   }
 
   async listenRpc(
-    _serviceName: string,
-    _handler: FameRPCHandler,
-    _pollTimeoutMs: number
+    serviceName: string,
+    handler: FameRPCHandler,
+    pollTimeoutMs: number
   ): Promise<FameAddress> {
-    throw new Error('listenRpc is not implemented yet');
+    return this._envelopeListenerManager.listenRpc(serviceName, handler, {
+      pollTimeoutMs: pollTimeoutMs ?? null,
+    });
   }
 
   async invoke(
-    _targetAddr: FameAddress,
-    _method: string,
-    _params: Record<string, any>,
-    _timeoutMs: number
+    targetAddr: FameAddress,
+    method: string,
+    params: Record<string, any>,
+    timeoutMs: number
   ): Promise<any> {
-    throw new Error('invoke is not implemented yet');
+    return this._envelopeListenerManager.invoke({
+      targetAddr,
+      method,
+      params,
+      timeoutMs,
+    });
   }
 
   async invokeByCapability(
-    _capabilities: string[],
-    _method: string,
-    _params: Record<string, any>,
-    _timeoutMs: number
+    capabilities: string[],
+    method: string,
+    params: Record<string, any>,
+    timeoutMs: number
   ): Promise<any> {
-    throw new Error('invokeByCapability is not implemented yet');
+    return this._envelopeListenerManager.invoke({
+      capabilities,
+      method,
+      params,
+      timeoutMs,
+    });
   }
 
   async *invokeStream(
-    _targetAddr: FameAddress,
-    _method: string,
-    _params: Record<string, any>,
-    _timeoutMs: number
+    targetAddr: FameAddress,
+    method: string,
+    params: Record<string, any>,
+    timeoutMs: number
   ): AsyncIterableIterator<any> {
-    throw new Error('invokeStream is not implemented yet');
+    const stream = await this._envelopeListenerManager.invokeStream({
+      targetAddr,
+      method,
+      params,
+      timeoutMs,
+    });
+
+    for await (const item of stream) {
+      yield item;
+    }
   }
 
   async *invokeByCapabilityStream(
-    _capabilities: string[],
-    _method: string,
-    _params: Record<string, any>,
-    _timeoutMs: number
+    capabilities: string[],
+    method: string,
+    params: Record<string, any>,
+    timeoutMs: number
   ): AsyncIterableIterator<any> {
-    throw new Error('invokeByCapabilityStream is not implemented yet');
+    const stream = await this._envelopeListenerManager.invokeStream({
+      capabilities,
+      method,
+      params,
+      timeoutMs,
+    });
+
+    for await (const item of stream) {
+      yield item;
+    }
   }
 
   async send(
@@ -251,13 +320,87 @@ export class FameNode implements NodeLike {
     deliveryFn?: (env: FameEnvelope, ctx?: FameDeliveryContext) => Promise<any>,
     timeoutMs?: number
   ): Promise<DeliveryAckFrame | null> {
-    const effectiveContext = context ?? localDeliveryContext(this.id);
-    const defaultDelivery = async (env: FameEnvelope, ctx?: FameDeliveryContext) =>
-      this.deliver(env, ctx);
-    const fn = deliveryFn ?? defaultDelivery;
-    await fn(envelope, effectiveContext);
-    void timeoutMs; // placeholder until retry logic is implemented
-    return null;
+    let effectiveContext: FameDeliveryContext;
+
+    if (!context) {
+      effectiveContext = localDeliveryContext(this.id);
+    } else {
+      if (context.originType && context.originType !== DeliveryOriginType.LOCAL) {
+        throw new Error('Can only send with LOCAL origin context');
+      }
+      if (context.fromConnector) {
+        throw new Error('fromConnector must be null in LOCAL context');
+      }
+
+      effectiveContext = {
+        ...context,
+        originType: DeliveryOriginType.LOCAL,
+        fromConnector: null,
+      };
+    }
+
+    const deliveryPolicy = _deliveryPolicy ?? this._deliveryPolicy ?? null;
+    const deliverFn =
+      deliveryFn ?? ((env: FameEnvelope, ctx?: FameDeliveryContext) => this.deliver(env, ctx));
+
+    const ackRequired = Boolean(deliveryPolicy?.isAckRequired(envelope));
+
+    if (ackRequired) {
+      envelope.rtype = envelope.rtype
+        ? envelope.rtype | FameResponseType.ACK
+        : FameResponseType.ACK;
+    }
+
+    const replyRequired = Boolean(
+      envelope.rtype &&
+        ((envelope.rtype & FameResponseType.REPLY) !== 0 ||
+          (envelope.rtype & FameResponseType.STREAM) !== 0)
+    );
+
+    if (!envelope.traceId) {
+      envelope.traceId = generateId();
+    }
+
+    if (!ackRequired && !replyRequired) {
+      await deliverFn(envelope, effectiveContext);
+      return null;
+    }
+
+    const retryPolicy: RetryPolicy | undefined = deliveryPolicy?.senderRetryPolicy;
+
+    if (!envelope.corrId) {
+      envelope.corrId = generateId();
+    }
+
+    if (!envelope.replyTo) {
+      envelope.replyTo = formatAddress(SYSTEM_INBOX, this._physicalPath ?? '');
+    }
+
+    const retryHandler = retryPolicy ? new DefaultRetryHandler(deliverFn) : null;
+    const effectiveTimeout = timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS;
+    const expectedResponseType = envelope.rtype ?? FameResponseType.ACK;
+
+    await this._deliveryTracker.track(envelope, {
+      timeoutMs: effectiveTimeout,
+      expectedResponseType,
+      retryPolicy: retryPolicy ?? null,
+      retryHandler,
+    });
+
+    await deliverFn(envelope, effectiveContext);
+
+    if (!ackRequired) {
+      return null;
+    }
+
+    const ackEnvelope = await this._deliveryTracker.awaitAck(envelope.id, effectiveTimeout);
+    const ackFrame = ackEnvelope.frame;
+
+    if (!ackFrame || ackFrame.type !== 'DeliveryAck') {
+      throw new Error('Expected DeliveryAck frame in acknowledgement');
+    }
+
+    return ackFrame as DeliveryAckFrame;
   }
 
   async deliver(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
@@ -271,12 +414,56 @@ export class FameNode implements NodeLike {
       return;
     }
 
-    if (processedEnvelope.to && this.hasLocal(processedEnvelope.to)) {
-      await this.deliverLocal(processedEnvelope.to, processedEnvelope, context);
+    const frameType = processedEnvelope.frame?.type ?? null;
+
+    if (
+      frameType &&
+      [
+        'AddressBind',
+        'AddressUnbind',
+        'CapabilityAdvertise',
+        'CapabilityWithdraw',
+        'NodeHeartbeat',
+      ].includes(frameType)
+    ) {
+      await this.forwardUpstream(processedEnvelope, context);
       return;
     }
 
-    // Fallback: capability routing not implemented yet
+    if (
+      frameType &&
+      [
+        'AddressBindAck',
+        'AddressUnbindAck',
+        'CapabilityAdvertiseAck',
+        'CapabilityWithdrawAck',
+      ].includes(frameType)
+    ) {
+      await this._deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, processedEnvelope, context);
+      return;
+    }
+
+    if (frameType === 'DeliveryAck') {
+      await this._deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, processedEnvelope, context);
+      return;
+    }
+
+    if (frameType && ['Data', 'SecureOpen', 'SecureAccept', 'SecureClose'].includes(frameType)) {
+      if (processedEnvelope.to && this.hasLocal(processedEnvelope.to)) {
+        await this.deliverLocal(processedEnvelope.to, processedEnvelope, context);
+        return;
+      }
+
+      if (processedEnvelope.capabilities && processedEnvelope.capabilities.length > 0) {
+        throw new Error('Capability-based routing is not implemented yet');
+      }
+    }
+
+    if (context?.originType === DeliveryOriginType.LOCAL) {
+      await this.forwardUpstream(processedEnvelope, context);
+      return;
+    }
+
     if (!processedEnvelope.to) {
       throw new Error('Capability-based routing is not implemented yet');
     }

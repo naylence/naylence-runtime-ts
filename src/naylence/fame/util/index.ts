@@ -56,6 +56,7 @@ export * from './metrics-emitter.js';
 // Export general utilities
 export * from './util.js';
 export * from './logicals.js';
+export * from './ttl-validation.js';
 
 // Export types
 export type {

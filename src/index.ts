@@ -84,8 +84,6 @@ export {
   // WebSocket connector factory
   WebSocketConnectorFactory,
   WebSocketConnectorFactoryConfig,
-  WebSocketConnectionGrant,
-  AuthInjectionStrategyConfig,
   CreateWebSocketConnectorOptions,
   WebSocketListener,
   getWebsocketListenerInstance,

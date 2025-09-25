@@ -2,6 +2,7 @@ import type { DeliveryOriginType } from 'naylence-core';
 
 import type { NodeEventListener } from '../../node/node-event-listener.js';
 import type { KeyProvider } from './key-provider.js';
+import type { KeyRecord } from './key-store.js';
 
 export interface KeyManager extends NodeEventListener, KeyProvider {
   hasKey(kid: string): Promise<boolean>;
@@ -28,5 +29,5 @@ export interface KeyManager extends NodeEventListener, KeyProvider {
 
   removeKeysForPath(physicalPath: string): Promise<number>;
 
-  getKeysForPath(physicalPath: string): Promise<Iterable<Record<string, unknown>>>;
+  getKeysForPath(physicalPath: string): Promise<Iterable<KeyRecord>>;
 }

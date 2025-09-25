@@ -1,4 +1,18 @@
+import type { TokenIssuer } from '../../auth/token-issuer.js';
+import type { TokenVerifier } from '../../auth/token-verifier.js';
+
 export interface CryptoProvider {
+  signingPrivatePem?: string | null;
+  signingPublicPem?: string | null;
+  signatureKeyId?: string | null;
+  encryptionPrivatePem?: string | null;
+  encryptionPublicPem?: string | null;
+  encryptionKeyId?: string | null;
+  hmacSecret?: string | null;
+  issuer?: string | null;
+  audience?: string | null;
+  getTokenIssuer?(): TokenIssuer | null | undefined;
+  getTokenVerifier?(): TokenVerifier | null | undefined;
   prepareForAttach?(
     systemId: string,
     assignedPath: string | undefined,

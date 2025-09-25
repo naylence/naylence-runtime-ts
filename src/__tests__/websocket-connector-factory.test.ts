@@ -5,13 +5,94 @@
 import {
   WebSocketConnectorFactory,
   WebSocketConnectorFactoryConfig,
-  WebSocketConnectionGrant,
 } from '../naylence/fame/connector/websocket-connector-factory';
 import {
   WebSocketConnector,
   WebSocketLike,
   WebSocketState,
 } from '../naylence/fame/connector/websocket-connector';
+import {
+  normalizeWebSocketConnectionGrant,
+  WEBSOCKET_CONNECTION_GRANT_TYPE,
+} from '../naylence/fame/grants/websocket-connection-grant';
+import { AuthInjectionStrategyFactory } from '../naylence/fame/security/auth/auth-injection-strategy-factory';
+
+type StubAuthConfig = Record<string, unknown> & { type: string };
+
+const authStrategySpy = jest.spyOn(AuthInjectionStrategyFactory, 'createAuthInjectionStrategy');
+
+function createStubAuthStrategy(config: StubAuthConfig) {
+  if (!config || typeof config.type !== 'string') {
+    throw new Error('Invalid authentication configuration');
+  }
+
+  if (config.type === 'WebSocketSubprotocolStrategy') {
+    const token = typeof config.token === 'string' ? config.token : undefined;
+    if (!token) {
+      throw new Error('Token required for WebSocket subprotocol auth strategy');
+    }
+
+    return {
+      async apply() {
+        // No-op, handled during connection setup
+      },
+      async cleanup() {
+        // No-op
+      },
+      async getSubprotocols() {
+        return [`access_token.${token}`];
+      },
+    };
+  }
+
+  if (config.type === 'QueryParamStrategy') {
+    const token = typeof config.token === 'string' ? config.token : undefined;
+    if (!token) {
+      throw new Error('Token required for query param auth strategy');
+    }
+
+    return {
+      async apply() {
+        // Query parameter applied during URL modification
+      },
+      async cleanup() {
+        // No-op
+      },
+      async modifyUrl(url: string) {
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}access_token=${encodeURIComponent(token)}`;
+      },
+    };
+  }
+
+  if (config.type === 'HeaderStrategy') {
+    return {
+      async apply(connector: any) {
+        const grantedScopes = Array.isArray(config.scopes) ? config.scopes : [];
+        connector.authorizationContext = {
+          ...(connector.authorizationContext ?? {}),
+          authenticated: true,
+          authorized: true,
+          principal: typeof config.principal === 'string' ? config.principal : undefined,
+          grantedScopes,
+          authMethod: 'header',
+        };
+      },
+      async cleanup() {
+        // No-op
+      },
+    };
+  }
+
+  return {
+    async apply() {
+      // No-op
+    },
+    async cleanup() {
+      // No-op
+    },
+  };
+}
 
 // Mock WebSocket implementation for testing
 class MockWebSocket implements WebSocketLike {
@@ -54,6 +135,21 @@ describe('WebSocketConnectorFactory', () => {
 
   beforeEach(() => {
     factory = new WebSocketConnectorFactory();
+    authStrategySpy.mockImplementation(async (config) => {
+      if (!config || typeof (config as { type?: unknown }).type !== 'string') {
+        throw new Error('Invalid authentication configuration');
+      }
+
+      return createStubAuthStrategy(config as StubAuthConfig);
+    });
+  });
+
+  afterEach(() => {
+    authStrategySpy.mockReset();
+  });
+
+  afterAll(() => {
+    authStrategySpy.mockRestore();
   });
 
   describe('constructor', () => {
@@ -73,19 +169,19 @@ describe('WebSocketConnectorFactory', () => {
   describe('instance methods', () => {
     it('should return supported grant types', () => {
       const supportedTypes = factory.supportedGrantTypes();
-      expect(supportedTypes).toEqual(['WebSocketConnectionGrant', 'WebSocketConnector']);
+      expect(supportedTypes).toEqual([WEBSOCKET_CONNECTION_GRANT_TYPE, 'WebSocketConnector']);
     });
 
     it('should convert grant to config', () => {
-      const grant: WebSocketConnectionGrant = {
-        type: 'WebSocketConnectionGrant',
+      const grant = normalizeWebSocketConnectionGrant({
+        type: WEBSOCKET_CONNECTION_GRANT_TYPE,
         purpose: 'connection',
         url: 'ws://test.example.com',
         auth: {
           type: 'WebSocketSubprotocolStrategy',
           token: 'test-token',
         },
-      };
+      });
 
       const config = factory.configFromGrant(grant);
 
@@ -106,7 +202,7 @@ describe('WebSocketConnectorFactory', () => {
 
       const grant = factory.grantFromConfig(config);
 
-      expect(grant.type).toBe('WebSocketConnectionGrant');
+  expect(grant.type).toBe(WEBSOCKET_CONNECTION_GRANT_TYPE);
       expect(grant.purpose).toBe('connection');
       expect(grant.url).toBe('ws://test.example.com');
       expect(grant.auth?.type).toBe('QueryParamStrategy');
@@ -120,7 +216,7 @@ describe('WebSocketConnectorFactory', () => {
 
       expect(() => {
         factory.configFromGrant(invalidGrant as any);
-      }).toThrow('WebSocketConnectorFactory only supports WebSocketConnectionGrant');
+      }).toThrow('WebSocketConnectionGrant requires a valid base grant');
     });
 
     it('should throw error for unsupported config type', () => {
@@ -209,7 +305,7 @@ describe('WebSocketConnectorFactory', () => {
       };
 
       await expect(factory.create(invalidConfig as any)).rejects.toThrow(
-        'Config must have a type field'
+        'WebSocketConnectorFactory only supports WebSocketConnector config, got type undefined'
       );
     });
   });

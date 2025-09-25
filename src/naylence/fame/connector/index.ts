@@ -29,8 +29,6 @@ export {
 export {
   WebSocketConnectorFactory,
   WebSocketConnectorFactoryConfig,
-  WebSocketConnectionGrant,
-  AuthInjectionStrategyConfig,
   CreateWebSocketConnectorOptions
 } from './websocket-connector-factory.js';
 

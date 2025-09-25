@@ -9,19 +9,21 @@ import type { KeyManager } from './keys/key-manager.js';
 import type { SecurityPolicy } from './policy/security-policy.js';
 import type { EnvelopeSigner } from './signing/envelope-signer.js';
 import type { EnvelopeVerifier } from './signing/envelope-verifier.js';
+import type { EnvelopeSecurityHandler } from '../node/envelope-security-handler.js';
+import type { SecureChannelFrameHandler } from '../node/secure-channel-frame-handler.js';
 
-export interface EnvelopeSecurityHandler {
-  handleOutboundSecurity(envelope: FameEnvelope, context: FameDeliveryContext): Promise<boolean>;
-  handleEnvelopeSecurity(
-    envelope: FameEnvelope,
-    context?: FameDeliveryContext
-  ): Promise<[FameEnvelope, boolean]>;
-}
+// export interface EnvelopeSecurityHandler {
+//   handleOutboundSecurity(envelope: FameEnvelope, context: FameDeliveryContext): Promise<boolean>;
+//   handleEnvelopeSecurity(
+//     envelope: FameEnvelope,
+//     context?: FameDeliveryContext
+//   ): Promise<[FameEnvelope, boolean]>;
+// }
 
-export interface SecureChannelFrameHandler {
-  onSecureChannelEstablished?(channelId: string, destination: string): Promise<void> | void;
-  onSecureChannelFailed?(channelId: string, destination: string, reason?: string): Promise<void> | void;
-}
+// export interface SecureChannelFrameHandler {
+//   onSecureChannelEstablished?(channelId: string, destination: string): Promise<void> | void;
+//   onSecureChannelFailed?(channelId: string, destination: string, reason?: string): Promise<void> | void;
+// }
 
 export interface SecurityManager extends NodeEventListener {
   readonly policy: SecurityPolicy;
