@@ -324,10 +324,13 @@ describe('DefaultSecurityManager lifecycle', () => {
       keyValidator: { validate: jest.fn() },
       secureChannelManager: {},
     });
-    const handlerInstance = createKeyManagementInstance();
-    KeyManagementHandlerMock.mockImplementationOnce(() => handlerInstance);
 
     await manager.onNodeStarted(createNode());
+    const handlerInstance = KeyManagementHandlerMock.mock.results[0]?.value;
+    if (!handlerInstance) {
+      throw new Error('KeyManagementHandler was not instantiated');
+    }
+
     await manager.onNodeStopped(createNode());
 
     expect(handlerInstance.stop).toHaveBeenCalledTimes(1);
