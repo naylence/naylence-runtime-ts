@@ -5,6 +5,7 @@
  * and manage the server lifecycle tied to node lifecycle.
  */
 
+import type { NodeEventListener } from '../node/node-event-listener.js';
 import type { NodeLike } from '../node/node-like.js';
 
 /**
@@ -13,7 +14,9 @@ import type { NodeLike } from '../node/node-like.js';
  * Transport listeners handle network-level ingress connections (HTTP, WebSocket, etc.)
  * and manage the server lifecycle tied to node lifecycle.
  */
-export abstract class TransportListener {
+export abstract class TransportListener implements NodeEventListener {
+  readonly priority = 1000;
+
   /**
    * Called when the node has started and the transport listener should begin accepting connections.
    * 

@@ -6,6 +6,7 @@
  */
 
 import { BaseAsyncConnector, BaseAsyncConnectorConfig } from './base-async-connector.js';
+import type { ConnectorConfig } from './connector-config.js';
 import { FameTransportClose } from '../errors/errors.js';
 import { getLogger } from '../util/logging.js';
 import type { AuthorizationContext as CoreAuthorizationContext } from 'naylence-core';
@@ -49,7 +50,7 @@ export interface WebSocketLike {
 /**
  * Configuration for WebSocket connector
  */
-export interface WebSocketConnectorConfig extends BaseAsyncConnectorConfig {
+export interface WebSocketConnectorConfig extends BaseAsyncConnectorConfig, ConnectorConfig {
   /** Authorization context for the connection */
   authorizationContext?: AuthorizationContext | undefined;
 }
@@ -76,8 +77,12 @@ export class WebSocketConnector extends BaseAsyncConnector {
 
   constructor(
     websocket: WebSocketLike,
-    config: WebSocketConnectorConfig = {}
+    config: WebSocketConnectorConfig = { type: 'websocket' }
   ) {
+    // Ensure the connector type is always set for factory compatibility
+    if (!config.type) {
+      config.type = 'websocket';
+    }
     super(config);
     
     this._websocket = websocket;

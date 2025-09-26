@@ -302,7 +302,7 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
       throw new Error('Node not initialized');
     }
 
-    const connectorConfig: WebSocketConnectorConfig = {};
+  const connectorConfig: WebSocketConnectorConfig = { type: 'websocket' };
     if (params.authorization) {
       connectorConfig.authorizationContext = params.authorization;
     }

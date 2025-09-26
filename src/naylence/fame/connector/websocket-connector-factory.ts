@@ -152,6 +152,7 @@ export class WebSocketConnectorFactory extends ConnectorFactory<WebSocketConnect
 		}
 
 		const connectorConfig: WebSocketConnectorConfig = {
+			type: 'websocket',
 			authorizationContext,
 		};
 

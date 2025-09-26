@@ -6,6 +6,7 @@
  */
 
 import { LogLevel, LogLevelNames, LogEntry, Logger, LogProcessor, LogTransport, isNode } from './logging-types.js';
+import type { FameEnvelope } from 'naylence-core';
 import { getCurrentEnvelope } from './envelope-context.js';
 
 // Default processors (similar to structlog processors)
@@ -309,6 +310,28 @@ export function basicConfig(options: {
   for (const logger of loggers.values()) {
     (logger as FameLogger).setLevel(level);
   }
+}
+
+export function summarizeEnvelope(
+  envelope: FameEnvelope | null | undefined,
+  prefix: string = 'child_'
+): Record<string, unknown> {
+  if (!envelope) {
+    return {};
+  }
+
+  const safePrefix = prefix ?? '';
+
+  return {
+    [`${safePrefix}envp_id`]: envelope.id ?? null,
+    [`${safePrefix}sid`]: envelope.sid ? `${String(envelope.sid)}…` : null,
+    [`${safePrefix}to`]: envelope.to ? String(envelope.to) : null,
+    [`${safePrefix}trace_id`]: envelope.traceId ?? null,
+    [`${safePrefix}frame`]: envelope.frame && typeof envelope.frame === 'object'
+      ? ((envelope.frame as { type?: unknown }).type ?? envelope.frame.constructor?.name ?? 'Unknown')
+      : null,
+    [`${safePrefix}corr_id`]: envelope.corrId ?? null,
+  };
 }
 
 // Re-export log levels and types

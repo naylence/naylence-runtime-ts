@@ -202,7 +202,7 @@ describe('WebSocketConnectorFactory', () => {
 
       const grant = factory.grantFromConfig(config);
 
-  expect(grant.type).toBe(WEBSOCKET_CONNECTION_GRANT_TYPE);
+      expect(grant.type).toBe(WEBSOCKET_CONNECTION_GRANT_TYPE);
       expect(grant.purpose).toBe('connection');
       expect(grant.url).toBe('ws://test.example.com');
       expect(grant.auth?.type).toBe('QueryParamStrategy');

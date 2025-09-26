@@ -92,5 +92,11 @@ export {
   _NoopFlowController
 } from './naylence/fame/connector/index.js';
 
+export { InProcessFameFabric } from './naylence/fame/fabric/index.js';
+export {
+  normalizeExtendedFameConfig,
+  type ExtendedFameConfig,
+} from './naylence/fame/config/index.js';
+
 // Export channel implementations
 export * from './naylence/fame/channel/index.js';

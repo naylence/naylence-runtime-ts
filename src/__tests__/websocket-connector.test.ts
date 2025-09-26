@@ -11,6 +11,7 @@ import { createFameEnvelope, type DataFrame } from 'naylence-core';
 import { FameTransportClose } from '../naylence/fame/errors/errors';
 
 const FAST_SHUTDOWN_CONFIG = {
+  type: 'websocket',
   shutdownTimeouts: {
     gracePeriod: 0.01,
     joinTimeout: 50,
@@ -344,18 +345,12 @@ describe('WebSocketConnector', () => {
     });
 
     it('should detect FastAPI-like WebSocket', () => {
-      fastApiConnector = new WebSocketConnector(
-        fastApiMockWebSocket,
-        FAST_SHUTDOWN_CONFIG
-      );
+      fastApiConnector = new WebSocketConnector(fastApiMockWebSocket, FAST_SHUTDOWN_CONFIG);
       expect(fastApiConnector).toBeDefined();
     }, 1000); // Explicit timeout
 
     it('should send bytes through FastAPI WebSocket', async () => {
-      fastApiConnector = new WebSocketConnector(
-        fastApiMockWebSocket,
-        FAST_SHUTDOWN_CONFIG
-      );
+      fastApiConnector = new WebSocketConnector(fastApiMockWebSocket, FAST_SHUTDOWN_CONFIG);
       const handler = jest.fn();
       await fastApiConnector.start(handler);
 

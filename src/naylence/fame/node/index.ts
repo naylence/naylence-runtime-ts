@@ -13,3 +13,4 @@ export * from './envelope-listener-manager.js';
 export * from './node.js';
 export * from './session-manager.js';
 export * from './upstream-session-manager.js';
+export * from './root-session-manager.js';

@@ -1,6 +1,5 @@
 import type { FameEnvelope } from 'naylence-core';
 
-import { DefaultSecurityManager } from '../default-security-manager.js';
 import {
   CryptoLevel,
   SecurityAction,
@@ -13,6 +12,12 @@ import type { EncryptionManager } from '../encryption/encryption-manager.js';
 import type { Authorizer } from '../auth/authorizer.js';
 import type { CertificateManager } from '../cert/certificate-manager.js';
 import * as cryptoProviderModule from '../crypto/providers/crypto-provider.js';
+
+type DefaultSecurityManagerModule = typeof import('../default-security-manager.js');
+type DefaultSecurityManagerConstructor = DefaultSecurityManagerModule['DefaultSecurityManager'];
+type DefaultSecurityManagerInstance = InstanceType<DefaultSecurityManagerConstructor>;
+
+let DefaultSecurityManager!: DefaultSecurityManagerConstructor;
 
 const createKeyManagementInstance = () => ({
   start: jest.fn(async () => undefined),
@@ -118,29 +123,14 @@ jest.mock(
   { virtual: true }
 );
 
-const {
-  KeyManagementHandler: KeyManagementHandlerMock,
-} = jest.requireMock('../keys/key-management-handler.js') as {
-  KeyManagementHandler: jest.Mock;
-};
-
-const {
-  EnvelopeSecurityHandler: EnvelopeSecurityHandlerMock,
-} = jest.requireMock('../node/envelope-security-handler') as {
-  EnvelopeSecurityHandler: jest.Mock;
-};
-
-const {
-  SecureChannelFrameHandler: SecureChannelFrameHandlerMock,
-} = jest.requireMock('../node/secure-channel-frame-handler') as {
-  SecureChannelFrameHandler: jest.Mock;
-};
-
-const {
-  KeyFrameHandler: KeyFrameHandlerMock,
-} = jest.requireMock('../sentinel/key-frame-handler') as {
-  KeyFrameHandler: jest.Mock;
-};
+let KeyManagementHandlerMock: jest.Mock;
+let keyManagementHandlerInstances: Array<ReturnType<typeof createKeyManagementInstance>>;
+let EnvelopeSecurityHandlerMock: jest.Mock;
+let envelopeSecurityHandlerInstances: Array<ReturnType<typeof createEnvelopeSecurityInstance>>;
+let SecureChannelFrameHandlerMock: jest.Mock;
+let secureChannelFrameHandlerInstances: Array<ReturnType<typeof createSecureChannelInstance>>;
+let KeyFrameHandlerMock: jest.Mock;
+let keyFrameHandlerInstances: Array<ReturnType<typeof createKeyFrameInstance>>;
 
 function createPolicy(overrides: Partial<SecurityPolicy> = {}): SecurityPolicy {
   const requirements = new SecurityRequirements({
@@ -205,7 +195,10 @@ function createManager(options: {
   secureChannelManager?: unknown;
   keyValidator?: unknown;
   policy?: SecurityPolicy;
-} = {}): DefaultSecurityManager {
+} = {}): DefaultSecurityManagerInstance {
+  if (!DefaultSecurityManager) {
+    throw new Error('DefaultSecurityManager module not loaded');
+  }
   const policy = options.policy ?? createPolicy();
   return new DefaultSecurityManager(
     policy,
@@ -222,11 +215,49 @@ function createManager(options: {
 
 
 describe('DefaultSecurityManager lifecycle', () => {
-  beforeEach(() => {
-    KeyManagementHandlerMock.mockClear();
-    EnvelopeSecurityHandlerMock.mockClear();
-    SecureChannelFrameHandlerMock.mockClear();
-    KeyFrameHandlerMock.mockClear();
+  beforeEach(async () => {
+    await jest.isolateModulesAsync(async () => {
+      const keyManagementModule = (await import('../keys/key-management-handler.js')) as {
+        KeyManagementHandler: jest.Mock;
+        __mockInstances: Array<ReturnType<typeof createKeyManagementInstance>>;
+      };
+      KeyManagementHandlerMock = keyManagementModule.KeyManagementHandler;
+      keyManagementHandlerInstances = keyManagementModule.__mockInstances;
+      KeyManagementHandlerMock.mockClear();
+      keyManagementHandlerInstances.length = 0;
+
+      // @ts-expect-error -- mocked module resolved via Jest runtime
+      const envelopeSecurityModule = (await import('../node/envelope-security-handler')) as {
+        EnvelopeSecurityHandler: jest.Mock;
+        __mockInstances: Array<ReturnType<typeof createEnvelopeSecurityInstance>>;
+      };
+      EnvelopeSecurityHandlerMock = envelopeSecurityModule.EnvelopeSecurityHandler;
+      envelopeSecurityHandlerInstances = envelopeSecurityModule.__mockInstances;
+      EnvelopeSecurityHandlerMock.mockClear();
+      envelopeSecurityHandlerInstances.length = 0;
+
+      // @ts-expect-error -- mocked module resolved via Jest runtime
+      const secureChannelFrameModule = (await import('../node/secure-channel-frame-handler')) as {
+        SecureChannelFrameHandler: jest.Mock;
+        __mockInstances: Array<ReturnType<typeof createSecureChannelInstance>>;
+      };
+      SecureChannelFrameHandlerMock = secureChannelFrameModule.SecureChannelFrameHandler;
+      secureChannelFrameHandlerInstances = secureChannelFrameModule.__mockInstances;
+      SecureChannelFrameHandlerMock.mockClear();
+      secureChannelFrameHandlerInstances.length = 0;
+
+      // @ts-expect-error -- mocked module resolved via Jest runtime
+      const keyFrameModule = (await import('../sentinel/key-frame-handler')) as {
+        KeyFrameHandler: jest.Mock;
+        __mockInstances: Array<ReturnType<typeof createKeyFrameInstance>>;
+      };
+      KeyFrameHandlerMock = keyFrameModule.KeyFrameHandler;
+      keyFrameHandlerInstances = keyFrameModule.__mockInstances;
+      KeyFrameHandlerMock.mockClear();
+      keyFrameHandlerInstances.length = 0;
+
+      ({ DefaultSecurityManager } = await import('../default-security-manager.js'));
+    });
     jest.clearAllMocks();
   });
 
@@ -250,6 +281,9 @@ describe('DefaultSecurityManager lifecycle', () => {
   it('initializes security handlers when overlay security is available', async () => {
     const keyManagerStub = { onNodeStarted: jest.fn(async () => undefined) };
     const encryptionStub = { onNodeStarted: jest.fn(async () => undefined) };
+    const handlerInstance = createKeyManagementInstance();
+    KeyManagementHandlerMock.mockImplementationOnce(() => handlerInstance);
+
     const manager = createManager({
       envelopeSigner: {},
       envelopeVerifier: {},
@@ -258,8 +292,6 @@ describe('DefaultSecurityManager lifecycle', () => {
       secureChannelManager: {},
       keyValidator: { validate: jest.fn() },
     });
-    const handlerInstance = createKeyManagementInstance();
-    KeyManagementHandlerMock.mockImplementationOnce(() => handlerInstance);
 
     await manager.onNodeStarted(createNode());
 

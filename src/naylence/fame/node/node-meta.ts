@@ -1,3 +1,5 @@
+export const NODE_META_NAMESPACE = '__node_meta';
+
 export interface NodeMeta {
   id: string;
 }

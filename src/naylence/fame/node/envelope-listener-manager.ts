@@ -48,13 +48,31 @@ class AsyncMutex {
 }
 
 class EnvelopeListener {
-  constructor(private readonly stopFn: () => void, public readonly task: SpawnedTask<void>) {}
+  constructor(
+    private readonly stopFn: () => void | Promise<void>,
+    public readonly task: SpawnedTask<void>
+  ) {}
 
   stop(): void {
     logger.debug('stopping_listener', {
       task_name: this.task.name,
     });
-    this.stopFn();
+    try {
+      const maybeCleanup = this.stopFn();
+      if (maybeCleanup && typeof (maybeCleanup as Promise<void>).then === 'function') {
+        void (maybeCleanup as Promise<void>).catch((error) => {
+          logger.debug('listener_stop_cleanup_failed', {
+            task_name: this.task.name,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+      }
+    } catch (error) {
+      logger.debug('listener_stop_cleanup_failed', {
+        task_name: this.task.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
     this.task.cancel();
   }
 }
@@ -291,8 +309,16 @@ export class EnvelopeListenerManager extends TaskSpawner {
       { name: `listener-${serviceName}` }
     );
 
-    const listener = new EnvelopeListener(() => {
+    const listener = new EnvelopeListener(async () => {
       stopState.stopped = true;
+      try {
+        await channel.send(null);
+      } catch (error) {
+        logger.debug('listener_stop_signal_failed', {
+          service_name: serviceName,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }, task);
 
     await this.listenersLock.runExclusive(async () => {

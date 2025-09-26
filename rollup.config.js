@@ -2,6 +2,7 @@ import { defineConfig } from 'rollup';
 import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
 
 export default defineConfig({
   input: 'src/index.ts',
@@ -14,7 +15,10 @@ export default defineConfig({
     globals: {
       'async_hooks': 'null',
       'pino': 'null',
-      'pino-pretty': 'null'
+      'pino-pretty': 'null',
+      'fastify': 'null',
+      '@fastify/websocket': 'null',
+      'fs': 'null'
     }
   },
   plugins: [
@@ -22,6 +26,7 @@ export default defineConfig({
       browser: true,
       preferBuiltins: false,
     }),
+    json(),
     commonjs(),
     typescript({
       target: 'es2020',
@@ -31,5 +36,5 @@ export default defineConfig({
       sourceMap: true,
     }),
   ],
-  external: ['async_hooks', 'pino', 'pino-pretty'], // Mark Node.js modules as external
+  external: ['async_hooks', 'pino', 'pino-pretty', 'fastify', '@fastify/websocket', 'fs'], // Mark Node.js modules as external
 });
