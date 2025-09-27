@@ -9,6 +9,9 @@ class InMemoryKeyValueStore<V> implements KeyValueStore<V> {
   }
 
   async update(key: string, value: V): Promise<void> {
+    if (!this.store.has(key)) {
+      throw new Error(`Key '${key}' not found for update.`);
+    }
     this.store.set(key, value);
   }
 
@@ -30,19 +33,25 @@ class InMemoryKeyValueStore<V> implements KeyValueStore<V> {
 }
 
 export class InMemoryStorageProvider implements StorageProvider {
-  private readonly stores = new Map<string, KeyValueStore<any>>();
+  private readonly stores = new Map<string, Map<new (...args: any[]) => unknown, KeyValueStore<any>>>();
 
   async getKeyValueStore<V>(
-    _model: new (...args: any[]) => V,
+    modelCtor: new (...args: any[]) => V,
     namespace: string
   ): Promise<KeyValueStore<V>> {
-    const existing = this.stores.get(namespace);
+    let namespaceStores = this.stores.get(namespace);
+    if (!namespaceStores) {
+      namespaceStores = new Map();
+      this.stores.set(namespace, namespaceStores);
+    }
+
+    const existing = namespaceStores.get(modelCtor);
     if (existing) {
       return existing as KeyValueStore<V>;
     }
 
     const store = new InMemoryKeyValueStore<V>();
-    this.stores.set(namespace, store);
+    namespaceStores.set(modelCtor, store);
     return store;
   }
 }

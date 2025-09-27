@@ -2,12 +2,9 @@ import {
   AuthorizationContextSchema,
   DeliveryOriginType,
   FameResponseType,
-  type AuthorizationContext,
   type FameConnector,
-  type FameDeliveryContext,
   type FameEnvelope,
   type FameMessageResponse,
-  type SecurityContext,
 } from 'naylence-core';
 
 import { ConnectorFactory, createResource } from '../connector/connector-factory.js';
@@ -16,6 +13,10 @@ import { FameTransportClose } from '../errors/errors.js';
 import { TaskSpawner } from '../util/task-spawner.js';
 import { delay } from '../util/task-utils.js';
 import { getLogger } from '../util/logging.js';
+import type {
+  FameAuthorizedDeliveryContext,
+  FameNodeAuthorizationContext,
+} from '../node/node-context.js';
 import type { AddressRouteInfo } from './key-frame-handler.js';
 import type { RouteStore, RouteEntry, NormalizedRouteEntry } from './store/route-store.js';
 import { getDefaultRouteStore, normalizeRouteEntry } from './store/route-store.js';
@@ -55,25 +56,6 @@ export interface PendingRouteEntry {
   buffer: FameEnvelope[];
   cancelAttachTimeout?: () => void;
 }
-
-export interface FameNodeAuthorizationContext extends AuthorizationContext {
-  sub?: string | null;
-  aud?: string | null;
-  assignedPath?: string | null;
-  acceptedCapabilities?: string[] | null;
-  acceptedLogicals?: string[] | null;
-  instanceId?: string | null;
-  scopes?: string[] | null;
-  attachExpiresAt?: Date | null;
-}
-
-type NodeSecurityContext = (SecurityContext & {
-  authorization?: FameNodeAuthorizationContext | null;
-}) | undefined;
-
-export type FameAuthorizedDeliveryContext = Omit<FameDeliveryContext, 'security'> & {
-  security?: NodeSecurityContext;
-};
 
 interface RouteManagerOptions {
   deliver: (envelope: FameEnvelope, context: FameAuthorizedDeliveryContext) => Promise<void>;
@@ -512,18 +494,16 @@ export class RouteManager extends TaskSpawner {
       const record = metadata;
       return {
         ...base,
-        sub: pickString(record.sub ?? record['sub']) ?? null,
-        aud: pickString(record.aud ?? record['aud']) ?? null,
-        assignedPath:
-          pickString(record.assignedPath ?? record['assigned_path']) ?? null,
-        acceptedCapabilities:
-          pickStringArray(record.acceptedCapabilities ?? record['accepted_capabilities']),
-        acceptedLogicals:
-          pickStringArray(record.acceptedLogicals ?? record['accepted_logicals']),
-        instanceId: pickString(record.instanceId ?? record['instance_id']) ?? null,
-        scopes: pickStringArray(record.scopes) ?? null,
-        attachExpiresAt:
-          pickDate(record.attachExpiresAt ?? record['attach_expires_at']),
+        sub: pickString(record.sub ?? record['sub']),
+        aud: pickString(record.aud ?? record['aud']),
+        assignedPath: pickString(record.assignedPath ?? record['assigned_path']),
+        acceptedCapabilities: pickStringArray(
+          record.acceptedCapabilities ?? record['accepted_capabilities']
+        ),
+        acceptedLogicals: pickStringArray(record.acceptedLogicals ?? record['accepted_logicals']),
+        instanceId: pickString(record.instanceId ?? record['instance_id']),
+        scopes: pickStringArray(record.scopes),
+        attachExpiresAt: pickDate(record.attachExpiresAt ?? record['attach_expires_at']),
       } satisfies FameNodeAuthorizationContext;
     } catch (error) {
       logger.error('corrupt_route_metadata', {
@@ -572,28 +552,28 @@ export class RouteManager extends TaskSpawner {
   }
 }
 
-function pickString(value: unknown): string | null {
-  return typeof value === 'string' && value.length ? value : null;
+function pickString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length ? value : undefined;
 }
 
-function pickStringArray(value: unknown): string[] | null {
+function pickStringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {
-    return null;
+    return undefined;
   }
   const strings = value.filter((entry): entry is string => typeof entry === 'string');
-  return strings.length ? strings : null;
+  return strings.length ? strings : undefined;
 }
 
-function pickDate(value: unknown): Date | null {
+function pickDate(value: unknown): Date | undefined {
   if (!value && value !== 0) {
-    return null;
+    return undefined;
   }
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
+    return Number.isNaN(value.getTime()) ? undefined : value;
   }
   if (typeof value === 'string' || typeof value === 'number') {
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
+    return Number.isNaN(date.getTime()) ? undefined : date;
   }
-  return null;
+  return undefined;
 }

@@ -1,3 +1,8 @@
+import { ExtensionManager as ConnectorExtensionManager } from './connector-factory.js';
+import { WebSocketConnectorFactory } from './websocket-connector-factory.js';
+
+ConnectorExtensionManager.register(WebSocketConnectorFactory);
+
 /**
  * Fame Connector Exports
  */
@@ -11,10 +16,10 @@ export {
   ConnectorFactory as RuntimeConnectorFactory, 
   ResourceFactory as RuntimeResourceFactory, 
   ConnectionGrant, 
-  ExtensionManager, 
   ExpressionEvaluationPolicy,
   createResource 
 } from './connector-factory.js';
+export { ConnectorExtensionManager as ExtensionManager };
 
 // WebSocket connector
 export { 
@@ -31,6 +36,11 @@ export {
   WebSocketConnectorFactoryConfig,
   CreateWebSocketConnectorOptions
 } from './websocket-connector-factory.js';
+
+export {
+  WebSocketListenerFactory,
+  type WebSocketListenerFactoryConfig,
+} from './websocket-listener-factory.js';
 
 // Flow controller
 export { _NoopFlowController } from './noop-flow-controller.js';

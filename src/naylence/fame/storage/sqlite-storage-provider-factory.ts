@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import type { CredentialProvider } from '../security/credential/credential-provider.js';
 import type { CredentialProviderConfig } from '../security/credential/credential-provider-factory.js';
 import { CredentialProviderFactory } from '../security/credential/credential-provider-factory.js';
@@ -14,9 +16,9 @@ import {
 export interface SQLiteStorageProviderConfig extends StorageProviderConfig {
   type: 'SQLiteStorageProvider';
   dbDirectory?: string;
-  isEncrypted?: boolean;
-  isCached?: boolean;
-  autoRecover?: boolean;
+  isEncrypted?: boolean | string;
+  isCached?: boolean | string;
+  autoRecover?: boolean | string;
   masterKey?: SecretSourceType | CredentialProviderConfig | Record<string, unknown> | null;
 }
 
@@ -26,57 +28,90 @@ interface NormalizedSQLiteConfig {
   isEncrypted: boolean;
   isCached: boolean;
   autoRecover: boolean;
-  masterKey?: CredentialProviderConfig | Record<string, unknown> | null;
+  masterKey: CredentialProviderConfig | Record<string, unknown> | null;
 }
+
+const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
+const FALSE_VALUES = new Set(['false', '0', 'no', 'off', '']);
+
+function coerceBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (TRUE_VALUES.has(normalized)) {
+      return true;
+    }
+    if (FALSE_VALUES.has(normalized)) {
+      return false;
+    }
+  }
+
+  throw new Error(`Expected a boolean-like value for '${fieldName}' but received '${String(value)}'`);
+}
+
+const sqliteConfigSchema = z
+  .object({
+    type: z.literal('SQLiteStorageProvider').default('SQLiteStorageProvider'),
+    dbDirectory: z.string().min(1).default('./data/sqlite'),
+    isEncrypted: z.union([z.boolean(), z.string()]).default(false),
+    isCached: z.union([z.boolean(), z.string()]).default(true),
+    autoRecover: z.union([z.boolean(), z.string()]).default(true),
+    masterKey: z
+      .union([z.string(), z.record(z.string(), z.unknown()), z.null()])
+      .optional()
+      .default(null),
+  })
+  .passthrough();
 
 function normalizeSQLiteConfig(
   config?: SQLiteStorageProviderConfig | Record<string, unknown> | null
 ): NormalizedSQLiteConfig {
-  if (!config) {
-    return {
-      type: 'SQLiteStorageProvider',
-      dbDirectory: './data/sqlite',
-      isEncrypted: false,
-      isCached: true,
-      autoRecover: true,
-      masterKey: null,
-    };
-  }
-
-  const record = config as Record<string, unknown>;
-  const type = typeof record.type === 'string' ? record.type : 'SQLiteStorageProvider';
-  if (type !== 'SQLiteStorageProvider') {
-    throw new Error(`Unexpected storage provider type: ${type}`);
-  }
-
-  const dbDirectory = typeof record.dbDirectory === 'string'
-    ? record.dbDirectory
-    : typeof record.db_directory === 'string'
-      ? (record.db_directory as string)
-      : './data/sqlite';
-
-  const isEncrypted = Boolean(
-    record.isEncrypted ?? record.is_encrypted ?? false
-  );
-
-  const isCached = record.isCached ?? record.is_cached;
-  const autoRecover = record.autoRecover ?? record.auto_recover;
-
-  const normalized: NormalizedSQLiteConfig = {
-    type: 'SQLiteStorageProvider',
-    dbDirectory,
-    isEncrypted,
-    isCached: typeof isCached === 'boolean' ? isCached : true,
-    autoRecover: typeof autoRecover === 'boolean' ? autoRecover : true,
-    masterKey: null,
+  const candidate: Record<string, unknown> = {
+    ...(config as Record<string, unknown> | undefined),
   };
 
-  const masterKey = record.masterKey ?? record.master_key;
-  if (masterKey !== undefined && masterKey !== null) {
-    normalized.masterKey = SecretSource.normalize(masterKey as SecretSourceType);
+  if (candidate.dbDirectory === undefined && typeof candidate.db_directory === 'string') {
+    candidate.dbDirectory = candidate.db_directory;
+  }
+  if (candidate.isEncrypted === undefined && candidate.is_encrypted !== undefined) {
+    candidate.isEncrypted = candidate.is_encrypted;
+  }
+  if (candidate.isCached === undefined && candidate.is_cached !== undefined) {
+    candidate.isCached = candidate.is_cached;
+  }
+  if (candidate.autoRecover === undefined && candidate.auto_recover !== undefined) {
+    candidate.autoRecover = candidate.auto_recover;
+  }
+  if (candidate.masterKey === undefined && candidate.master_key !== undefined) {
+    candidate.masterKey = candidate.master_key;
   }
 
-  return normalized;
+  const parsed = sqliteConfigSchema.parse({ ...candidate, type: 'SQLiteStorageProvider' });
+
+  const isEncrypted = coerceBoolean(parsed.isEncrypted, 'isEncrypted');
+  const isCached = coerceBoolean(parsed.isCached, 'isCached');
+  const autoRecover = coerceBoolean(parsed.autoRecover, 'autoRecover');
+
+  const masterKeyValue = parsed.masterKey;
+  const normalizedMasterKey = masterKeyValue === null || masterKeyValue === ''
+    ? null
+    : SecretSource.normalize(masterKeyValue as SecretSourceType);
+
+  if (isEncrypted && !normalizedMasterKey) {
+    throw new Error('masterKey is required when isEncrypted is true');
+  }
+
+  return {
+    type: 'SQLiteStorageProvider',
+    dbDirectory: parsed.dbDirectory,
+    isEncrypted,
+    isCached,
+    autoRecover,
+    masterKey: normalizedMasterKey,
+  };
 }
 
 export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteStorageProviderConfig> {
@@ -89,10 +124,6 @@ export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteS
 
     let masterKeyProvider: CredentialProvider | null = null;
     if (normalized.isEncrypted) {
-      if (!normalized.masterKey) {
-        throw new Error('masterKey is required when isEncrypted is true');
-      }
-
       masterKeyProvider = await CredentialProviderFactory.createCredentialProvider(
         normalized.masterKey as CredentialProviderConfig
       );

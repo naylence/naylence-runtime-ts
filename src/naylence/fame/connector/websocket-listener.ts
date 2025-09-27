@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type {
   AuthorizationContext,
   DeliveryOriginType,
@@ -11,6 +11,7 @@ import type { NodeEventListener } from '../node/node-event-listener.js';
 import type { NodeLike } from '../node/node-like.js';
 import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import type { HttpRouter, HttpServer } from './http-server.js';
+import { DefaultHttpServer } from './default-http-server.js';
 import type { Authorizer } from '../security/auth/authorizer.js';
 import { WebSocketConnector, WebSocketState, type WebSocketConnectorConfig, type WebSocketLike } from './websocket-connector.js';
 import { DeliveryOriginType as DeliveryOriginTypeEnum } from 'naylence-core';
@@ -136,6 +137,12 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
 
   async onNodeStopped(_node: NodeLike): Promise<void> {
     this._routerRegistered = false;
+    this._node = null;
+    this._publicUrl = null;
+
+    if (this._httpServer instanceof DefaultHttpServer) {
+      await DefaultHttpServer.release({ host: this._httpServer.host, port: this._httpServer.port });
+    }
   }
 
   async createRouter(): Promise<HttpRouter> {
@@ -161,9 +168,25 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
 
   private async _handleWebSocketAttach(
     socket: WebSocketLike,
-    request: FastifyRequest<{ Params: AttachParams }>
+    requestContext: FastifyRequest<{ Params: AttachParams }> | FastifyReply
   ): Promise<void> {
-    const { downstreamOrPeer, systemId } = request.params;
+    const request = this._normalizeRequest(requestContext);
+    const params = this._resolveAttachParams(request);
+    logger.debug('websocket_attach_request', {
+      url: request.url,
+      rawUrl: typeof request.raw?.url === 'string' ? request.raw.url : null,
+      hasParams: Boolean(params),
+      requestType: request.constructor?.name,
+    });
+    if (!params) {
+      logger.warning('websocket_attach_missing_params', {
+        url: typeof request.raw?.url === 'string' ? request.raw.url : request.url,
+      });
+      this._closeSocket(socket, WS_POLICY_VIOLATION, 'Invalid attach route');
+      return;
+    }
+
+    const { downstreamOrPeer, systemId } = params;
     const node = this._node;
 
     if (!node) {
@@ -193,7 +216,7 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
       return;
     }
 
-    const token = this._extractBearerToken(request.headers['sec-websocket-protocol']);
+  const token = this._extractBearerToken(request.headers['sec-websocket-protocol']);
     if (!token) {
       logger.warning('websocket_attach_without_token');
     }
@@ -235,15 +258,72 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
     }
 
     const values = Array.isArray(header) ? header : [header];
-    const parts = values
-      .flatMap((value) => value.split(','))
-      .map((segment) => segment.trim())
-      .filter((segment) => segment.length > 0);
 
-    if (parts.length > 0 && parts[0] === 'bearer') {
-      return parts[1] ?? '';
+    for (const value of values) {
+      const segments = value
+        .split(',')
+        .map((segment) => segment.trim())
+        .filter((segment) => segment.length > 0);
+
+      for (let index = 0; index < segments.length; index += 1) {
+        const segment = segments[index];
+        if (!segment) {
+          continue;
+        }
+
+        if (segment.toLowerCase().startsWith('bearer')) {
+          const remainder = segment.slice('bearer'.length).trimStart();
+          if (remainder.length > 0) {
+            return remainder;
+          }
+
+          const nextSegment = segments[index + 1];
+          if (nextSegment) {
+            return nextSegment;
+          }
+
+          continue;
+        }
+      }
     }
+
     return '';
+  }
+
+  private _resolveAttachParams(
+    request: FastifyRequest<{ Params: AttachParams }>
+  ): AttachParams | null {
+    const paramsCandidate = (request as { params?: unknown }).params;
+    if (paramsCandidate && typeof paramsCandidate === 'object') {
+      const downstreamOrPeer = (paramsCandidate as Record<string, unknown>).downstreamOrPeer;
+      const systemId = (paramsCandidate as Record<string, unknown>).systemId;
+      if (typeof downstreamOrPeer === 'string' && typeof systemId === 'string') {
+        return { downstreamOrPeer, systemId };
+      }
+    }
+
+    const rawUrl = typeof request.raw?.url === 'string' && request.raw.url.length > 0
+      ? request.raw.url
+      : request.url;
+    if (typeof rawUrl !== 'string' || rawUrl.length === 0) {
+      return null;
+    }
+
+    const [path] = rawUrl.split('?', 1);
+    const segments = path.split('/').filter((segment) => segment.length > 0);
+    const wsIndex = segments.lastIndexOf('ws');
+    if (wsIndex === -1 || wsIndex + 2 >= segments.length) {
+      return null;
+    }
+
+    const downstreamOrPeer = decodeURIComponent(segments[wsIndex + 1] ?? '');
+    const systemId = decodeURIComponent(segments[wsIndex + 2] ?? '');
+
+    if (!downstreamOrPeer || !systemId) {
+      return null;
+    }
+
+    return { downstreamOrPeer, systemId };
   }
 
   private async _authenticateConnection(token: string, systemId: string): Promise<AuthorizationContext | undefined> {
@@ -302,7 +382,7 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
       throw new Error('Node not initialized');
     }
 
-  const connectorConfig: WebSocketConnectorConfig = { type: 'websocket' };
+    const connectorConfig: WebSocketConnectorConfig = { type: 'websocket' };
     if (params.authorization) {
       connectorConfig.authorizationContext = params.authorization;
     }
@@ -318,11 +398,29 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
       params.authorization ? { ...baseOptions, authorization: params.authorization } : baseOptions
     );
 
+    logger.debug('websocket_connector_created', {
+      systemId: params.systemId,
+      connectorType: connector.constructor?.name,
+    });
+
     if (!(connector instanceof WebSocketConnector)) {
       throw new Error(`Invalid connector type returned: ${connector?.constructor?.name ?? 'unknown'}`);
     }
 
     return connector;
+  }
+
+  private _normalizeRequest(
+    context: FastifyRequest<{ Params: AttachParams }> | FastifyReply
+  ): FastifyRequest<{ Params: AttachParams }> {
+    if (
+      context &&
+      typeof (context as FastifyReply).request === 'object' &&
+      (context as FastifyReply).request !== null
+    ) {
+      return (context as FastifyReply).request as FastifyRequest<{ Params: AttachParams }>;
+    }
+    return context as FastifyRequest<{ Params: AttachParams }>;
   }
 
   private async _handleAttachmentError(socket: WebSocketLike, error: unknown, systemId: string): Promise<void> {

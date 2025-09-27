@@ -85,32 +85,41 @@ interface SecurityManagerOverrides {
 }
 
 export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonNodeComponents> {
-  const storageProvider = await resolveStorageProvider(config.storage ?? null);
+  const expressionOptions = createExpressionOptions(config.envContext);
+
+  const storageProvider = await resolveStorageProvider(config.storage ?? null, expressionOptions);
   const nodeMetaStore = await storageProvider.getKeyValueStore<NodeMetaRecord>(
     NodeMetaRecord,
     NODE_META_NAMESPACE
   );
   const nodeMeta = await nodeMetaStore.get('self');
 
-  const admissionClient = await resolveAdmissionClient(config.admission ?? null);
+  const admissionClient = await resolveAdmissionClient(config.admission ?? null, expressionOptions);
   const requestedLogicals = [...config.requestedLogicals];
   const hasParent = determineHasParent(config, admissionClient);
 
-  const replicaStickinessManager = await resolveReplicaStickinessManager(hasParent, requestedLogicals);
+  const replicaStickinessManager = await resolveReplicaStickinessManager(
+    hasParent,
+    requestedLogicals,
+    expressionOptions
+  );
 
-  const attachmentKeyValidator = await resolveAttachmentKeyValidator(config.attachmentKeyValidator ?? null);
-  const keyStore = await resolveKeyStore(config.keyStore ?? null, storageProvider);
+  const attachmentKeyValidator = await resolveAttachmentKeyValidator(
+    config.attachmentKeyValidator ?? null,
+    expressionOptions
+  );
+  const keyStore = await resolveKeyStore(config.keyStore ?? null, storageProvider, expressionOptions);
 
-  const deliveryPolicy = await resolveDeliveryPolicy(config.delivery ?? null);
+  const deliveryPolicy = await resolveDeliveryPolicy(config.delivery ?? null, expressionOptions);
 
   const deliveryTracker = new DefaultDeliveryTracker(storageProvider);
 
-  const transportListeners = await resolveTransportListeners(config.listeners);
+  const transportListeners = await resolveTransportListeners(config.listeners, expressionOptions);
 
   const eventListeners: NodeEventListener[] = [];
   addEventListener(deliveryTracker, eventListeners);
 
-  const traceEmitter = await resolveTraceEmitter(config.telemetry ?? null);
+  const traceEmitter = await resolveTraceEmitter(config.telemetry ?? null, expressionOptions);
   if (traceEmitter) {
     addEventListener(traceEmitter, eventListeners);
   }
@@ -129,7 +138,8 @@ export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonN
       keyStore,
       keyValidator: attachmentKeyValidator,
       eventListeners,
-    }
+    },
+    expressionOptions
   );
   addEventListener(securityManager, eventListeners);
 
@@ -181,11 +191,15 @@ export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonN
 }
 
 async function resolveStorageProvider(
-  config: StorageProviderConfig | Record<string, unknown> | null
+  config: StorageProviderConfig | Record<string, unknown> | null,
+  options: CreateResourceOptions
 ): Promise<StorageProvider> {
   if (config) {
     try {
-      return await StorageProviderFactory.createStorageProvider(config);
+      return await StorageProviderFactory.createStorageProvider(
+        config,
+        cloneCreateOptions(options)
+      );
     } catch (error) {
       logger.warning('storage_provider_creation_failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -196,10 +210,18 @@ async function resolveStorageProvider(
 }
 
 async function resolveAdmissionClient(
-  config: Record<string, unknown> | AdmissionClient | null
+  config: Record<string, unknown> | AdmissionClient | null,
+  options: CreateResourceOptions
 ): Promise<AdmissionClient | null> {
+  if (config && typeof (config as AdmissionClient).hello === 'function') {
+    return config as AdmissionClient;
+  }
+
   try {
-    return await AdmissionClientFactory.createAdmissionClient(config as Record<string, unknown> | null);
+    return await AdmissionClientFactory.createAdmissionClient(
+      (config ?? null) as Record<string, unknown> | null,
+      cloneCreateOptions(options)
+    );
   } catch (error) {
     logger.warning('admission_client_creation_failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -220,7 +242,8 @@ function determineHasParent(config: FameNodeConfig, admissionClient: AdmissionCl
 
 async function resolveReplicaStickinessManager(
   hasParent: boolean,
-  requestedLogicals: string[]
+  requestedLogicals: string[],
+  options: CreateResourceOptions
 ): Promise<ReplicaStickinessManager | null> {
   if (!hasParent) {
     return null;
@@ -232,7 +255,10 @@ async function resolveReplicaStickinessManager(
   }
 
   try {
-    return await ReplicaStickinessManagerFactory.createReplicaStickinessManager();
+    return await ReplicaStickinessManagerFactory.createReplicaStickinessManager(
+      undefined,
+      cloneCreateOptions(options)
+    );
   } catch (error) {
     logger.debug('replica_stickiness_manager_unavailable', { error });
     return null;
@@ -240,10 +266,14 @@ async function resolveReplicaStickinessManager(
 }
 
 async function resolveAttachmentKeyValidator(
-  config: AttachmentKeyValidatorConfig | Record<string, unknown> | null
+  config: AttachmentKeyValidatorConfig | Record<string, unknown> | null,
+  options: CreateResourceOptions
 ): Promise<AttachmentKeyValidator | null> {
   try {
-    return await AttachmentKeyValidatorFactory.createAttachmentKeyValidator(config ?? undefined);
+    return await AttachmentKeyValidatorFactory.createAttachmentKeyValidator(
+      config ?? undefined,
+      cloneCreateOptions(options)
+    );
   } catch (error) {
     logger.warning('attachment_key_validator_creation_failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -254,16 +284,25 @@ async function resolveAttachmentKeyValidator(
 
 async function resolveKeyStore(
   config: KeyStoreConfig | Record<string, unknown> | null,
-  storageProvider: StorageProvider
+  storageProvider: StorageProvider,
+  options: CreateResourceOptions
 ): Promise<KeyStore> {
-  return await KeyStoreFactory.createKeyStore(config ?? undefined, { storageProvider });
+  const baseOptions = cloneCreateOptions(options);
+  return await KeyStoreFactory.createKeyStore(config ?? undefined, {
+    ...baseOptions,
+    storageProvider,
+  });
 }
 
 async function resolveDeliveryPolicy(
-  config: DeliveryPolicyConfig | Record<string, unknown> | null
+  config: DeliveryPolicyConfig | Record<string, unknown> | null,
+  options: CreateResourceOptions
 ): Promise<DeliveryPolicy | null> {
   try {
-    return await DeliveryPolicyFactory.createDeliveryPolicy(config ?? undefined);
+    return await DeliveryPolicyFactory.createDeliveryPolicy(
+      config ?? undefined,
+      cloneCreateOptions(options)
+    );
   } catch (error) {
     logger.warning('delivery_policy_creation_failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -273,14 +312,18 @@ async function resolveDeliveryPolicy(
 }
 
 async function resolveTransportListeners(
-  configs: TransportListenerConfig[]
+  configs: TransportListenerConfig[],
+  options: CreateResourceOptions
 ): Promise<TransportListener[]> {
   if (!configs.length) {
     return [];
   }
 
   try {
-    return await TransportListenerFactory.createTransportListeners(configs);
+    return await TransportListenerFactory.createTransportListeners(
+      configs,
+      cloneCreateOptions(options)
+    );
   } catch (error) {
     logger.warning('transport_listener_creation_failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -290,10 +333,14 @@ async function resolveTransportListeners(
 }
 
 async function resolveTraceEmitter(
-  config: TraceEmitterConfig | Record<string, unknown> | null
+  config: TraceEmitterConfig | Record<string, unknown> | null,
+  options: CreateResourceOptions
 ): Promise<TraceEmitter | null> {
   try {
-    return await TraceEmitterFactory.createTraceEmitter(config ?? undefined);
+    return await TraceEmitterFactory.createTraceEmitter(
+      config ?? undefined,
+      cloneCreateOptions(options)
+    );
   } catch (error) {
     logger.warning('trace_emitter_creation_failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -304,10 +351,11 @@ async function resolveTraceEmitter(
 
 async function resolveSecurityManager(
   config: SecurityManagerConfig | Record<string, unknown> | null,
-  overrides: SecurityManagerOverrides
+  overrides: SecurityManagerOverrides,
+  options: CreateResourceOptions
 ): Promise<SecurityManager> {
   if (config) {
-    const manager = await createSecurityManagerFromConfig(config, overrides);
+    const manager = await createSecurityManagerFromConfig(config, overrides, options);
     if (manager) {
       return manager;
     }
@@ -316,18 +364,57 @@ async function resolveSecurityManager(
   return SecurityManagerFactory.createSecurityManager(overrides);
 }
 
+function createExpressionOptions(envContext: Record<string, unknown>): CreateResourceOptions {
+  if (!envContext || typeof envContext !== 'object') {
+    return {};
+  }
+
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(envContext)) {
+    if (value === null || value === undefined) {
+      continue;
+    }
+    env[key] = String(value);
+  }
+
+  return Object.keys(env).length > 0 ? { env } : {};
+}
+
+function cloneCreateOptions(options: CreateResourceOptions): CreateResourceOptions {
+  const clone: CreateResourceOptions = { ...options };
+
+  if (options.env) {
+    clone.env = { ...options.env };
+  }
+
+  if (options.config) {
+    clone.config = { ...options.config };
+  }
+
+  if (options.variables) {
+    clone.variables = { ...options.variables };
+  }
+
+  if (options.factoryArgs) {
+    clone.factoryArgs = [...options.factoryArgs];
+  }
+
+  return clone;
+}
+
 async function createSecurityManagerFromConfig(
   config: SecurityManagerConfig | Record<string, unknown>,
-  overrides: SecurityManagerOverrides
+  overrides: SecurityManagerOverrides,
+  options: CreateResourceOptions
 ): Promise<SecurityManager | null> {
   try {
-    const options: CreateResourceOptions = {
-      factoryArgs: [overrides],
-    };
+    const mergedOptions = cloneCreateOptions(options);
+    const factoryArgs = [...(mergedOptions.factoryArgs ?? []), overrides];
+    mergedOptions.factoryArgs = factoryArgs;
     const manager = await createResource<SecurityManager>(
       SECURITY_MANAGER_FACTORY_BASE_TYPE,
       config,
-      options
+      mergedOptions
     );
     return manager ?? null;
   } catch (error) {

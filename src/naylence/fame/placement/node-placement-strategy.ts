@@ -1,5 +1,5 @@
 import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
+import { AbstractResourceFactory, createDefaultResource, createResource, registerFactory } from 'naylence-factory';
 import type { NodeHelloFrame } from 'naylence-core';
 
 export const NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE = 'NodePlacementStrategyFactory' as const;
@@ -74,4 +74,17 @@ export abstract class NodePlacementStrategyFactory<
 
     return strategy;
   }
+}
+
+export function registerNodePlacementStrategyFactory(
+  type: string,
+  factory: new (...args: unknown[]) => NodePlacementStrategyFactory,
+  metadata?: {
+    isDefault?: boolean;
+    priority?: number;
+    description?: string;
+    [key: string]: unknown;
+  }
+): void {
+  registerFactory(NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE, type, factory, metadata);
 }

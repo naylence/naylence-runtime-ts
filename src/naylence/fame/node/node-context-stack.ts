@@ -6,6 +6,14 @@ export function getCurrentNode(): NodeLike | null {
   return nodeStack.length > 0 ? nodeStack[nodeStack.length - 1] : null;
 }
 
+export function getNode(): NodeLike {
+  const current = getCurrentNode();
+  if (!current) {
+    throw new Error('No Fame node is currently bound to the context');
+  }
+  return current;
+}
+
 export function pushNode(node: NodeLike): () => void {
   nodeStack.push(node);
   let popped = false;

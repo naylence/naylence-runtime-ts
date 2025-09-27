@@ -7,6 +7,7 @@ import {
   type FameConnector,
   type FameDeliveryContext,
   type FameEnvelope,
+  type FameFabric,
 } from 'naylence-core';
 
 import { Sentinel, type SentinelOptions } from '../sentinel.js';
@@ -18,6 +19,7 @@ import type { AddressRouteInfo } from '../key-frame-handler.js';
 import { Peer } from '../peer.js';
 import * as envelopeContext from '../../util/envelope-context.js';
 import * as taskUtils from '../../util/task-utils.js';
+import * as logging from '../../util/logging.js';
 
 jest.mock('../../connector/connector-factory.js', () => ({
   createResource: jest.fn(),
@@ -296,6 +298,38 @@ describe('Sentinel', () => {
     expect(deliverSpy.mock.calls[1][0].frame?.type).toBe('Data');
     expect(deliverSpy.mock.calls[2][0].frame?.type).toBe('Data');
     expect(pendingEntry?.buffer).toHaveLength(0);
+  });
+
+  it('forwards transport options to the origin connector factory', async () => {
+    const sentinel = createSentinel();
+    const createResourceMock = createResource as jest.Mock;
+    createResourceMock.mockReset();
+
+    const connector = createMockConnector();
+    createResourceMock.mockResolvedValue(connector);
+
+    const websocket = {
+      readyState: 1,
+      send: jest.fn(),
+      close: jest.fn(),
+    };
+
+    const extraOption = { handshake: 'open-profile' };
+
+    await sentinel.createOriginConnector({
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'child-options',
+      connectorConfig: { type: 'websocket', url: 'ws://options' } as any,
+      websocket,
+      extraOption,
+      authorization: { roles: ['internal'] } as any,
+    });
+
+    expect(createResourceMock).toHaveBeenCalledTimes(1);
+    const [configArg, factoryArgs] = createResourceMock.mock.calls[0];
+    expect(configArg).toEqual({ type: 'websocket', url: 'ws://options' });
+    expect(factoryArgs).toMatchObject({ websocket, extraOption });
+    expect(factoryArgs.authorization).toBeUndefined();
   });
 
   it('validates origin connector context invariants before delivery', async () => {
@@ -1394,5 +1428,121 @@ describe('Sentinel', () => {
   forwardSpy.mockRestore();
   delaySpy.mockRestore();
   idSpy.mockRestore();
+  });
+
+  describe('aserve', () => {
+    function createFabricStub(): { enter: jest.Mock; exit: jest.Mock } & Record<string, unknown> {
+      const stub: Record<string, unknown> = {};
+      stub.enter = jest.fn().mockResolvedValue(stub as unknown as FameFabric);
+      stub.exit = jest.fn().mockResolvedValue(undefined);
+      return stub as { enter: jest.Mock; exit: jest.Mock } & Record<string, unknown>;
+    }
+
+    it('configures logging and resolves on abort signal', async () => {
+      const fabric = createFabricStub();
+      const controller = new AbortController();
+
+      fabric.enter.mockImplementation(async () => {
+        setImmediate(() => controller.abort());
+        return fabric as unknown as FameFabric;
+      });
+
+      const basicConfigSpy = jest
+        .spyOn(logging, 'basicConfig')
+        .mockImplementation(() => undefined);
+
+      await Sentinel.aserve({
+        fabric: fabric as unknown as FameFabric,
+        signal: controller.signal,
+        signals: [],
+      });
+
+      expect(basicConfigSpy).toHaveBeenCalledWith({ level: logging.LogLevel.INFO });
+      expect(fabric.enter).toHaveBeenCalledTimes(1);
+      expect(fabric.exit).toHaveBeenCalledTimes(1);
+    });
+
+    it('accepts string log level values', async () => {
+      const fabric = createFabricStub();
+      const controller = new AbortController();
+
+      fabric.enter.mockImplementation(async () => {
+        setImmediate(() => controller.abort());
+        return fabric as unknown as FameFabric;
+      });
+
+      const basicConfigSpy = jest
+        .spyOn(logging, 'basicConfig')
+        .mockImplementation(() => undefined);
+
+      await Sentinel.aserve({
+        fabric: fabric as unknown as FameFabric,
+        signal: controller.signal,
+        signals: [],
+        logLevel: 'debug',
+      });
+
+      expect(basicConfigSpy).toHaveBeenCalledWith({ level: logging.LogLevel.DEBUG });
+      expect(fabric.enter).toHaveBeenCalledTimes(1);
+      expect(fabric.exit).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits for configured process signals and cleans up listeners', async () => {
+      const fabric = createFabricStub();
+      const handlers = new Map<string, (...args: unknown[]) => void>();
+
+      jest.spyOn(logging, 'basicConfig').mockImplementation(() => undefined);
+
+      const onceSpy = jest.spyOn(process, 'once').mockImplementation((event: any, handler: any) => {
+        handlers.set(event, handler);
+        return process;
+      });
+      const removeSpy = jest
+        .spyOn(process, 'removeListener')
+        .mockImplementation((event: any, handler: any) => {
+          if (handlers.get(event) === handler) {
+            handlers.delete(event);
+          }
+          return process;
+        });
+
+      const servePromise = Sentinel.aserve({
+        fabric: fabric as unknown as FameFabric,
+        signals: ['SIGUSR2'],
+      });
+
+      await new Promise<void>((resolve) => process.nextTick(resolve));
+
+      const registered = handlers.get('SIGUSR2');
+      expect(registered).toBeDefined();
+      registered?.();
+
+      await servePromise;
+
+      expect(fabric.enter).toHaveBeenCalledTimes(1);
+      expect(fabric.exit).toHaveBeenCalledTimes(1);
+      expect(removeSpy).toHaveBeenCalledWith('SIGUSR2', expect.any(Function));
+      expect(handlers.size).toBe(0);
+
+      onceSpy.mockRestore();
+      removeSpy.mockRestore();
+    });
+
+    it('returns early when abort signal is already triggered', async () => {
+      const fabric = createFabricStub();
+      const controller = new AbortController();
+      controller.abort();
+
+      jest.spyOn(logging, 'basicConfig').mockImplementation(() => undefined);
+
+      await Sentinel.aserve({
+        fabric: fabric as unknown as FameFabric,
+        signal: controller.signal,
+        signals: [],
+      });
+
+      expect(fabric.enter).not.toHaveBeenCalled();
+      expect(fabric.exit).not.toHaveBeenCalled();
+    });
   });
 });

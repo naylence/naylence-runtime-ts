@@ -96,6 +96,11 @@ export class DefaultHttpServer implements HttpServer {
 
     const address = await this._app.listen({ host: this._host, port: this._port });
 
+    const nodeServer = this._app.server as { unref?: () => void };
+    if (typeof nodeServer?.unref === 'function') {
+      nodeServer.unref();
+    }
+
     const serverAddress = this._app.server.address();
     if (serverAddress && typeof serverAddress !== 'string') {
       const info = serverAddress as AddressInfo;
@@ -130,23 +135,37 @@ export class DefaultHttpServer implements HttpServer {
   }
 
   async includeRouter(router: HttpRouter, options?: { prefix?: string }): Promise<void> {
+    const wasStarted = this._started;
+
+    await this._ensureCorePlugins();
+
     if (options) {
       await this._app.register(router as FastifyPluginAsync, options);
     } else {
       await this._app.register(router as FastifyPluginAsync);
     }
-    if (this._started) {
+
+    if (!wasStarted) {
+      await this.start();
+    } else {
       await this._app.ready();
     }
   }
 
   async includeFastifyPlugin(plugin: FastifyPluginAsync, options?: Record<string, unknown>): Promise<void> {
+    const wasStarted = this._started;
+
+    await this._ensureCorePlugins();
+
     if (options) {
       await this._app.register(plugin, options);
     } else {
       await this._app.register(plugin);
     }
-    if (this._started) {
+
+    if (!wasStarted) {
+      await this.start();
+    } else {
       await this._app.ready();
     }
   }
@@ -178,7 +197,6 @@ export class DefaultHttpServer implements HttpServer {
       let server = this.registry.get(key);
       if (!server) {
         server = new DefaultHttpServer(host, port);
-        await server.start();
         this.registry.set(key, server);
         this.referenceCounts.set(key, 1);
       } else {

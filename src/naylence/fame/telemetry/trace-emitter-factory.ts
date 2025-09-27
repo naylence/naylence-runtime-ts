@@ -1,5 +1,5 @@
 import type { CreateResourceOptions } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource, registerFactory } from 'naylence-factory';
+import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
 
 import type { TraceEmitter } from './trace-emitter.js';
 import type { TraceEmitterConfig } from './trace-emitter-config.js';
@@ -30,23 +30,7 @@ export abstract class TraceEmitterFactory<
   }
 }
 
-class NoopTraceEmitter implements TraceEmitter {
-  public readonly priority = 1000;
-}
-
-class NoopTraceEmitterFactory extends TraceEmitterFactory {
-  public readonly type = 'NoopTraceEmitter';
-  public readonly isDefault = true;
-  public readonly priority = 100;
-
-  public async create(): Promise<TraceEmitter> {
-    return new NoopTraceEmitter();
-  }
-}
-
-registerFactory(
-  TRACE_EMITTER_FACTORY_BASE_TYPE,
-  'NoopTraceEmitter',
-  NoopTraceEmitterFactory,
-  { isDefault: true, priority: 100 }
-);
+// Ensure default factories are registered
+import './noop-trace-emitter-factory.js';
+import './open-telemetry-trace-emitter-factory.js';
+import './trace-emitter-profile-factory.js';

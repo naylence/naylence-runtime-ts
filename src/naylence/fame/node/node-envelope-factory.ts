@@ -42,42 +42,128 @@ export class NodeEnvelopeFactory implements EnvelopeFactory {
       responseType,
     } = options;
 
-    const sid = this.sidFn();
-    const resolvedTraceId = traceId ?? getCurrentEnvelope()?.trace_id ?? generateId();
+    validateFrame(frame);
+
+    const sidValue = this.sidFn();
+    const sanitizedSid = typeof sidValue === 'string' ? sidValue.trim() : sidValue;
+    const sanitizedId = typeof id === 'string' ? id.trim() : id;
+    const sanitizedTraceId = typeof traceId === 'string' ? traceId.trim() : traceId;
+    const sanitizedFlowId = typeof flowId === 'string' ? flowId.trim() : flowId;
+    const sanitizedCorrId = typeof corrId === 'string' ? corrId.trim() : corrId;
+
+    const resolvedTraceId = sanitizedTraceId && sanitizedTraceId.length > 0
+      ? sanitizedTraceId
+      : getCurrentEnvelope()?.trace_id ?? generateId();
+
+    const normalizedCapabilities = normalizeCapabilities(capabilities ?? undefined);
+    const normalizedWindowId = normalizeWindowId(windowId ?? undefined);
+    const normalizedTimestamp = normalizeTimestamp(timestamp ?? undefined);
+    const normalizedTo = sanitizeAddress(to);
+    const normalizedReplyTo = sanitizeAddress(replyTo);
 
     const envelopeOptions: CreateFameEnvelopeOptions = {
       frame,
       traceId: resolvedTraceId,
-      windowId: windowId ?? 0,
       flags: flags ?? FlowFlags.NONE,
-      timestamp: timestamp ?? new Date(),
+      ...(normalizedTimestamp ? { timestamp: normalizedTimestamp } : {}),
     };
 
-    if (sid) {
-      envelopeOptions.sid = sid;
+    if (sanitizedSid && sanitizedSid.length > 0) {
+      envelopeOptions.sid = sanitizedSid;
     }
-    if (id) {
-      envelopeOptions.id = id;
+    if (sanitizedId && sanitizedId.length > 0) {
+      envelopeOptions.id = sanitizedId;
     }
-    if (to !== undefined && to !== null) {
-      envelopeOptions.to = to as NonNullable<typeof to>;
+    if (normalizedTo !== undefined) {
+      envelopeOptions.to = normalizedTo;
     }
-    if (capabilities !== undefined && capabilities !== null) {
-      envelopeOptions.capabilities = capabilities;
+    if (normalizedCapabilities !== undefined) {
+      envelopeOptions.capabilities = normalizedCapabilities;
     }
     if (responseType !== undefined && responseType !== null) {
       envelopeOptions.responseType = responseType;
     }
-    if (replyTo !== undefined && replyTo !== null) {
-      envelopeOptions.replyTo = replyTo as NonNullable<typeof replyTo>;
+    if (normalizedReplyTo !== undefined) {
+      envelopeOptions.replyTo = normalizedReplyTo;
     }
-    if (flowId !== undefined && flowId !== null) {
-      envelopeOptions.flowId = flowId;
+    if (sanitizedFlowId && sanitizedFlowId.length > 0) {
+      envelopeOptions.flowId = sanitizedFlowId;
     }
-    if (corrId !== undefined && corrId !== null) {
-      envelopeOptions.corrId = corrId;
+    if (normalizedWindowId !== undefined) {
+      envelopeOptions.windowId = normalizedWindowId;
+    }
+    if (sanitizedCorrId && sanitizedCorrId.length > 0) {
+      envelopeOptions.corrId = sanitizedCorrId;
     }
 
     return createFameEnvelope(envelopeOptions);
   }
+}
+
+function validateFrame(frame: AllFramesUnion): void {
+  if (!frame || typeof frame !== 'object') {
+    throw new Error('NodeEnvelopeFactory requires a frame object');
+  }
+
+  const typeValue = (frame as { type?: unknown }).type;
+  if (typeof typeValue !== 'string' || typeValue.trim().length === 0) {
+    throw new Error('Envelope frame must include a non-empty type property');
+  }
+}
+
+function normalizeCapabilities(capabilities?: string[] | null): string[] | undefined {
+  if (!capabilities) {
+    return undefined;
+  }
+
+  const normalized = capabilities
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter((value) => value.length > 0);
+
+  return normalized.length > 0 ? normalized : [];
+}
+
+function normalizeWindowId(windowId?: number | null): number | undefined {
+  if (windowId === undefined || windowId === null) {
+    return undefined;
+  }
+
+  if (!Number.isFinite(windowId)) {
+    throw new Error('windowId must be a finite number');
+  }
+
+  const integerValue = Math.trunc(windowId);
+  if (integerValue < 0) {
+    throw new Error('windowId must be a non-negative integer');
+  }
+
+  return integerValue;
+}
+
+function normalizeTimestamp(timestamp?: Date | null): Date | undefined {
+  if (!timestamp) {
+    return undefined;
+  }
+
+  const value = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  if (Number.isNaN(value.getTime())) {
+    throw new Error('timestamp must be a valid Date instance');
+  }
+
+  return value;
+}
+
+function sanitizeAddress(
+  address: FameEnvelope['to'] | string | null | undefined
+): FameEnvelope['to'] | string | undefined {
+  if (address === null || address === undefined) {
+    return undefined;
+  }
+
+  if (typeof address === 'string') {
+    const trimmed = address.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  return address;
 }

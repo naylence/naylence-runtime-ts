@@ -180,17 +180,14 @@ export abstract class ConnectorFactory<
     configOrGrant: ConnectorConfig | ConnectionGrant | Record<string, unknown>,
     ...kwargs: unknown[]
   ): Promise<FameConnector> {
-    // Handle ConnectorConfig case - use existing resource creation mechanism
-    if (this.isConnectorConfig(configOrGrant)) {
-      return await this.createResource(configOrGrant, ...kwargs);
-    }
-
-    // Handle ConnectionGrant case - find appropriate factory via extension discovery
+    // Handle ConnectionGrant first to avoid misclassifying grants as config records
     let connectorConfig: ConnectorConfig | undefined;
     let grantType: string | undefined;
 
     if (this.isConnectionGrant(configOrGrant)) {
       grantType = configOrGrant.type;
+    } else if (this.isConnectorConfig(configOrGrant)) {
+      return await this.createResource(configOrGrant, ...kwargs);
     } else if (this.isRecord(configOrGrant)) {
       // Check if this is a grant type by testing known factories
       grantType = configOrGrant.type as string;
@@ -231,11 +228,25 @@ export abstract class ConnectorFactory<
     ...kwargs: unknown[]
   ): Promise<FameConnector> {
     const factories = ExtensionManager.getExtensionsByType();
-    
-    for (const [, factoryInfo] of factories) {
-      const factory = factoryInfo.instance || new factoryInfo.constructor();
-      if (factory.type === config.type) {
-        return await factory.create(config as any, ...kwargs);
+
+    const requestedType = config.type;
+    const candidateTypes = new Set<string>([requestedType]);
+    if (requestedType === 'websocket') {
+      candidateTypes.add('WebSocketConnector');
+    } else if (requestedType === 'WebSocketConnector') {
+      candidateTypes.add('websocket');
+    }
+
+    for (const candidateType of candidateTypes) {
+      for (const [, factoryInfo] of factories) {
+        const factory = factoryInfo.instance || new factoryInfo.constructor();
+        if (factory.type === candidateType) {
+          const normalizedConfig =
+            candidateType === requestedType
+              ? config
+              : ({ ...config, type: candidateType } as ConnectorConfig);
+          return await factory.create(normalizedConfig as any, ...kwargs);
+        }
       }
     }
 
@@ -284,11 +295,25 @@ export async function createResource<T extends FameConnector>(
   ...kwargs: unknown[]
 ): Promise<T> {
   const factories = ExtensionManager.getExtensionsByType();
-  
-  for (const [, factoryInfo] of factories) {
-    const factory = factoryInfo.instance || new factoryInfo.constructor();
-    if (factory.type === config.type) {
-      return await factory.create(config as any, ...kwargs) as T;
+
+  const requestedType = config.type;
+  const candidateTypes = new Set<string>([requestedType]);
+  if (requestedType === 'websocket') {
+    candidateTypes.add('WebSocketConnector');
+  } else if (requestedType === 'WebSocketConnector') {
+    candidateTypes.add('websocket');
+  }
+
+  for (const candidateType of candidateTypes) {
+    for (const [, factoryInfo] of factories) {
+      const factory = factoryInfo.instance || new factoryInfo.constructor();
+      if (factory.type === candidateType) {
+        const normalizedConfig =
+          candidateType === requestedType
+            ? config
+            : ({ ...config, type: candidateType } as ConnectorConfig);
+        return (await factory.create(normalizedConfig as any, ...kwargs)) as T;
+      }
     }
   }
 

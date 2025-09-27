@@ -9,6 +9,7 @@ import {
 	FameEnvelopeHandler,
 	FameMessageResponse,
 	FameResponseType,
+	FameFabric,
 	FlowFlags,
 	SecurityContext,
 	formatAddress,
@@ -19,15 +20,11 @@ import {
 
 import { currentTraceId } from '../util/envelope-context.js';
 import { FameNode, type FameNodeOptions } from '../node/node.js';
+import type { FameAuthorizedDeliveryContext, FameNodeAuthorizationContext } from '../node/node-context.js';
 import type { OriginConnectorOptions, RoutingNodeLike } from '../node/routing-node-like.js';
 import type { RouteStore } from './store/route-store.js';
 import { getDefaultRouteStore } from './store/route-store.js';
-import {
-	RouteManager,
-	type FameAuthorizedDeliveryContext,
-	type FameNodeAuthorizationContext,
-	type PendingRouteEntry,
-} from './route-manager.js';
+import { RouteManager, type PendingRouteEntry } from './route-manager.js';
 import type { RoutingPolicy } from './routing-policy.js';
 import { CompositeRoutingPolicy } from './composite-routing-policy.js';
 import { CapabilityAwareRoutingPolicy } from './capability-aware-routing-policy.js';
@@ -37,7 +34,13 @@ import { AddressBindFrameHandler } from './address-bind-frame-handler.js';
 import { NodeHeartbeatFrameHandler } from './node-heartbeat-frame-handler.js';
 import { CapabilityFrameHandler } from './capability-frame-handler.js';
 import { CreditUpdateFrameHandler } from './credit-update-frame-handler.js';
-import { getLogger, summarizeEnvelope } from '../util/logging.js';
+import {
+	LogLevel,
+	LogLevelNames,
+	basicConfig,
+	getLogger,
+	summarizeEnvelope,
+} from '../util/logging.js';
 import { TaskSpawner } from '../util/task-spawner.js';
 import { delay } from '../util/task-utils.js';
 import { AsyncEvent } from '../util/async-event.js';
@@ -53,6 +56,8 @@ import type { LoadBalancerStickinessManager } from '../stickiness/load-balancer-
 import type { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
 import { emitDeliveryNack, RouterState, type RoutingAction } from './router.js';
 import type { AddressRouteInfo } from './key-frame-handler.js';
+import type { NodeLike } from '../node/node-like.js';
+import { InProcessFameFabric } from '../fabric/in-process-fame-fabric.js';
 
 const logger = getLogger('sentinel');
 
@@ -115,6 +120,15 @@ export interface SentinelOptions extends FameNodeOptions {
 	stickinessManager?: LoadBalancerStickinessManager | null;
 	attachClient?: NodeAttachClient | null;
 	cleanupDelayMs?: number;
+}
+
+export interface SentinelServeOptions {
+	logLevel?: LogLevel | keyof typeof LogLevelNames | string | number | null;
+	config?: Record<string, unknown> | null;
+	node?: NodeLike | null;
+	fabric?: FameFabric | null;
+	signals?: NodeJS.Signals[];
+	signal?: AbortSignal;
 }
 
 export class Sentinel extends FameNode implements RoutingNodeLike {
@@ -524,12 +538,23 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 	}
 
 	async createOriginConnector(options: OriginConnectorOptions): Promise<FameConnector> {
-		const connector = await createResource<FameConnector>(options.connectorConfig as ConnectorConfig);
+		const {
+			connectorConfig,
+			originType,
+			systemId,
+			authorization: authorizationOption,
+			...factoryArgs
+		} = options;
+
+		const connector = await createResource<FameConnector>(
+			connectorConfig as ConnectorConfig,
+			factoryArgs
+		);
 
 		const attachedEvent = new AsyncEvent();
 		const buffer: FameEnvelope[] = [];
 
-			const authorization = (options.authorization ?? null) as FameNodeAuthorizationContext | null;
+			const authorization = (authorizationOption ?? null) as FameNodeAuthorizationContext | null;
 
 			const buildContext = (ctx?: FameDeliveryContext | null): FameAuthorizedDeliveryContext => {
 				const baseSecurity = ctx?.security ? ({ ...ctx.security } as SecurityContext) : undefined;
@@ -542,8 +567,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
 				return {
 					fromConnector: connector,
-					fromSystemId: options.systemId,
-					originType: options.originType,
+					fromSystemId: systemId,
+					originType,
 					expectedResponseType: ctx?.expectedResponseType ?? FameResponseType.NONE,
 					security,
 					meta: ctx?.meta,
@@ -556,10 +581,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 				if (ctx?.fromConnector && ctx.fromConnector !== connector) {
 					throw new Error('Context connector mismatch for origin connector');
 				}
-				if (ctx?.fromSystemId && ctx.fromSystemId !== options.systemId) {
+				if (ctx?.fromSystemId && ctx.fromSystemId !== systemId) {
 					throw new Error('Context system id mismatch for origin connector');
 				}
-				if (ctx?.originType && ctx.originType !== options.originType) {
+				if (ctx?.originType && ctx.originType !== originType) {
 					throw new Error('Context origin type mismatch for origin connector');
 				}
 
@@ -662,8 +687,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 			}, { name: `attach-timeout-${options.systemId}` });
 		}
 
-		this.routeManager._pending_routes.set(options.systemId, pendingEntry);
-		this.routeManager._pending_route_metadata.set(options.systemId, options.connectorConfig as ConnectorConfig);
+		this.routeManager._pending_routes.set(systemId, pendingEntry);
+		this.routeManager._pending_route_metadata.set(systemId, connectorConfig as ConnectorConfig);
 
 		return connector;
 	}
@@ -942,8 +967,15 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 			const envelope = this.envelopeFactory.createEnvelope(envelopeOptions);
 			await this.forwardUpstream(envelope, localDeliveryContext(this.id));
 
-			const timeoutPromise = delay(this.ackTimeoutMs).then(() => {
-				throw new Error(`Timeout waiting for bind ack for ${address.toString()}`);
+
+			let timeoutId: ReturnType<typeof setTimeout> | null = null;
+			const timeoutPromise = new Promise<never>((_resolve, reject) => {
+				timeoutId = setTimeout(() => {
+					reject(new Error(`Timeout waiting for bind ack for ${address.toString()}`));
+				}, this.ackTimeoutMs);
+				if (typeof (timeoutId as NodeJS.Timeout | null)?.unref === 'function') {
+					(timeoutId as NodeJS.Timeout).unref();
+				}
 			});
 
 			try {
@@ -952,6 +984,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 					throw new Error(`Bind to ${address.toString()} was rejected`);
 				}
 			} finally {
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+					timeoutId = null;
+				}
 				await this.pendingLock.runExclusive(async () => {
 					const pending = this.pendingBinds.get(corrId);
 					if (pending === deferred) {
@@ -960,4 +996,136 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 				});
 			}
 	}
+
+	static async aserve(options: SentinelServeOptions = {}): Promise<void> {
+		const {
+			logLevel,
+			config = null,
+			node = null,
+			fabric: providedFabric = null,
+			signals = ['SIGINT', 'SIGTERM'],
+			signal,
+		} = options;
+
+		const resolvedLevel = normalizeServeLogLevel(logLevel) ?? LogLevel.INFO;
+		basicConfig({ level: resolvedLevel });
+
+		const processRef: NodeJS.Process | undefined =
+			typeof globalThis !== 'undefined' &&
+			typeof (globalThis as any).process !== 'undefined'
+				? ((globalThis as any).process as NodeJS.Process)
+				: undefined;
+
+		if (!processRef || typeof processRef.once !== 'function' || typeof processRef.removeListener !== 'function') {
+			throw new Error('Sentinel.aserve requires a Node.js runtime with signal support');
+		}
+
+		const abortSignal = signal ?? null;
+		if (abortSignal?.aborted) {
+			logger.info('shutdown_signal_received', { signal: 'abort' });
+			return;
+		}
+
+		const fabric: FameFabric = providedFabric ?? new InProcessFameFabric(node, config ?? undefined);
+
+		let stopResolve!: () => void;
+		let stopResolved = false;
+		const stopPromise = new Promise<void>((resolve) => {
+			stopResolve = () => {
+				if (!stopResolved) {
+					stopResolved = true;
+					resolve();
+				}
+			};
+		});
+
+		const listeners: Array<{ signal: NodeJS.Signals; listener: () => void }> = [];
+		let abortListener: (() => void) | null = null;
+
+		const cleanupListeners = (): void => {
+			while (listeners.length) {
+				const { signal: registeredSignal, listener } = listeners.pop()!;
+				processRef.removeListener(registeredSignal, listener);
+			}
+			if (abortSignal && abortListener) {
+				abortSignal.removeEventListener('abort', abortListener);
+				abortListener = null;
+			}
+		};
+
+		const registerSignalListeners = (): void => {
+			for (const sig of signals) {
+				const listener = () => {
+					logger.info('shutdown_signal_received', { signal: sig });
+					cleanupListeners();
+					stopResolve();
+				};
+				listeners.push({ signal: sig, listener });
+				processRef.once(sig, listener);
+			}
+
+			if (abortSignal) {
+				abortListener = () => {
+					logger.info('shutdown_signal_received', { signal: 'abort' });
+					cleanupListeners();
+					stopResolve();
+				};
+				abortSignal.addEventListener('abort', abortListener, { once: true });
+			}
+		};
+
+		await fabric.enter();
+		let shutdownError: unknown;
+		try {
+			registerSignalListeners();
+			logger.info('sentinel_live', { message: 'Node is live! Press Ctrl+C to stop.' });
+			await stopPromise;
+			logger.info('sentinel_shutdown_begin');
+		} catch (error) {
+			shutdownError = error;
+			throw error;
+		} finally {
+			cleanupListeners();
+			try {
+				await fabric.exit();
+			} catch (error) {
+				logger.error('sentinel_shutdown_failed', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+				if (!shutdownError) {
+					throw error;
+				}
+			}
+		}
+
+		logger.info('sentinel_shutdown_complete');
+	}
+}
+
+function normalizeServeLogLevel(level: SentinelServeOptions['logLevel']): LogLevel | undefined {
+	if (level === null || level === undefined) {
+		return undefined;
+	}
+
+	if (typeof level === 'number' && Number.isFinite(level)) {
+		return level as LogLevel;
+	}
+
+	if (typeof level === 'string') {
+		const trimmed = level.trim();
+		if (!trimmed) {
+			return undefined;
+		}
+		const numeric = Number(trimmed);
+		if (!Number.isNaN(numeric)) {
+			return numeric as LogLevel;
+		}
+		const key = trimmed.toUpperCase();
+		const value = (LogLevel as unknown as Record<string, LogLevel>)[key];
+		if (typeof value === 'number' && Number.isFinite(value)) {
+			return value;
+		}
+	}
+
+	return undefined;
 }

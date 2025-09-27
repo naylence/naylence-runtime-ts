@@ -199,8 +199,18 @@ This implementation provides a complete Fame runtime that closely mirrors the Py
 ### Core Protocol
 - **Envelopes & Frames** - Complete message structure implementation
 - **Addressing** - Fame address parsing and validation
+
+### Storage Providers
+- **Configurable factories** – `InMemoryStorageProviderFactory`, `SQLiteStorageProviderFactory`, and `StorageProfileFactory` mirror the Python runtime profiles (`memory`, `sqlite`, `encrypted-sqlite`).
+- **Schema validation** – Storage factory inputs are validated with Zod before instantiation, ensuring early feedback on misconfiguration.
+- **Parity note** – The encrypted key-value store in this port exposes an explicit `update` method while the Python implementation still delegates updates via `set`. We retain the method here for backwards compatibility and will upstream an equivalent helper to Python in a follow-up release.
 - **Security** - Encryption, signing, and authentication headers
 - **Flow Control** - Credit-based backpressure management
+
+### Node Placement
+- **Static placement strategy** – `StaticNodePlacementStrategy` deterministically assigns child nodes under a configured parent system and path, returning structured metadata equal to the Python implementation.
+- **Factory parity** – `StaticNodePlacementStrategyFactory` and `WebSocketPlacementStrategyFactory` register with the shared factory registry, including a default static strategy and a deprecated alias that still issues a `DeprecationWarning` like the Python runtime.
+- **Legacy compatibility** – Configuration dictionaries using the historical `WebSocketNodePlacementStrategy` type are automatically normalized to the static strategy while preserving snake_case fields and parity semantics.
 
 ### Task Management  
 - **TaskSpawner** - Spawn and manage concurrent async tasks

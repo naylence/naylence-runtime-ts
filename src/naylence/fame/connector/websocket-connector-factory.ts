@@ -269,13 +269,22 @@ export class WebSocketConnectorFactory extends ConnectorFactory<WebSocketConnect
 		}
 
 		const type = (candidate as { type?: unknown }).type;
-		if (type !== 'WebSocketConnector') {
+		if (typeof type !== 'string') {
+			return false;
+		}
+
+		const normalizedType = type === 'websocket' ? 'WebSocketConnector' : type;
+		if (normalizedType !== 'WebSocketConnector') {
 			return false;
 		}
 
 		const url = (candidate as { url?: unknown }).url;
 		if (url !== undefined && typeof url !== 'string') {
 			return false;
+		}
+
+		if (type === 'websocket') {
+			(candidate as Record<string, unknown>).type = 'WebSocketConnector';
 		}
 
 		return true;

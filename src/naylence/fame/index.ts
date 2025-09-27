@@ -14,6 +14,8 @@ export * from "./stickiness/index.js";
 export * from "./sentinel/index.js";
 export * from "./welcome/index.js";
 export * from "./fabric/index.js";
+export * from "./telemetry/index.js";
+export * from "./server/index.js";
 
 // Placement
 export {
@@ -22,7 +24,28 @@ export {
 	type NodePlacementStrategy,
 	type PlacementDecision,
 	type NodePlacementConfig,
+	registerNodePlacementStrategyFactory,
 } from './placement/node-placement-strategy.js';
+
+export {
+	StaticNodePlacementStrategy,
+	type StaticNodePlacementStrategyOptions,
+} from './placement/static-node-placement-strategy.js';
+
+export {
+	StaticNodePlacementStrategyFactory,
+	type StaticNodePlacementConfig,
+} from './placement/static-node-placement-strategy-factory.js';
+
+export {
+	WebSocketPlacementStrategy,
+	type WebSocketPlacementStrategyOptions,
+} from './placement/websocket-node-placement-strategy.js';
+
+export {
+	WebSocketPlacementStrategyFactory,
+	type WebSocketPlacementConfig,
+} from './placement/websocket-node-placement-strategy-factory.js';
 
 // Transport
 export {

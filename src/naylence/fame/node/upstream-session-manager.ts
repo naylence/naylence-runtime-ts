@@ -77,6 +77,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
   private readonly readyEvent = new AsyncEvent();
   private readonly stopEvent = new AsyncEvent();
   private readonly queueEvent = new AsyncEvent();
+  private currentStopSubtasks: AsyncEvent | null = null;
 
   private readonly messageQueue: FameEnvelope[] = [];
 
@@ -140,6 +141,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
   async stop(): Promise<void> {
     logger.debug('upstream_session_manager_stopping');
     this.stopEvent.set();
+    this.currentStopSubtasks?.set();
 
     if (this.fsmTask) {
       this.fsmTask.cancel();
@@ -340,6 +342,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
     }
 
     const stopSubtasks = new AsyncEvent();
+    this.currentStopSubtasks = stopSubtasks;
 
     const heartbeatTask = this.spawn((signal) => this.heartbeatLoop(connector, stopSubtasks, signal), {
       name: `upstream-heartbeat-${this.connectEpoch}`,
@@ -372,6 +375,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
       failure = error as Error;
     } finally {
       stopSubtasks.set();
+      this.currentStopSubtasks = null;
       await Promise.allSettled(tasks.map((task) => task.promise));
       if (this.connector) {
         await this.connector.stop().catch(() => undefined);
@@ -620,7 +624,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
 
     if (!timestamps.length) {
       logger.debug('no_ttl_expiry_configured');
-  await this.waitEvent(stopEvt, signal);
+      await this.waitEvent(stopEvt, signal);
       return;
     }
 
@@ -638,10 +642,23 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
     });
 
     if (delaySeconds > 0) {
-      await Promise.race([
-        new Promise<void>((resolve) => setTimeout(resolve, delaySeconds * 1000)),
-        this.waitEvent(stopEvt, signal),
-      ]);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            timer = setTimeout(() => {
+              timer = undefined;
+              resolve();
+            }, delaySeconds * 1000);
+            timer?.unref?.();
+          }),
+          this.waitEvent(stopEvt, signal),
+        ]);
+      } finally {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
+      }
     }
 
     if (!stopEvt.isSet()) {

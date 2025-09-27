@@ -604,6 +604,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
       this._releaseNodeContext();
       this._releaseNodeContext = null;
     }
+    console.log(`Node ${this._id} stopped`);
   }
 
   async bind(participant: string) {
