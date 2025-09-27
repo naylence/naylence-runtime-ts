@@ -12,6 +12,7 @@ import {
 } from 'naylence-core';
 
 import type { Authorizer } from './auth/authorizer.js';
+import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
 import type { EncryptionManager } from './encryption/encryption-manager.js';
 import type { SecureChannelManager } from './encryption/secure-channel-manager.js';
 import type { AttachmentKeyValidator } from './keys/attachment-key-validator.js';
@@ -126,6 +127,7 @@ export class DefaultSecurityManager implements SecurityManager {
   private _authorizer: Authorizer | null;
   private _certificateManager: CertificateManager | null;
   private _keyValidator: AttachmentKeyValidator | null;
+  private _node: NodeLike | null = null;
 
   private _envelopeSecurityHandler: EnvelopeSecurityHandler | null = null;
   private _secureChannelManager: SecureChannelManager | null;
@@ -211,6 +213,26 @@ export class DefaultSecurityManager implements SecurityManager {
     this._certificateManager = value;
   }
 
+  public get cryptoProvider(): CryptoProvider | null {
+    if (!this._node) {
+      logger.debug('crypto_provider_requested_before_node_initialized');
+      throw new Error('DefaultSecurityManager has not been initialized with a node');
+    }
+    const provider = this._node.cryptoProvider;
+    logger.debug('crypto_provider_resolved_from_node', {
+      node_id: this._node.id,
+      has_provider: Boolean(provider),
+      provider_type: provider ? provider.constructor?.name ?? 'unknown' : null,
+      has_private_key:
+        Boolean(
+          provider &&
+            (typeof (provider as { signingPrivatePem?: unknown }).signingPrivatePem === 'string' ||
+              typeof (provider as { signing_private_pem?: unknown }).signing_private_pem === 'string')
+        ),
+    });
+    return provider;
+  }
+
   public get envelopeSecurityHandler(): EnvelopeSecurityHandler | null {
     return this._envelopeSecurityHandler;
   }
@@ -235,13 +257,8 @@ export class DefaultSecurityManager implements SecurityManager {
   }
 
   public getEncryptionKeyId(): string | undefined {
-    try {
-      const { getCryptoProvider } = require('./crypto/providers/crypto-provider.js');
-      const provider = getCryptoProvider();
-      return provider?.encryptionKeyId ?? undefined;
-    } catch {
-      return undefined;
-    }
+    const provider = this.resolveCryptoProvider();
+    return provider?.encryptionKeyId ?? undefined;
   }
 
   public async onNodeStarted(node: NodeLike): Promise<void> {
@@ -414,6 +431,19 @@ export class DefaultSecurityManager implements SecurityManager {
   }
 
   public async onNodeInitialized(node: NodeLike): Promise<void> {
+    this._node = node;
+    logger.debug('security_manager_node_initialized', {
+      node_id: node.id,
+      has_node_crypto_provider: Boolean(node.cryptoProvider),
+      provider_type: node.cryptoProvider ? node.cryptoProvider.constructor?.name ?? 'unknown' : null,
+      has_private_key:
+        Boolean(
+          node.cryptoProvider &&
+            (typeof (node.cryptoProvider as { signingPrivatePem?: unknown }).signingPrivatePem === 'string' ||
+              typeof (node.cryptoProvider as { signing_private_pem?: unknown }).signing_private_pem === 'string')
+        ),
+    });
+
     const keyManager = this._keyManager;
     if (keyManager && hasNodeListenerMethod(keyManager, 'onNodeInitialized')) {
       await keyManager.onNodeInitialized(node);
@@ -994,6 +1024,9 @@ export class DefaultSecurityManager implements SecurityManager {
       await this._encryption.onNodeStopped(node);
       logger.debug('encryption_manager_stopped');
     }
+
+    this._node = null;
+    logger.debug('security_manager_node_cleared', { node_id: node.id });
   }
 
   public async onWelcome(welcomeFrame: NodeWelcomeFrame): Promise<void> {
@@ -1264,8 +1297,13 @@ export class DefaultSecurityManager implements SecurityManager {
 
     if (frame.address) {
       try {
-        const { getCryptoProvider } = require('./crypto/providers/crypto-provider.js');
-        const cryptoProvider = getCryptoProvider();
+        const cryptoProvider = this.resolveCryptoProvider();
+        if (!cryptoProvider) {
+          logger.debug('crypto_provider_key_lookup_failed', {
+            error: 'no_crypto_provider_available',
+            envp_id: envelope.id,
+          });
+        }
 
         if (cryptoProvider?.encryptionKeyId) {
           const requestOptions: HandleKeyRequestOptions = {
@@ -1347,8 +1385,7 @@ export class DefaultSecurityManager implements SecurityManager {
     }
 
     try {
-      const { getCryptoProvider } = require('./crypto/providers/crypto-provider.js');
-      const cryptoProvider = getCryptoProvider();
+      const cryptoProvider = this.resolveCryptoProvider();
       if (!cryptoProvider) {
         return null;
       }
@@ -1373,6 +1410,20 @@ export class DefaultSecurityManager implements SecurityManager {
     } catch {
       return null;
     }
+  }
+
+  private resolveCryptoProvider(): CryptoProvider | null {
+    if (this._node) {
+      const provider = this._node.cryptoProvider ?? null;
+      logger.debug('resolve_provider_from_node', {
+        node_id: this._node.id,
+        has_provider: Boolean(provider),
+      });
+      return provider;
+    }
+
+    logger.debug('resolve_provider_without_node_context');
+    return null;
   }
 
   private async sendNack(node: NodeLike, originalEnv: FameEnvelope, reason: string): Promise<void> {

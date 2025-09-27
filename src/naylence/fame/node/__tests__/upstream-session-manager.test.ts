@@ -23,12 +23,12 @@ import { FameConnectError, FameMessageTooLarge, FameTransportClose } from '../..
 import { NodeEnvelopeFactory } from '../node-envelope-factory.js';
 import { AsyncEvent } from '../../util/async-event.js';
 import { getLogger } from '../../util/logging.js';
-import { setCryptoProvider } from '../../security/crypto/providers/crypto-provider.js';
 import type { NodeLike } from '../node-like.js';
 import type { NodeAttachClient, AttachInfo } from '../admission/node-attach-client.js';
 import type { AdmissionClient } from '../admission/admission-client.js';
 import type { FameConnector } from 'naylence-core';
 import { TaskCancelledError, type SpawnedTask } from '../../util/task-types.js';
+import type { CryptoProvider } from '../../security/crypto/providers/crypto-provider.js';
 
 function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
   const dispatchEnvelopeEvent = jest.fn<
@@ -75,6 +75,7 @@ function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
     gatherSupportedCallbackGrants: jest.fn().mockReturnValue([{ type: 'callback' }]),
     dispatchEvent,
     dispatchEnvelopeEvent,
+    cryptoProvider: null as unknown as CryptoProvider,
   };
 
   return Object.assign(node, overrides) as NodeLike;
@@ -126,7 +127,6 @@ describe('UpstreamSessionManager', () => {
 
   beforeEach(() => {
     jest.useRealTimers();
-    setCryptoProvider(null);
 
     admissionClient = {
       hello: jest.fn(),
@@ -136,7 +136,7 @@ describe('UpstreamSessionManager', () => {
       attach: jest.fn(),
     } as unknown as jest.Mocked<NodeAttachClient>;
 
-  inboundHandler = jest.fn().mockResolvedValue(undefined) as unknown as FameEnvelopeHandler;
+    inboundHandler = jest.fn().mockResolvedValue(undefined) as unknown as FameEnvelopeHandler;
     onWelcome = jest.fn().mockResolvedValue(undefined);
     onAttach = jest.fn().mockResolvedValue(undefined);
     onEpochChange = jest.fn().mockResolvedValue(undefined);
@@ -157,10 +157,10 @@ describe('UpstreamSessionManager', () => {
     node = createNodeStub({ admissionClient });
   });
 
-afterEach(() => {
-  jest.restoreAllMocks();
-  setCryptoProvider(null);
-});
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   function createTaskStub(
     promise: Promise<void> = Promise.resolve(),
     overrides: Partial<SpawnedTask<void>> = {}
@@ -202,7 +202,6 @@ afterEach(() => {
 
 //     const attachInfo = createAttachInfo();
 //     attachClient.attach.mockResolvedValue(attachInfo);
-
 //     const prepareForAttach = jest.fn();
 //     setCryptoProvider({
 //       prepareForAttach,
@@ -632,8 +631,8 @@ afterEach(() => {
     const welcome = createWelcomeFrame();
     admissionClient.hello.mockResolvedValue(welcome);
     attachClient.attach.mockResolvedValue(createAttachInfo());
-    const prepare = jest.fn();
-    setCryptoProvider({ prepareForAttach: prepare } as any);
+  const prepare = jest.fn();
+  Object.assign(node, { cryptoProvider: { prepareForAttach: prepare } as unknown as CryptoProvider });
 
     jest
       .spyOn(manager as unknown as { spawn: UpstreamSessionManager['spawn'] }, 'spawn')
@@ -758,10 +757,12 @@ afterEach(() => {
     expect((manager as any).getKeys()).toBeNull();
     expect((manager as any).getKeys()).toEqual([{ kid: 'single' }]);
 
-    setCryptoProvider({
-      nodeJwk: () => ({ kid: 'node', use: 'sig' }),
-      getJwks: () => ({ keys: [{ kid: 'node', use: 'sig' }, { kid: 'enc', use: 'enc' }] }),
-    });
+    Object.assign((manager as any).node, {
+      cryptoProvider: {
+        nodeJwk: () => ({ kid: 'node', use: 'sig' }),
+        getJwks: () => ({ keys: [{ kid: 'node', use: 'sig' }, { kid: 'enc', use: 'enc' }] }),
+      },
+    } as unknown as { cryptoProvider: CryptoProvider });
 
     expect((manager as any).getKeys()).toEqual([
       { kid: 'node', use: 'sig' },

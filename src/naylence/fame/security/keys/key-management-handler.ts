@@ -19,7 +19,6 @@ import type { RoutingNodeLike } from '../../node/routing-node-like.js';
 import type { AttachmentKeyValidator } from './attachment-key-validator.js';
 import { KeyValidationError } from './attachment-key-validator.js';
 import type { KeyManager } from './key-manager.js';
-import { getCryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { EncryptionManager } from '../encryption/encryption-manager.js';
 
 const logger = getLogger('key-management-handler');
@@ -121,7 +120,7 @@ export class KeyManagementHandler extends TaskSpawner {
 
   public async start(): Promise<void> {
     this.isStarted = true;
-    this.spawn(() => this.gcKeyRequests(), { name: 'key-request-gc' });
+    this.spawn((signal) => this.gcKeyRequests(signal), { name: 'key-request-gc' });
     await this.registerOwnPublicKeys();
   }
 
@@ -599,10 +598,15 @@ export class KeyManagementHandler extends TaskSpawner {
     }
   }
 
-  private async gcKeyRequests(): Promise<void> {
+  private async gcKeyRequests(signal?: AbortSignal): Promise<void> {
     try {
-      while (this.isStarted) {
-        await delay(KEY_GC_INTERVAL_MS);
+      while (this.isStarted && !signal?.aborted) {
+        await delay(KEY_GC_INTERVAL_MS, signal);
+
+        if (!this.isStarted || signal?.aborted) {
+          break;
+        }
+
         const now = monotonicNow();
 
         await this.sweepKeyRequests({
@@ -648,7 +652,7 @@ export class KeyManagementHandler extends TaskSpawner {
         });
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Aborted')) {
         logger.debug('key_request_gc_cancelled');
       } else {
         logger.error('key_request_gc_error', {
@@ -721,7 +725,7 @@ export class KeyManagementHandler extends TaskSpawner {
       return;
     }
 
-    const cryptoProvider = getCryptoProvider();
+    const cryptoProvider = this.node.cryptoProvider; //getCryptoProvider();
     if (!cryptoProvider) {
       return;
     }

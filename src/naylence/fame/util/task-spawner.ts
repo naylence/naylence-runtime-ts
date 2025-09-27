@@ -96,6 +96,7 @@ export class TaskSpawner {
   private readonly _tasks = new Map<string, TaskImpl<any>>();
   private _taskCounter = 0;
   private _lastSpawnerError: Error | null = null;
+  private _suppressCompletionLogging = false;
 
   constructor(config: TaskSpawnerConfig = {}) {
     this._config = {
@@ -116,6 +117,11 @@ export class TaskSpawner {
       timeout?: number;
     } = {}
   ): SpawnedTask<T> {
+    // Reset logging suppression when new work is spawned. Any lingering
+    // completion events from a previous shutdown will remain suppressed
+    // until the corresponding tasks finish.
+    this._suppressCompletionLogging = false;
+
     // Check concurrency limits
     if (this._config.maxConcurrent > 0 && this._tasks.size >= this._config.maxConcurrent) {
       throw new Error(`Task limit reached: ${this._config.maxConcurrent} concurrent tasks`);
@@ -149,11 +155,13 @@ export class TaskSpawner {
     // Set up completion handling
     task.promise
       .then(() => {
-        logger.debug('task_completed_successfully', { 
-          task_name: taskName, 
-          task_id: taskId,
-          duration_ms: Date.now() - task.startTime 
-        });
+        if (!this._suppressCompletionLogging) {
+          logger.debug('task_completed_successfully', { 
+            task_name: taskName, 
+            task_id: taskId,
+            duration_ms: Date.now() - task.startTime 
+          });
+        }
       })
       .catch((error) => {
         this._handleTaskError(task, error);
@@ -283,6 +291,8 @@ export class TaskSpawner {
     if (this._tasks.size === 0) {
       return;
     }
+
+    this._suppressCompletionLogging = true;
 
     logger.debug('shutting_down_tasks', { 
       task_count: this._tasks.size,

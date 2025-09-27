@@ -9,7 +9,6 @@ import {
 import { DefaultSecurityManager } from '../default-security-manager.js';
 import type { NodeLike } from '../../node/node-like.js';
 import type { SecurityPolicy } from '../policy/security-policy.js';
-import { getCryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { KeyManager } from '../keys/key-manager.js';
 import type { EnvelopeSigner } from '../signing/envelope-signer.js';
 
@@ -30,6 +29,17 @@ type ManagerInternals = {
   isRoutingNode(node: NodeLike): boolean;
 };
 
+function createNodeWithOverrides(overrides: Record<string, unknown> = {}): NodeLike {
+  return {
+    id: 'node-test',
+    envelopeFactory: {
+      createEnvelope: jest.fn(),
+    },
+    deliver: jest.fn(async () => undefined),
+    ...overrides,
+  } as unknown as NodeLike;
+}
+
 jest.mock('../../util/logging.js', () => {
   const mockLogger: MockLogger = {
     debug: jest.fn(),
@@ -48,10 +58,6 @@ const { __mockLogger: mockLogger } = jest.requireMock('../../util/logging.js') a
   __mockLogger: MockLogger;
 };
 
-jest.mock('../crypto/providers/crypto-provider.js', () => ({
-  __esModule: true,
-  getCryptoProvider: jest.fn(),
-}));
 
 describe('DefaultSecurityManager.sendNack', () => {
   beforeEach(() => {
@@ -62,7 +68,7 @@ describe('DefaultSecurityManager.sendNack', () => {
     return new DefaultSecurityManager({} as SecurityPolicy);
   }
 
-  function createNode(): NodeLike {
+  function createNode(overrides: Record<string, unknown> = {}): NodeLike {
     return {
       id: 'node-1',
       envelopeFactory: {
@@ -78,6 +84,7 @@ describe('DefaultSecurityManager.sendNack', () => {
         }) as unknown as FameEnvelope),
       },
       deliver: jest.fn(async () => undefined),
+      ...overrides,
     } as unknown as NodeLike;
   }
 
@@ -191,7 +198,6 @@ describe('DefaultSecurityManager._getKeyAnnounceHandler', () => {
 describe('DefaultSecurityManager._getKeysToProvide', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getCryptoProvider as jest.Mock).mockReset();
   });
 
   it('returns null and logs when no envelope signer is configured', () => {
@@ -204,30 +210,33 @@ describe('DefaultSecurityManager._getKeysToProvide', () => {
   });
 
   it('returns null when crypto provider is unavailable', () => {
-  const manager = new DefaultSecurityManager({} as SecurityPolicy);
+    const manager = new DefaultSecurityManager({} as SecurityPolicy);
     manager.envelopeSigner = {} as EnvelopeSigner;
-    (getCryptoProvider as jest.Mock).mockReturnValue(null);
+  const internals = manager as unknown as ManagerInternals & { _node?: NodeLike | null };
+  internals._node = createNodeWithOverrides({ cryptoProvider: null });
 
-  expect((manager as unknown as ManagerInternals)._getKeysToProvide()).toBeNull();
+    expect(internals._getKeysToProvide()).toBeNull();
   });
 
   it('includes node and auxiliary JWKs, skipping duplicates', () => {
-  const manager = new DefaultSecurityManager({} as SecurityPolicy);
+    const manager = new DefaultSecurityManager({} as SecurityPolicy);
     manager.envelopeSigner = {} as EnvelopeSigner;
-
     const nodeJwk = { kid: 'node-1', use: 'sig', alg: 'EdDSA' };
     const duplicate = { kid: 'node-1', use: 'sig' };
     const encryptionVariant = { kid: 'node-1', use: 'enc', alg: 'X25519' };
     const extra = { kid: 'other', use: 'sig', alg: 'RS256' };
 
-    (getCryptoProvider as jest.Mock).mockReturnValue({
-      nodeJwk: () => nodeJwk,
-      getJwks: () => ({
-        keys: [duplicate, encryptionVariant, extra],
-      }),
+    const internals = manager as unknown as ManagerInternals & { _node?: NodeLike | null };
+    internals._node = createNodeWithOverrides({
+      cryptoProvider: {
+        nodeJwk: () => nodeJwk,
+        getJwks: () => ({
+          keys: [duplicate, encryptionVariant, extra],
+        }),
+      },
     });
 
-  const keys = (manager as unknown as ManagerInternals)._getKeysToProvide();
+    const keys = internals._getKeysToProvide();
 
     expect(keys).toEqual([nodeJwk, encryptionVariant, extra]);
   });
@@ -235,25 +244,35 @@ describe('DefaultSecurityManager._getKeysToProvide', () => {
   it('returns null when crypto provider retrieval throws', () => {
     const manager = new DefaultSecurityManager({} as SecurityPolicy);
     manager.envelopeSigner = {} as EnvelopeSigner;
-    (getCryptoProvider as jest.Mock).mockImplementation(() => {
-      throw new Error('crypto unavailable');
+    const internals = manager as unknown as ManagerInternals & { _node?: NodeLike | null };
+    internals._node = createNodeWithOverrides({
+      cryptoProvider: {
+        nodeJwk: () => ({ kid: 'node-1', use: 'sig', alg: 'EdDSA' }),
+        getJwks: () => {
+          throw new Error('crypto unavailable');
+        },
+      },
     });
 
-    expect((manager as unknown as ManagerInternals)._getKeysToProvide()).toBeNull();
+    expect(internals._getKeysToProvide()).toBeNull();
   });
 });
 
 describe('DefaultSecurityManager.handleChildKeyRequest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getCryptoProvider as jest.Mock).mockReset();
   });
 
-  function createManagerWithKeyHandler(handleKeyRequest = jest.fn()): DefaultSecurityManager {
+  function createManagerWithKeyHandler(
+    handleKeyRequest = jest.fn(),
+    cryptoProvider: unknown = null
+  ): DefaultSecurityManager {
     const manager = new DefaultSecurityManager({} as SecurityPolicy);
     manager.keyManager = {
       handleKeyRequest,
     } as unknown as KeyManager;
+    const internals = manager as unknown as ManagerInternals & { _node?: NodeLike | null };
+    internals._node = createNodeWithOverrides({ cryptoProvider });
     return manager;
   }
 
@@ -333,13 +352,11 @@ describe('DefaultSecurityManager.handleChildKeyRequest', () => {
   });
 
   it('logs when responding with local encryption key id', async () => {
-    (getCryptoProvider as jest.Mock).mockReturnValue({
+    const handleKeyRequest = jest.fn(async () => undefined);
+    const manager = createManagerWithKeyHandler(handleKeyRequest, {
       encryptionKeyId: 'enc-key-1',
       signatureKeyId: 'sig-key-1',
     });
-
-    const handleKeyRequest = jest.fn(async () => undefined);
-    const manager = createManagerWithKeyHandler(handleKeyRequest);
     const envelope = {
       id: 'env-address',
       frame: { type: 'KeyRequest', address: FameAddress.create('svc@/path') },
@@ -365,12 +382,10 @@ describe('DefaultSecurityManager.handleChildKeyRequest', () => {
   });
 
   it('logs when responding with local signature key id if encryption key missing', async () => {
-    (getCryptoProvider as jest.Mock).mockReturnValue({
+    const handleKeyRequest = jest.fn(async () => undefined);
+    const manager = createManagerWithKeyHandler(handleKeyRequest, {
       signatureKeyId: 'sig-key-only',
     });
-
-    const handleKeyRequest = jest.fn(async () => undefined);
-    const manager = createManagerWithKeyHandler(handleKeyRequest);
     const envelope = {
       id: 'env-address',
       frame: { type: 'KeyRequest', address: FameAddress.create('svc@/path') },
@@ -396,12 +411,12 @@ describe('DefaultSecurityManager.handleChildKeyRequest', () => {
   });
 
   it('logs lookup failure when crypto provider throws', async () => {
-    (getCryptoProvider as jest.Mock).mockImplementation(() => {
-      throw new Error('boom');
-    });
-
     const handleKeyRequest = jest.fn(async () => undefined);
-    const manager = createManagerWithKeyHandler(handleKeyRequest);
+    const manager = createManagerWithKeyHandler(handleKeyRequest, {
+      get signatureKeyId() {
+        throw new Error('boom');
+      },
+    });
     const envelope = {
       id: 'env-failure',
       frame: { type: 'KeyRequest', address: FameAddress.create('svc@/path') },

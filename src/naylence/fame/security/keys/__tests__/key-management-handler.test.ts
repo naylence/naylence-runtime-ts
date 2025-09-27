@@ -16,7 +16,7 @@ import type { EncryptionManager } from '../../encryption/encryption-manager.js';
 import type { NodeLike } from '../../../node/node-like.js';
 import * as envelopeContextModule from '../../../util/envelope-context.js';
 import * as taskUtilsModule from '../../../util/task-utils.js';
-import * as cryptoProviderModule from '../../crypto/providers/crypto-provider.js';
+import type { CryptoProvider } from '../../crypto/providers/crypto-provider.js';
 
 type MockLogger = {
   debug: jest.Mock;
@@ -44,8 +44,6 @@ const { __mockLogger: mockLogger } = jest.requireMock('../../../util/logging.js'
 
 const currentTraceIdSpy = jest.spyOn(envelopeContextModule, 'currentTraceId');
 const delaySpy = jest.spyOn(taskUtilsModule, 'delay');
-const getCryptoProviderSpy = jest.spyOn(cryptoProviderModule, 'getCryptoProvider');
-
 interface HandlerDeps {
   node?: NodeLike;
   keyManager?: KeyManager | null;
@@ -67,7 +65,6 @@ afterEach(async () => {
   );
   activeHandlers.length = 0;
   jest.clearAllMocks();
-  getCryptoProviderSpy.mockReset();
   currentTraceIdSpy.mockReset();
   delaySpy.mockReset();
 });
@@ -119,6 +116,7 @@ function createMockNode(
       envelope: FameEnvelope,
       context?: FameDeliveryContext
     ) => Promise<void>;
+    cryptoProvider?: CryptoProvider | null;
   } = {}
 ): NodeLike {
   const envelopeFactory = {
@@ -140,6 +138,7 @@ function createMockNode(
     deliver: jest.fn(async () => undefined),
     forwardUpstream: jest.fn(async () => undefined),
     envelopeFactory,
+    cryptoProvider: overrides.cryptoProvider ?? (null as unknown as CryptoProvider),
   };
 
   if (overrides.forwardToPeer) {
@@ -1045,9 +1044,7 @@ describe('KeyManagementHandler.registerOwnPublicKeys', () => {
       addKeys: jest.fn(async () => undefined),
       hasKey: jest.fn(async () => false),
     } as unknown as KeyManager;
-    const { handler, node } = createHandler({ keyManager });
-
-    getCryptoProviderSpy.mockReturnValue({
+    const cryptoProvider: CryptoProvider = {
       nodeJwk: () => ({ kid: 'kidA', use: 'sig' }),
       getJwks: () => ({
         keys: [
@@ -1055,7 +1052,8 @@ describe('KeyManagementHandler.registerOwnPublicKeys', () => {
           { kid: 'kidB', use: 'enc' },
         ],
       }),
-    });
+    };
+    const { handler, node } = createHandler({ keyManager, node: createMockNode({ cryptoProvider }) });
 
     await (handler as any).registerOwnPublicKeys();
 
@@ -1075,9 +1073,7 @@ describe('KeyManagementHandler.registerOwnPublicKeys', () => {
       addKeys: jest.fn(),
       hasKey: jest.fn(),
     } as unknown as KeyManager;
-    const { handler } = createHandler({ keyManager });
-
-    getCryptoProviderSpy.mockReturnValue(null);
+    const { handler } = createHandler({ keyManager, node: createMockNode({ cryptoProvider: null }) });
     await (handler as any).registerOwnPublicKeys();
 
     expect(keyManager.addKeys).not.toHaveBeenCalled();
@@ -1088,12 +1084,11 @@ describe('KeyManagementHandler.registerOwnPublicKeys', () => {
       addKeys: jest.fn(),
       hasKey: jest.fn(),
     } as unknown as KeyManager;
-    const { handler } = createHandler({ keyManager });
-
-    getCryptoProviderSpy.mockReturnValue({
+    const cryptoProvider: CryptoProvider = {
       nodeJwk: () => undefined,
       getJwks: () => ({ keys: [] }),
-    });
+    };
+    const { handler } = createHandler({ keyManager, node: createMockNode({ cryptoProvider }) });
 
     await (handler as any).registerOwnPublicKeys();
 
@@ -1105,12 +1100,11 @@ describe('KeyManagementHandler.registerOwnPublicKeys', () => {
       addKeys: jest.fn(),
       hasKey: jest.fn(),
     } as unknown as KeyManager;
-    const { handler } = createHandler({ keyManager });
-
-    getCryptoProviderSpy.mockReturnValue({
+    const cryptoProvider: CryptoProvider = {
       nodeJwk: () => ({ kid: 'node', use: 'sig' }),
       getJwks: () => undefined,
-    });
+    };
+    const { handler } = createHandler({ keyManager, node: createMockNode({ cryptoProvider }) });
 
     await (handler as any).registerOwnPublicKeys();
 

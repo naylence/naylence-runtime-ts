@@ -22,6 +22,7 @@ import type { NodeEventListener } from './node-event-listener.js';
 import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
 import type { SecurityManager } from '../security/security-manager.js';
 import type { StorageProvider } from '../storage/storage-provider.js';
+import { CryptoProvider } from '../security/index.js';
 
 /**
  * The main NodeLike protocol interface.
@@ -72,6 +73,8 @@ export interface NodeLike {
 
   /** Storage provider for persistent data */
   readonly storageProvider: StorageProvider;
+
+  readonly cryptoProvider: CryptoProvider;
 
   /**
    * Add an event listener to this node.

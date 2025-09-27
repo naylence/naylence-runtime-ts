@@ -22,12 +22,16 @@ export interface CryptoProvider {
   getJwks?(): { keys?: Array<Record<string, unknown>> } | null | undefined;
 }
 
-let instance: CryptoProvider | null = null;
-
-export function getCryptoProvider(): CryptoProvider | null {
-  return instance;
-}
-
-export function setCryptoProvider(provider: CryptoProvider | null): void {
-  instance = provider;
-}
+// Legacy global crypto provider accessors are intentionally disabled to force
+// explicit dependency wiring. If a component still needs a global provider,
+// refactor it to accept one via configuration instead of re-enabling this code.
+//
+// let instance: CryptoProvider | null = null;
+//
+// export function getCryptoProvider(): CryptoProvider | null {
+//   return instance;
+// }
+//
+// export function setCryptoProvider(provider: CryptoProvider | null): void {
+//   instance = provider;
+// }

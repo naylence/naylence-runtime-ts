@@ -24,7 +24,6 @@ import type { NodeAttachClient, AttachInfo } from './admission/node-attach-clien
 import type { NodeLike } from './node-like.js';
 import type { SessionManager } from './session-manager.js';
 import { TaskCancelledError, SpawnedTask } from '../util/task-types.js';
-import { getCryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import type { FameAddress } from 'naylence-core';
 import { FameResponseType } from 'naylence-core';
 
@@ -288,7 +287,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
       throw new Error('Welcome frame missing node attach grant');
     }
 
-    const cryptoProvider = getCryptoProvider();
+    const cryptoProvider = this.node.cryptoProvider; //getCryptoProvider();
 
     if (welcome.frame.assignedPath && cryptoProvider?.prepareForAttach) {
       cryptoProvider.prepareForAttach(
@@ -402,7 +401,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
       return [shareable];
     }
 
-    const provider = getCryptoProvider();
+    const provider = this.node.cryptoProvider;
     if (!provider) {
       return null;
     }

@@ -178,6 +178,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 			cleanupDelayMs: this.cleanupDelayMs,
 		});
 
+		(this as unknown as { _route_manager?: RouteManager })._route_manager = this.routeManager;
+
 		this.routingPolicy =
 			options.routingPolicy ??
 			new CompositeRoutingPolicy([new CapabilityAwareRoutingPolicy(), new HybridPathRoutingPolicy()]);

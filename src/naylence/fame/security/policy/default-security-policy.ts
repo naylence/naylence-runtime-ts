@@ -10,7 +10,6 @@ import { getLogger } from '../../util/logging.js';
 import { urlsafeBase64Decode } from '../../util/util.js';
 import type { NodeLike } from '../../node/node-like.js';
 import type { EncryptionOptions } from '../encryption/encryption-manager.js';
-import { getCryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { KeyProvider } from '../keys/key-provider.js';
 import { getKeyProvider } from '../keys/key-provider.js';
 import type { KeyRecord } from '../keys/key-store.js';
@@ -196,7 +195,7 @@ export class DefaultSecurityPolicy implements SecurityPolicy {
     try {
       const [recipientKeyId, recipientPublicKey] = await this.lookupRecipientEncryptionKey(
         envelope.to,
-        nodeLike?.physicalPath
+        nodeLike
       );
       logger.debug('found_encryption_key_for_recipient', {
         envelope_id: envelope.id,
@@ -402,7 +401,7 @@ export class DefaultSecurityPolicy implements SecurityPolicy {
 
     if (rules.escalateIfPeerSupports && envelope.to) {
       try {
-        await this.lookupRecipientEncryptionKey(envelope.to, nodeLike?.physicalPath);
+        await this.lookupRecipientEncryptionKey(envelope.to, nodeLike);
         cryptoLevel = CryptoLevel.SEALED;
       } catch {
         // Ignore errors; default level remains
@@ -760,7 +759,7 @@ export class DefaultSecurityPolicy implements SecurityPolicy {
 
   private async lookupRecipientEncryptionKey(
     address: FameAddress | string,
-    nodePhysicalPath?: string
+    nodeLike?: NodeLike
   ): Promise<[string, Uint8Array]> {
     const addressStr = asStringAddress(address);
     if (!addressStr) {
@@ -775,7 +774,7 @@ export class DefaultSecurityPolicy implements SecurityPolicy {
       throw new Error(`Cannot determine participant from address ${addressStr}`);
     }
 
-    const localKey = await this.tryResolveLocalEncryptionKey(path, nodePhysicalPath);
+    const localKey = await this.tryResolveLocalEncryptionKey(path, nodeLike);
     if (localKey) {
       return localKey;
     }
@@ -845,13 +844,13 @@ export class DefaultSecurityPolicy implements SecurityPolicy {
 
   private async tryResolveLocalEncryptionKey(
     path: string,
-    nodePhysicalPath?: string
+    nodeLike?: NodeLike
   ): Promise<[string, Uint8Array] | null> {
-    if (!nodePhysicalPath || path !== nodePhysicalPath) {
+    if (!nodeLike || path !== nodeLike.physicalPath) {
       return null;
     }
 
-    const cryptoProvider = getCryptoProvider();
+    const cryptoProvider = nodeLike.cryptoProvider; //getCryptoProvider();
     const keys = cryptoProvider?.getJwks?.()?.keys;
     if (Array.isArray(keys)) {
       for (const key of keys) {

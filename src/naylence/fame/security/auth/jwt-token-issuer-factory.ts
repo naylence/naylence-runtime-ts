@@ -1,7 +1,7 @@
 import { registerFactory } from 'naylence-factory';
 import { DEFAULT_JWT_TOKEN_TTL_SEC } from '../../constants/ttl-constants.js';
 import { validateJwtTokenTtlSec } from '../../util/ttl-validation.js';
-import { getCryptoProvider } from '../crypto/providers/crypto-provider.js';
+import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
 import { JWTTokenIssuer } from './jwt-token-issuer.js';
 import type { TokenIssuer } from './token-issuer.js';
 import { TOKEN_ISSUER_FACTORY_BASE_TYPE, TokenIssuerFactory, type TokenIssuerConfig } from './token-issuer-factory.js';
@@ -73,14 +73,15 @@ export class JWTTokenIssuerFactory extends TokenIssuerFactory<JWTTokenIssuerConf
   public readonly isDefault = true;
 
   public async create(
-    config?: JWTTokenIssuerConfig | Record<string, unknown> | null
+    config?: JWTTokenIssuerConfig | Record<string, unknown> | null,
+    cryptoProvider?: CryptoProvider
   ): Promise<TokenIssuer> {
     if (!config) {
       throw new Error('JWTTokenIssuerFactory requires configuration');
     }
 
-    const normalized = normalizeConfig(config);
-    const cryptoProvider = getCryptoProvider();
+  const normalized = normalizeConfig(config);
+  const cryptoProvider1 = cryptoProvider ?? null;
 
     const algorithm = normalized.algorithm;
     const isHmac = algorithm.toUpperCase().startsWith('HS');
@@ -95,15 +96,15 @@ export class JWTTokenIssuerFactory extends TokenIssuerFactory<JWTTokenIssuerConf
       }
     } else {
       signingKey =
-        (await resolveSecret(normalized.privateKeyPem)) ??
-        getProviderSigningKey(cryptoProvider);
+  (await resolveSecret(normalized.privateKeyPem)) ??
+  getProviderSigningKey(cryptoProvider1);
 
       if (!signingKey) {
         throw new Error(`Asymmetric algorithm ${algorithm} requires 'privateKeyPem' configuration or crypto provider support`);
       }
 
       if (!kid) {
-        kid = getProviderKeyId(cryptoProvider);
+  kid = getProviderKeyId(cryptoProvider1);
       }
     }
 
@@ -241,7 +242,7 @@ function readEnvironmentVariable(varName: string): string {
   return value;
 }
 
-function getProviderSigningKey(provider: ReturnType<typeof getCryptoProvider>): string | undefined {
+function getProviderSigningKey(provider: CryptoProvider | null): string | undefined {
   if (!provider) {
     return undefined;
   }
@@ -255,7 +256,7 @@ function getProviderSigningKey(provider: ReturnType<typeof getCryptoProvider>): 
   return typeof legacy === 'string' && legacy.length > 0 ? legacy : undefined;
 }
 
-function getProviderKeyId(provider: ReturnType<typeof getCryptoProvider>): string | undefined {
+function getProviderKeyId(provider: CryptoProvider | null): string | undefined {
   if (!provider) {
     return undefined;
   }

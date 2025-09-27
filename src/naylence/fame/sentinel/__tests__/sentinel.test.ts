@@ -43,6 +43,8 @@ describe('Sentinel', () => {
     jest.useRealTimers();
     jest.restoreAllMocks();
 
+    const fastShutdown = { cancelHanging: true, gracePeriod: 0, joinTimeout: 0 } as const;
+
     const sentinels = createdSentinels.splice(0);
     await Promise.all(
       sentinels.map(async (sentinel) => {
@@ -52,7 +54,7 @@ describe('Sentinel', () => {
         };
 
         try {
-          await sentinel.shutdownTasks({ cancelHanging: true });
+          await sentinel.shutdownTasks(fastShutdown);
         } catch {
           // Ignore test cleanup errors
         }
@@ -60,7 +62,7 @@ describe('Sentinel', () => {
         const lifecycleTasks = sentinelAny.lifecycleTasks;
         if (lifecycleTasks?.shutdownTasks) {
           try {
-            await lifecycleTasks.shutdownTasks({ cancelHanging: true });
+            await lifecycleTasks.shutdownTasks(fastShutdown);
           } catch {
             // Ignore test cleanup errors
           }
@@ -69,6 +71,9 @@ describe('Sentinel', () => {
         const routeManager = sentinelAny.routeManager;
         if (routeManager) {
           try {
+            if (typeof routeManager.shutdownTasks === 'function') {
+              await routeManager.shutdownTasks(fastShutdown).catch(() => undefined);
+            }
             await routeManager.stop();
           } catch {
             // Ignore test cleanup errors
@@ -981,7 +986,7 @@ describe('Sentinel', () => {
   });
 
   it('builds router state and resolves capabilities', async () => {
-    const sentinel = createSentinel({ hasParent: true });
+  const sentinel = createSentinel({ hasParent: true, bindingAckTimeoutMs: 10 });
     const sentinelAny = sentinel as any;
     const routeManager = sentinelAny.routeManager as RouteManager;
 
@@ -1306,22 +1311,34 @@ describe('Sentinel', () => {
   });
 
   it('times out when bind acknowledgement never arrives', async () => {
-    const sentinel = createSentinel({ hasParent: true });
+    jest.useFakeTimers();
+    const sentinel = createSentinel({ hasParent: true, bindingAckTimeoutMs: 10 });
     const sentinelAny = sentinel as any;
     const idSpy = jest.spyOn(core, 'generateId').mockReturnValueOnce('corr-timeout');
     const delaySpy = jest.spyOn(taskUtils, 'delay').mockResolvedValue(undefined);
     const forwardSpy = jest.spyOn(sentinel, 'forwardUpstream').mockResolvedValue(undefined);
 
-    await expect(
-      sentinelAny.bindAddressUpstream(new FameAddress('svc@/child'), { segment: 'child' } as AddressRouteInfo)
-    ).rejects.toThrow('Timeout waiting for bind ack for svc@/child');
+    try {
+      const bindPromise = sentinelAny.bindAddressUpstream(
+        new FameAddress('svc@/child'),
+        { segment: 'child' } as AddressRouteInfo
+      );
+      const caughtPromise = bindPromise.catch((error: unknown) => error);
 
-    expect(forwardSpy).toHaveBeenCalledTimes(1);
-    expect(sentinelAny.pendingBinds.has('corr-timeout')).toBe(false);
+      await jest.advanceTimersByTimeAsync(10);
 
-    idSpy.mockRestore();
-    delaySpy.mockRestore();
-    forwardSpy.mockRestore();
+      const error = await caughtPromise;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe('Timeout waiting for bind ack for svc@/child');
+
+      expect(forwardSpy).toHaveBeenCalledTimes(1);
+      expect(sentinelAny.pendingBinds.has('corr-timeout')).toBe(false);
+    } finally {
+      idSpy.mockRestore();
+      delaySpy.mockRestore();
+      forwardSpy.mockRestore();
+      jest.useRealTimers();
+    }
   });
 
   it('skips forwarding to a route when dispatch vetoes forwarding', async () => {

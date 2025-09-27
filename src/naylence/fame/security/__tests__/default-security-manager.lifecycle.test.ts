@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import type { FameEnvelope } from 'naylence-core';
 
 import {
@@ -7,11 +8,11 @@ import {
   type SecurityPolicy,
 } from '../policy/security-policy.js';
 import type { KeyManager } from '../keys/key-manager.js';
+import type { KeyManagementHandler } from '../keys/key-management-handler.js';
 import type { NodeLike } from '../../node/node-like.js';
 import type { EncryptionManager } from '../encryption/encryption-manager.js';
 import type { Authorizer } from '../auth/authorizer.js';
 import type { CertificateManager } from '../cert/certificate-manager.js';
-import * as cryptoProviderModule from '../crypto/providers/crypto-provider.js';
 
 type DefaultSecurityManagerModule = typeof import('../default-security-manager.js');
 type DefaultSecurityManagerConstructor = DefaultSecurityManagerModule['DefaultSecurityManager'];
@@ -47,89 +48,10 @@ const createKeyFrameInstance = () => ({
   acceptKeyRequest: jest.fn(async () => true),
 });
 
-jest.mock(
-  '../keys/key-management-handler.js',
-  () => {
-    const instances: Array<ReturnType<typeof createKeyManagementInstance>> = [];
-    const mock = jest.fn(() => {
-      const instance = createKeyManagementInstance();
-      instances.push(instance);
-      return instance;
-    });
-
-    return {
-      __esModule: true,
-      KeyManagementHandler: mock,
-      __mockInstances: instances,
-    };
-  },
-  { virtual: true }
-);
-
-jest.mock(
-  '../node/envelope-security-handler',
-  () => {
-    const instances: Array<ReturnType<typeof createEnvelopeSecurityInstance>> = [];
-    const mock = jest.fn(() => {
-      const instance = createEnvelopeSecurityInstance();
-      instances.push(instance);
-      return instance;
-    });
-
-    return {
-      __esModule: true,
-      EnvelopeSecurityHandler: mock,
-      __mockInstances: instances,
-    };
-  },
-  { virtual: true }
-);
-
-jest.mock(
-  '../node/secure-channel-frame-handler',
-  () => {
-    const instances: Array<ReturnType<typeof createSecureChannelInstance>> = [];
-    const mock = jest.fn(() => {
-      const instance = createSecureChannelInstance();
-      instances.push(instance);
-      return instance;
-    });
-
-    return {
-      __esModule: true,
-      SecureChannelFrameHandler: mock,
-      __mockInstances: instances,
-    };
-  },
-  { virtual: true }
-);
-
-jest.mock(
-  '../sentinel/key-frame-handler',
-  () => {
-    const instances: Array<ReturnType<typeof createKeyFrameInstance>> = [];
-    const mock = jest.fn(() => {
-      const instance = createKeyFrameInstance();
-      instances.push(instance);
-      return instance;
-    });
-
-    return {
-      __esModule: true,
-      KeyFrameHandler: mock,
-      __mockInstances: instances,
-    };
-  },
-  { virtual: true }
-);
-
 let KeyManagementHandlerMock: jest.Mock;
 let keyManagementHandlerInstances: Array<ReturnType<typeof createKeyManagementInstance>>;
-let EnvelopeSecurityHandlerMock: jest.Mock;
 let envelopeSecurityHandlerInstances: Array<ReturnType<typeof createEnvelopeSecurityInstance>>;
-let SecureChannelFrameHandlerMock: jest.Mock;
 let secureChannelFrameHandlerInstances: Array<ReturnType<typeof createSecureChannelInstance>>;
-let KeyFrameHandlerMock: jest.Mock;
 let keyFrameHandlerInstances: Array<ReturnType<typeof createKeyFrameInstance>>;
 
 function createPolicy(overrides: Partial<SecurityPolicy> = {}): SecurityPolicy {
@@ -195,12 +117,14 @@ function createManager(options: {
   secureChannelManager?: unknown;
   keyValidator?: unknown;
   policy?: SecurityPolicy;
+  cryptoProvider?: unknown;
+  nodeOverrides?: Record<string, unknown>;
 } = {}): DefaultSecurityManagerInstance {
   if (!DefaultSecurityManager) {
     throw new Error('DefaultSecurityManager module not loaded');
   }
   const policy = options.policy ?? createPolicy();
-  return new DefaultSecurityManager(
+  const manager = new DefaultSecurityManager(
     policy,
     (options.envelopeSigner ?? null) as any,
     (options.envelopeVerifier ?? null) as any,
@@ -211,53 +135,69 @@ function createManager(options: {
     (options.secureChannelManager ?? null) as any,
     (options.keyValidator ?? null) as any
   );
+
+  if (options.cryptoProvider !== undefined || options.nodeOverrides) {
+    const node = createNode({
+      cryptoProvider: options.cryptoProvider ?? null,
+      ...(options.nodeOverrides ?? {}),
+    });
+    (manager as unknown as { _node?: NodeLike | null })._node = node;
+  }
+
+  return manager;
 }
 
 
 describe('DefaultSecurityManager lifecycle', () => {
   beforeEach(async () => {
-    await jest.isolateModulesAsync(async () => {
-      const keyManagementModule = (await import('../keys/key-management-handler.js')) as {
-        KeyManagementHandler: jest.Mock;
-        __mockInstances: Array<ReturnType<typeof createKeyManagementInstance>>;
-      };
-      KeyManagementHandlerMock = keyManagementModule.KeyManagementHandler;
-      keyManagementHandlerInstances = keyManagementModule.__mockInstances;
-      KeyManagementHandlerMock.mockClear();
-      keyManagementHandlerInstances.length = 0;
+    jest.resetModules();
 
-      // @ts-expect-error -- mocked module resolved via Jest runtime
-      const envelopeSecurityModule = (await import('../node/envelope-security-handler')) as {
-        EnvelopeSecurityHandler: jest.Mock;
-        __mockInstances: Array<ReturnType<typeof createEnvelopeSecurityInstance>>;
-      };
-      EnvelopeSecurityHandlerMock = envelopeSecurityModule.EnvelopeSecurityHandler;
-      envelopeSecurityHandlerInstances = envelopeSecurityModule.__mockInstances;
-      EnvelopeSecurityHandlerMock.mockClear();
-      envelopeSecurityHandlerInstances.length = 0;
+    keyManagementHandlerInstances = [];
+    envelopeSecurityHandlerInstances = [];
+    secureChannelFrameHandlerInstances = [];
+    keyFrameHandlerInstances = [];
 
-      // @ts-expect-error -- mocked module resolved via Jest runtime
-      const secureChannelFrameModule = (await import('../node/secure-channel-frame-handler')) as {
-        SecureChannelFrameHandler: jest.Mock;
-        __mockInstances: Array<ReturnType<typeof createSecureChannelInstance>>;
-      };
-      SecureChannelFrameHandlerMock = secureChannelFrameModule.SecureChannelFrameHandler;
-      secureChannelFrameHandlerInstances = secureChannelFrameModule.__mockInstances;
-      SecureChannelFrameHandlerMock.mockClear();
-      secureChannelFrameHandlerInstances.length = 0;
+    const keyManagementModule = await import('../keys/key-management-handler.js');
+    KeyManagementHandlerMock = jest
+      .spyOn(keyManagementModule, 'KeyManagementHandler')
+      .mockImplementation(() => {
+        const instance = createKeyManagementInstance();
+        keyManagementHandlerInstances.push(instance);
+        return instance as unknown as KeyManagementHandler;
+      }) as unknown as jest.Mock;
 
-      // @ts-expect-error -- mocked module resolved via Jest runtime
-      const keyFrameModule = (await import('../sentinel/key-frame-handler')) as {
-        KeyFrameHandler: jest.Mock;
-        __mockInstances: Array<ReturnType<typeof createKeyFrameInstance>>;
-      };
-      KeyFrameHandlerMock = keyFrameModule.KeyFrameHandler;
-      keyFrameHandlerInstances = keyFrameModule.__mockInstances;
-      KeyFrameHandlerMock.mockClear();
-      keyFrameHandlerInstances.length = 0;
 
-      ({ DefaultSecurityManager } = await import('../default-security-manager.js'));
-    });
+    await jest.unstable_mockModule('../../node/envelope-security-handler.js', () => ({
+      __esModule: true,
+      EnvelopeSecurityHandler: jest.fn(() => {
+        const instance = createEnvelopeSecurityInstance();
+        envelopeSecurityHandlerInstances.push(instance);
+        return instance;
+      }),
+      __mockInstances: envelopeSecurityHandlerInstances,
+    }));
+
+    await jest.unstable_mockModule('../../node/secure-channel-frame-handler.js', () => ({
+      __esModule: true,
+      SecureChannelFrameHandler: jest.fn(() => {
+        const instance = createSecureChannelInstance();
+        secureChannelFrameHandlerInstances.push(instance);
+        return instance;
+      }),
+      __mockInstances: secureChannelFrameHandlerInstances,
+    }));
+
+    await jest.unstable_mockModule('../../sentinel/key-frame-handler.js', () => ({
+      __esModule: true,
+      KeyFrameHandler: jest.fn(() => {
+        const instance = createKeyFrameInstance();
+        keyFrameHandlerInstances.push(instance);
+        return instance;
+      }),
+      __mockInstances: keyFrameHandlerInstances,
+    }));
+
+  ({ DefaultSecurityManager } = await import('../default-security-manager.js'));
     jest.clearAllMocks();
   });
 
@@ -358,7 +298,9 @@ describe('DefaultSecurityManager lifecycle', () => {
     });
 
     await manager.onNodeStarted(createNode());
-    const handlerInstance = KeyManagementHandlerMock.mock.results[0]?.value;
+    const handlerInstance = KeyManagementHandlerMock.mock.results[0]?.value as
+      | ReturnType<typeof createKeyManagementInstance>
+      | undefined;
     if (!handlerInstance) {
       throw new Error('KeyManagementHandler was not instantiated');
     }
@@ -369,24 +311,25 @@ describe('DefaultSecurityManager lifecycle', () => {
   });
 
   it('shares keys when signer is configured', () => {
-    const providerSpy = jest.spyOn(cryptoProviderModule, 'getCryptoProvider').mockReturnValue({
-      encryptionKeyId: 'enc-key',
-      signatureKeyId: 'sig-key',
-      nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
-      getJwks: () => ({
-        keys: [
-          { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
-          { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
-        ],
-      }),
+    const manager = createManager({
+      envelopeSigner: {},
+      cryptoProvider: {
+        encryptionKeyId: 'enc-key',
+        signatureKeyId: 'sig-key',
+        nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
+        getJwks: () => ({
+          keys: [
+            { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
+            { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
+          ],
+        }),
+      },
     });
-    const manager = createManager({ envelopeSigner: {} });
     const keys = manager.getShareableKeys();
     expect(keys).toEqual([
       { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
       { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
     ]);
-    providerSpy.mockRestore();
   });
 
   it('returns undefined shareable keys when signer is missing', () => {
@@ -410,15 +353,16 @@ describe('DefaultSecurityManager lifecycle', () => {
   });
 
   it('returns encryption key id when crypto provider exposes it', () => {
-    const providerSpy = jest.spyOn(cryptoProviderModule, 'getCryptoProvider').mockReturnValue({
-      encryptionKeyId: 'enc-key',
-      signatureKeyId: 'sig-key',
-      nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
-      getJwks: () => ({ keys: [] }),
+    const manager = createManager({
+      envelopeSigner: {},
+      cryptoProvider: {
+        encryptionKeyId: 'enc-key',
+        signatureKeyId: 'sig-key',
+        nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
+        getJwks: () => ({ keys: [] }),
+      },
     });
-    const manager = createManager({ envelopeSigner: {} });
     expect(manager.getEncryptionKeyId()).toBe('enc-key');
-    providerSpy.mockRestore();
   });
 
   it('reports overlay security support correctly', () => {

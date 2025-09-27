@@ -2,7 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Buffer } from 'node:buffer';
 import { timingSafeEqual } from 'node:crypto';
 import { getLogger } from '../util/logging.js';
-import { getCryptoProvider, type CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
+import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import { requireJose } from '../security/auth/jose-loader.js';
 import type { TokenIssuer } from '../security/auth/token-issuer.js';
 import {
@@ -37,7 +37,16 @@ interface OAuthErrorPayload {
   error_description?: string;
 }
 
-export async function registerDefaultFameServerRoutes(server: FameFastifyServer): Promise<void> {
+export interface FameServerRouteDependencies {
+  resolveCryptoProvider: () => CryptoProvider | null;
+}
+
+export async function registerDefaultFameServerRoutes(
+  server: FameFastifyServer,
+  dependencies: FameServerRouteDependencies
+): Promise<void> {
+  const resolveCryptoProvider = dependencies.resolveCryptoProvider;
+
   const registrar: FameServerRouteRegistrar = async (instance, config) => {
     instance.get(config.routes.health, async (_request, reply) => {
       reply.header('Cache-Control', 'no-store');
@@ -55,7 +64,7 @@ export async function registerDefaultFameServerRoutes(server: FameFastifyServer)
     });
 
     instance.get(config.routes.jwks, async (_request, reply) => {
-      const cryptoProvider = getCryptoProvider();
+      const cryptoProvider = resolveCryptoProvider();
       const jwks = sanitizeJwks(cryptoProvider);
       if (!jwks) {
         logger.warning('jwks_unavailable');
@@ -67,7 +76,7 @@ export async function registerDefaultFameServerRoutes(server: FameFastifyServer)
     });
 
     instance.get(config.routes.openIdConfiguration, async (request, reply) => {
-      const cryptoProvider = getCryptoProvider();
+      const cryptoProvider = resolveCryptoProvider();
       const baseUrl = buildBaseUrl(request, config);
       const issuer = resolveIssuer(cryptoProvider, baseUrl);
       const tokenEndpoint = buildAbsoluteUrl(baseUrl, config.routes.token);
@@ -139,7 +148,7 @@ export async function registerDefaultFameServerRoutes(server: FameFastifyServer)
 
       const grantedScopes = requestedScopes.length > 0 ? requestedScopes : client.scopes;
 
-      const cryptoProvider = getCryptoProvider();
+  const cryptoProvider = resolveCryptoProvider();
       const tokenIssuer = resolveTokenIssuer(cryptoProvider);
       if (!tokenIssuer) {
         logger.error('token_issuer_unavailable');

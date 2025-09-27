@@ -27,6 +27,7 @@ import { SecurityManagerFactory, SECURITY_MANAGER_FACTORY_BASE_TYPE, type Securi
 import type { SecurityManagerConfig } from './security-manager-config.js';
 import type { NodeEventListener } from '../node/node-event-listener.js';
 import { getLogger } from '../util/logging.js';
+import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
 
 const logger = getLogger('default-security-manager-factory');
 
@@ -51,6 +52,8 @@ export interface DefaultSecurityManagerConfig extends SecurityManagerConfig {
 	key_validator?: AttachmentKeyValidator | null;
 	eventListeners?: NodeEventListener[] | null;
 	event_listeners?: NodeEventListener[] | null;
+	cryptoProvider?: CryptoProvider | null;
+	crypto_provider?: CryptoProvider | null;
 	[key: string]: unknown;
 }
 
@@ -66,6 +69,7 @@ interface ResolvedComponents {
 	certificateManager: CertificateManager | null;
 	secureChannelManager: SecureChannelManager | null;
 	eventListeners: NodeEventListener[] | null;
+	cryptoProvider: CryptoProvider | null;
 }
 
 interface BuildSecurityManagerOptions extends ResolvedComponents {
@@ -151,6 +155,11 @@ export class DefaultSecurityManagerFactory
 			'secureChannelManager',
 			'secure_channel_manager'
 		);
+		const cryptoProvider = DefaultSecurityManagerFactory.extractInstance<CryptoProvider>(
+			config,
+			'cryptoProvider',
+			'crypto_provider'
+		);
 
 		const listenersSource = overrides?.eventListeners ?? config.eventListeners ?? config.event_listeners;
 		const eventListeners = Array.isArray(listenersSource) ? listenersSource : null;
@@ -167,6 +176,7 @@ export class DefaultSecurityManagerFactory
 			certificateManager,
 			secureChannelManager,
 			eventListeners,
+			cryptoProvider: cryptoProvider ?? null,
 		};
 	}
 
@@ -184,6 +194,7 @@ export class DefaultSecurityManagerFactory
 			certificateManager,
 			secureChannelManager,
 			eventListeners,
+			cryptoProvider,
 		} = options;
 
 		if (!keyStore) {
@@ -203,7 +214,11 @@ export class DefaultSecurityManagerFactory
 		}
 
 		if (!envelopeSigner) {
-			envelopeSigner = await DefaultSecurityManagerFactory.createEnvelopeSignerFromConfig(config, policy);
+			envelopeSigner = await DefaultSecurityManagerFactory.createEnvelopeSignerFromConfig(
+				config,
+				policy,
+				cryptoProvider ?? null
+			);
 		}
 
 		if (!envelopeVerifier) {
@@ -219,7 +234,8 @@ export class DefaultSecurityManagerFactory
 				config,
 				policy,
 				keyManager,
-				secureChannelManager
+				secureChannelManager,
+				cryptoProvider ?? null
 			);
 			encryptionManager = encryptionManager ?? encryptionResult.encryptionManager;
 			secureChannelManager = encryptionResult.secureChannelManager ?? secureChannelManager;
@@ -278,7 +294,8 @@ export class DefaultSecurityManagerFactory
 
 	private static async createEnvelopeSignerFromConfig(
 		config: Record<string, unknown>,
-		policy: SecurityPolicy
+		policy: SecurityPolicy,
+		cryptoProviderOverride: CryptoProvider | null
 	): Promise<EnvelopeSigner | null> {
 		const signerConfig = config.envelope_signer ?? config.envelopeSigner ?? null;
 		if (signerConfig && DefaultSecurityManagerFactory.isConfigLike(signerConfig)) {
@@ -299,12 +316,24 @@ export class DefaultSecurityManagerFactory
 				return null;
 			}
 
-			const { getCryptoProvider } = await import('./crypto/providers/crypto-provider.js');
-			const cryptoProvider = getCryptoProvider();
+			const cryptoProvider = cryptoProviderOverride ?? null;
+			logger.debug('auto_create_envelope_signer', {
+				has_crypto_override: Boolean(cryptoProviderOverride),
+				override_constructor: cryptoProviderOverride ? cryptoProviderOverride.constructor?.name ?? 'unknown' : null,
+				has_private_key: Boolean(
+					cryptoProvider &&
+					(typeof (cryptoProvider as { signingPrivatePem?: unknown }).signingPrivatePem === 'string' ||
+						typeof (cryptoProvider as { signing_private_pem?: unknown }).signing_private_pem === 'string')
+				),
+			});
 			const signing = (policy as { signing?: SigningConfig | null }).signing ?? null;
 
+			const signerOptions = {
+				cryptoProvider: cryptoProvider ?? null,
+				signingConfig: signing ?? null,
+			};
 			return await EnvelopeSignerFactory.createEnvelopeSigner(null, {
-				factoryArgs: [cryptoProvider ?? null, signing ?? null],
+				factoryArgs: [signerOptions],
 			});
 		} catch (error) {
 			logger.error('failed_to_auto_create_envelope_signer', {
@@ -361,7 +390,8 @@ export class DefaultSecurityManagerFactory
 		config: Record<string, unknown>,
 		policy: SecurityPolicy,
 		keyManager: KeyManager | null,
-		secureChannelManager: SecureChannelManager | null
+		secureChannelManager: SecureChannelManager | null,
+		cryptoProviderOverride: CryptoProvider | null
 	): Promise<{ encryptionManager: EncryptionManager | null; secureChannelManager: SecureChannelManager | null }> {
 		const encryptionConfig = config.encryption_manager ?? config.encryption ?? null;
 		if (encryptionConfig && DefaultSecurityManagerFactory.isConfigLike(encryptionConfig)) {
@@ -393,8 +423,7 @@ export class DefaultSecurityManagerFactory
 				throw new Error('EncryptionManager requires KeyManager to be available');
 			}
 
-			const { getCryptoProvider } = await import('./crypto/providers/crypto-provider.js');
-			const cryptoProvider = getCryptoProvider();
+			const cryptoProvider = cryptoProviderOverride ?? null;
 
 			const manager = await EncryptionManagerFactory.createEncryptionManager(null, {
 				dependencies: {

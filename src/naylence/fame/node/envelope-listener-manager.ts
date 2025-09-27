@@ -22,7 +22,7 @@ import { RPCServerHandler } from './rpc-server-handler.js';
 import { RPCClientManager } from './rpc-client-manager.js';
 import type { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
 import type { DeliveryTracker as BasicDeliveryTracker } from '../delivery/delivery-tracker.js';
-import { EnvelopeStatus, TrackedEnvelope } from '../delivery/tracked-envelope.js';
+import { EnvelopeStatus, MailboxType, TrackedEnvelope } from '../delivery/tracked-envelope.js';
 import type { RetryPolicy } from '../delivery/retry-policy.js';
 
 const logger = getLogger('envelope-listener-manager');
@@ -272,7 +272,10 @@ export class EnvelopeListenerManager extends TaskSpawner {
 
       if (
         handler &&
-        (!tracked || tracked.status === EnvelopeStatus.RECEIVED || tracked.status === EnvelopeStatus.FAILED_TO_HANDLE)
+        (!tracked ||
+          tracked.status === EnvelopeStatus.RECEIVED ||
+          tracked.status === EnvelopeStatus.FAILED_TO_HANDLE ||
+          tracked?.mailboxType === MailboxType.OUTBOX)
       ) {
         const receiverPolicy = this.nodeLike.deliveryPolicy?.receiverRetryPolicy ?? null;
         if (tracked && tracked.attempt > 0) {

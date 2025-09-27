@@ -5,7 +5,6 @@ import { getLogger } from '../util/logging.js';
 import type { SessionManager } from './session-manager.js';
 import type { NodeLike } from './node-like.js';
 import type { AdmissionClient } from './admission/admission-client.js';
-import { getCryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import { FameConnectError } from '../errors/errors.js';
 import type { SpawnedTask } from '../util/task-types.js';
 import { TaskCancelledError } from '../util/task-types.js';
@@ -176,7 +175,7 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
 
     this.currentWelcome = welcome.frame;
 
-    const cryptoProvider = getCryptoProvider();
+    const cryptoProvider = this.node.cryptoProvider; //getCryptoProvider();
     if (welcome.frame.assignedPath && cryptoProvider?.prepareForAttach) {
       cryptoProvider.prepareForAttach(
         welcome.frame.systemId,

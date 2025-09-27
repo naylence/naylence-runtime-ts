@@ -6,6 +6,7 @@ import { FameConnectError } from '../../errors/errors.js';
 import type { NodeLike } from '../node-like.js';
 import type { AdmissionClient } from '../admission/admission-client.js';
 import type { SpawnedTask } from '../../util/task-types.js';
+import type { CryptoProvider } from '../../security/crypto/providers/crypto-provider.js';
 
 jest.mock('../../util/logging.js', () => {
   const actual = jest.requireActual('../../util/logging.js');
@@ -22,14 +23,6 @@ jest.mock('../../util/logging.js', () => {
   };
 });
 
-jest.mock('../../security/crypto/providers/crypto-provider.js', () => {
-  const mockFn = jest.fn();
-  return {
-    getCryptoProvider: mockFn,
-    __mockGetCryptoProvider: mockFn,
-  };
-});
-
 const { __mockLogger: loggerMock } = jest.requireMock('../../util/logging.js') as {
   __mockLogger: {
     debug: jest.Mock;
@@ -37,12 +30,6 @@ const { __mockLogger: loggerMock } = jest.requireMock('../../util/logging.js') a
     warning: jest.Mock;
     error: jest.Mock;
   };
-};
-
-const { __mockGetCryptoProvider: getCryptoProviderMock } = jest.requireMock(
-  '../../security/crypto/providers/crypto-provider.js'
-) as {
-  __mockGetCryptoProvider: jest.Mock;
 };
 
 function createAdmissionClient(overrides: Partial<AdmissionClient> = {}): AdmissionClient {
@@ -55,8 +42,13 @@ function createAdmissionClient(overrides: Partial<AdmissionClient> = {}): Admiss
 }
 
 function createNode(overrides: Partial<NodeLike> = {}): NodeLike {
-  return {
+  const base: Partial<NodeLike> = {
     id: 'node-1',
+    cryptoProvider: null as unknown as CryptoProvider,
+  };
+
+  return {
+    ...base,
     ...overrides,
   } as unknown as NodeLike;
 }
@@ -105,7 +97,6 @@ afterEach(async () => {
   jest.useRealTimers();
   jest.restoreAllMocks();
   jest.clearAllMocks();
-  getCryptoProviderMock.mockReset();
   const managers = createdManagers.splice(0);
   for (const manager of managers) {
     try {
@@ -243,16 +234,17 @@ describe('RootSessionManager', () => {
 
   describe('performAdmission', () => {
     it('initializes identity, stores welcome, and prepares crypto', async () => {
-      const node = createNode({ id: '' });
+      const prepareSpy = jest.fn();
+      const node = createNode({
+        id: '',
+        cryptoProvider: { prepareForAttach: prepareSpy } as unknown as CryptoProvider,
+      });
       const helloMock = jest.fn<
         Promise<FameEnvelopeWith<NodeWelcomeFrame>>,
         [string, string, string[] | undefined]
       >();
       const admissionClient = createAdmissionClient({ hello: helloMock });
       const manager = createManager({ node, admissionClient });
-
-      const prepareSpy = jest.fn();
-      getCryptoProviderMock.mockReturnValue({ prepareForAttach: prepareSpy });
 
       const welcomeFrame: NodeWelcomeFrame = {
         systemId: 'sys',
@@ -271,10 +263,12 @@ describe('RootSessionManager', () => {
     });
 
     it('returns welcome frame without invoking crypto when path missing', async () => {
-      const admissionClient = createAdmissionClient();
-      const manager = createManager({ admissionClient });
       const prepareSpy = jest.fn();
-      getCryptoProviderMock.mockReturnValue({ prepareForAttach: prepareSpy });
+      const node = createNode({
+        cryptoProvider: { prepareForAttach: prepareSpy } as unknown as CryptoProvider,
+      });
+      const admissionClient = createAdmissionClient();
+      const manager = createManager({ admissionClient, node });
       const welcomeFrame: NodeWelcomeFrame = {
         systemId: 'sys',
         assignedPath: undefined,

@@ -5,8 +5,6 @@ import {
   EnvelopeSignerFactory,
   type EnvelopeSignerConfig,
 } from './envelope-signer.js';
-import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
-import type { SigningConfig } from './signing-config.js';
 import { EdDSAEnvelopeSigner, type EdDSAEnvelopeSignerOptions } from './eddsa-envelope-signer.js';
 
 export interface EdDSAEnvelopeSignerConfig extends EnvelopeSignerConfig {
@@ -19,20 +17,18 @@ export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvel
 
   public async create(
     _config?: EdDSAEnvelopeSignerConfig | Record<string, unknown> | null,
-    cryptoProvider?: CryptoProvider | null,
-    signingConfig?: SigningConfig | null,
-    options: EdDSAEnvelopeSignerOptions = {}
+    options?: EdDSAEnvelopeSignerOptions | null
   ): Promise<EnvelopeSigner> {
     const resolved: EdDSAEnvelopeSignerOptions = {
-      cryptoProvider: options.cryptoProvider ?? cryptoProvider ?? null,
-      signingConfig: options.signingConfig ?? signingConfig ?? null,
+      cryptoProvider: options?.cryptoProvider ?? null,
+      signingConfig: options?.signingConfig ?? null,
     };
 
-    if (options.privateKeyPem !== undefined) {
+    if (options?.privateKeyPem !== undefined) {
       resolved.privateKeyPem = options.privateKeyPem;
     }
 
-    if (options.keyId !== undefined) {
+    if (options?.keyId !== undefined) {
       resolved.keyId = options.keyId;
     }
 

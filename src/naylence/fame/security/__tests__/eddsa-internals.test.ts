@@ -20,7 +20,6 @@ import { EdDSAEnvelopeSignerFactory } from '../signing/eddsa-envelope-signer-fac
 import { EdDSAEnvelopeVerifier } from '../signing/eddsa-envelope-verifier.js';
 import { EdDSAEnvelopeVerifierFactory } from '../signing/eddsa-envelope-verifier-factory.js';
 import { SigningConfig } from '../signing/signing-config.js';
-import { setCryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { KeyProvider } from '../keys/key-provider.js';
 import type { KeyRecord } from '../keys/key-store.js';
@@ -424,10 +423,6 @@ function buildKeyProvider(physicalPath: string): KeyProvider {
 }
 
 describe('EdDSA envelope signer and verifier integration', () => {
-  afterEach(() => {
-    setCryptoProvider(null);
-  });
-
   it('signs envelopes, fills payload digest, and verifies successfully', async () => {
     const cryptoProvider: CryptoProvider = {
       signingPrivatePem: PRIVATE_KEY_PEM,
@@ -637,7 +632,6 @@ describe('EdDSA envelope signer and verifier integration', () => {
   });
 
   it('throws when crypto provider or key identifiers are missing', () => {
-    setCryptoProvider(null);
     expect(() => new EdDSAEnvelopeSigner()).toThrow('No crypto provider is configured for signing');
 
     const incompleteProvider: CryptoProvider = {
@@ -828,10 +822,6 @@ describe('EdDSA envelope signer and verifier integration', () => {
 });
 
 describe('EdDSA factories', () => {
-  afterEach(() => {
-    setCryptoProvider(null);
-  });
-
   it('creates signer instances and respects override options', async () => {
     const factory = new EdDSAEnvelopeSignerFactory();
     const cryptoProvider: CryptoProvider = {
@@ -839,7 +829,8 @@ describe('EdDSA factories', () => {
       signatureKeyId: 'kid-override',
     };
 
-    const signer = await factory.create(null, cryptoProvider, null, {
+    const signer = await factory.create(null, {
+      cryptoProvider,
       privateKeyPem: PRIVATE_KEY_PEM,
       keyId: 'factory-kid',
     });
@@ -856,19 +847,13 @@ describe('EdDSA factories', () => {
     expect(signed.sec?.sig?.kid).toBe('factory-kid');
   });
 
-  it('prefers the crypto provider supplied via options over factory arguments', async () => {
+  it('uses the crypto provider supplied via options', async () => {
     const factory = new EdDSAEnvelopeSignerFactory();
-    const paramProvider: CryptoProvider = {
-      signingPrivatePem: PRIVATE_KEY_PEM,
-      signatureKeyId: 'param-kid',
-    };
-
     const optionProvider: CryptoProvider = {
       signingPrivatePem: PRIVATE_KEY_PEM,
       signatureKeyId: 'option-kid',
     };
-
-    const signer = await factory.create(null, paramProvider, null, {
+    const signer = await factory.create(null, {
       cryptoProvider: optionProvider,
     });
 
@@ -877,17 +862,9 @@ describe('EdDSA factories', () => {
     expect(signed.sec?.sig?.kid).toBe('option-kid');
   });
 
-  it('falls back to the configured global crypto provider when none are supplied', async () => {
+  it('throws when no crypto provider is supplied to the factory', async () => {
     const factory = new EdDSAEnvelopeSignerFactory();
-    const fallbackProvider: CryptoProvider = {
-      signingPrivatePem: PRIVATE_KEY_PEM,
-      signatureKeyId: 'global-kid',
-    };
-
-    setCryptoProvider(fallbackProvider);
-    const signer = (await factory.create()) as EdDSAEnvelopeSigner;
-    const signed = signer.signEnvelope(buildEnvelope(), { physicalPath: '/factory-default' });
-    expect(signed.sec?.sig?.kid).toBe('global-kid');
+    await expect(factory.create()).rejects.toThrow('No crypto provider is configured for signing');
   });
 
   it('requires a key provider for verifier factory', async () => {

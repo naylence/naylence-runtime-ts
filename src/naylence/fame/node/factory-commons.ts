@@ -37,6 +37,7 @@ import type { KeyStoreConfig } from '../security/keys/key-store-factory.js';
 import type { AttachmentKeyValidatorConfig } from '../security/keys/attachment-key-validator-factory.js';
 import type { SecurityManagerConfig } from '../security/security-manager-config.js';
 import { getLogger } from '../util/logging.js';
+import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 
 const BINDING_STORE_NAMESPACE = '__binding_store';
 
@@ -73,6 +74,7 @@ export interface CommonNodeComponents {
   deliveryPolicy: DeliveryPolicy | null;
   deliveryTracker: DefaultDeliveryTracker;
   securityManager: SecurityManager;
+  cryptoProvider: CryptoProvider | null;
   eventListeners: NodeEventListener[];
   transportListeners: TransportListener[];
   traceEmitter: TraceEmitter | null;
@@ -82,6 +84,7 @@ interface SecurityManagerOverrides {
   keyStore: KeyStore;
   keyValidator?: AttachmentKeyValidator | null;
   eventListeners?: NodeEventListener[];
+  cryptoProvider?: CryptoProvider | null;
 }
 
 export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonNodeComponents> {
@@ -132,12 +135,15 @@ export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonN
     addEventListener(replicaStickinessManager, eventListeners);
   }
 
+  const cryptoProvider = extractCryptoProvider(config.security ?? null);
+
   const securityManager = await resolveSecurityManager(
     config.security ?? null,
     {
       keyStore,
       keyValidator: attachmentKeyValidator,
       eventListeners,
+      cryptoProvider: cryptoProvider ?? null,
     },
     expressionOptions
   );
@@ -184,6 +190,7 @@ export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonN
     deliveryPolicy,
     deliveryTracker,
     securityManager,
+    cryptoProvider,
     eventListeners,
     transportListeners,
     traceEmitter,
@@ -438,4 +445,42 @@ function isNodeEventListener(value: unknown): value is NodeEventListener {
   return Boolean(
     value && typeof value === 'object' && typeof (value as NodeEventListener).priority === 'number'
   );
+}
+
+function extractCryptoProvider(
+  config: SecurityManagerConfig | Record<string, unknown> | null
+): CryptoProvider | null {
+  if (!config || typeof config !== 'object') {
+    return null;
+  }
+
+  const record = config as Record<string, unknown>;
+
+  const tryCandidate = (candidate: unknown): CryptoProvider | null => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+      return null;
+    }
+
+    if (typeof (candidate as { type?: unknown }).type === 'string') {
+      return null;
+    }
+
+    return candidate as CryptoProvider;
+  };
+
+  if ('cryptoProvider' in record) {
+    const provider = tryCandidate(record.cryptoProvider);
+    if (provider) {
+      return provider;
+    }
+  }
+
+  if ('crypto_provider' in record) {
+    const provider = tryCandidate(record.crypto_provider);
+    if (provider) {
+      return provider;
+    }
+  }
+
+  return null;
 }

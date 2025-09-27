@@ -5,19 +5,52 @@ import { JWKValidationError, validateJwkComplete } from '../crypto/jwk-validatio
 
 const logger = getLogger('in-memory-key-store');
 
-type KeyMap = Map<string, KeyRecord>;
-
 export class InMemoryKeyStore extends KeyStore {
-  private readonly keys: KeyMap;
+  private readonly keysByStorageKey: Map<string, KeyRecord>;
+  private readonly storageKeysByKid: Map<string, Set<string>>;
 
   constructor(initialKeys: Record<string, KeyRecord> | Map<string, KeyRecord> | null = null) {
     super();
+    this.keysByStorageKey = new Map();
+    this.storageKeysByKid = new Map();
+
     if (initialKeys instanceof Map) {
-      this.keys = new Map(initialKeys);
+      for (const [kid, jwk] of initialKeys.entries()) {
+        this.storeKey(kid, jwk);
+      }
     } else if (initialKeys) {
-      this.keys = new Map(Object.entries(initialKeys));
-    } else {
-      this.keys = new Map();
+      for (const [kid, jwk] of Object.entries(initialKeys)) {
+        this.storeKey(kid, jwk);
+      }
+    }
+  }
+
+  private buildStorageKey(kid: string, jwk: KeyRecord): string {
+    const physicalPath = typeof jwk.physical_path === 'string' ? jwk.physical_path : '';
+    const use = typeof jwk.use === 'string' ? jwk.use : '';
+    return `${kid}::${physicalPath}::${use}`;
+  }
+
+  private storeKey(kid: string, jwk: KeyRecord): void {
+    const storageKey = this.buildStorageKey(kid, jwk);
+    this.keysByStorageKey.set(storageKey, jwk);
+    let storageKeys = this.storageKeysByKid.get(kid);
+    if (!storageKeys) {
+      storageKeys = new Set();
+      this.storageKeysByKid.set(kid, storageKeys);
+    }
+    storageKeys.add(storageKey);
+  }
+
+  private deleteStorageKey(kid: string, storageKey: string): void {
+    this.keysByStorageKey.delete(storageKey);
+    const storageKeys = this.storageKeysByKid.get(kid);
+    if (!storageKeys) {
+      return;
+    }
+    storageKeys.delete(storageKey);
+    if (storageKeys.size === 0) {
+      this.storageKeysByKid.delete(kid);
     }
   }
 
@@ -35,17 +68,23 @@ export class InMemoryKeyStore extends KeyStore {
     const physicalPath = typeof jwk.physical_path === 'string' ? jwk.physical_path : undefined;
     const use = typeof jwk.use === 'string' ? jwk.use : undefined;
 
+    const storageKey = this.buildStorageKey(kid, jwk);
+
     if (physicalPath && use) {
-      const staleKeys: string[] = [];
-      for (const [existingKid, existingJwk] of this.keys.entries()) {
+      const staleKeys: Array<{ kid: string; storageKey: string }> = [];
+      for (const [existingStorageKey, existingJwk] of this.keysByStorageKey.entries()) {
+        if (existingStorageKey === storageKey) {
+          continue;
+        }
+        const existingKid = typeof existingJwk.kid === 'string' ? existingJwk.kid : undefined;
         const existingPath = typeof existingJwk.physical_path === 'string' ? existingJwk.physical_path : undefined;
         const existingUse = typeof existingJwk.use === 'string' ? existingJwk.use : undefined;
         if (
-          existingKid !== kid &&
+          existingKid &&
           existingPath === physicalPath &&
           existingUse === use
         ) {
-          staleKeys.push(existingKid);
+          staleKeys.push({ kid: existingKid, storageKey: existingStorageKey });
         }
       }
 
@@ -54,21 +93,31 @@ export class InMemoryKeyStore extends KeyStore {
           new_kid: kid,
           physical_path: physicalPath,
           use,
-          stale_key_ids: staleKeys,
+          stale_key_ids: staleKeys.map(({ kid: staleKid }) => staleKid),
           count: staleKeys.length,
         });
 
-        for (const staleKid of staleKeys) {
-          this.keys.delete(staleKid);
+        for (const { kid: staleKid, storageKey: staleStorageKey } of staleKeys) {
+          this.deleteStorageKey(staleKid, staleStorageKey);
         }
       }
     }
 
-    this.keys.set(kid, jwk);
+    const existingKeysForKid = this.storageKeysByKid.get(kid);
+    if (existingKeysForKid?.has(storageKey)) {
+      this.deleteStorageKey(kid, storageKey);
+    }
+
+    this.storeKey(kid, jwk);
   }
 
   public async getKey(kid: string): Promise<KeyRecord> {
-    const key = this.keys.get(kid);
+    const storageKeys = this.storageKeysByKid.get(kid);
+    const firstStorageKey = storageKeys ? storageKeys.values().next().value : undefined;
+    if (!firstStorageKey) {
+      throw new Error(`Unknown key id: ${kid}`);
+    }
+    const key = this.keysByStorageKey.get(firstStorageKey);
     if (!key) {
       throw new Error(`Unknown key id: ${kid}`);
     }
@@ -76,16 +125,16 @@ export class InMemoryKeyStore extends KeyStore {
   }
 
   public async hasKey(kid: string): Promise<boolean> {
-    return this.keys.has(kid);
+    return this.storageKeysByKid.has(kid);
   }
 
   public async getKeys(): Promise<Iterable<KeyRecord>> {
-    return this.keys.values();
+    return this.keysByStorageKey.values();
   }
 
   public async getKeysForPath(physicalPath: string): Promise<Iterable<KeyRecord>> {
     const matching: KeyRecord[] = [];
-    for (const key of this.keys.values()) {
+    for (const key of this.keysByStorageKey.values()) {
       if (key.physical_path === physicalPath) {
         matching.push(key);
       }
@@ -95,7 +144,7 @@ export class InMemoryKeyStore extends KeyStore {
 
   public async getKeysGroupedByPath(): Promise<Record<string, KeyRecord[]>> {
     const grouped = new Map<string, KeyRecord[]>();
-    for (const key of this.keys.values()) {
+    for (const key of this.keysByStorageKey.values()) {
       const physicalPath = key.physical_path;
       if (typeof physicalPath !== 'string') {
         continue;
@@ -109,21 +158,21 @@ export class InMemoryKeyStore extends KeyStore {
   }
 
   public async removeKeysForPath(physicalPath: string): Promise<number> {
-    const keysToRemove: string[] = [];
-    for (const [kid, jwk] of this.keys.entries()) {
+    const keysToRemove: Array<{ kid: string; storageKey: string }> = [];
+    for (const [storageKey, jwk] of this.keysByStorageKey.entries()) {
       if (jwk.physical_path === physicalPath) {
-        keysToRemove.push(kid);
+        keysToRemove.push({ kid: jwk.kid as string, storageKey });
       }
     }
 
-    for (const kid of keysToRemove) {
-      this.keys.delete(kid);
+    for (const { kid, storageKey } of keysToRemove) {
+      this.deleteStorageKey(kid, storageKey);
     }
 
     if (keysToRemove.length > 0) {
       logger.debug('removed_keys_for_path', {
         physical_path: physicalPath,
-        removed_key_ids: keysToRemove,
+        removed_key_ids: keysToRemove.map(({ kid }) => kid),
         count: keysToRemove.length,
       });
     }
@@ -132,10 +181,16 @@ export class InMemoryKeyStore extends KeyStore {
   }
 
   public async removeKey(kid: string): Promise<boolean> {
-    const existed = this.keys.delete(kid);
-    if (existed) {
-      logger.debug('removed_individual_key', { kid });
+    const storageKeys = this.storageKeysByKid.get(kid);
+    if (!storageKeys || storageKeys.size === 0) {
+      return false;
     }
-    return existed;
+
+    for (const storageKey of Array.from(storageKeys)) {
+      this.deleteStorageKey(kid, storageKey);
+    }
+
+    logger.debug('removed_individual_key', { kid });
+    return true;
   }
 }

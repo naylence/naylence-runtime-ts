@@ -4,7 +4,6 @@ import type { FameEnvelope, SecurityHeader, SignatureHeader } from 'naylence-cor
 import { SigningMaterial } from 'naylence-core';
 import { secureDigest, urlsafeBase64Encode } from '../../util/util.js';
 import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
-import { getCryptoProvider } from '../crypto/providers/crypto-provider.js';
 import { SigningConfig } from './signing-config.js';
 import { frameDigest, immutableHeaders, canonicalJson } from './eddsa-signer-verifier.js';
 import { encodeUtf8, parseEd25519PrivateKey, readStringProperty } from './eddsa-utils.js';
@@ -22,14 +21,6 @@ if (!edUtils.sha512Sync) {
   };
 }
 
-function ensureCryptoProvider(): CryptoProvider {
-  const provider = getCryptoProvider();
-  if (!provider) {
-    throw new Error('No crypto provider is configured for signing');
-  }
-  return provider;
-}
-
 export interface EdDSAEnvelopeSignerOptions {
   cryptoProvider?: CryptoProvider | null;
   signingConfig?: SigningConfig | null;
@@ -44,7 +35,11 @@ export class EdDSAEnvelopeSigner {
   private readonly explicitKeyId: string | undefined;
 
   public constructor(options: EdDSAEnvelopeSignerOptions = {}) {
-    this.crypto = options.cryptoProvider ?? ensureCryptoProvider();
+    const provider = options.cryptoProvider ?? null;
+    if (!provider) {
+      throw new Error('No crypto provider is configured for signing');
+    }
+    this.crypto = provider;
     this.signingConfig = options.signingConfig ?? new SigningConfig();
     this.explicitPrivateKey = options.privateKeyPem;
     this.explicitKeyId = options.keyId;

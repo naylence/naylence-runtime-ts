@@ -33,6 +33,7 @@ export class NodeFactory extends NodeLikeFactory<FameNodeConfig> {
 			admissionClient: components.admissionClient,
 			attachClient: components.attachClient,
 			securityManager: components.securityManager,
+			cryptoProvider: components.cryptoProvider ?? null,
 			publicUrl: components.publicUrl ?? null,
 			deliveryTracker: components.deliveryTracker,
 			bindingStore: components.bindingStore,

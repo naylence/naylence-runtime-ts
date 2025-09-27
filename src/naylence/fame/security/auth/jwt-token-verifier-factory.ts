@@ -1,7 +1,7 @@
 import { registerFactory } from 'naylence-factory';
 import { DEFAULT_JWT_TOKEN_TTL_SEC } from '../../constants/ttl-constants.js';
 import { validateJwtTokenTtlSec } from '../../util/ttl-validation.js';
-import { getCryptoProvider } from '../crypto/providers/crypto-provider.js';
+import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
 import { JWTTokenVerifier } from './jwt-token-verifier.js';
 import type { TokenVerifier } from './token-verifier.js';
 import {
@@ -79,14 +79,15 @@ export class JWTTokenVerifierFactory extends TokenVerifierFactory<JWTTokenVerifi
   public readonly isDefault = true;
 
   public async create(
-    config?: JWTTokenVerifierConfig | Record<string, unknown> | null
+    config?: JWTTokenVerifierConfig | Record<string, unknown> | null,
+    cryptoProvider?: CryptoProvider
   ): Promise<TokenVerifier> {
     if (!config) {
       throw new Error('JWTTokenVerifierFactory requires configuration');
     }
 
-    const normalized = normalizeConfig(config);
-    const cryptoProvider = getCryptoProvider();
+  const normalized = normalizeConfig(config);
+  const cryptoProvider1 = cryptoProvider ?? null;
 
     let verificationKey: string | undefined;
 
@@ -95,7 +96,7 @@ export class JWTTokenVerifierFactory extends TokenVerifierFactory<JWTTokenVerifi
     } else if (normalized.publicKeyPem !== undefined) {
       verificationKey = await resolveSecret(normalized.publicKeyPem);
     } else {
-      verificationKey = getProviderVerificationKey(cryptoProvider);
+  verificationKey = getProviderVerificationKey(cryptoProvider1);
     }
 
     if (!verificationKey) {
@@ -239,7 +240,7 @@ function readEnvironmentVariable(varName: string): string {
   return value;
 }
 
-function getProviderVerificationKey(provider: ReturnType<typeof getCryptoProvider>): string | undefined {
+function getProviderVerificationKey(provider: CryptoProvider | null): string | undefined {
   if (!provider) {
     return undefined;
   }

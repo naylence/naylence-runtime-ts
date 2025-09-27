@@ -7,7 +7,6 @@ import {
   normalizeFameServerConfig,
   type FameFastifyServer,
 } from '../index.js';
-import { setCryptoProvider } from '../../security/crypto/providers/crypto-provider.js';
 import type { CryptoProvider } from '../../security/crypto/providers/crypto-provider.js';
 import type { TokenIssuer } from '../../security/auth/token-issuer.js';
 
@@ -67,9 +66,13 @@ describe('normalizeFameServerConfig', () => {
 
 describe('Fastify fame server routes', () => {
   let server: FameFastifyServer | undefined;
+  let currentCryptoProvider: CryptoProvider | null;
+  const dependencies = {
+    resolveCryptoProvider: () => currentCryptoProvider ?? null,
+  };
 
   afterEach(async () => {
-    setCryptoProvider(null);
+    currentCryptoProvider = null;
     if (server) {
       await server.app.close();
       server = undefined;
@@ -78,7 +81,7 @@ describe('Fastify fame server routes', () => {
 
   it('serves health endpoint with uptime data', async () => {
     server = createFameFastifyServer({ config: TEST_BASE_CONFIG });
-    await registerDefaultFameServerRoutes(server);
+    await registerDefaultFameServerRoutes(server, dependencies);
 
     const response = await server.app.inject({ method: 'GET', url: '/api/healthz' });
 
@@ -97,10 +100,10 @@ describe('Fastify fame server routes', () => {
         ],
       }),
     } as CryptoProvider;
-    setCryptoProvider(cryptoProvider);
+    currentCryptoProvider = cryptoProvider;
 
     server = createFameFastifyServer({ config: TEST_BASE_CONFIG });
-    await registerDefaultFameServerRoutes(server);
+    await registerDefaultFameServerRoutes(server, dependencies);
 
     const response = await server.app.inject({ method: 'GET', url: '/api/.well-known/jwks.json' });
 
@@ -124,10 +127,10 @@ describe('Fastify fame server routes', () => {
       getJwks: () => ({ keys: [{ kid: 'sig', use: 'sig', kty: 'OKP', crv: 'Ed25519', x: 'abcd' }] }),
       issuer: 'https://issuer.test',
     } as CryptoProvider;
-    setCryptoProvider(cryptoProvider);
+    currentCryptoProvider = cryptoProvider;
 
     server = createFameFastifyServer({ config: TEST_BASE_CONFIG });
-    await registerDefaultFameServerRoutes(server);
+    await registerDefaultFameServerRoutes(server, dependencies);
 
     const payload = new URLSearchParams({
       grant_type: 'client_credentials',
@@ -168,10 +171,10 @@ describe('Fastify fame server routes', () => {
     const cryptoProvider: CryptoProvider = {
       getTokenIssuer: () => tokenIssuer,
     } as CryptoProvider;
-    setCryptoProvider(cryptoProvider);
+    currentCryptoProvider = cryptoProvider;
 
     server = createFameFastifyServer({ config: TEST_BASE_CONFIG });
-    await registerDefaultFameServerRoutes(server);
+    await registerDefaultFameServerRoutes(server, dependencies);
 
     const payload = new URLSearchParams({
       grant_type: 'client_credentials',
@@ -194,10 +197,10 @@ describe('Fastify fame server routes', () => {
   });
 
   it('returns server error when token issuer missing', async () => {
-    setCryptoProvider({ getJwks: () => ({ keys: [] }) } as CryptoProvider);
+    currentCryptoProvider = { getJwks: () => ({ keys: [] }) } as CryptoProvider;
 
     server = createFameFastifyServer({ config: TEST_BASE_CONFIG });
-    await registerDefaultFameServerRoutes(server);
+    await registerDefaultFameServerRoutes(server, dependencies);
 
     const payload = new URLSearchParams({
       grant_type: 'client_credentials',
@@ -227,10 +230,10 @@ describe('Fastify fame server routes', () => {
       getJwks: () => ({ keys: [{ kid: 'sig', use: 'sig', kty: 'OKP', crv: 'Ed25519', x: 'abcd' }] }),
       issuer: 'https://issuer.test',
     } as CryptoProvider;
-    setCryptoProvider(cryptoProvider);
+    currentCryptoProvider = cryptoProvider;
 
     server = createFameFastifyServer({ config: TEST_BASE_CONFIG });
-    await registerDefaultFameServerRoutes(server);
+    await registerDefaultFameServerRoutes(server, dependencies);
 
     const response = await server.app.inject({
       method: 'GET',

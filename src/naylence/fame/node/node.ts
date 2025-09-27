@@ -15,6 +15,7 @@ import { generateId } from 'naylence-core';
 import { secureDigest } from '../util/util.js';
 import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
 import type { SecurityManager } from '../security/security-manager.js';
+import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import type { AdmissionClient } from './admission/admission-client.js';
 import type { NodeEventListener } from './node-event-listener.js';
 import type { StorageProvider, KeyValueStore } from '../storage/index.js';
@@ -122,6 +123,7 @@ export interface FameNodeOptions {
   defaultServiceConfigs?: Array<Record<string, unknown>>;
   nodeMetaStore?: KeyValueStore<NodeMetaRecord> | null;
   transportListeners?: TransportListener[];
+  cryptoProvider?: CryptoProvider | null;
 }
 
 function sortListeners(listeners: NodeEventListener[]): NodeEventListener[] {
@@ -147,6 +149,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
   private readonly _requestedLogicals: string[];
   private readonly _securityManager: SecurityManager | null;
   private readonly _publicUrl: string | null;
+  private readonly _cryptoProvider: CryptoProvider;
   private readonly _nodeMetaStorePromise: Promise<KeyValueStore<NodeMetaRecord>>;
   private readonly _transportListeners: TransportListener[];
   private _defaultBindingPath: string;
@@ -172,6 +175,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
     this._requestedLogicals = [...(options.requestedLogicals ?? [])];
     this._securityManager = options.securityManager ?? null;
     this._publicUrl = options.publicUrl ?? null;
+    const fallbackCryptoProvider: CryptoProvider = {};
+    this._cryptoProvider = options.cryptoProvider ?? fallbackCryptoProvider;
 
     const envelopeFactory = options.envelopeFactory ?? new NodeEnvelopeFactory(() => this.sid ?? '');
     this._envelopeFactory = envelopeFactory;
@@ -219,7 +224,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
       bindingManagerOptions.bindingStore = options.bindingStore;
     }
 
-    this._bindingManager = new BindingManager(bindingManagerOptions);
+  this._bindingManager = new BindingManager(bindingManagerOptions);
+  (this as unknown as { _binding_manager?: BindingManager })._binding_manager = this._bindingManager;
 
     this._envelopeListenerManager = new EnvelopeListenerManager({
       bindingManager: this._bindingManager,
@@ -509,6 +515,10 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
   get storageProvider(): StorageProvider {
     return this._storageProvider;
+  }
+
+  get cryptoProvider(): CryptoProvider {
+    return this._cryptoProvider;
   }
 
   get lastHeartbeatAt(): number | null {

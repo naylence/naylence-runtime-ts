@@ -25,7 +25,6 @@ import {
   SecurityPolicyFactory,
 } from '../naylence/fame/security/policy/security-policy-factory';
 import { ResourceFactoryRegistry } from 'naylence-factory';
-import { setCryptoProvider } from '../naylence/fame/security/crypto/providers/crypto-provider';
 
 function makeEnvelope(overrides: Partial<FameEnvelope> = {}): FameEnvelope {
   const frame = overrides.frame ?? ({ type: 'Data', payload: {} } as any);
@@ -113,14 +112,47 @@ const SAMPLE_KEY = {
   x: 'AAAAAAAAAAAAAAAAAAAAAA',
 };
 
-beforeEach(() => {
-  setCryptoProvider(null);
-});
+function makeNodeStub(options: { physicalPath?: string; cryptoProvider?: Partial<NodeLike['cryptoProvider']> } = {}): NodeLike {
+  const physicalPath = options.physicalPath ?? '/node/path';
+  const cryptoProvider = (options.cryptoProvider ?? {
+    getJwks: () => ({ keys: [] }),
+  }) as NodeLike['cryptoProvider'];
+
+  return {
+    id: 'node-stub',
+    sid: null,
+    physicalPath,
+    acceptedLogicals: new Set<string>(),
+    envelopeFactory: {
+      createEnvelope: jest.fn(),
+    } as any,
+    deliveryPolicy: null,
+    defaultBindingPath: '/',
+    hasParent: false,
+    securityManager: null,
+    admissionClient: null,
+    eventListeners: [],
+    upstreamConnector: null,
+    publicUrl: null,
+    storageProvider: {} as any,
+    cryptoProvider,
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    start: jest.fn(async () => {}),
+    stop: jest.fn(async () => {}),
+    bind: jest.fn(async () => ({} as any)),
+    unbind: jest.fn(async () => {}),
+    send: jest.fn(async () => null),
+    listen: jest.fn(async () => '' as any),
+    listenRpc: jest.fn(async () => '' as any),
+    invoke: jest.fn(async () => null),
+    invokeByCapability: jest.fn(async () => null),
+  } as unknown as NodeLike;
+}
 
 afterEach(() => {
   jest.restoreAllMocks();
   ResourceFactoryRegistry.clearCache();
-  setCryptoProvider(null);
 });
 
 describe('NoSecurityPolicy', () => {
@@ -869,14 +901,15 @@ describe('DefaultSecurityPolicy', () => {
 
   it('returns null for mismatched local node paths during key resolution', async () => {
     const policy = makePolicy();
+    const node = makeNodeStub({ physicalPath: '/other/path' });
     const result = await (
       policy as unknown as {
         tryResolveLocalEncryptionKey: (
           path: string,
-          nodePhysicalPath?: string
+          nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', '/other/path');
+    ).tryResolveLocalEncryptionKey('/local/path', node);
 
     expect(result).toBeNull();
   });
@@ -952,42 +985,44 @@ describe('DefaultSecurityPolicy', () => {
         getKeysForPath: jest.fn(async () => []),
       },
     });
-    setCryptoProvider({
+    const cryptoProvider = {
       getJwks: () => ({
         keys: [
           { use: 'enc', kty: 'OKP', crv: 'X25519', kid: 'local', x: 'AAAAAAAAAAAAAAAAAAAAAA' },
         ],
       }),
-    });
+    };
+    const node = makeNodeStub({ physicalPath: '/local/path', cryptoProvider: cryptoProvider as any });
 
     const result = await (
       policy as unknown as {
         tryResolveLocalEncryptionKey: (
           path: string,
-          nodePhysicalPath?: string
+          nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', '/local/path');
+    ).tryResolveLocalEncryptionKey('/local/path', node);
 
     expect(result).toEqual(['local', expect.any(Uint8Array)]);
   });
 
   it('skips invalid local crypto provider keys', async () => {
     const policy = makePolicy();
-    setCryptoProvider({
+    const cryptoProvider = {
       getJwks: () => ({
         keys: [{ use: 'enc', kty: 'OKP', crv: 'X25519', kid: 'bad-local' }],
       }),
-    });
+    };
+    const node = makeNodeStub({ physicalPath: '/local/path', cryptoProvider: cryptoProvider as any });
 
     const result = await (
       policy as unknown as {
         tryResolveLocalEncryptionKey: (
           path: string,
-          nodePhysicalPath?: string
+          nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', '/local/path');
+    ).tryResolveLocalEncryptionKey('/local/path', node);
 
     expect(result).toBeNull();
   });
@@ -999,7 +1034,7 @@ describe('DefaultSecurityPolicy', () => {
         getKeysForPath: jest.fn(async () => []),
       },
     });
-    setCryptoProvider({
+    const cryptoProvider = {
       getJwks: () => ({
         keys: [
           {
@@ -1011,16 +1046,17 @@ describe('DefaultSecurityPolicy', () => {
           },
         ],
       }),
-    });
+    };
+    const node = makeNodeStub({ physicalPath: '/local/path', cryptoProvider: cryptoProvider as any });
 
     const result = await (
       policy as unknown as {
         tryResolveLocalEncryptionKey: (
           path: string,
-          nodePhysicalPath?: string
+          nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', '/local/path');
+    ).tryResolveLocalEncryptionKey('/local/path', node);
 
     expect(result).toBeNull();
   });
