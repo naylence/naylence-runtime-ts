@@ -186,7 +186,7 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
       return;
     }
 
-    const { downstreamOrPeer, systemId } = params;
+  const { downstreamOrPeer, systemId } = params;
     const node = this._node;
 
     if (!node) {
@@ -216,7 +216,10 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
       return;
     }
 
-  const token = this._extractBearerToken(request.headers['sec-websocket-protocol']);
+    const token =
+      this._extractBearerToken(request.headers['sec-websocket-protocol']) ||
+      this._extractAuthorizationHeaderToken(request.headers['authorization']);
+
     if (!token) {
       logger.warning('websocket_attach_without_token');
     }
@@ -284,6 +287,37 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
 
           continue;
         }
+      }
+    }
+
+    return '';
+  }
+
+  private _extractAuthorizationHeaderToken(header: string | string[] | undefined): string {
+    if (!header) {
+      return '';
+    }
+
+    const values = Array.isArray(header) ? header : [header];
+
+    for (const value of values) {
+      if (typeof value !== 'string' || value.length === 0) {
+        continue;
+      }
+
+      const trimmed = value.trim();
+      if (trimmed.length === 0) {
+        continue;
+      }
+
+      const lower = trimmed.toLowerCase();
+      if (lower.startsWith('bearer')) {
+        const remainder = trimmed.slice('bearer'.length).trimStart();
+        if (remainder.length > 0) {
+          return remainder;
+        }
+
+        continue;
       }
     }
 

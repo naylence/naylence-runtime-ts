@@ -80,6 +80,8 @@ describe('RPCClientManager', () => {
 
   const defaultDeliveryTracker = {
     track: jest.fn().mockResolvedValue(undefined),
+    onStreamItem: jest.fn().mockResolvedValue(undefined),
+    onStreamEnd: jest.fn().mockResolvedValue(undefined),
   };
 
   const defaultDeliverFn = jest.fn().mockResolvedValue(undefined);
@@ -120,6 +122,10 @@ describe('RPCClientManager', () => {
     defaultEnvelopeFactory.createEnvelope.mockClear();
     defaultDeliveryTracker.track.mockClear();
     defaultDeliveryTracker.track.mockResolvedValue(undefined);
+  defaultDeliveryTracker.onStreamItem.mockClear();
+  defaultDeliveryTracker.onStreamItem.mockResolvedValue(undefined);
+  defaultDeliveryTracker.onStreamEnd.mockClear();
+  defaultDeliveryTracker.onStreamEnd.mockResolvedValue(undefined);
     defaultDeliverFn.mockClear();
     defaultDeliverFn.mockResolvedValue(undefined);
     defaultDeliverWrapper.mockClear();
@@ -219,6 +225,16 @@ describe('RPCClientManager', () => {
       value: undefined,
       done: true,
     });
+
+    expect(defaultDeliveryTracker.onStreamItem).toHaveBeenCalledTimes(2);
+    expect(defaultDeliveryTracker.onStreamItem).toHaveBeenLastCalledWith(
+      expect.stringMatching(/no-reply-stream-envelope/),
+      expect.objectContaining({ id: 'reply-stream-end' })
+    );
+    expect(defaultDeliveryTracker.onStreamEnd).toHaveBeenCalledTimes(1);
+    expect(defaultDeliveryTracker.onStreamEnd).toHaveBeenCalledWith(
+      expect.stringMatching(/no-reply-stream-envelope/)
+    );
   });
 
   it('rejects when invoking stream without target or capabilities', async () => {

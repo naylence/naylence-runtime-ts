@@ -1,6 +1,7 @@
 import {
   DeliveryOriginType,
   FameResponseType,
+  type AuthorizationContext,
   type CreateFameEnvelopeOptions,
   type DataFrame,
   type FameAddress,
@@ -8,6 +9,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type KeyRequestFrame,
+  type NodeAttachFrame,
   type NodeWelcomeFrame,
 } from 'naylence-core';
 
@@ -41,6 +43,21 @@ type KeyFrameHandlerOptions = ConstructorParameters<typeof KeyFrameHandler>[0];
 type KeyFrameRouteManager = KeyFrameHandlerOptions['routeManager'];
 type KeyFrameBindingManager = KeyFrameHandlerOptions['bindingManager'];
 type HandleKeyRequestOptions = Parameters<KeyManager['handleKeyRequest']>[0];
+
+type NodeAttachValidatingAuthorizer = Authorizer & {
+  validateNodeAttachRequest?: (
+    node: NodeLike,
+    frame: NodeAttachFrame,
+    authContext?: AuthorizationContext
+  ) => Promise<AuthorizationContext | undefined> | AuthorizationContext | undefined;
+};
+
+function hasNodeAttachValidation(authorizer: Authorizer | null): authorizer is NodeAttachValidatingAuthorizer {
+  return Boolean(
+    authorizer &&
+    typeof (authorizer as NodeAttachValidatingAuthorizer).validateNodeAttachRequest === 'function'
+  );
+}
 
 const logger = getLogger('default-security-manager');
 
@@ -725,12 +742,35 @@ export class DefaultSecurityManager implements SecurityManager {
         }
 
         const security = ensureSecurityContext(context);
-        security.authorization = authResult;
+        let finalAuthResult = authResult;
+
+        const authorizer = this._authorizer;
+        if (envelope.frame?.type === 'NodeAttach' && hasNodeAttachValidation(authorizer)) {
+          try {
+            const validated = await authorizer.validateNodeAttachRequest!(
+              _node,
+              envelope.frame as NodeAttachFrame,
+              authResult
+            );
+            if (validated) {
+              finalAuthResult = validated;
+            }
+          } catch (error) {
+            logger.error('node_attach_authorization_validation_failed', {
+              envp_id: envelope.id,
+              frame_type: envelope.frame.type,
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return null;
+          }
+        }
+
+        security.authorization = finalAuthResult;
 
         logger.debug('envelope_authorization_successful', {
           envp_id: envelope.id,
           frame_type: envelope.frame.type,
-          principal: authResult.principal ?? null,
+          principal: finalAuthResult.principal ?? null,
         });
       } catch (error) {
         logger.error('envelope_authorization_error', {

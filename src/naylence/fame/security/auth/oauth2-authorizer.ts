@@ -71,11 +71,15 @@ export class OAuth2Authorizer
   async authenticate(credentials: string | Uint8Array): Promise<AuthorizationContext | undefined> {
     const token = this.normalizeBearerToken(credentials);
     if (!token) {
+      logger.debug('oauth2_authenticate_missing_token');
       return undefined;
     }
 
     try {
       const expectedAudience = this.audience ?? this.node?.physicalPath;
+      logger.debug('oauth2_authenticate_start', {
+        expected_audience: expectedAudience,
+      });
       const context = expectedAudience !== undefined
         ? await this.tokenVerifierImpl.verify(token, { expectedAudience })
         : await this.tokenVerifierImpl.verify(token);
@@ -99,6 +103,10 @@ export class OAuth2Authorizer
         claims,
         grantedScopes,
         authMethod: context.authMethod ?? 'oauth2_jwt',
+      });
+
+      logger.debug('oauth2_authenticate_success', {
+        granted_scopes: Array.from(grantedScopes),
       });
 
       return normalized;

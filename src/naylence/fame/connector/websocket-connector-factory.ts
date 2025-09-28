@@ -122,9 +122,19 @@ export class WebSocketConnectorFactory extends ConnectorFactory<WebSocketConnect
 	): Promise<WebSocketConnector> {
 		const normalizedConfig = this._normalizeConfig(config);
 
-		const headers = options.headers;
+		const headers: Record<string, string> = {
+			...(options.headers ?? {}),
+		};
 
 		let authStrategy: AuthInjectionStrategy | undefined;
+		let cleanupInvoked = false;
+		const ensureCleanup = async (): Promise<void> => {
+			if (!authStrategy || cleanupInvoked) {
+				return;
+			}
+			cleanupInvoked = true;
+			await authStrategy.cleanup();
+		};
 		if (normalizedConfig.auth !== undefined) {
 			const authConfig = this._normalizeAuthConfig(normalizedConfig.auth);
 			authStrategy = await AuthInjectionStrategyFactory.createAuthInjectionStrategy(authConfig);
@@ -146,8 +156,18 @@ export class WebSocketConnectorFactory extends ConnectorFactory<WebSocketConnect
 				url = this._appendSystemId(url, options.systemId);
 			}
 
+			if (authStrategy) {
+				await authStrategy.apply(headers);
+			}
+
 			const clientFactory = options.clientFactory ?? this._clientFactory;
-			websocket = await clientFactory(url, subprotocols, headers);
+			try {
+				const headerArgs = Object.keys(headers).length > 0 ? headers : undefined;
+				websocket = await clientFactory(url, subprotocols, headerArgs);
+			} catch (error) {
+				await ensureCleanup();
+				throw error;
+			}
 			authorizationContext = this._buildAuthorizationContext();
 		}
 
@@ -158,8 +178,32 @@ export class WebSocketConnectorFactory extends ConnectorFactory<WebSocketConnect
 
 		const connector = new WebSocketConnector(websocket, connectorConfig);
 
+		const cleanupOnce = async (): Promise<void> => {
+			await ensureCleanup();
+		};
+
 		if (authStrategy) {
-			await authStrategy.apply(connector);
+			if (options.websocket) {
+				await authStrategy.apply(connector);
+			}
+
+			const originalStop = connector.stop.bind(connector);
+			connector.stop = async (): Promise<void> => {
+				try {
+					await originalStop();
+				} finally {
+					await cleanupOnce();
+				}
+			};
+
+			const originalClose = connector.close.bind(connector);
+			connector.close = async (code?: number, reason?: string): Promise<void> => {
+				try {
+					await originalClose(code, reason);
+				} finally {
+					await cleanupOnce();
+				}
+			};
 		}
 
 		return connector;

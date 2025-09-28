@@ -16,7 +16,7 @@ import {
 } from 'naylence-core';
 import { getLogger } from '../util/logging.js';
 import { currentTraceId } from '../util/envelope-context.js';
-import type { DeliveryTracker } from '../delivery/delivery-tracker.js';
+import type { DeliveryTracker as BasicDeliveryTracker } from '../delivery/delivery-tracker.js';
 import type { FameEnvelopeHandler } from 'naylence-core';
 
 const logger = getLogger('rpc-client-manager');
@@ -26,6 +26,11 @@ type DeliverFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Prom
 type DeliverWrapper = () => DeliverFn;
 
 type ListenCallback = (serviceName: string, handler: FameEnvelopeHandler | null) => Promise<FameAddress>;
+
+type StreamCapableDeliveryTracker = BasicDeliveryTracker & {
+  onStreamItem?: (envelopeId: string, envelope: FameEnvelope) => Promise<void> | void;
+  onStreamEnd?: (envelopeId: string) => Promise<void> | void;
+};
 
 interface PendingRequestBase {
   timer: ReturnType<typeof setTimeout> | null;
@@ -42,6 +47,7 @@ interface PendingStreamRequest extends PendingRequestBase {
   type: 'stream';
   push: (value: unknown) => void;
   end: (error?: Error) => void;
+  envelopeId: string;
 }
 
 type PendingRequest = PendingSingleRequest | PendingStreamRequest;
@@ -58,7 +64,7 @@ export class RPCClientManager {
     private readonly deliverWrapper: DeliverWrapper,
     private readonly envelopeFactory: EnvelopeFactory,
     private readonly listenCallback: ListenCallback,
-    private readonly deliveryTracker: DeliveryTracker
+    private readonly deliveryTracker?: StreamCapableDeliveryTracker
   ) {}
 
   async invoke(options: {
@@ -168,7 +174,11 @@ export class RPCClientManager {
 
     const envelope = this.envelopeFactory.createEnvelope(envelopeOptions);
 
-    const iterator = this.createStreamIterator(requestId, timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS);
+    const iterator = this.createStreamIterator(
+      requestId,
+      envelope.id,
+      timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS
+    );
 
     await this.sendRpcRequest(requestId, envelope, FameResponseType.STREAM, timeoutMs);
 
@@ -256,6 +266,7 @@ export class RPCClientManager {
 
   private createStreamIterator(
     requestId: string,
+    envelopeId: string,
     timeoutMs: number
   ): AsyncIterable<unknown> {
     if (this.pending.has(requestId)) {
@@ -321,6 +332,16 @@ export class RPCClientManager {
       deliverNext();
       completed = true;
       this.pending.delete(requestId);
+      const finalizePromise = this.notifyStreamClosed(envelopeId);
+      if (finalizePromise) {
+        finalizePromise.catch((notifyError) => {
+          logger.debug('stream_tracker_finalize_failed', {
+            request_id: requestId,
+            envelope_id: envelopeId,
+            error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+          });
+        });
+      }
     };
 
     timer = setTimeout(() => {
@@ -333,6 +354,7 @@ export class RPCClientManager {
       timer,
       push,
       end,
+      envelopeId,
     };
 
     this.pending.set(requestId, entry);
@@ -431,6 +453,14 @@ export class RPCClientManager {
       return;
     }
 
+    logger.debug('handle_reply_envelope', {
+      envelope_id: envelope.id,
+      request_id: requestId,
+      corr_id: envelope.corrId,
+      frame_type: envelope.frame?.['type'],
+      entry_type: entry.type,
+    });
+
     if (entry.timer) {
       clearTimeout(entry.timer);
       entry.timer = null;
@@ -483,11 +513,13 @@ export class RPCClientManager {
       }
 
       if (response.result === null || response.result === undefined) {
+        this.forwardStreamItem(entry.envelopeId, envelope);
         entry.end();
         return;
       }
 
       entry.push(response.result);
+      this.forwardStreamItem(entry.envelopeId, envelope);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       if (entry.type === 'single') {
@@ -497,6 +529,25 @@ export class RPCClientManager {
         entry.end(err);
       }
     }
+  }
+
+  private forwardStreamItem(envelopeId: string, envelope: FameEnvelope): void {
+    if (!this.deliveryTracker || typeof this.deliveryTracker.onStreamItem !== 'function') {
+      return;
+    }
+    Promise.resolve(this.deliveryTracker.onStreamItem(envelopeId, envelope)).catch((error) => {
+      logger.debug('stream_tracker_push_failed', {
+        envelope_id: envelopeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
+
+  private notifyStreamClosed(envelopeId: string): Promise<void> | null {
+    if (!this.deliveryTracker || typeof this.deliveryTracker.onStreamEnd !== 'function') {
+      return null;
+    }
+    return Promise.resolve(this.deliveryTracker.onStreamEnd(envelopeId));
   }
 
   private isDataFrame(frame: unknown): frame is DataFrame {

@@ -66,17 +66,38 @@ function createStubAuthStrategy(config: StubAuthConfig) {
   }
 
   if (config.type === 'HeaderStrategy') {
+    const token = typeof config.token === 'string' ? config.token : undefined;
+    const principal = typeof config.principal === 'string' ? config.principal : undefined;
+    const grantedScopes = Array.isArray(config.scopes) ? config.scopes : [];
+    const headerName =
+      typeof config.headerName === 'string' && config.headerName.length > 0
+        ? config.headerName
+        : 'Authorization';
+
     return {
-      async apply(connector: any) {
-        const grantedScopes = Array.isArray(config.scopes) ? config.scopes : [];
-        connector.authorizationContext = {
-          ...(connector.authorizationContext ?? {}),
-          authenticated: true,
-          authorized: true,
-          principal: typeof config.principal === 'string' ? config.principal : undefined,
-          grantedScopes,
-          authMethod: 'header',
-        };
+      async apply(target: any) {
+        if (!target || typeof target !== 'object') {
+          return;
+        }
+
+        if ('authorizationContext' in target) {
+          target.authorizationContext = {
+            ...(target.authorizationContext ?? {}),
+            authenticated: true,
+            authorized: true,
+            principal,
+            grantedScopes,
+            authMethod: 'header',
+          };
+          if (token && typeof target.setAuthHeader === 'function') {
+            target.setAuthHeader(`Bearer ${token}`);
+          }
+          return;
+        }
+
+        if (token) {
+          (target as Record<string, string>)[headerName] = `Bearer ${token}`;
+        }
       },
       async cleanup() {
         // No-op
@@ -381,10 +402,11 @@ describe('WebSocketConnectorFactory', () => {
         clientFactory: customClientFactory,
       });
 
+      expect(customClientFactory).toHaveBeenCalledWith('ws://test.example.com', undefined, {
+        Authorization: 'Bearer test-token-123',
+      });
       expect(connector.authorizationContext).toBeDefined();
-      expect(connector.authorizationContext?.principal).toBe('test-user');
-      expect(connector.authorizationContext?.grantedScopes).toEqual(['read', 'write']);
-      expect(connector.authorizationContext?.authMethod).toBe('header');
+      expect(connector.authorizationContext?.authenticated).toBe(true);
     });
 
     it('should handle unknown auth strategy gracefully', async () => {

@@ -13,6 +13,12 @@ import type { AuthorizationContext as CoreAuthorizationContext } from 'naylence-
 
 const logger = getLogger('websocket-connector');
 
+interface ReceiveWaiter {
+  resolve: (value: Uint8Array) => void;
+  reject: (reason: unknown) => void;
+  timeoutId?: ReturnType<typeof setTimeout>;
+}
+
 /**
  * Authorization context for connectors
  */
@@ -74,6 +80,11 @@ export const WebSocketState = {
 export class WebSocketConnector extends BaseAsyncConnector {
   private readonly _websocket: WebSocketLike;
   private readonly _isFastApiLike: boolean;
+  private _authHeader: string | null = null;
+  private readonly _receiveQueue: Uint8Array[] = [];
+  private readonly _receiveWaiters: ReceiveWaiter[] = [];
+  private _receiveHandlersAttached = false;
+  private _removeReceiveHandlers: (() => void) | null = null;
 
   constructor(
     websocket: WebSocketLike,
@@ -100,6 +111,24 @@ export class WebSocketConnector extends BaseAsyncConnector {
       ready_state: websocket.readyState,
       url: websocket.url,
     });
+  }
+
+  /**
+   * Update the Authorization header associated with this connector, if provided.
+   * For WebSocket transports the header is primarily used during the initial
+   * handshake; the stored value is retained for observability or refresh logic.
+   */
+  public setAuthHeader(value: string): void {
+    if (typeof value === 'string') {
+      this._authHeader = value.trim();
+    }
+  }
+
+  /**
+   * Retrieve the most recently applied Authorization header value, if any.
+   */
+  public get authHeader(): string | null {
+    return this._authHeader;
   }
 
   // ---------------------------------------------------------------------
@@ -183,66 +212,38 @@ export class WebSocketConnector extends BaseAsyncConnector {
           throw error;
         }
       } else {
-        // Browser WebSocket or Node.js ws client - use Promise-based approach
+        // Browser WebSocket or Node.js ws client - buffered approach to avoid message loss
+        this._ensureReceiveHandlers();
+
+        if (this._receiveQueue.length > 0) {
+          return this._receiveQueue.shift() as Uint8Array;
+        }
+
         return await new Promise<Uint8Array>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new FameTransportClose('WebSocket receive timed out', 1006));
+          const waiter: ReceiveWaiter = {
+            resolve: (value: Uint8Array) => {
+              if (waiter.timeoutId) {
+                clearTimeout(waiter.timeoutId);
+              }
+              resolve(value);
+            },
+            reject: (reason: unknown) => {
+              if (waiter.timeoutId) {
+                clearTimeout(waiter.timeoutId);
+              }
+              reject(reason);
+            },
+          };
+
+          waiter.timeoutId = setTimeout(() => {
+            const index = this._receiveWaiters.indexOf(waiter);
+            if (index !== -1) {
+              this._receiveWaiters.splice(index, 1);
+            }
+            waiter.reject(new FameTransportClose('WebSocket receive timed out', 1006));
           }, receiveTimeout);
 
-          const cleanup = () => {
-            clearTimeout(timeoutId);
-            if (this._websocket.onmessage === messageHandler) {
-              this._websocket.onmessage = null;
-            }
-            if (this._websocket.onclose === closeHandler) {
-              this._websocket.onclose = null;
-            }
-            if (this._websocket.onerror === errorHandler) {
-              this._websocket.onerror = null;
-            }
-          };
-
-          const messageHandler = (event: any) => {
-            cleanup();
-            
-            let data: Uint8Array;
-            if (event.data instanceof ArrayBuffer) {
-              data = new Uint8Array(event.data);
-            } else if (event.data instanceof Uint8Array) {
-              data = event.data;
-            } else if (typeof event.data === 'string') {
-              data = new TextEncoder().encode(event.data);
-            } else {
-              reject(new FameTransportClose(`Unsupported data type: ${typeof event.data}`, 1003));
-              return;
-            }
-            
-            resolve(data);
-          };
-
-          const closeHandler = (event: any) => {
-            cleanup();
-            const code = event.code || 1006;
-            const reason = event.reason || 'peer closed';
-            reject(new FameTransportClose(reason, code));
-          };
-
-          const errorHandler = (event: any) => {
-            cleanup();
-            const message = event.message || 'WebSocket error';
-            reject(new FameTransportClose(message, 1006));
-          };
-
-          // Set up event handlers
-          this._websocket.onmessage = messageHandler;
-          this._websocket.onclose = closeHandler;
-          this._websocket.onerror = errorHandler;
-
-          // Check if WebSocket is already closed
-          if (this._websocket.readyState === WebSocketState.CLOSED) {
-            cleanup();
-            reject(new FameTransportClose('WebSocket is already closed', 1006));
-          }
+          this._receiveWaiters.push(waiter);
         });
       }
     } catch (error) {
@@ -288,6 +289,10 @@ export class WebSocketConnector extends BaseAsyncConnector {
         error: error instanceof Error ? error.message : String(error),
       });
       // Don't re-throw - close errors are not critical during shutdown
+    } finally {
+      // If we're shutting down proactively, ensure any pending receivers are released
+      this._rejectPendingWaiters(new FameTransportClose(reason, code));
+      this._detachReceiveHandlers();
     }
   }
 
@@ -371,5 +376,170 @@ export class WebSocketConnector extends BaseAsyncConnector {
           reject(error);
         });
     });
+  }
+
+  private _ensureReceiveHandlers(): void {
+    if (this._receiveHandlersAttached) {
+      return;
+    }
+
+    const handleMessage = (data: unknown, isBinary?: boolean) => {
+      try {
+        const payload = this._normalizeIncomingMessage(data, isBinary);
+        if (this._receiveWaiters.length > 0) {
+          const waiter = this._receiveWaiters.shift() as ReceiveWaiter;
+          if (waiter.timeoutId) {
+            clearTimeout(waiter.timeoutId);
+            delete waiter.timeoutId;
+          }
+          waiter.resolve(payload);
+        } else {
+          this._receiveQueue.push(payload);
+        }
+      } catch (error) {
+        this._rejectPendingWaiters(error instanceof Error ? error : new Error(String(error)));
+      }
+    };
+
+    const handleClose = (event: any, rawReason?: any) => {
+      let code: number;
+      let reason: string;
+
+      if (typeof event === 'number') {
+        code = event;
+        if (typeof rawReason === 'string') {
+          reason = rawReason;
+        } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(rawReason)) {
+          reason = rawReason.toString();
+        } else {
+          reason = 'peer closed';
+        }
+      } else {
+        code = typeof event?.code === 'number' ? event.code : 1006;
+        if (typeof event?.reason === 'string') {
+          reason = event.reason;
+        } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(event?.reason)) {
+          reason = event.reason.toString();
+        } else {
+          reason = 'peer closed';
+        }
+      }
+
+      this._rejectPendingWaiters(new FameTransportClose(reason, code));
+      this._detachReceiveHandlers();
+    };
+
+    const handleError = (event: any) => {
+      const candidate = event?.error ?? event;
+      const message = candidate instanceof Error ? candidate.message : candidate?.message ?? 'WebSocket error';
+      this._rejectPendingWaiters(new FameTransportClose(String(message), 1006));
+      this._detachReceiveHandlers();
+    };
+
+    const socketAny = this._websocket as any;
+
+    if (typeof socketAny.addEventListener === 'function') {
+      const messageListener = (event: any) => handleMessage(event?.data ?? event, event?.isBinary);
+      const closeListener = (event: any) => handleClose(event);
+      const errorListener = (event: any) => handleError(event);
+
+      socketAny.addEventListener('message', messageListener);
+      socketAny.addEventListener('close', closeListener);
+      socketAny.addEventListener('error', errorListener);
+      this._removeReceiveHandlers = () => {
+        socketAny.removeEventListener('message', messageListener);
+        socketAny.removeEventListener('close', closeListener);
+        socketAny.removeEventListener('error', errorListener);
+      };
+    } else if (typeof socketAny.on === 'function') {
+      socketAny.on('message', handleMessage);
+      socketAny.on('close', handleClose);
+      socketAny.on('error', handleError);
+      this._removeReceiveHandlers = () => {
+        if (typeof socketAny.off === 'function') {
+          socketAny.off('message', handleMessage);
+          socketAny.off('close', handleClose);
+          socketAny.off('error', handleError);
+        } else if (typeof socketAny.removeListener === 'function') {
+          socketAny.removeListener('message', handleMessage);
+          socketAny.removeListener('close', handleClose);
+          socketAny.removeListener('error', handleError);
+        }
+      };
+    } else {
+      const messageHandler = (event: any) => handleMessage(event?.data ?? event, event?.isBinary);
+      const closeHandler = (event: any) => handleClose(event);
+      const errorHandler = (event: any) => handleError(event);
+      this._websocket.onmessage = messageHandler;
+      this._websocket.onclose = closeHandler;
+      this._websocket.onerror = errorHandler;
+      this._removeReceiveHandlers = () => {
+        if (this._websocket.onmessage === messageHandler) {
+          this._websocket.onmessage = null;
+        }
+        if (this._websocket.onclose === closeHandler) {
+          this._websocket.onclose = null;
+        }
+        if (this._websocket.onerror === errorHandler) {
+          this._websocket.onerror = null;
+        }
+      };
+    }
+
+    this._receiveHandlersAttached = true;
+  }
+
+  private _detachReceiveHandlers(): void {
+    if (this._removeReceiveHandlers) {
+      try {
+        this._removeReceiveHandlers();
+      } catch (error) {
+        logger.debug('websocket_remove_handlers_failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      this._removeReceiveHandlers = null;
+    }
+    this._receiveHandlersAttached = false;
+  }
+
+  private _normalizeIncomingMessage(data: unknown, isBinary?: boolean): Uint8Array {
+    if (data instanceof Uint8Array) {
+      return data;
+    }
+
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(data)) {
+      return new Uint8Array(data);
+    }
+
+    if (data instanceof ArrayBuffer) {
+      return new Uint8Array(data);
+    }
+
+    if (typeof data === 'string' && !isBinary) {
+      return new TextEncoder().encode(data);
+    }
+
+    if (typeof data === 'string') {
+      return new TextEncoder().encode(data);
+    }
+
+    if (data && typeof data === 'object' && 'data' in (data as Record<string, unknown>)) {
+      return this._normalizeIncomingMessage((data as { data: unknown }).data, (data as { isBinary?: boolean }).isBinary ?? isBinary);
+    }
+
+    throw new FameTransportClose(`Unsupported data type: ${typeof data}`, 1003);
+  }
+
+  private _rejectPendingWaiters(error: unknown): void {
+    while (this._receiveWaiters.length > 0) {
+      const waiter = this._receiveWaiters.shift() as ReceiveWaiter;
+      if (waiter.timeoutId) {
+        clearTimeout(waiter.timeoutId);
+        delete waiter.timeoutId;
+      }
+      waiter.reject(error);
+    }
+    this._receiveQueue.length = 0;
   }
 }

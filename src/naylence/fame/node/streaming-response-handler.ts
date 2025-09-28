@@ -198,6 +198,13 @@ export class StreamingResponseHandler {
       responseContext
     );
 
+    logger.debug('sending_streaming_rpc_response', {
+      request_id: requestId,
+      response_envelope_id: responseEnvelope.id,
+      reply_to: replyTo,
+      is_terminal: payload === null || payload === undefined,
+    });
+
     await this.deliverWrapper()(responseEnvelope, responseContext);
   }
 }

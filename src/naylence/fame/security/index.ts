@@ -96,3 +96,4 @@ export * from './credential/prompt-credential-provider.js';
 export * from './credential/secret-source.js';
 export * from './credential/secret-store-credential-provider.js';
 export * from './credential/static-credential-provider.js';
+export * from './node-security-profile-factory.js';

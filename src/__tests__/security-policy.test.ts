@@ -112,7 +112,9 @@ const SAMPLE_KEY = {
   x: 'AAAAAAAAAAAAAAAAAAAAAA',
 };
 
-function makeNodeStub(options: { physicalPath?: string; cryptoProvider?: Partial<NodeLike['cryptoProvider']> } = {}): NodeLike {
+function makeNodeStub(
+  options: { physicalPath?: string; cryptoProvider?: Partial<NodeLike['cryptoProvider']> } = {}
+): NodeLike {
   const physicalPath = options.physicalPath ?? '/node/path';
   const cryptoProvider = (options.cryptoProvider ?? {
     getJwks: () => ({ keys: [] }),
@@ -140,7 +142,7 @@ function makeNodeStub(options: { physicalPath?: string; cryptoProvider?: Partial
     removeEventListener: jest.fn(),
     start: jest.fn(async () => {}),
     stop: jest.fn(async () => {}),
-    bind: jest.fn(async () => ({} as any)),
+    bind: jest.fn(async () => ({}) as any),
     unbind: jest.fn(async () => {}),
     send: jest.fn(async () => null),
     listen: jest.fn(async () => '' as any),
@@ -992,7 +994,10 @@ describe('DefaultSecurityPolicy', () => {
         ],
       }),
     };
-    const node = makeNodeStub({ physicalPath: '/local/path', cryptoProvider: cryptoProvider as any });
+    const node = makeNodeStub({
+      physicalPath: '/local/path',
+      cryptoProvider: cryptoProvider as any,
+    });
 
     const result = await (
       policy as unknown as {
@@ -1013,7 +1018,10 @@ describe('DefaultSecurityPolicy', () => {
         keys: [{ use: 'enc', kty: 'OKP', crv: 'X25519', kid: 'bad-local' }],
       }),
     };
-    const node = makeNodeStub({ physicalPath: '/local/path', cryptoProvider: cryptoProvider as any });
+    const node = makeNodeStub({
+      physicalPath: '/local/path',
+      cryptoProvider: cryptoProvider as any,
+    });
 
     const result = await (
       policy as unknown as {
@@ -1047,7 +1055,10 @@ describe('DefaultSecurityPolicy', () => {
         ],
       }),
     };
-    const node = makeNodeStub({ physicalPath: '/local/path', cryptoProvider: cryptoProvider as any });
+    const node = makeNodeStub({
+      physicalPath: '/local/path',
+      cryptoProvider: cryptoProvider as any,
+    });
 
     const result = await (
       policy as unknown as {

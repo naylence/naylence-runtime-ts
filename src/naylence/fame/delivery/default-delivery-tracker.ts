@@ -1247,13 +1247,43 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
 
   /* istanbul ignore next -- async sweeper loop paths are not deterministic in unit tests */
   private async sweepFuturesLoop(signal?: AbortSignal): Promise<void> {
-    const shutdownToken = 'shutdown';
+    const shutdownToken = 'shutdown' as const;
+    const shutdownPromise = this.shutdownSignal.promise.then(() => shutdownToken);
 
     while (true) {
+      const delayController = new AbortController();
+      const externalAbortHandler = (): void => {
+        if (!delayController.signal.aborted) {
+          delayController.abort();
+        }
+      };
+
       try {
+        if (signal) {
+          if (signal.aborted) {
+            throw new TaskCancelledError('sweeper-aborted');
+          }
+          signal.addEventListener('abort', externalAbortHandler);
+        }
+
+        const waitForTick: Promise<typeof SWEEPER_TICK | typeof shutdownToken> = (async () => {
+          try {
+            await this.delay(
+              this.futSweepIntervalSecs * 1000,
+              delayController.signal
+            );
+            return SWEEPER_TICK;
+          } catch (error) {
+            if (error instanceof TaskCancelledError) {
+              return shutdownToken;
+            }
+            throw error;
+          }
+        })();
+
         const result = await Promise.race<symbol | typeof shutdownToken>([
-          this.shutdownSignal.promise.then(() => shutdownToken),
-          this.delay(this.futSweepIntervalSecs * 1000, signal).then(() => SWEEPER_TICK),
+          shutdownPromise,
+          waitForTick,
         ]);
 
         if (result !== SWEEPER_TICK) {
@@ -1326,6 +1356,13 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
         logger.error('tracker_sweeper_error', {
           error: error instanceof Error ? error.message : String(error),
         });
+      } finally {
+        if (signal) {
+          signal.removeEventListener('abort', externalAbortHandler);
+        }
+        if (!delayController.signal.aborted) {
+          delayController.abort();
+        }
       }
     }
   }
