@@ -1,4 +1,4 @@
-import type { JWTPayload, KeyLike } from "jose";
+import type { CryptoKey as JoseCryptoKey, JWTPayload, JWK, KeyObject } from "jose";
 import { getLogger } from "../../util/logging.js";
 import type { TokenIssuer } from "./token-issuer.js";
 
@@ -30,7 +30,7 @@ function isPkcs8Algorithm(algorithm: string): boolean {
   );
 }
 
-type SigningKey = KeyLike | Uint8Array;
+type SigningKey = JoseCryptoKey | KeyObject | JWK | Uint8Array;
 
 export interface JWTTokenIssuerOptions {
   signingKeyPem: string;

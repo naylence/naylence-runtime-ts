@@ -38,7 +38,7 @@ jest.mock("fastify", () => {
   return (...args: unknown[]) => {
     const instance = actual(...args);
     Object.defineProperty(instance, "version", {
-      value: "4.99.0",
+      value: actual.version ?? instance.version ?? "5.6.1",
       configurable: true,
     });
     return instance;

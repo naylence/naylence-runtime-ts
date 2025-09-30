@@ -1,4 +1,4 @@
-import type { JWTPayload, KeyLike } from "jose";
+import type { CryptoKey as JoseCryptoKey, JWTPayload, JWK, KeyObject } from "jose";
 import type { AuthorizationContext } from "naylence-core";
 import { getLogger } from "../../util/logging.js";
 import { TTL_NEVER_EXPIRES } from "../../constants/ttl-constants.js";
@@ -9,12 +9,12 @@ import { buildAuthorizationContext, extractScopesFromPayload } from "./jwt-autho
 
 const logger = getLogger("jwt-token-verifier");
 
-type SigningKey = KeyLike | Uint8Array;
+type SigningKey = JoseCryptoKey | KeyObject | JWK | Uint8Array;
 
 const DEFAULT_ALGORITHMS = ["EdDSA", "RS256", "HS256"] as const;
 
 interface JWTTokenVerifierOptions {
-  verificationKey: string | Uint8Array | KeyLike;
+  verificationKey: string | Uint8Array | JoseCryptoKey | KeyObject | JWK;
   issuer: string;
   ttlSec?: number;
   revokedCapacity?: number;

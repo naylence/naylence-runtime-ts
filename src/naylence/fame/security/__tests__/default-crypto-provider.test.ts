@@ -89,7 +89,9 @@ describe("DefaultCryptoProvider", () => {
 
   it("respects provided signing materials and key identifiers", async () => {
     const jose = await import("jose");
-    const { publicKey, privateKey } = await jose.generateKeyPair("Ed25519");
+    const { publicKey, privateKey } = await jose.generateKeyPair("Ed25519", {
+      extractable: true,
+    });
     const signaturePrivatePem = await jose.exportPKCS8(privateKey);
     const signaturePublicPem = await jose.exportSPKI(publicKey);
 
@@ -337,12 +339,16 @@ describe("DefaultCryptoProvider", () => {
     };
     const originalCrypto = globalWithCrypto.crypto;
     const deterministicBytes = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
-    const getRandomValues = jest.fn((buffer: Uint8Array) => {
-      buffer.set(deterministicBytes.subarray(0, buffer.length));
-      return buffer;
-    });
+    const { webcrypto } = await import("node:crypto");
+    const getRandomValues = jest
+      .spyOn(webcrypto, "getRandomValues")
+      .mockImplementation((typedArray: Parameters<typeof webcrypto.getRandomValues>[0]) => {
+        const view = new Uint8Array(typedArray.buffer, typedArray.byteOffset, typedArray.byteLength);
+        view.set(deterministicBytes.subarray(0, view.length));
+        return typedArray;
+      });
 
-    globalWithCrypto.crypto = { getRandomValues, subtle: {} as SubtleCrypto } as unknown as Crypto;
+    globalWithCrypto.crypto = webcrypto as unknown as Crypto;
 
     try {
       const provider = await DefaultCryptoProvider.create();
@@ -350,6 +356,7 @@ describe("DefaultCryptoProvider", () => {
       expect(hmacCall).toBeDefined();
       expect(provider.hmacSecret).toBe(Buffer.from(deterministicBytes).toString("base64"));
     } finally {
+      getRandomValues.mockRestore();
       if (originalCrypto === undefined) {
         Reflect.deleteProperty(globalWithCrypto, "crypto");
       } else {
@@ -364,7 +371,8 @@ describe("DefaultCryptoProvider", () => {
     };
     const hadCrypto = "crypto" in globalWithCrypto;
     const originalCrypto = globalWithCrypto.crypto;
-    const fallbackCrypto = { subtle: {} as SubtleCrypto } as Crypto;
+    const { webcrypto } = await import("node:crypto");
+    const fallbackCrypto = { subtle: webcrypto.subtle } as Crypto;
 
     try {
       globalWithCrypto.crypto = fallbackCrypto;

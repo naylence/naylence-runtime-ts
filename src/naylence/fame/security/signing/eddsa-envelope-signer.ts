@@ -1,5 +1,5 @@
-import { sync, utils as edUtils } from "@noble/ed25519";
-import { sha512 } from "@noble/hashes/sha512.js";
+import { hashes as edHashes, sign } from "@noble/ed25519";
+import { sha512 } from "@noble/hashes/sha2.js";
 import type { FameEnvelope, SecurityHeader, SignatureHeader } from "naylence-core";
 import { SigningMaterial } from "naylence-core";
 import { secureDigest, urlsafeBase64Encode } from "../../util/util.js";
@@ -12,13 +12,8 @@ interface CertificateCapableCryptoProvider extends CryptoProvider {
   nodeJwk?: () => Record<string, unknown> | null | undefined;
 }
 
-if (!edUtils.sha512Sync) {
-  edUtils.sha512Sync = (...messages: Uint8Array[]) => {
-    if (messages.length === 1) {
-      return sha512(messages[0]);
-    }
-    return sha512(edUtils.concatBytes(...messages));
-  };
+if (!edHashes.sha512) {
+  edHashes.sha512 = (message: Uint8Array) => sha512(message);
 }
 
 export interface EdDSAEnvelopeSignerOptions {
@@ -92,8 +87,8 @@ export class EdDSAEnvelopeSigner {
 
     tbs.set(digBytes, offset);
 
-    const privateKey = this.loadPrivateKey();
-    const signatureBytes = sync.sign(tbs, privateKey);
+  const privateKey = this.loadPrivateKey();
+  const signatureBytes = sign(tbs, privateKey);
     const signature = urlsafeBase64Encode(signatureBytes);
 
     const kid = this.determineKeyId();

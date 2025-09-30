@@ -1,4 +1,5 @@
 import * as ed25519 from "@noble/ed25519";
+import { sha512 } from "@noble/hashes/sha2.js";
 import { SigningMaterial } from "naylence-core";
 import type { FameEnvelope } from "naylence-core";
 import { secureDigest, urlsafeBase64Encode } from "../../util/util.js";
@@ -24,7 +25,11 @@ import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
 import type { KeyProvider } from "../keys/key-provider.js";
 import type { KeyRecord } from "../keys/key-store.js";
 
-const { sync, utils: edUtils } = ed25519;
+const edHashes = ed25519.hashes;
+
+if (!edHashes.sha512) {
+  edHashes.sha512 = (message: Uint8Array) => sha512(message);
+}
 
 const PRIVATE_KEY_BYTES = Uint8Array.from(
   Buffer.from("8f6c9a4b2d5e7f0182736455aa99bbccddee00112233445566778899aabbccdd", "hex")
@@ -34,7 +39,7 @@ const PRIVATE_KEY_PEM = (() => {
   const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
   return `-----BEGIN PRIVATE KEY-----\n${wrapped}\n-----END PRIVATE KEY-----`;
 })();
-const PUBLIC_KEY_BYTES = sync.getPublicKey(PRIVATE_KEY_BYTES);
+const PUBLIC_KEY_BYTES = ed25519.getPublicKey(PRIVATE_KEY_BYTES);
 const PUBLIC_KEY_B64 = urlsafeBase64Encode(PUBLIC_KEY_BYTES);
 
 const globalDefaults = globalThis as Record<string, unknown>;
@@ -422,11 +427,15 @@ describe("eddsa utility helpers", () => {
     expect(parsed.dataView).toEqual(parsed.view);
   });
 
-  it("provides SHA-512 sync hashing for single and multiple chunks", () => {
+  it("provides SHA-512 hashing for single and concatenated chunks", () => {
     const chunk = encodeUtf8("message");
-    expect(edUtils.sha512Sync).toBeDefined();
-    const digestSingle = edUtils.sha512Sync!(chunk);
-    const digestMulti = edUtils.sha512Sync!(chunk, chunk);
+    expect(edHashes.sha512).toBeDefined();
+    const hashFn = edHashes.sha512!;
+    const digestSingle = hashFn(chunk);
+    const combined = new Uint8Array(chunk.length * 2);
+    combined.set(chunk, 0);
+    combined.set(chunk, chunk.length);
+    const digestMulti = hashFn(combined);
     expect(digestSingle).toHaveLength(64);
     expect(digestMulti).toHaveLength(64);
   });
@@ -566,7 +575,7 @@ describe("EdDSA envelope signer and verifier integration", () => {
   });
 
   it("throws when signature verification fails despite correct length", async () => {
-    const verifySpy = jest.spyOn(ed25519, "verify").mockResolvedValue(false);
+  const verifySpy = jest.spyOn(ed25519, "verify").mockReturnValue(false);
 
     const cryptoProvider: CryptoProvider = {
       signingPrivatePem: PRIVATE_KEY_PEM,
@@ -735,17 +744,20 @@ describe("EdDSA envelope signer and verifier integration", () => {
     );
   });
 
-  it("registers a sha512Sync fallback when noble utils omit it", async () => {
-    const utilsRecord = edUtils as { sha512Sync?: typeof edUtils.sha512Sync };
-    const originalSha512 = utilsRecord.sha512Sync;
-    utilsRecord.sha512Sync = undefined;
+  it("registers a sha512 fallback when noble hashes omit it", async () => {
+    const hashesRecord = edHashes as {
+      sha512: ((message: Uint8Array) => Uint8Array) | undefined;
+    };
+    const originalSha512 = hashesRecord.sha512;
+    hashesRecord.sha512 = undefined;
 
-    jest.resetModules();
-    await import("../signing/eddsa-envelope-signer.js");
-    jest.resetModules();
+    await jest.isolateModulesAsync(async () => {
+      await import("../signing/eddsa-envelope-signer.js");
+      const isolatedModule = await import("@noble/ed25519");
+      expect(typeof isolatedModule.hashes.sha512).toBe("function");
+    });
 
-    expect(typeof utilsRecord.sha512Sync).toBe("function");
-    utilsRecord.sha512Sync = originalSha512;
+    hashesRecord.sha512 = originalSha512;
   });
 
   it("validates payload digests and logical checking branches", async () => {

@@ -8,7 +8,7 @@ export default {
     '**/?(*.)+(spec|test).ts'
   ],
   transform: {
-    '^.+\\.ts$': ['ts-jest', {
+      '^.+\\.[tj]s$': ['ts-jest', {
       useESM: true
     }],
   },
@@ -26,6 +26,9 @@ export default {
   ],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   extensionsToTreatAsEsm: ['.ts'],
+    transformIgnorePatterns: [
+      'node_modules/(?!(jose|@noble/ciphers|@noble/curves|@noble/ed25519|@noble/hashes)/)'
+    ],
   setupFiles: ['<rootDir>/test/setup-crypto.ts', '<rootDir>/test/setup-idb.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1'

@@ -21,6 +21,8 @@ export interface CapabilityAwareRoutingPolicyConfig extends RoutingPolicyConfig 
 
 export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
   public readonly type = "CapabilityAwareRoutingPolicy";
+  public readonly isDefault = true;
+  public readonly priority = 50;
 
   public async create(
     config?: CapabilityAwareRoutingPolicyConfig | Record<string, unknown> | null,

@@ -1,5 +1,5 @@
-import { randomBytes } from "@noble/hashes/utils";
-import { x25519 } from "@noble/curves/ed25519";
+import { randomBytes } from "@noble/hashes/utils.js";
+import { x25519 } from "@noble/curves/ed25519.js";
 
 import {
   SEALED_ENVELOPE_NONCE_LENGTH,
@@ -14,7 +14,7 @@ import {
 const TEST_MESSAGE = new TextEncoder().encode("overlay security test payload");
 
 function createKeyPair() {
-  const privateKey = x25519.utils.randomPrivateKey();
+  const privateKey = x25519.utils.randomSecretKey();
   const publicKey = x25519.scalarMultBase(privateKey);
   return { privateKey, publicKey };
 }
