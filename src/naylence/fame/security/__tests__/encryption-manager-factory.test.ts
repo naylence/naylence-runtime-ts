@@ -10,15 +10,19 @@ import * as FactoryRegistry from "naylence-factory";
 
 import {
   ENCRYPTION_MANAGER_FACTORY_BASE_TYPE,
-  FIXED_PREFIX_LEN,
   EncryptionManagerFactory,
-  EncryptionResult,
-  EncryptionStatus,
   type CreateEncryptionManagerOptions,
   type EncryptionFactoryDependencies,
-  type EncryptionManager,
   type EncryptionManagerConfig,
+} from "../encryption/encryption-manager-factory.js";
+import {
+  FIXED_PREFIX_LEN,
+  EncryptionResult,
+  EncryptionStatus,
+  type EncryptionManager,
 } from "../encryption/encryption-manager.js";
+import { NoopEncryptionManager } from "../encryption/noop-encryption-manager.js";
+import { NoopSecureChannelManager } from "../encryption/noop-secure-channel-manager.js";
 import {
   SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE,
   SecureChannelManagerFactory,
@@ -58,12 +62,10 @@ describe("Encryption manager primitives", () => {
   });
 });
 
-describe("EncryptionManagerFactory without registrations", () => {
-  it("returns null when no default factory is registered and config is undefined", async () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+describe("EncryptionManagerFactory default registration", () => {
+  it("returns a noop encryption manager when config is undefined", async () => {
     const manager = await EncryptionManagerFactory.createEncryptionManager(null);
-    warnSpy.mockRestore();
-    expect(manager).toBeNull();
+    expect(manager).toBeInstanceOf(NoopEncryptionManager);
   });
 
   it("returns null when createResource yields no instance", async () => {
@@ -74,6 +76,18 @@ describe("EncryptionManagerFactory without registrations", () => {
     });
     expect(manager).toBeNull();
     resourceSpy.mockRestore();
+  });
+});
+
+describe("NoopEncryptionManager", () => {
+  it("skips encryption and leaves envelope untouched", async () => {
+    const envelope = { frame: { type: "DataFrame" } } as unknown as FameEnvelope;
+    const manager = new NoopEncryptionManager();
+
+    const result = await manager.encryptEnvelope(envelope);
+
+    expect(result).toEqual({ status: EncryptionStatus.SKIPPED, envelope });
+    await expect(manager.decryptEnvelope(envelope)).resolves.toBe(envelope);
   });
 });
 
@@ -219,12 +233,10 @@ describe("EncryptionManagerFactory with registered factory", () => {
   });
 });
 
-describe("SecureChannelManagerFactory without registrations", () => {
-  it("returns null when no default manager is registered", async () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    const manager = await SecureChannelManagerFactory.createSecureChannelManager(null);
-    warnSpy.mockRestore();
-    expect(manager).toBeNull();
+describe("SecureChannelManagerFactory default registration", () => {
+  it("returns a noop secure channel manager when config is omitted", async () => {
+    const manager = await SecureChannelManagerFactory.createSecureChannelManager();
+    expect(manager).toBeInstanceOf(NoopSecureChannelManager);
   });
 
   it("returns null when createResource yields no instance", async () => {
@@ -309,6 +321,7 @@ describe("SecureChannelManagerFactory with registered factory", () => {
 
     public readonly type = "TestSecureChannelManager";
     public readonly isDefault = true;
+    public override readonly priority = 1;
 
     public async create(
       config?: TestSecureChannelConfig | Record<string, unknown> | null,
@@ -352,5 +365,47 @@ describe("SecureChannelManagerFactory with registered factory", () => {
       {} satisfies CreateSecureChannelManagerOptions
     );
     expect(manager).toBeInstanceOf(TestSecureChannelManager);
+  });
+});
+
+describe("NoopSecureChannelManager", () => {
+  it("provides placeholder handshake frames", async () => {
+    const manager = new NoopSecureChannelManager();
+    const openFrame = manager.generateOpenFrame("noop-channel");
+
+    expect(openFrame).toEqual({
+      type: "SecureOpen",
+      cid: "noop-channel",
+      ephPub: ZERO_KEY_BASE64,
+      alg: "none",
+      opts: 0,
+    });
+
+    const acceptFrame = await manager.handleOpenFrame({
+      type: "SecureOpen",
+      cid: "noop-channel",
+      ephPub: ZERO_KEY_BASE64,
+      alg: "CHACHA20P1305",
+      opts: 0,
+    });
+
+    expect(acceptFrame).toEqual({
+      type: "SecureAccept",
+      cid: "noop-channel",
+      ok: false,
+      reason: "secure_channel_manager_disabled",
+      ephPub: ZERO_KEY_BASE64,
+      alg: "CHACHA20P1305",
+    });
+  });
+
+  it("does not track channels or encryption state", () => {
+    const manager = new NoopSecureChannelManager();
+    expect(manager.channels).toEqual({});
+    expect(manager.isChannelEncrypted({ type: "Data", payload: {} })).toBe(false);
+    expect(manager.hasChannel("noop-channel")).toBe(false);
+    expect(manager.getChannelInfo("noop-channel")).toBeNull();
+    expect(manager.cleanupExpiredChannels()).toBe(0);
+    expect(manager.removeChannel("noop-channel")).toBe(false);
   });
 });

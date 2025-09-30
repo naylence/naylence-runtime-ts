@@ -6,6 +6,7 @@ import {
   DEFAULT_REVERSE_AUTH_TTL_SEC,
 } from "../../constants/ttl-constants.js";
 import { getLogger } from "../../util/logging.js";
+import { safeImport } from "../../util/lazy-import.js";
 import { validateOAuth2TtlSec } from "../../util/ttl-validation.js";
 import type { Authorizer } from "./authorizer.js";
 import {
@@ -17,9 +18,23 @@ import type { TokenIssuer } from "./token-issuer.js";
 import { TokenIssuerFactory, type TokenIssuerConfig } from "./token-issuer-factory.js";
 import { TokenVerifierFactory, type TokenVerifierConfig } from "./token-verifier-factory.js";
 import type { JWKSJWTTokenVerifierConfig } from "./jwks-jwt-token-verifier-factory.js";
-import { OAuth2Authorizer, type OAuth2AuthorizerOptions } from "./oauth2-authorizer.js";
+import type { OAuth2AuthorizerOptions } from "./oauth2-authorizer.js";
 
 const logger = getLogger("oauth2-authorizer-factory");
+
+type OAuth2AuthorizerModule = typeof import("./oauth2-authorizer.js");
+
+let oauth2AuthorizerModulePromise: Promise<OAuth2AuthorizerModule> | null = null;
+function getOAuth2AuthorizerModule(): Promise<OAuth2AuthorizerModule> {
+  if (!oauth2AuthorizerModulePromise) {
+    oauth2AuthorizerModulePromise = safeImport(
+      () => import("./oauth2-authorizer.js"),
+      "oauth2-authorizer"
+    );
+  }
+
+  return oauth2AuthorizerModulePromise;
+}
 
 export interface OAuth2AuthorizerConfig extends AuthorizerConfig {
   type: "OAuth2Authorizer";
@@ -105,6 +120,8 @@ export class OAuth2AuthorizerFactory extends AuthorizerFactory<OAuth2AuthorizerC
     if (normalized.audience) {
       authorizerOptions.audience = normalized.audience;
     }
+
+    const { OAuth2Authorizer } = await getOAuth2AuthorizerModule();
 
     return new OAuth2Authorizer(authorizerOptions);
   }

@@ -20,11 +20,13 @@ export * from "./server/index.js";
 // Placement
 export {
   NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
-  NodePlacementStrategyFactory,
-  type NodePlacementStrategy,
-  type PlacementDecision,
-  type NodePlacementConfig,
   registerNodePlacementStrategyFactory,
+} from "./placement/node-placement-strategy.js";
+export type {
+  NodePlacementStrategyFactory,
+  NodePlacementStrategy,
+  PlacementDecision,
+  NodePlacementConfig,
 } from "./placement/node-placement-strategy.js";
 
 export {
@@ -32,9 +34,9 @@ export {
   type StaticNodePlacementStrategyOptions,
 } from "./placement/static-node-placement-strategy.js";
 
-export {
+export type {
   StaticNodePlacementStrategyFactory,
-  type StaticNodePlacementConfig,
+  StaticNodePlacementConfig,
 } from "./placement/static-node-placement-strategy-factory.js";
 
 export {
@@ -42,22 +44,24 @@ export {
   type WebSocketPlacementStrategyOptions,
 } from "./placement/websocket-node-placement-strategy.js";
 
-export {
+export type {
   WebSocketPlacementStrategyFactory,
-  type WebSocketPlacementConfig,
+  WebSocketPlacementConfig,
 } from "./placement/websocket-node-placement-strategy-factory.js";
 
 // Transport
-export {
-  TRANSPORT_PROVISIONER_FACTORY_BASE_TYPE,
+export { TRANSPORT_PROVISIONER_FACTORY_BASE_TYPE } from "./transport/transport-provisioner.js";
+export type {
   TransportProvisionerFactory,
-  type TransportProvisioner,
-  type TransportProvisionerConfig,
-  type TransportProvisionResult,
+  TransportProvisioner,
+  TransportProvisionerConfig,
+  TransportProvisionResult,
 } from "./transport/transport-provisioner.js";
 
 export {
   WebSocketTransportProvisioner,
+} from "./transport/websocket-transport-provisioner.js";
+export type {
   WebSocketTransportProvisionerFactory,
-  type WebSocketTransportProvisionerConfig,
+  WebSocketTransportProvisionerConfig,
 } from "./transport/websocket-transport-provisioner.js";

@@ -1,5 +1,6 @@
 import { registerFactory } from "naylence-factory";
 import { DEFAULT_JWKS_CACHE_TTL_SEC } from "../../constants/ttl-constants.js";
+import { safeImport } from "../../util/lazy-import.js";
 import { validateCacheTtlSec } from "../../util/ttl-validation.js";
 import type { TokenVerifier } from "./token-verifier.js";
 import {
@@ -7,7 +8,19 @@ import {
   TokenVerifierFactory,
   type TokenVerifierConfig,
 } from "./token-verifier-factory.js";
-import { JWKSJWTTokenVerifier } from "./jwks-jwt-token-verifier.js";
+type JWKSJWTTokenVerifierModule = typeof import("./jwks-jwt-token-verifier.js");
+
+let jwksJwtTokenVerifierModulePromise: Promise<JWKSJWTTokenVerifierModule> | null = null;
+function getJwksJwtTokenVerifierModule(): Promise<JWKSJWTTokenVerifierModule> {
+  if (!jwksJwtTokenVerifierModulePromise) {
+    jwksJwtTokenVerifierModulePromise = safeImport(
+      () => import("./jwks-jwt-token-verifier.js"),
+      "jwks-jwt-token-verifier"
+    );
+  }
+
+  return jwksJwtTokenVerifierModulePromise;
+}
 
 export interface JWKSJWTTokenVerifierConfig extends TokenVerifierConfig {
   type: "JWKSJWTTokenVerifier";
@@ -41,6 +54,8 @@ export class JWKSTokenVerifierFactory extends TokenVerifierFactory<JWKSJWTTokenV
     const cacheTtlCandidate = validateCacheTtlSec(normalized.cacheTtlSec);
     const cacheTtlSec =
       typeof cacheTtlCandidate === "number" ? cacheTtlCandidate : normalized.cacheTtlSec;
+
+    const { JWKSJWTTokenVerifier } = await getJwksJwtTokenVerifierModule();
 
     return new JWKSJWTTokenVerifier({
       issuer: normalized.issuer,

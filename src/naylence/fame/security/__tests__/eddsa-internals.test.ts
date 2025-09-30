@@ -943,7 +943,10 @@ describe("EdDSA factories", () => {
     const verifier = await factory.create(null, keyProvider, null, {
       signingConfig: new SigningConfig({ signingMaterial: SigningMaterial.RAW_KEY }),
     });
-    expect(verifier).toBeInstanceOf(EdDSAEnvelopeVerifier);
+    const { EdDSAEnvelopeVerifier: DynamicVerifier } = await import(
+      "../signing/eddsa-envelope-verifier.js"
+    );
+    expect(verifier).toBeInstanceOf(DynamicVerifier);
   });
 
   it("propagates signingConfig argument to verifier instances", async () => {

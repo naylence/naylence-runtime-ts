@@ -1,5 +1,6 @@
 import { registerFactory } from "naylence-factory";
 
+import { safeImport } from "../../util/lazy-import.js";
 import type { CredentialProvider } from "../credential/credential-provider.js";
 import {
   CredentialProviderFactory,
@@ -12,10 +13,7 @@ import {
   TokenVerifierFactory,
   type TokenVerifierConfig,
 } from "./token-verifier-factory.js";
-import {
-  SharedSecretTokenVerifier,
-  type SharedSecretTokenVerifierOptions,
-} from "./shared-secret-token-verifier.js";
+import type { SharedSecretTokenVerifierOptions } from "./shared-secret-token-verifier.js";
 
 export interface SharedSecretTokenVerifierConfig extends TokenVerifierConfig {
   type: "SharedSecretTokenVerifier";
@@ -26,6 +24,21 @@ export interface SharedSecretTokenVerifierConfig extends TokenVerifierConfig {
 interface NormalizedSharedSecretVerifierConfig {
   secretConfig: CredentialProviderConfig | Record<string, unknown>;
   principal?: string;
+}
+
+type SharedSecretTokenVerifierModule = typeof import("./shared-secret-token-verifier.js");
+
+let sharedSecretTokenVerifierModulePromise: Promise<SharedSecretTokenVerifierModule> | null = null;
+
+async function getSharedSecretTokenVerifierModule(): Promise<SharedSecretTokenVerifierModule> {
+  if (!sharedSecretTokenVerifierModulePromise) {
+    sharedSecretTokenVerifierModulePromise = safeImport(
+      () => import("./shared-secret-token-verifier.js"),
+      "shared-secret-token-verifier"
+    );
+  }
+
+  return sharedSecretTokenVerifierModulePromise;
 }
 
 function normalizeConfig(
@@ -63,6 +76,8 @@ export class SharedSecretTokenVerifierFactory extends TokenVerifierFactory<Share
     if (normalized.principal) {
       options.principal = normalized.principal;
     }
+
+    const { SharedSecretTokenVerifier } = await getSharedSecretTokenVerifierModule();
 
     return new SharedSecretTokenVerifier(options);
   }

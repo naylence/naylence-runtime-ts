@@ -5,7 +5,7 @@ import { NoopTokenVerifier } from "./auth/noop-token-verifier.js";
 import type { CertificateManager } from "./cert/certificate-manager.js";
 import { CertificateManagerFactory } from "./cert/certificate-manager-factory.js";
 import type { EncryptionManager } from "./encryption/encryption-manager.js";
-import { EncryptionManagerFactory } from "./encryption/encryption-manager.js";
+import { EncryptionManagerFactory } from "./encryption/encryption-manager-factory.js";
 import type { SecureChannelManager } from "./encryption/secure-channel-manager.js";
 import { SecureChannelManagerFactory } from "./encryption/secure-channel-manager-factory.js";
 import type { AttachmentKeyValidator } from "./keys/attachment-key-validator.js";

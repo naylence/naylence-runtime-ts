@@ -1,16 +1,15 @@
 import { registerFactory } from "naylence-factory";
 
-import { DefaultHttpServer } from "./default-http-server.js";
 import {
   TransportListenerFactory,
   TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
 } from "./transport-listener-factory.js";
 import type { TransportListener } from "./transport-listener.js";
 import type { TransportListenerConfig } from "./transport-listener-config.js";
-import { HttpListener } from "./http-listener.js";
 import type { HttpServer } from "./http-server.js";
 import type { Authorizer } from "../security/auth/authorizer.js";
 import { AuthorizerFactory } from "../security/auth/authorizer-factory.js";
+import { safeImport } from "../util/lazy-import.js";
 
 export interface HttpListenerFactoryConfig extends TransportListenerConfig {
   type: "HttpListener";
@@ -22,6 +21,31 @@ export interface HttpListenerFactoryConfig extends TransportListenerConfig {
 export interface CreateHttpListenerOptions {
   httpServer?: HttpServer;
   authorizer?: Authorizer;
+}
+
+type DefaultHttpServerModule = typeof import("./default-http-server.js");
+type HttpListenerModule = typeof import("./http-listener.js");
+
+let defaultHttpServerModulePromise: Promise<DefaultHttpServerModule> | null = null;
+function getDefaultHttpServerModule(): Promise<DefaultHttpServerModule> {
+  if (!defaultHttpServerModulePromise) {
+    defaultHttpServerModulePromise = safeImport(
+      () => import("./default-http-server.js"),
+      "@fastify/websocket"
+    );
+  }
+  return defaultHttpServerModulePromise;
+}
+
+let httpListenerModulePromise: Promise<HttpListenerModule> | null = null;
+function getHttpListenerModule(): Promise<HttpListenerModule> {
+  if (!httpListenerModulePromise) {
+    httpListenerModulePromise = safeImport(
+      () => import("./http-listener.js"),
+      "fastify"
+    );
+  }
+  return httpListenerModulePromise;
 }
 
 function normalizeConfig(
@@ -64,9 +88,9 @@ export class HttpListenerFactory extends TransportListenerFactory<HttpListenerFa
 
     const options = (factoryArgs[0] ?? null) as CreateHttpListenerOptions | null;
 
-    const httpServer =
-      options?.httpServer ??
-      (await DefaultHttpServer.getOrCreate({ host: normalized.host, port: normalized.port }));
+    const { HttpListener } = await getHttpListenerModule();
+
+    const httpServer = options?.httpServer ?? (await this._createDefaultHttpServer(normalized));
 
     let authorizer = options?.authorizer ?? null;
     if (!authorizer && normalized.authorizer) {
@@ -79,6 +103,16 @@ export class HttpListenerFactory extends TransportListenerFactory<HttpListenerFa
     return new HttpListener({
       httpServer,
       ...(authorizer ? { authorizer } : {}),
+    });
+  }
+
+  private async _createDefaultHttpServer(
+    normalized: Required<Pick<HttpListenerFactoryConfig, "host" | "port">>
+  ): Promise<HttpServer> {
+    const { DefaultHttpServer } = await getDefaultHttpServerModule();
+    return await DefaultHttpServer.getOrCreate({
+      host: normalized.host,
+      port: normalized.port,
     });
   }
 }

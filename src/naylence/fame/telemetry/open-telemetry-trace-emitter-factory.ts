@@ -5,8 +5,8 @@ import {
   AuthInjectionStrategyFactory,
   type AuthInjectionStrategyConfig,
 } from "../security/auth/auth-injection-strategy-factory.js";
-import { OpenTelemetryTraceEmitter } from "./open-telemetry-trace-emitter.js";
 import { setupOtel } from "./otel-setup.js";
+import { safeImport } from "../util/lazy-import.js";
 import type { TraceEmitter } from "./trace-emitter.js";
 import type { TraceEmitterConfig } from "./trace-emitter-config.js";
 import { TRACE_EMITTER_FACTORY_BASE_TYPE, TraceEmitterFactory } from "./trace-emitter-factory.js";
@@ -33,6 +33,24 @@ interface NormalizedOpenTelemetryTraceEmitterConfig {
 interface OpenTelemetryTraceEmitterFactoryOptions {
   tracer?: Tracer;
   headers?: Record<string, string>;
+}
+
+type OpenTelemetryTraceEmitterModule = typeof import("./open-telemetry-trace-emitter.js");
+
+let openTelemetryTraceEmitterModulePromise: Promise<OpenTelemetryTraceEmitterModule> | null = null;
+
+function getOpenTelemetryTraceEmitterModule(): Promise<OpenTelemetryTraceEmitterModule> {
+  if (!openTelemetryTraceEmitterModulePromise) {
+    openTelemetryTraceEmitterModulePromise = safeImport(
+      () => import("./open-telemetry-trace-emitter.js"),
+      "@opentelemetry/api",
+      {
+        helpMessage:
+          "Missing optional OpenTelemetry dependency. Install @opentelemetry/api (and related packages) to enable trace emission.",
+      }
+    );
+  }
+  return openTelemetryTraceEmitterModulePromise;
 }
 
 export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTelemetryTraceEmitterConfig> {
@@ -64,6 +82,8 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
       sampler: normalized.sampler,
       headers: Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
     });
+
+    const { OpenTelemetryTraceEmitter } = await getOpenTelemetryTraceEmitterModule();
 
     const emitterOptions: { serviceName: string; tracer?: Tracer } = {
       serviceName: normalized.serviceName,

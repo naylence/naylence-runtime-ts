@@ -2,13 +2,13 @@ import { registerFactory } from "naylence-factory";
 import { DEFAULT_JWT_TOKEN_TTL_SEC } from "../../constants/ttl-constants.js";
 import { validateJwtTokenTtlSec } from "../../util/ttl-validation.js";
 import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
-import { JWTTokenIssuer } from "./jwt-token-issuer.js";
 import type { TokenIssuer } from "./token-issuer.js";
 import {
   TOKEN_ISSUER_FACTORY_BASE_TYPE,
   TokenIssuerFactory,
   type TokenIssuerConfig,
 } from "./token-issuer-factory.js";
+import { safeImport } from "../../util/lazy-import.js";
 
 interface StaticCredentialProviderConfig {
   type: "StaticCredentialProvider";
@@ -122,6 +122,8 @@ export class JWTTokenIssuerFactory extends TokenIssuerFactory<JWTTokenIssuerConf
       throw new Error("JWT token TTL validation failed to produce a numeric value");
     }
 
+    const { JWTTokenIssuer } = await getJwtTokenIssuerModule();
+
     return new JWTTokenIssuer({
       signingKeyPem: signingKey,
       kid,
@@ -131,6 +133,24 @@ export class JWTTokenIssuerFactory extends TokenIssuerFactory<JWTTokenIssuerConf
       ...(normalized.audience ? { audience: normalized.audience } : {}),
     });
   }
+}
+
+type JWTTokenIssuerModule = typeof import("./jwt-token-issuer.js");
+
+let jwtTokenIssuerModulePromise: Promise<JWTTokenIssuerModule> | null = null;
+
+function getJwtTokenIssuerModule(): Promise<JWTTokenIssuerModule> {
+  if (!jwtTokenIssuerModulePromise) {
+    jwtTokenIssuerModulePromise = safeImport(
+      () => import("./jwt-token-issuer.js"),
+      "jose",
+      {
+        helpMessage:
+          "Missing optional dependency \"jose\". Install it to enable JWT token issuance.",
+      }
+    );
+  }
+  return jwtTokenIssuerModulePromise;
 }
 
 function normalizeConfig(

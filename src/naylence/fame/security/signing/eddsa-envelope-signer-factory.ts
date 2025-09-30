@@ -1,11 +1,30 @@
 import { registerFactory } from "naylence-factory";
+import { safeImport } from "../../util/lazy-import.js";
 import type { EnvelopeSigner } from "./envelope-signer.js";
 import {
   ENVELOPE_SIGNER_FACTORY_BASE_TYPE,
   EnvelopeSignerFactory,
   type EnvelopeSignerConfig,
 } from "./envelope-signer.js";
-import { EdDSAEnvelopeSigner, type EdDSAEnvelopeSignerOptions } from "./eddsa-envelope-signer.js";
+import type { EdDSAEnvelopeSignerOptions } from "./eddsa-envelope-signer.js";
+
+type EdDSAEnvelopeSignerModule = typeof import("./eddsa-envelope-signer.js");
+
+let eddsaEnvelopeSignerModulePromise: Promise<EdDSAEnvelopeSignerModule> | null = null;
+async function getEdDSAEnvelopeSignerModule(): Promise<EdDSAEnvelopeSignerModule> {
+  if (!eddsaEnvelopeSignerModulePromise) {
+    eddsaEnvelopeSignerModulePromise = safeImport(
+      () => import("./eddsa-envelope-signer.js"),
+      {
+        dependencyName: "EdDSAEnvelopeSigner",
+        helpMessage:
+          "Missing optional signing dependencies. Install '@noble/ed25519' and '@noble/hashes' to enable EdDSA signing.",
+      }
+    );
+  }
+
+  return eddsaEnvelopeSignerModulePromise;
+}
 
 export interface EdDSAEnvelopeSignerConfig extends EnvelopeSignerConfig {
   type: "EdDSAEnvelopeSigner";
@@ -31,6 +50,8 @@ export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvel
     if (options?.keyId !== undefined) {
       resolved.keyId = options.keyId;
     }
+
+    const { EdDSAEnvelopeSigner } = await getEdDSAEnvelopeSignerModule();
 
     return new EdDSAEnvelopeSigner(resolved);
   }

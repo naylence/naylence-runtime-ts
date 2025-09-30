@@ -1,12 +1,12 @@
 import { registerFactory } from "naylence-factory";
 
+import { safeImport } from "../../util/lazy-import.js";
 import type { Authorizer } from "./authorizer.js";
 import {
   AUTHORIZER_FACTORY_BASE_TYPE,
   AuthorizerFactory,
   type AuthorizerConfig,
 } from "./authorizer-factory.js";
-import { DefaultAuthorizer } from "./default-authorizer.js";
 import type { TokenVerifier } from "./token-verifier.js";
 import { TokenVerifierFactory, type TokenVerifierConfig } from "./token-verifier-factory.js";
 
@@ -17,6 +17,21 @@ export interface DefaultAuthorizerConfig extends AuthorizerConfig {
 
 interface NormalizedDefaultAuthorizerConfig {
   verifier?: TokenVerifierConfig | Record<string, unknown> | null;
+}
+
+type DefaultAuthorizerModule = typeof import("./default-authorizer.js");
+
+let defaultAuthorizerModulePromise: Promise<DefaultAuthorizerModule> | null = null;
+
+async function getDefaultAuthorizerModule(): Promise<DefaultAuthorizerModule> {
+  if (!defaultAuthorizerModulePromise) {
+    defaultAuthorizerModulePromise = safeImport(
+      () => import("./default-authorizer.js"),
+      "default-authorizer"
+    );
+  }
+
+  return defaultAuthorizerModulePromise;
 }
 
 function normalizeConfig(
@@ -65,6 +80,8 @@ export class DefaultAuthorizerFactory extends AuthorizerFactory<DefaultAuthorize
     if (!tokenVerifier) {
       throw new Error("Failed to resolve token verifier for DefaultAuthorizer");
     }
+
+    const { DefaultAuthorizer } = await getDefaultAuthorizerModule();
 
     return new DefaultAuthorizer({ tokenVerifier });
   }

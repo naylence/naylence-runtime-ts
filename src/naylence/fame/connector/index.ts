@@ -1,5 +1,7 @@
 import { ExtensionManager as ConnectorExtensionManager } from "./connector-factory.js";
 import { WebSocketConnectorFactory } from "./websocket-connector-factory.js";
+import "./http-listener-factory.js";
+import "./websocket-listener-factory.js";
 
 ConnectorExtensionManager.register(WebSocketConnectorFactory);
 
@@ -37,15 +39,15 @@ export {
 } from "./websocket-connector.js";
 
 // WebSocket connector factory
-export {
+export type {
   WebSocketConnectorFactory,
   WebSocketConnectorFactoryConfig,
   CreateWebSocketConnectorOptions,
 } from "./websocket-connector-factory.js";
 
-export {
+export type {
   WebSocketListenerFactory,
-  type WebSocketListenerFactoryConfig,
+  WebSocketListenerFactoryConfig,
 } from "./websocket-listener-factory.js";
 
 // Flow controller
@@ -53,17 +55,15 @@ export { _NoopFlowController } from "./noop-flow-controller.js";
 
 // Transport listener
 export { TransportListener } from "./transport-listener.js";
-export {
-  TransportListenerFactory,
-  TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
-} from "./transport-listener-factory.js";
+export { TRANSPORT_LISTENER_FACTORY_BASE_TYPE } from "./transport-listener-factory.js";
+export type { TransportListenerFactory } from "./transport-listener-factory.js";
 export type { TransportListenerConfig } from "./transport-listener-config.js";
 export type { HttpServer, HttpRouter } from "./http-server.js";
 export { DefaultHttpServer } from "./default-http-server.js";
 export { WebSocketListener, getWebsocketListenerInstance } from "./websocket-listener.js";
 export { HttpListener, getHttpListenerInstance } from "./http-listener.js";
-export {
+export type {
   HttpListenerFactory,
-  type HttpListenerFactoryConfig,
-  type CreateHttpListenerOptions,
+  HttpListenerFactoryConfig,
+  CreateHttpListenerOptions,
 } from "./http-listener-factory.js";

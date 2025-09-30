@@ -1,5 +1,6 @@
 import { registerFactory } from "naylence-factory";
 
+import { safeImport } from "../../util/lazy-import.js";
 import type { CredentialProvider } from "../credential/credential-provider.js";
 import {
   CredentialProviderFactory,
@@ -12,7 +13,6 @@ import {
   TokenProviderFactory,
   type TokenProviderConfig,
 } from "./token-provider-factory.js";
-import { SharedSecretTokenProvider } from "./shared-secret-token-provider.js";
 
 export interface SharedSecretTokenProviderConfig extends TokenProviderConfig {
   type: "SharedSecretTokenProvider";
@@ -21,6 +21,21 @@ export interface SharedSecretTokenProviderConfig extends TokenProviderConfig {
 
 interface NormalizedSharedSecretConfig {
   secretConfig: CredentialProviderConfig | Record<string, unknown>;
+}
+
+type SharedSecretTokenProviderModule = typeof import("./shared-secret-token-provider.js");
+
+let sharedSecretTokenProviderModulePromise: Promise<SharedSecretTokenProviderModule> | null = null;
+
+async function getSharedSecretTokenProviderModule(): Promise<SharedSecretTokenProviderModule> {
+  if (!sharedSecretTokenProviderModulePromise) {
+    sharedSecretTokenProviderModulePromise = safeImport(
+      () => import("./shared-secret-token-provider.js"),
+      "shared-secret-token-provider"
+    );
+  }
+
+  return sharedSecretTokenProviderModulePromise;
 }
 
 function normalizeConfig(
@@ -48,6 +63,8 @@ export class SharedSecretTokenProviderFactory extends TokenProviderFactory<Share
     const credentialProvider = await CredentialProviderFactory.createCredentialProvider(
       normalized.secretConfig
     );
+
+    const { SharedSecretTokenProvider } = await getSharedSecretTokenProviderModule();
 
     return new SharedSecretTokenProvider(credentialProvider as CredentialProvider);
   }

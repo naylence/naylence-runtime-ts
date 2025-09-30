@@ -1,5 +1,6 @@
 import { registerFactory } from "naylence-factory";
 
+import { safeImport } from "../../util/lazy-import.js";
 import type { Authorizer } from "./authorizer.js";
 import {
   AUTHORIZER_FACTORY_BASE_TYPE,
@@ -11,7 +12,6 @@ import {
   type CredentialProviderConfig,
 } from "../credential/credential-provider-factory.js";
 import { normalizeSecretSource, type SecretSourceType } from "../credential/secret-source.js";
-import { SharedSecretAuthorizer } from "./shared-secret-authorizer.js";
 
 export interface SharedSecretAuthorizerConfig extends AuthorizerConfig {
   type: "SharedSecretAuthorizer";
@@ -20,6 +20,21 @@ export interface SharedSecretAuthorizerConfig extends AuthorizerConfig {
 
 interface NormalizedSharedSecretAuthorizerConfig {
   secretConfig: CredentialProviderConfig | Record<string, unknown>;
+}
+
+type SharedSecretAuthorizerModule = typeof import("./shared-secret-authorizer.js");
+
+let sharedSecretAuthorizerModulePromise: Promise<SharedSecretAuthorizerModule> | null = null;
+
+async function getSharedSecretAuthorizerModule(): Promise<SharedSecretAuthorizerModule> {
+  if (!sharedSecretAuthorizerModulePromise) {
+    sharedSecretAuthorizerModulePromise = safeImport(
+      () => import("./shared-secret-authorizer.js"),
+      "shared-secret-authorizer"
+    );
+  }
+
+  return sharedSecretAuthorizerModulePromise;
 }
 
 function normalizeConfig(
@@ -48,6 +63,8 @@ export class SharedSecretAuthorizerFactory extends AuthorizerFactory<SharedSecre
     const credentialProvider = await CredentialProviderFactory.createCredentialProvider(
       normalized.secretConfig
     );
+
+    const { SharedSecretAuthorizer } = await getSharedSecretAuthorizerModule();
 
     return new SharedSecretAuthorizer(credentialProvider);
   }

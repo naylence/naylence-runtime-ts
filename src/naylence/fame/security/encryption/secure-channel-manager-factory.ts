@@ -29,6 +29,8 @@ export abstract class SecureChannelManagerFactory<
     config?: C | Record<string, unknown> | null,
     options: CreateSecureChannelManagerOptions = {}
   ): Promise<SecureChannelManager | null> {
+    await import("./noop-secure-channel-manager-factory.js");
+
     const { factoryArgs, ...rest } = options;
     const creationOptions: CreateResourceOptions = {
       ...rest,

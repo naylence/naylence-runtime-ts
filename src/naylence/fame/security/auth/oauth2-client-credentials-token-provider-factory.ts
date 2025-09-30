@@ -5,16 +5,28 @@ import {
   type CredentialProviderConfig,
 } from "../credential/credential-provider-factory.js";
 import { normalizeSecretSource, type SecretSourceType } from "../credential/secret-source.js";
+import { safeImport } from "../../util/lazy-import.js";
 import type { TokenProvider } from "./token-provider.js";
 import {
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
   TokenProviderFactory,
   type TokenProviderConfig,
 } from "./token-provider-factory.js";
-import {
-  OAuth2ClientCredentialsTokenProvider,
-  type OAuth2ClientCredentialsTokenProviderOptions,
-} from "./oauth2-client-credentials-token-provider.js";
+import type { OAuth2ClientCredentialsTokenProviderOptions } from "./oauth2-client-credentials-token-provider.js";
+
+type OAuth2ClientCredentialsTokenProviderModule = typeof import("./oauth2-client-credentials-token-provider.js");
+
+let oauth2ClientCredentialsTokenProviderModulePromise: Promise<OAuth2ClientCredentialsTokenProviderModule> | null = null;
+async function getOAuth2ClientCredentialsTokenProviderModule(): Promise<OAuth2ClientCredentialsTokenProviderModule> {
+  if (!oauth2ClientCredentialsTokenProviderModulePromise) {
+    oauth2ClientCredentialsTokenProviderModulePromise = safeImport(
+      () => import("./oauth2-client-credentials-token-provider.js"),
+      "oauth2-client-credentials-token-provider"
+    );
+  }
+
+  return oauth2ClientCredentialsTokenProviderModulePromise;
+}
 
 export interface OAuth2ClientCredentialsTokenProviderConfig extends TokenProviderConfig {
   type: "OAuth2ClientCredentialsTokenProvider";
@@ -91,6 +103,9 @@ export class OAuth2ClientCredentialsTokenProviderFactory extends TokenProviderFa
     if (normalized.audience) {
       options.audience = normalized.audience;
     }
+
+    const { OAuth2ClientCredentialsTokenProvider } =
+      await getOAuth2ClientCredentialsTokenProviderModule();
 
     return new OAuth2ClientCredentialsTokenProvider(options);
   }

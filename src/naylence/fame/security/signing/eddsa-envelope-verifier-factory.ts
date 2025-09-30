@@ -1,4 +1,5 @@
 import { registerFactory } from "naylence-factory";
+import { safeImport } from "../../util/lazy-import.js";
 import type { EnvelopeVerifier } from "./envelope-verifier.js";
 import {
   ENVELOPE_VERIFIER_FACTORY_BASE_TYPE,
@@ -7,10 +8,25 @@ import {
 } from "./envelope-verifier.js";
 import type { KeyProvider } from "../keys/key-provider.js";
 import type { SigningConfig } from "./signing-config.js";
-import {
-  EdDSAEnvelopeVerifier,
-  type EdDSAEnvelopeVerifierOptions,
-} from "./eddsa-envelope-verifier.js";
+import type { EdDSAEnvelopeVerifierOptions } from "./eddsa-envelope-verifier.js";
+
+type EdDSAEnvelopeVerifierModule = typeof import("./eddsa-envelope-verifier.js");
+
+let eddsaEnvelopeVerifierModulePromise: Promise<EdDSAEnvelopeVerifierModule> | null = null;
+async function getEdDSAEnvelopeVerifierModule(): Promise<EdDSAEnvelopeVerifierModule> {
+  if (!eddsaEnvelopeVerifierModulePromise) {
+    eddsaEnvelopeVerifierModulePromise = safeImport(
+      () => import("./eddsa-envelope-verifier.js"),
+      {
+        dependencyName: "EdDSAEnvelopeVerifier",
+        helpMessage:
+          "Missing optional verification dependencies. Install '@noble/ed25519' and '@noble/hashes' to enable EdDSA verification.",
+      }
+    );
+  }
+
+  return eddsaEnvelopeVerifierModulePromise;
+}
 
 export interface EdDSAEnvelopeVerifierConfig extends EnvelopeVerifierConfig {
   type: "EdDSAEnvelopeVerifier";
@@ -34,6 +50,8 @@ export class EdDSAEnvelopeVerifierFactory extends EnvelopeVerifierFactory<EdDSAE
     const resolved: EdDSAEnvelopeVerifierOptions = {
       signingConfig: options.signingConfig ?? signingConfig ?? null,
     };
+
+    const { EdDSAEnvelopeVerifier } = await getEdDSAEnvelopeVerifierModule();
 
     return new EdDSAEnvelopeVerifier(provider, resolved);
   }

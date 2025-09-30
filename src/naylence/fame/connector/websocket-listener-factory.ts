@@ -6,10 +6,9 @@ import {
   TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
 } from "./transport-listener-factory.js";
 import type { TransportListenerConfig } from "./transport-listener-config.js";
-import { DefaultHttpServer } from "./default-http-server.js";
-import { WebSocketListener } from "./websocket-listener.js";
 import type { Authorizer } from "../security/auth/authorizer.js";
 import { AuthorizerFactory } from "../security/auth/authorizer-factory.js";
+import { safeImport } from "../util/lazy-import.js";
 
 export interface WebSocketListenerFactoryConfig extends TransportListenerConfig {
   type: "WebSocketListener";
@@ -19,6 +18,36 @@ export interface WebSocketListenerFactoryConfig extends TransportListenerConfig 
 }
 
 const ENV_WEBSOCKET_LISTENER_PORT = "FAME_WEBSOCKET_LISTENER_PORT";
+
+type DefaultHttpServerModule = typeof import("./default-http-server.js");
+type WebSocketListenerModule = typeof import("./websocket-listener.js");
+
+let defaultHttpServerModulePromise: Promise<DefaultHttpServerModule> | null = null;
+let webSocketListenerModulePromise: Promise<WebSocketListenerModule> | null = null;
+
+function getWebSocketListenerModule(): Promise<WebSocketListenerModule> {
+  if (!webSocketListenerModulePromise) {
+    webSocketListenerModulePromise = safeImport(
+      () => import("./websocket-listener.js"),
+      "websocket listener implementation",
+      {
+        helpMessage:
+          "Failed to load the WebSocket listener implementation. Install optional transport dependencies.",
+      }
+    );
+  }
+  return webSocketListenerModulePromise;
+}
+
+function getDefaultHttpServerModule(): Promise<DefaultHttpServerModule> {
+  if (!defaultHttpServerModulePromise) {
+    defaultHttpServerModulePromise = safeImport(
+      () => import("./default-http-server.js"),
+      "fastify/@fastify/websocket"
+    );
+  }
+  return defaultHttpServerModulePromise;
+}
 
 function normalizeConfig(
   config?: WebSocketListenerFactoryConfig | Record<string, unknown> | null
@@ -65,6 +94,11 @@ export class WebSocketListenerFactory extends TransportListenerFactory<WebSocket
     ...factoryArgs: unknown[]
   ): Promise<TransportListener> {
     const normalized = normalizeConfig(config);
+
+    const [{ WebSocketListener }, { DefaultHttpServer }] = await Promise.all([
+      getWebSocketListenerModule(),
+      getDefaultHttpServerModule(),
+    ]);
 
     const options = (factoryArgs[0] ?? null) as { authorizer?: Authorizer } | null;
     const providedAuthorizer = options?.authorizer ?? null;

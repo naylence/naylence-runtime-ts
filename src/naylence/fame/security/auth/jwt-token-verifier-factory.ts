@@ -2,13 +2,13 @@ import { registerFactory } from "naylence-factory";
 import { DEFAULT_JWT_TOKEN_TTL_SEC } from "../../constants/ttl-constants.js";
 import { validateJwtTokenTtlSec } from "../../util/ttl-validation.js";
 import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
-import { JWTTokenVerifier } from "./jwt-token-verifier.js";
 import type { TokenVerifier } from "./token-verifier.js";
 import {
   TOKEN_VERIFIER_FACTORY_BASE_TYPE,
   TokenVerifierFactory,
   type TokenVerifierConfig,
 } from "./token-verifier-factory.js";
+import { safeImport } from "../../util/lazy-import.js";
 
 interface StaticCredentialProviderConfig {
   type: "StaticCredentialProvider";
@@ -106,6 +106,8 @@ export class JWTTokenVerifierFactory extends TokenVerifierFactory<JWTTokenVerifi
     const ttl = validateJwtTokenTtlSec(normalized.ttlSec);
     const ttlSec = typeof ttl === "number" ? ttl : normalized.ttlSec;
 
+    const { JWTTokenVerifier } = await getJwtTokenVerifierModule();
+
     return new JWTTokenVerifier({
       verificationKey,
       issuer: normalized.issuer,
@@ -115,6 +117,24 @@ export class JWTTokenVerifierFactory extends TokenVerifierFactory<JWTTokenVerifi
       algorithms: normalized.algorithms,
     });
   }
+}
+
+type JWTTokenVerifierModule = typeof import("./jwt-token-verifier.js");
+
+let jwtTokenVerifierModulePromise: Promise<JWTTokenVerifierModule> | null = null;
+
+function getJwtTokenVerifierModule(): Promise<JWTTokenVerifierModule> {
+  if (!jwtTokenVerifierModulePromise) {
+    jwtTokenVerifierModulePromise = safeImport(
+      () => import("./jwt-token-verifier.js"),
+      "jose",
+      {
+        helpMessage:
+          "Missing optional dependency \"jose\". Install it to enable JWT token verification.",
+      }
+    );
+  }
+  return jwtTokenVerifierModulePromise;
 }
 
 function normalizeConfig(

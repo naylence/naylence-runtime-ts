@@ -45,7 +45,7 @@ import {
   getLogger,
   summarizeEnvelope,
 } from "../util/logging.js";
-import { TaskSpawner } from "../util/task-spawner.js";
+// import { TaskSpawner } from "../util/task-spawner.js";
 import { delay } from "../util/task-utils.js";
 import { AsyncEvent } from "../util/async-event.js";
 import type { ConnectorConfig } from "../connector/connector-config.js";
@@ -158,7 +158,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
   private readonly pendingBinds = new Map<string, Deferred<boolean>>();
   private readonly pendingLock = new AsyncLock();
-  private readonly lifecycleTasks = new TaskSpawner();
+
   private readonly peerSessionManagers = new Map<string, UpstreamSessionManager>();
 
   private upstreamConnectorRef: FameConnector | null = null;
@@ -270,7 +270,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
   async stop(): Promise<void> {
     await this.prepareToStop();
-    await this.lifecycleTasks.shutdownTasks({ cancelHanging: true }).catch(() => undefined);
+    // await this.lifecycleTasks.shutdownTasks({ cancelHanging: true }).catch(() => undefined);
 
     for (const manager of this.peerSessionManagers.values()) {
       await manager.stop().catch(() => undefined);
@@ -681,7 +681,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       const timeoutController = new AbortController();
       pendingEntry.cancelAttachTimeout = () => timeoutController.abort();
 
-      this.lifecycleTasks.spawn(
+      this.spawn(
         async (taskSignal) => {
           const combined = new AbortController();
           const abortHandler = () => combined.abort();

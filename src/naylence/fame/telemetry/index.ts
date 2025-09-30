@@ -1,11 +1,12 @@
 export * from "./trace-emitter.js";
 export * from "./trace-emitter-config.js";
-export * from "./trace-emitter-factory.js";
-export * from "./trace-emitter-profile-factory.js";
+export { TRACE_EMITTER_FACTORY_BASE_TYPE } from "./trace-emitter-factory.js";
+export type * from "./trace-emitter-factory.js";
+export type * from "./trace-emitter-profile-factory.js";
 export * from "./base-trace-emitter.js";
 export * from "./noop-trace-emitter.js";
-export * from "./noop-trace-emitter-factory.js";
+export type * from "./noop-trace-emitter-factory.js";
 export * from "./open-telemetry-trace-emitter.js";
-export * from "./open-telemetry-trace-emitter-factory.js";
+export type * from "./open-telemetry-trace-emitter-factory.js";
 export * from "./otel-context.js";
 export * from "./otel-setup.js";

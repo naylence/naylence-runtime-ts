@@ -5,11 +5,10 @@ import type { CredentialProviderConfig } from "../security/credential/credential
 import { CredentialProviderFactory } from "../security/credential/credential-provider-factory.js";
 import type { SecretSourceType } from "../security/credential/secret-source.js";
 import { SecretSource } from "../security/credential/secret-source.js";
+import { safeImport } from "../util/lazy-import.js";
 
-import {
-  IndexedDBStorageProvider,
-  type IndexedDBStorageProviderMode,
-} from "./indexeddb-storage-provider.js";
+import type { IndexedDBStorageProvider } from "./indexeddb-storage-provider.js";
+import type { IndexedDBStorageProviderMode } from "./indexeddb-storage-provider.js";
 import {
   type StorageProviderConfig,
   StorageProviderFactory,
@@ -162,6 +161,8 @@ export class IndexedDBStorageProviderFactory extends StorageProviderFactory<Inde
   ): Promise<IndexedDBStorageProvider> {
     const normalized = normalizeIndexedDBConfig(config);
 
+    const { IndexedDBStorageProvider } = await getIndexedDbStorageProviderModule();
+
     let masterKeyProvider: CredentialProvider | null = null;
     if (normalized.masterKey) {
       masterKeyProvider = await CredentialProviderFactory.createCredentialProvider(
@@ -179,6 +180,24 @@ export class IndexedDBStorageProviderFactory extends StorageProviderFactory<Inde
       masterKeyProvider,
     });
   }
+}
+
+type IndexedDbStorageProviderModule = typeof import("./indexeddb-storage-provider.js");
+
+let indexedDbStorageProviderModulePromise: Promise<IndexedDbStorageProviderModule> | null = null;
+
+function getIndexedDbStorageProviderModule(): Promise<IndexedDbStorageProviderModule> {
+  if (!indexedDbStorageProviderModulePromise) {
+    indexedDbStorageProviderModulePromise = safeImport(
+      () => import("./indexeddb-storage-provider.js"),
+      "IndexedDBStorageProvider",
+      {
+        helpMessage:
+          "Failed to load the IndexedDB storage provider. Ensure IndexedDB is available or install the required polyfills.",
+      }
+    );
+  }
+  return indexedDbStorageProviderModulePromise;
 }
 
 registerStorageProviderFactory("IndexedDBStorageProvider", IndexedDBStorageProviderFactory);

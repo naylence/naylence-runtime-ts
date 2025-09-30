@@ -5,8 +5,9 @@ import type { CredentialProviderConfig } from "../security/credential/credential
 import { CredentialProviderFactory } from "../security/credential/credential-provider-factory.js";
 import type { SecretSourceType } from "../security/credential/secret-source.js";
 import { SecretSource } from "../security/credential/secret-source.js";
+import { safeImport } from "../util/lazy-import.js";
 
-import { SQLiteStorageProvider } from "./sqlite-storage-provider.js";
+import type { SQLiteStorageProvider } from "./sqlite-storage-provider.js";
 import {
   StorageProviderConfig,
   StorageProviderFactory,
@@ -125,6 +126,8 @@ export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteS
   ): Promise<SQLiteStorageProvider> {
     const normalized = normalizeSQLiteConfig(config);
 
+    const { SQLiteStorageProvider } = await getSqliteStorageProviderModule();
+
     let masterKeyProvider: CredentialProvider | null = null;
     if (normalized.isEncrypted) {
       masterKeyProvider = await CredentialProviderFactory.createCredentialProvider(
@@ -144,6 +147,24 @@ export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteS
       normalized.autoRecover
     );
   }
+}
+
+type SqliteStorageProviderModule = typeof import("./sqlite-storage-provider.js");
+
+let sqliteStorageProviderModulePromise: Promise<SqliteStorageProviderModule> | null = null;
+
+function getSqliteStorageProviderModule(): Promise<SqliteStorageProviderModule> {
+  if (!sqliteStorageProviderModulePromise) {
+    sqliteStorageProviderModulePromise = safeImport(
+      () => import("./sqlite-storage-provider.js"),
+      "better-sqlite3",
+      {
+        helpMessage:
+          "Missing optional dependency \"better-sqlite3\". Install it to enable the SQLite storage provider.",
+      }
+    );
+  }
+  return sqliteStorageProviderModulePromise;
 }
 
 registerStorageProviderFactory("SQLiteStorageProvider", SQLiteStorageProviderFactory);
