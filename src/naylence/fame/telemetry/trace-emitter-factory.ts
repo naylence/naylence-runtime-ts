@@ -1,13 +1,13 @@
-import type { CreateResourceOptions } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
+import type { CreateResourceOptions } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
 
-import type { TraceEmitter } from './trace-emitter.js';
-import type { TraceEmitterConfig } from './trace-emitter-config.js';
+import type { TraceEmitter } from "./trace-emitter.js";
+import type { TraceEmitterConfig } from "./trace-emitter-config.js";
 
-export const TRACE_EMITTER_FACTORY_BASE_TYPE = 'TraceEmitterFactory';
+export const TRACE_EMITTER_FACTORY_BASE_TYPE = "TraceEmitterFactory";
 
 export abstract class TraceEmitterFactory<
-  C extends TraceEmitterConfig = TraceEmitterConfig
+  C extends TraceEmitterConfig = TraceEmitterConfig,
 > extends AbstractResourceFactory<TraceEmitter, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -23,7 +23,7 @@ export abstract class TraceEmitterFactory<
       : await createDefaultResource<TraceEmitter>(TRACE_EMITTER_FACTORY_BASE_TYPE, null, options);
 
     if (!traceEmitter) {
-      throw new Error('Failed to create trace emitter');
+      throw new Error("Failed to create trace emitter");
     }
 
     return traceEmitter;
@@ -31,6 +31,6 @@ export abstract class TraceEmitterFactory<
 }
 
 // Ensure default factories are registered
-import './noop-trace-emitter-factory.js';
-import './open-telemetry-trace-emitter-factory.js';
-import './trace-emitter-profile-factory.js';
+import "./noop-trace-emitter-factory.js";
+import "./open-telemetry-trace-emitter-factory.js";
+import "./trace-emitter-profile-factory.js";

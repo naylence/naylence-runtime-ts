@@ -1,15 +1,15 @@
-import { registerFactory } from 'naylence-factory';
-import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
+import { registerFactory } from "naylence-factory";
+import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
 import {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
   AuthInjectionStrategyFactory,
   type AuthInjectionStrategyConfig,
-} from './auth-injection-strategy-factory.js';
-import { QueryParamAuthInjectionStrategy } from './query-param-auth-injection-strategy.js';
-import type { TokenProviderConfig } from './token-provider-factory.js';
+} from "./auth-injection-strategy-factory.js";
+import { QueryParamAuthInjectionStrategy } from "./query-param-auth-injection-strategy.js";
+import type { TokenProviderConfig } from "./token-provider-factory.js";
 
 export interface QueryParamAuthInjectionStrategyConfig extends AuthInjectionStrategyConfig {
-  type: 'QueryParamAuth';
+  type: "QueryParamAuth";
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   token_provider?: TokenProviderConfig | Record<string, unknown>;
   paramName?: string;
@@ -18,13 +18,13 @@ export interface QueryParamAuthInjectionStrategyConfig extends AuthInjectionStra
 }
 
 interface NormalizedQueryParamConfig {
-  type: 'QueryParamAuth';
+  type: "QueryParamAuth";
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   paramName: string;
 }
 
 export class QueryParamAuthInjectionStrategyFactory extends AuthInjectionStrategyFactory<QueryParamAuthInjectionStrategyConfig> {
-  public readonly type = 'QueryParamAuth';
+  public readonly type = "QueryParamAuth";
 
   public async create(
     config?: QueryParamAuthInjectionStrategyConfig | Record<string, unknown> | null
@@ -38,27 +38,30 @@ function normalizeConfig(
   config?: QueryParamAuthInjectionStrategyConfig | Record<string, unknown> | null
 ): NormalizedQueryParamConfig {
   if (!config) {
-    throw new Error('QueryParamAuthInjectionStrategy requires configuration');
+    throw new Error("QueryParamAuthInjectionStrategy requires configuration");
   }
 
   const candidate = config as QueryParamAuthInjectionStrategyConfig & Record<string, unknown>;
-  const type = typeof candidate.type === 'string' ? candidate.type : undefined;
-  if (type !== 'QueryParamAuth') {
-    throw new Error(`QueryParamAuthInjectionStrategyFactory expects type "QueryParamAuth", got "${type ?? 'undefined'}"`);
+  const type = typeof candidate.type === "string" ? candidate.type : undefined;
+  if (type !== "QueryParamAuth") {
+    throw new Error(
+      `QueryParamAuthInjectionStrategyFactory expects type "QueryParamAuth", got "${type ?? "undefined"}"`
+    );
   }
 
   const tokenProvider = candidate.tokenProvider ?? candidate.token_provider;
   if (!tokenProvider) {
-    throw new Error('QueryParamAuthInjectionStrategy requires a tokenProvider configuration');
+    throw new Error("QueryParamAuthInjectionStrategy requires a tokenProvider configuration");
   }
 
   const paramCandidate = candidate.paramName ?? candidate.param_name ?? candidate.param;
-  const paramName = typeof paramCandidate === 'string' && paramCandidate.trim().length > 0
-    ? paramCandidate.trim()
-    : 'token';
+  const paramName =
+    typeof paramCandidate === "string" && paramCandidate.trim().length > 0
+      ? paramCandidate.trim()
+      : "token";
 
   return {
-    type: 'QueryParamAuth',
+    type: "QueryParamAuth",
     tokenProvider,
     paramName,
   };
@@ -66,6 +69,6 @@ function normalizeConfig(
 
 registerFactory<AuthInjectionStrategy, QueryParamAuthInjectionStrategyConfig>(
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
-  'QueryParamAuth',
+  "QueryParamAuth",
   QueryParamAuthInjectionStrategyFactory
 );

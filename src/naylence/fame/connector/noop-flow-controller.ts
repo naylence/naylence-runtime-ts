@@ -1,17 +1,20 @@
 /**
  * NoopFlowController - Flow control stub that provides infinite credits
- * 
+ *
  * Used when flow control is disabled. Behaves as if infinite credits exist
  * for all flow IDs, so operations never block on credit availability.
  */
 
-import { FlowController } from '../channel/flow-controller.js';
+import { FlowController } from "../channel/flow-controller.js";
 
 /**
  * Internal flow controller that provides infinite credits for all flows.
  * Used when BaseAsyncConnector is configured without flow control.
  */
-export class _NoopFlowController implements Pick<FlowController, 'acquire' | 'addCredits' | 'getCredits' | 'consume' | 'needsRefill'> {
+export class _NoopFlowController
+  implements
+    Pick<FlowController, "acquire" | "addCredits" | "getCredits" | "consume" | "needsRefill">
+{
   private readonly _infiniteCredits = 1_000_000;
 
   /**

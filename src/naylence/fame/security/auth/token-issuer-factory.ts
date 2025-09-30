@@ -1,8 +1,8 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
-import type { TokenIssuer } from './token-issuer.js';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { TokenIssuer } from "./token-issuer.js";
 
-export const TOKEN_ISSUER_FACTORY_BASE_TYPE = 'TokenIssuerFactory';
+export const TOKEN_ISSUER_FACTORY_BASE_TYPE = "TokenIssuerFactory";
 
 export interface TokenIssuerConfig extends ResourceConfig {
   type: string;
@@ -10,7 +10,7 @@ export interface TokenIssuerConfig extends ResourceConfig {
 }
 
 export abstract class TokenIssuerFactory<
-  C extends TokenIssuerConfig = TokenIssuerConfig
+  C extends TokenIssuerConfig = TokenIssuerConfig,
 > extends AbstractResourceFactory<TokenIssuer, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -29,7 +29,7 @@ export abstract class TokenIssuerFactory<
       );
 
       if (!tokenIssuer) {
-        throw new Error('Failed to create token issuer from configuration');
+        throw new Error("Failed to create token issuer from configuration");
       }
 
       return tokenIssuer;
@@ -42,7 +42,7 @@ export abstract class TokenIssuerFactory<
     );
 
     if (!tokenIssuer) {
-      throw new Error('Failed to create default token issuer');
+      throw new Error("Failed to create default token issuer");
     }
 
     return tokenIssuer;

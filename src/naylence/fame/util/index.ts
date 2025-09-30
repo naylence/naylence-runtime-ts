@@ -1,6 +1,6 @@
 /**
  * Naylence Fame Utilities - Logging, Task Management & General Utilities Package
- * 
+ *
  * Cross-platform structured logging, async task management, and general utilities for Naylence Fame runtime
  */
 
@@ -19,7 +19,7 @@ export {
   // Transports
   consoleTransport,
   pinoTransport,
-} from './logging.js';
+} from "./logging.js";
 
 // Export envelope context utilities
 export {
@@ -28,12 +28,10 @@ export {
   withEnvelopeContext,
   withEnvelopeContextAsync,
   EnvelopeContext,
-} from './envelope-context.js';
+} from "./envelope-context.js";
 
 // Export task management
-export {
-  TaskSpawner,
-} from './task-spawner.js';
+export { TaskSpawner } from "./task-spawner.js";
 
 // Export task utilities
 export {
@@ -45,18 +43,18 @@ export {
   retryWithBackoff,
   debounce,
   throttle,
-} from './task-utils.js';
+} from "./task-utils.js";
 
 // Export formatting utilities
-export * from './formatter.js';
+export * from "./formatter.js";
 
 // Export metrics utilities
-export * from './metrics-emitter.js';
+export * from "./metrics-emitter.js";
 
 // Export general utilities
-export * from './util.js';
-export * from './logicals.js';
-export * from './ttl-validation.js';
+export * from "./util.js";
+export * from "./logicals.js";
+export * from "./ttl-validation.js";
 
 // Export types
 export type {
@@ -65,7 +63,7 @@ export type {
   LogProcessor,
   LogTransport,
   EnvelopeSnapshot,
-} from './logging-types.js';
+} from "./logging-types.js";
 
 export type {
   SpawnedTask,
@@ -74,4 +72,4 @@ export type {
   TaskState,
   TaskTimeoutError,
   TaskCancelledError,
-} from './task-types.js';
+} from "./task-types.js";

@@ -6,12 +6,12 @@ import {
   KeyRequestFrame,
   parseAddress,
   parseAddressComponents,
-} from 'naylence-core';
+} from "naylence-core";
 
-import { isPoolLogical, matchesPoolLogical } from '../util/logicals.js';
-import { normalizePath } from '../util/util.js';
-import { HRWLoadBalancingStrategy } from './load-balancing/hrw-load-balancing-strategy.js';
-import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';
+import { isPoolLogical, matchesPoolLogical } from "../util/logicals.js";
+import { normalizePath } from "../util/util.js";
+import { HRWLoadBalancingStrategy } from "./load-balancing/hrw-load-balancing-strategy.js";
+import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
 import {
   DeliverLocal,
   Drop,
@@ -20,18 +20,18 @@ import {
   ForwardUp,
   type RouterState,
   type RoutingAction,
-} from './router.js';
-import type { RoutingPolicy } from './routing-policy.js';
+} from "./router.js";
+import type { RoutingPolicy } from "./routing-policy.js";
 
-const CONTROL_DROP_FRAMES = new Set(['NodeHello', 'NodeWelcome', 'NodeReject']);
-const CONTROL_UP_FRAMES = new Set(['AddressBind', 'AddressUnbind', 'NodeHeartbeat']);
+const CONTROL_DROP_FRAMES = new Set(["NodeHello", "NodeWelcome", "NodeReject"]);
+const CONTROL_UP_FRAMES = new Set(["AddressBind", "AddressUnbind", "NodeHeartbeat"]);
 const ROUTABLE_FRAMES = new Set([
-  'Data',
-  'DeliveryAck',
-  'SecureOpen',
-  'SecureAccept',
-  'SecureClose',
-  'KeyRequest',
+  "Data",
+  "DeliveryAck",
+  "SecureOpen",
+  "SecureAccept",
+  "SecureClose",
+  "KeyRequest",
 ]);
 
 export interface HybridPathRoutingPolicyOptions {
@@ -69,7 +69,7 @@ export class HybridPathRoutingPolicy implements RoutingPolicy {
     }
 
     let destination: FameAddress | string | null = null;
-    if (frameType === 'KeyRequest') {
+    if (frameType === "KeyRequest") {
       const keyRequest = frame as KeyRequestFrame;
       destination = keyRequest.address ?? null;
       if (!destination) {
@@ -151,10 +151,16 @@ export class HybridPathRoutingPolicy implements RoutingPolicy {
           return new ForwardPeer(first);
         }
 
-        if (state.physicalSegments.length > 0 && startsWithSegments(destSegments, state.physicalSegments)) {
+        if (
+          state.physicalSegments.length > 0 &&
+          startsWithSegments(destSegments, state.physicalSegments)
+        ) {
           const remainder = destSegments.slice(state.physicalSegments.length);
           if (remainder.length === 0) {
-            return new DeliverLocal(toFameAddress(destination));
+            if (state.local.has(destinationKey)) {
+              return new DeliverLocal(toFameAddress(destination));
+            }
+            return new Drop();
           }
 
           const nextSegment = remainder[0];
@@ -187,8 +193,7 @@ export class HybridPathRoutingPolicy implements RoutingPolicy {
     childSegment: string
   ): boolean {
     return (
-      context?.originType === DeliveryOriginType.DOWNSTREAM &&
-      context.fromSystemId === childSegment
+      context?.originType === DeliveryOriginType.DOWNSTREAM && context.fromSystemId === childSegment
     );
   }
 
@@ -229,9 +234,9 @@ function computeLogical(path: string, physicalSegments: readonly string[]): stri
   const segments = splitPath(path);
   if (physicalSegments.length > 0 && startsWithSegments(segments, physicalSegments)) {
     const remainder = segments.slice(physicalSegments.length);
-    return '/' + remainder.join('/');
+    return "/" + remainder.join("/");
   }
-  return '/' + segments.join('/');
+  return "/" + segments.join("/");
 }
 
 function startsWithSegments(pathSegments: readonly string[], prefix: readonly string[]): boolean {
@@ -249,7 +254,7 @@ function startsWithSegments(pathSegments: readonly string[], prefix: readonly st
 }
 
 function splitPath(path: string): string[] {
-  return path.split('/').filter((segment) => segment.length > 0);
+  return path.split("/").filter((segment) => segment.length > 0);
 }
 
 function findPoolMembers(
@@ -266,7 +271,7 @@ function findPoolMembers(
 }
 
 function normalizeAddressKey(address: FameAddress | string): string {
-  return typeof address === 'string' ? address : address.toString();
+  return typeof address === "string" ? address : address.toString();
 }
 
 function toFameAddress(address: FameAddress | string): FameAddress {

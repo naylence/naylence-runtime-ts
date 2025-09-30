@@ -1,4 +1,4 @@
-import { TaskCancelledError } from './task-types.js';
+import { TaskCancelledError } from "./task-types.js";
 
 interface Waiter {
   complete: () => void;
@@ -39,18 +39,18 @@ export class AsyncEvent {
 
     const { signal } = options;
     if (signal?.aborted) {
-      throw new TaskCancelledError('async-event-wait-aborted');
+      throw new TaskCancelledError("async-event-wait-aborted");
     }
 
     return await new Promise<void>((resolve, reject) => {
       const onAbort = () => {
         this.waiters.delete(waiter);
-        reject(new TaskCancelledError('async-event-wait-aborted'));
+        reject(new TaskCancelledError("async-event-wait-aborted"));
       };
 
       const complete = () => {
         if (signal) {
-          signal.removeEventListener('abort', onAbort);
+          signal.removeEventListener("abort", onAbort);
         }
         this.waiters.delete(waiter);
         resolve();
@@ -64,7 +64,7 @@ export class AsyncEvent {
       this.waiters.add(waiter);
 
       if (signal) {
-        signal.addEventListener('abort', onAbort, { once: true });
+        signal.addEventListener("abort", onAbort, { once: true });
       }
 
       if (this._isSet) {

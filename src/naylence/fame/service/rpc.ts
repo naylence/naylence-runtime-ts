@@ -1,6 +1,6 @@
-import { FameFabric, FameServiceProxy, type FameServiceProxyOptions } from 'naylence-core';
+import { FameFabric, FameServiceProxy, type FameServiceProxyOptions } from "naylence-core";
 
-const RPC_REGISTRY = Symbol('naylence.rpc.registry');
+const RPC_REGISTRY = Symbol("naylence.rpc.registry");
 
 type RpcRegistryEntry = { propertyKey: string; streaming: boolean };
 
@@ -15,8 +15,8 @@ type RpcDecorator = (
 function isPlainObject(value: unknown): value is Record<string, any> {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      Object.prototype.toString.call(value) === '[object Object]'
+      typeof value === "object" &&
+      Object.prototype.toString.call(value) === "[object Object]"
   );
 }
 
@@ -31,7 +31,7 @@ function getOrCreateRegistry(ctor: any): RpcRegistry {
 }
 
 function normalizeParams(params: any): { positional: any[]; keyword: Record<string, any> } {
-  if (!params || typeof params !== 'object') {
+  if (!params || typeof params !== "object") {
     return { positional: [], keyword: {} };
   }
 
@@ -57,7 +57,7 @@ export function operation(
   propertyKey?: string | symbol,
   descriptor?: PropertyDescriptor
 ): RpcDecorator | void {
-  if (typeof propertyKey === 'string' || typeof propertyKey === 'symbol') {
+  if (typeof propertyKey === "string" || typeof propertyKey === "symbol") {
     const decorator = createDecorator();
     decorator(targetOrOptions as object, propertyKey, descriptor!);
     return;
@@ -69,8 +69,8 @@ export function operation(
 
 function createDecorator(options: OperationOptions = {}): RpcDecorator {
   return (target, propertyKey, descriptor) => {
-    if (!descriptor || typeof descriptor.value !== 'function') {
-      throw new TypeError('@operation can only be applied to methods');
+    if (!descriptor || typeof descriptor.value !== "function") {
+      throw new TypeError("@operation can only be applied to methods");
     }
 
     const ctor = target.constructor;
@@ -102,7 +102,7 @@ export abstract class RpcMixin {
     }
 
     const handler: any = (this as any)[entry.propertyKey];
-    if (typeof handler !== 'function') {
+    if (typeof handler !== "function") {
       throw new TypeError(`RPC handler '${entry.propertyKey}' is not callable`);
     }
 
@@ -131,7 +131,7 @@ function extractStreamFlag(args: any[]): { stream: boolean; args: any[] } {
   }
 
   const last = args[args.length - 1];
-  if (isPlainObject(last) && Object.prototype.hasOwnProperty.call(last, '_stream')) {
+  if (isPlainObject(last) && Object.prototype.hasOwnProperty.call(last, "_stream")) {
     const { _stream, ...rest } = last;
     const cleanedArgs = [...args.slice(0, -1)];
     if (Object.keys(rest).length > 0) {
@@ -140,7 +140,11 @@ function extractStreamFlag(args: any[]): { stream: boolean; args: any[] } {
     return { stream: Boolean(_stream), args: cleanedArgs };
   }
 
-  if (args.length === 1 && isPlainObject(args[0]) && Object.prototype.hasOwnProperty.call(args[0], '_stream')) {
+  if (
+    args.length === 1 &&
+    isPlainObject(args[0]) &&
+    Object.prototype.hasOwnProperty.call(args[0], "_stream")
+  ) {
     const { _stream, ...rest } = args[0];
     return { stream: Boolean(_stream), args: Object.keys(rest).length ? [rest] : [] };
   }
@@ -151,7 +155,7 @@ function extractStreamFlag(args: any[]): { stream: boolean; args: any[] } {
 function wrapRpcProxy<T extends FameServiceProxy>(target: T): T {
   return new Proxy(target, {
     get(target, prop, receiver) {
-      if (typeof prop === 'string' && !prop.startsWith('_') && !(prop in target)) {
+      if (typeof prop === "string" && !prop.startsWith("_") && !(prop in target)) {
         return async (...rawArgs: any[]) => {
           const { stream, args } = extractStreamFlag(rawArgs);
 
@@ -171,9 +175,14 @@ function wrapRpcProxy<T extends FameServiceProxy>(target: T): T {
               return await fabric.invokeStream(internal._address, prop, params, timeout);
             }
             if (internal._capabilities) {
-              return await fabric.invokeByCapabilityStream(internal._capabilities, prop, params, timeout);
+              return await fabric.invokeByCapabilityStream(
+                internal._capabilities,
+                prop,
+                params,
+                timeout
+              );
             }
-            throw new Error('RPC proxy must be bound to an address or capabilities');
+            throw new Error("RPC proxy must be bound to an address or capabilities");
           }
 
           if (internal._address) {
@@ -181,10 +190,15 @@ function wrapRpcProxy<T extends FameServiceProxy>(target: T): T {
           }
 
           if (internal._capabilities) {
-            return await internal._invokeByCapability(internal._capabilities, prop, params, timeout);
+            return await internal._invokeByCapability(
+              internal._capabilities,
+              prop,
+              params,
+              timeout
+            );
           }
 
-          throw new Error('RPC proxy must be bound to an address or capabilities');
+          throw new Error("RPC proxy must be bound to an address or capabilities");
         };
       }
       return Reflect.get(target, prop, receiver);
@@ -205,7 +219,7 @@ export class RpcProxy extends FameServiceProxy {
 
   static remoteByAddress(
     address: Parameters<typeof FameServiceProxy.remoteByAddress>[0],
-    options: Omit<FameServiceProxyOptions, 'address'> = {}
+    options: Omit<FameServiceProxyOptions, "address"> = {}
   ): RpcProxy {
     const proxy = FameServiceProxy.remoteByAddress(address, options);
     return wrapRpcProxy(proxy as FameServiceProxy) as RpcProxy;
@@ -213,7 +227,7 @@ export class RpcProxy extends FameServiceProxy {
 
   static remoteByCapabilities(
     capabilities: Parameters<typeof FameServiceProxy.remoteByCapabilities>[0],
-    options: Omit<FameServiceProxyOptions, 'capabilities'> = {}
+    options: Omit<FameServiceProxyOptions, "capabilities"> = {}
   ): RpcProxy {
     const proxy = FameServiceProxy.remoteByCapabilities(capabilities, options);
     return wrapRpcProxy(proxy as FameServiceProxy) as RpcProxy;

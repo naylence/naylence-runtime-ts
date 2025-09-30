@@ -1,37 +1,37 @@
-import type { CreateResourceOptions } from 'naylence-factory';
-import { createDefaultResource, createResource } from 'naylence-factory';
+import type { CreateResourceOptions } from "naylence-factory";
+import { createDefaultResource, createResource } from "naylence-factory";
 
-import { GRANT_PURPOSE_NODE_ATTACH } from '../grants/grant.js';
-import { TTL_NEVER_EXPIRES } from '../constants/ttl-constants.js';
-import type { AdmissionClient } from '../node/admission/admission-client.js';
-import { AdmissionClientFactory } from '../node/admission/admission-client-factory.js';
-import { makeCommonOptions } from '../node/factory-commons.js';
-import type { NodeEventListener } from '../node/node-event-listener.js';
-import { NodeLikeFactory, registerNodeLikeFactory } from '../node/node-like-factory.js';
-import { normalizeFameNodeConfig } from '../node/node-config.js';
-import type { TransportListener } from '../connector/transport-listener.js';
-import { TransportListenerFactory } from '../connector/transport-listener-factory.js';
-import type { LoadBalancerStickinessManager } from '../stickiness/load-balancer-stickiness-manager.js';
-import { LoadBalancerStickinessManagerFactory } from '../stickiness/load-balancer-stickiness-manager-factory.js';
-import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';
-import { CompositeLoadBalancingStrategy } from './load-balancing/composite-load-balancing-strategy.js';
-import { StickyLoadBalancingStrategy } from './load-balancing/sticky-load-balancing-strategy.js';
-import { LOAD_BALANCING_STRATEGY_FACTORY_BASE } from './load-balancing/load-balancing-strategy-factory.js';
-import type { RoutingPolicy } from './routing-policy.js';
-import { ROUTING_POLICY_FACTORY_BASE, RoutingPolicyFactory } from './routing-policy.js';
-import { Peer } from './peer.js';
-import { Sentinel } from './sentinel.js';
-import type { SentinelOptions } from './sentinel.js';
-import type { SentinelConfig } from './sentinel-config.js';
-import { normalizeSentinelConfig } from './sentinel-config.js';
-import type { PeerConfig } from './peer-config.js';
-import { RouteStoreFactory, getDefaultRouteStore } from './store/route-store.js';
-import type { RouteStore } from './store/route-store.js';
-import type { LoadBalancerStickinessManagerConfig } from '../stickiness/load-balancer-stickiness-manager-factory.js';
-import type { LoadBalancingStrategyConfig } from './load-balancing/load-balancing-strategy-factory.js';
-import type { RoutingPolicyConfig } from './routing-policy.js';
-import type { RouteStoreConfig } from './store/route-store-factory.js';
-import type { AdmissionConfig } from './sentinel-config.js';
+import { GRANT_PURPOSE_NODE_ATTACH } from "../grants/grant.js";
+import { TTL_NEVER_EXPIRES } from "../constants/ttl-constants.js";
+import type { AdmissionClient } from "../node/admission/admission-client.js";
+import { AdmissionClientFactory } from "../node/admission/admission-client-factory.js";
+import { makeCommonOptions } from "../node/factory-commons.js";
+import type { NodeEventListener } from "../node/node-event-listener.js";
+import { NodeLikeFactory, registerNodeLikeFactory } from "../node/node-like-factory.js";
+import { normalizeFameNodeConfig } from "../node/node-config.js";
+import type { TransportListener } from "../connector/transport-listener.js";
+import { TransportListenerFactory } from "../connector/transport-listener-factory.js";
+import type { LoadBalancerStickinessManager } from "../stickiness/load-balancer-stickiness-manager.js";
+import { LoadBalancerStickinessManagerFactory } from "../stickiness/load-balancer-stickiness-manager-factory.js";
+import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
+import { CompositeLoadBalancingStrategy } from "./load-balancing/composite-load-balancing-strategy.js";
+import { StickyLoadBalancingStrategy } from "./load-balancing/sticky-load-balancing-strategy.js";
+import { LOAD_BALANCING_STRATEGY_FACTORY_BASE } from "./load-balancing/load-balancing-strategy-factory.js";
+import type { RoutingPolicy } from "./routing-policy.js";
+import { ROUTING_POLICY_FACTORY_BASE, RoutingPolicyFactory } from "./routing-policy.js";
+import { Peer } from "./peer.js";
+import { Sentinel } from "./sentinel.js";
+import type { SentinelOptions } from "./sentinel.js";
+import type { SentinelConfig } from "./sentinel-config.js";
+import { normalizeSentinelConfig } from "./sentinel-config.js";
+import type { PeerConfig } from "./peer-config.js";
+import { RouteStoreFactory, getDefaultRouteStore } from "./store/route-store.js";
+import type { RouteStore } from "./store/route-store.js";
+import type { LoadBalancerStickinessManagerConfig } from "../stickiness/load-balancer-stickiness-manager-factory.js";
+import type { LoadBalancingStrategyConfig } from "./load-balancing/load-balancing-strategy-factory.js";
+import type { RoutingPolicyConfig } from "./routing-policy.js";
+import type { RouteStoreConfig } from "./store/route-store-factory.js";
+import type { AdmissionConfig } from "./sentinel-config.js";
 
 interface LoadBalancingOptions {
   strategyConfig: LoadBalancingStrategyConfig | Record<string, unknown> | null;
@@ -39,34 +39,42 @@ interface LoadBalancingOptions {
 }
 
 export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
-  public readonly type = 'Sentinel';
+  public readonly type = "Sentinel";
   public readonly priority = 100;
 
-  public async create(
-    config?: SentinelConfig | Record<string, unknown> | null
-  ): Promise<Sentinel> {
-  const normalized = normalizeSentinelConfig(config);
-  const baseNodeConfig = normalizeFameNodeConfig({ ...(config ?? {}), type: 'Node' as const });
-  const components = await makeCommonOptions(baseNodeConfig);
+  public async create(config?: SentinelConfig | Record<string, unknown> | null): Promise<Sentinel> {
+    const normalized = normalizeSentinelConfig(config);
+    const baseNodeConfig = normalizeFameNodeConfig({ ...(config ?? {}), type: "Node" as const });
+    const components = await makeCommonOptions(baseNodeConfig);
 
     const eventListeners: NodeEventListener[] = [...components.eventListeners];
-    const transportListeners = await this.ensureTransportListeners(components.transportListeners, eventListeners);
+    const transportListeners = await this.ensureTransportListeners(
+      components.transportListeners,
+      eventListeners
+    );
 
-    const stickinessManager = await this.createStickinessManager(normalized.stickiness, components.keyStore);
+    const stickinessManager = await this.createStickinessManager(
+      normalized.stickiness,
+      components.keyStore
+    );
 
     const loadBalancingStrategy = await this.createLoadBalancingStrategy({
       strategyConfig: normalized.loadBalancing,
       stickinessManager,
     });
 
-    const routingPolicy = await this.createRoutingPolicy(normalized.routingPolicy, loadBalancingStrategy);
+    const routingPolicy = await this.createRoutingPolicy(
+      normalized.routingPolicy,
+      loadBalancingStrategy
+    );
 
     const routeStore = await this.resolveRouteStore(normalized.routeStore);
 
     const peers = await this.createPeers(normalized.peers);
 
     const serviceConfigs = components.serviceConfigs.filter(
-      (service): service is Record<string, unknown> => Boolean(service && typeof service === 'object')
+      (service): service is Record<string, unknown> =>
+        Boolean(service && typeof service === "object")
     );
 
     const sentinelOptions: SentinelOptions = {
@@ -126,12 +134,12 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
   }
 
   private addEventListenerIfNeeded(listener: unknown, collection: NodeEventListener[]): void {
-    if (!listener || typeof listener !== 'object') {
+    if (!listener || typeof listener !== "object") {
       return;
     }
 
     const candidate = listener as NodeEventListener;
-    if (typeof candidate.priority !== 'number') {
+    if (typeof candidate.priority !== "number") {
       return;
     }
 
@@ -149,14 +157,19 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
       return null;
     }
 
-    const manager = await LoadBalancerStickinessManagerFactory.createLoadBalancerStickinessManager(config, {
-      factoryArgs: [{ keyProvider }],
-    });
+    const manager = await LoadBalancerStickinessManagerFactory.createLoadBalancerStickinessManager(
+      config,
+      {
+        factoryArgs: [{ keyProvider }],
+      }
+    );
 
     return manager ?? null;
   }
 
-  private async createLoadBalancingStrategy(options: LoadBalancingOptions): Promise<LoadBalancingStrategy> {
+  private async createLoadBalancingStrategy(
+    options: LoadBalancingOptions
+  ): Promise<LoadBalancingStrategy> {
     const { strategyConfig, stickinessManager } = options;
 
     const factoryOptions: CreateResourceOptions = stickinessManager
@@ -180,7 +193,7 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
     }
 
     if (!strategy) {
-      throw new Error('Failed to create load balancing strategy');
+      throw new Error("Failed to create load balancing strategy");
     }
 
     if (!stickinessManager) {
@@ -200,14 +213,13 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
     loadBalancingStrategy: LoadBalancingStrategy
   ): Promise<RoutingPolicy> {
     if (config) {
-      const policy = await createResource<RoutingPolicy>(
-        ROUTING_POLICY_FACTORY_BASE,
-        config,
-        { factoryArgs: [loadBalancingStrategy], validate: false }
-      );
+      const policy = await createResource<RoutingPolicy>(ROUTING_POLICY_FACTORY_BASE, config, {
+        factoryArgs: [loadBalancingStrategy],
+        validate: false,
+      });
 
       if (!policy) {
-        throw new Error('Failed to create routing policy from configuration');
+        throw new Error("Failed to create routing policy from configuration");
       }
 
       return policy;
@@ -257,15 +269,15 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
     }
 
     const directAdmissionConfig = {
-      type: 'DirectAdmissionClient',
+      type: "DirectAdmissionClient",
       connectionGrants: [
         {
-          type: 'WebSocketConnectionGrant',
+          type: "WebSocketConnectionGrant",
           purpose: GRANT_PURPOSE_NODE_ATTACH,
           url: config.directUrl,
           auth: {
-            type: 'WebSocketSubprotocolAuth',
-            tokenProvider: { type: 'NoneTokenProvider' },
+            type: "WebSocketSubprotocolAuth",
+            tokenProvider: { type: "NoneTokenProvider" },
           },
         },
       ],
@@ -276,4 +288,4 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
   }
 }
 
-registerNodeLikeFactory('Sentinel', SentinelFactory as unknown as new () => SentinelFactory);
+registerNodeLikeFactory("Sentinel", SentinelFactory as unknown as new () => SentinelFactory);

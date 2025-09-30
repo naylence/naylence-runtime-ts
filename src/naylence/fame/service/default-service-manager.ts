@@ -8,10 +8,10 @@ import {
   type ServeProtocol,
   type ServeRPCProtocol,
   type InvokeProtocol,
-} from 'naylence-core';
-import { createResource, ExtensionManager } from 'naylence-factory';
+} from "naylence-core";
+import { createResource, ExtensionManager } from "naylence-factory";
 
-import type { ServiceManager } from './service-manager.js';
+import type { ServiceManager } from "./service-manager.js";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -49,7 +49,9 @@ export class DefaultServiceManager implements ServiceManager {
     this.serveRpc = options.serveRpc;
     this.pollTimeoutMs = options.pollTimeoutMs ?? null;
     this.capabilityMap = this.normalizeCapabilityMap(options.capabilityMap);
-    this.defaultServiceConfigs = options.defaultServiceConfigs ? [...options.defaultServiceConfigs] : [];
+    this.defaultServiceConfigs = options.defaultServiceConfigs
+      ? [...options.defaultServiceConfigs]
+      : [];
   }
 
   async start(): Promise<void> {
@@ -75,7 +77,7 @@ export class DefaultServiceManager implements ServiceManager {
     await Promise.all(
       Array.from(this.services.values()).map(async ({ service }) => {
         const stopFn = (service as any)?.stop;
-        if (typeof stopFn === 'function') {
+        if (typeof stopFn === "function") {
           await this.resolveMaybePromise(stopFn.call(service));
         }
       })
@@ -90,7 +92,7 @@ export class DefaultServiceManager implements ServiceManager {
     }
 
     const startFn = (service as any)?.start;
-    if (typeof startFn === 'function') {
+    if (typeof startFn === "function") {
       await this.resolveMaybePromise(startFn.call(service));
     }
 
@@ -103,7 +105,7 @@ export class DefaultServiceManager implements ServiceManager {
       const options = this.buildServeOptions(service.capabilities);
       address = await this.serveRpc(serviceName, service.handleRpcRequest.bind(service), options);
     } else {
-      throw new TypeError('Service must implement FameMessageService or FameRPCService');
+      throw new TypeError("Service must implement FameMessageService or FameRPCService");
     }
 
     this.services.set(address.toString(), { address, service });
@@ -116,7 +118,9 @@ export class DefaultServiceManager implements ServiceManager {
   }
 
   getLocalServices(): Map<FameAddress, FameService> {
-    const entries = Array.from(this.services.values()).map(({ address, service }) => [address, service] as const);
+    const entries = Array.from(this.services.values()).map(
+      ({ address, service }) => [address, service] as const
+    );
     return new Map(entries);
   }
 
@@ -128,7 +132,7 @@ export class DefaultServiceManager implements ServiceManager {
       }
     }
 
-    if (typeof capability === 'string') {
+    if (typeof capability === "string") {
       const mapped = this.capabilityMap.get(capability);
       if (mapped) {
         return FameServiceProxy.remoteByAddress(mapped, { invoke: this.invoke });
@@ -158,17 +162,17 @@ export class DefaultServiceManager implements ServiceManager {
 
   private async registerDefaultServices(): Promise<void> {
     for (const rawConfig of this.defaultServiceConfigs) {
-      if (!rawConfig || typeof rawConfig !== 'object') {
+      if (!rawConfig || typeof rawConfig !== "object") {
         continue;
       }
 
       const config = rawConfig as Record<string, unknown>;
-      const name = typeof config.name === 'string' ? (config.name as string) : undefined;
+      const name = typeof config.name === "string" ? (config.name as string) : undefined;
       if (!name) {
         continue;
       }
 
-      const service = await createResource<FameService>('FameServiceFactory', config, {
+      const service = await createResource<FameService>("FameServiceFactory", config, {
         validate: false,
       });
 
@@ -185,7 +189,7 @@ export class DefaultServiceManager implements ServiceManager {
       return;
     }
 
-    ExtensionManager.getExtensionManager('naylence.FameServiceFactory', 'FameServiceFactory');
+    ExtensionManager.getExtensionManager("naylence.FameServiceFactory", "FameServiceFactory");
     this.extensionManagerInitialized = true;
   }
 
@@ -198,7 +202,7 @@ export class DefaultServiceManager implements ServiceManager {
   }
 
   private isAddressable(service: FameService): boolean {
-    return typeof (service as any)?.address === 'undefined' || (service as any)?.address === null;
+    return typeof (service as any)?.address === "undefined" || (service as any)?.address === null;
   }
 
   private normalizeCapabilityMap(input: CapabilityMapInput): Map<string, FameAddress> {

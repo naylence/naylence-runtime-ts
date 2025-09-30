@@ -1,17 +1,11 @@
-import type { NodeHelloFrame } from 'naylence-core';
+import type { NodeHelloFrame } from "naylence-core";
 
-import type { NodePlacementStrategy, PlacementDecision } from './node-placement-strategy.js';
+import type { NodePlacementStrategy, PlacementDecision } from "./node-placement-strategy.js";
 
 function joinPosixPath(parent: string, segment: string): string {
-  const parentPart = parent
-    .split('/')
-    .filter(Boolean)
-    .join('/');
-  const segmentPart = segment
-    .split('/')
-    .filter(Boolean)
-    .join('/');
-  const combined = [parentPart, segmentPart].filter(Boolean).join('/');
+  const parentPart = parent.split("/").filter(Boolean).join("/");
+  const segmentPart = segment.split("/").filter(Boolean).join("/");
+  const combined = [parentPart, segmentPart].filter(Boolean).join("/");
   return `/${combined}`;
 }
 

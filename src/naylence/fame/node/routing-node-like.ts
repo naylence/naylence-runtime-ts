@@ -4,11 +4,11 @@ import type {
   FameConnector,
   FameDeliveryContext,
   FameEnvelope,
-} from 'naylence-core';
+} from "naylence-core";
 
-import type { ConnectorConfig } from '../connector/connector-config.js';
-import type { WebSocketLike } from '../connector/websocket-connector.js';
-import type { NodeLike } from './node-like.js';
+import type { ConnectorConfig } from "../connector/connector-config.js";
+import type { WebSocketLike } from "../connector/websocket-connector.js";
+import type { NodeLike } from "./node-like.js";
 
 export interface OriginConnectorOptions {
   originType: DeliveryOriginType;

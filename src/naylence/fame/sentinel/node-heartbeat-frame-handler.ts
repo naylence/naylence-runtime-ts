@@ -4,12 +4,12 @@ import {
   type FameEnvelope,
   NodeHeartbeatAckFrame,
   NodeHeartbeatFrame,
-} from 'naylence-core';
+} from "naylence-core";
 
-import type { RoutingNodeLike } from '../node/routing-node-like.js';
-import { getLogger } from '../util/logging.js';
+import type { RoutingNodeLike } from "../node/routing-node-like.js";
+import { getLogger } from "../util/logging.js";
 
-const logger = getLogger('node-heartbeat-frame-handler');
+const logger = getLogger("node-heartbeat-frame-handler");
 
 type RoutingNodeWithEpoch = RoutingNodeLike & {
   readonly routingEpoch?: string | null | undefined;
@@ -27,29 +27,29 @@ export class NodeHeartbeatFrameHandler {
     context: FameDeliveryContext | null | undefined
   ): Promise<void> {
     const frame = envelope.frame as NodeHeartbeatFrame | undefined;
-    if (!frame || frame.type !== 'NodeHeartbeat') {
+    if (!frame || frame.type !== "NodeHeartbeat") {
       throw new Error(
-        `Invalid envelope frame. Expected: NodeHeartbeatFrame, actual: ${frame?.type ?? 'unknown'}`
+        `Invalid envelope frame. Expected: NodeHeartbeatFrame, actual: ${frame?.type ?? "unknown"}`
       );
     }
 
-    logger.trace('handling_heartbeat', {
-      hb_system_id: frame.systemId ?? 'unknown',
-      hb_env_id: envelope.id ?? 'unknown',
-      hb_corr_id: envelope.corrId ?? 'unknown',
+    logger.trace("handling_heartbeat", {
+      hb_system_id: frame.systemId ?? "unknown",
+      hb_env_id: envelope.id ?? "unknown",
+      hb_corr_id: envelope.corrId ?? "unknown",
     });
 
     if (!context) {
-      throw new Error('missing FameDeliveryContext');
+      throw new Error("missing FameDeliveryContext");
     }
 
     const connector = context.fromConnector as FameConnector | undefined;
     if (!connector) {
-      throw new Error('Connector in context does not match pending connector');
+      throw new Error("Connector in context does not match pending connector");
     }
 
     const ackFrame: NodeHeartbeatAckFrame = {
-      type: 'NodeHeartbeatAck',
+      type: "NodeHeartbeatAck",
       ok: true,
       ...(envelope.id ? { refId: envelope.id } : {}),
       ...(this.routingNode.routingEpoch ? { routingEpoch: this.routingNode.routingEpoch } : {}),
@@ -65,12 +65,12 @@ export class NodeHeartbeatFrameHandler {
       ...(envelope.traceId ? { traceId: envelope.traceId } : {}),
     });
 
-    logger.debug('sending_heartbeat_ack', {
-      hb_ack_env_id: ackEnvelope.id ?? 'unknown',
-      hb_ack_corr_id: ackEnvelope.corrId ?? 'unknown',
+    logger.debug("sending_heartbeat_ack", {
+      hb_ack_env_id: ackEnvelope.id ?? "unknown",
+      hb_ack_corr_id: ackEnvelope.corrId ?? "unknown",
     });
 
-    await this.sendAndNotify(connector, ackEnvelope, frame.systemId ?? 'unknown', context);
+    await this.sendAndNotify(connector, ackEnvelope, frame.systemId ?? "unknown", context);
   }
 
   private async sendAndNotify(
@@ -83,7 +83,7 @@ export class NodeHeartbeatFrameHandler {
 
     try {
       processed = await this.routingNode.dispatchEnvelopeEvent(
-        'onForwardToRoute',
+        "onForwardToRoute",
         this.routingNode,
         forwardRoute,
         envelope,
@@ -91,14 +91,14 @@ export class NodeHeartbeatFrameHandler {
       );
 
       if (!processed) {
-        throw new Error('Envelope was blocked by onForwardToRoute event');
+        throw new Error("Envelope was blocked by onForwardToRoute event");
       }
 
       await connector.send(processed);
 
       await this.routingNode
         .dispatchEnvelopeEvent(
-          'onForwardToRouteComplete',
+          "onForwardToRouteComplete",
           this.routingNode,
           forwardRoute,
           processed,
@@ -111,7 +111,7 @@ export class NodeHeartbeatFrameHandler {
       const err = error instanceof Error ? error : new Error(String(error));
       await this.routingNode
         .dispatchEnvelopeEvent(
-          'onForwardToRouteComplete',
+          "onForwardToRouteComplete",
           this.routingNode,
           forwardRoute,
           processed ?? envelope,

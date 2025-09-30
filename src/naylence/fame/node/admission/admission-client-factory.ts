@@ -1,8 +1,8 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
-import type { AdmissionClient } from './admission-client.js';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { AdmissionClient } from "./admission-client.js";
 
-export const ADMISSION_CLIENT_FACTORY_BASE_TYPE = 'AdmissionClientFactory';
+export const ADMISSION_CLIENT_FACTORY_BASE_TYPE = "AdmissionClientFactory";
 
 export interface AdmissionConfig extends ResourceConfig {
   type: string;
@@ -10,16 +10,14 @@ export interface AdmissionConfig extends ResourceConfig {
 }
 
 export abstract class AdmissionClientFactory<
-  C extends AdmissionConfig = AdmissionConfig
+  C extends AdmissionConfig = AdmissionConfig,
 > extends AbstractResourceFactory<AdmissionClient, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
     ...factoryArgs: unknown[]
   ): Promise<AdmissionClient>;
 
-  public static async createAdmissionClient<
-    C extends AdmissionConfig = AdmissionConfig
-  >(
+  public static async createAdmissionClient<C extends AdmissionConfig = AdmissionConfig>(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<AdmissionClient> {
@@ -31,7 +29,7 @@ export abstract class AdmissionClientFactory<
       );
 
       if (!client) {
-        throw new Error('Failed to create admission client from configuration');
+        throw new Error("Failed to create admission client from configuration");
       }
 
       return client;
@@ -44,7 +42,7 @@ export abstract class AdmissionClientFactory<
     );
 
     if (!client) {
-      throw new Error('Failed to create default admission client');
+      throw new Error("Failed to create default admission client");
     }
 
     return client;

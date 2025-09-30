@@ -9,52 +9,57 @@ import {
   formatAddress,
   localDeliveryContext,
   parseAddress,
-} from 'naylence-core';
-import type { DeliveryAckFrame, FameConnector, FameEnvelopeHandler, FameRPCHandler } from 'naylence-core';
-import { generateId } from 'naylence-core';
-import { secureDigest } from '../util/util.js';
-import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
-import type { SecurityManager } from '../security/security-manager.js';
-import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
-import type { AdmissionClient } from './admission/admission-client.js';
-import type { NodeEventListener } from './node-event-listener.js';
-import type { StorageProvider, KeyValueStore } from '../storage/index.js';
-import { InMemoryStorageProvider } from '../storage/in-memory-storage.js';
-import { NodeEnvelopeFactory } from './node-envelope-factory.js';
-import type { EnvelopeFactory } from 'naylence-core';
-import { BindingManager } from './binding-manager.js';
-import type { BindingStoreEntry, BindingManagerOptions } from './binding-manager.js';
-import { EnvelopeListenerManager } from './envelope-listener-manager.js';
-import { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
-import type { RetryPolicy } from '../delivery/retry-policy.js';
-import type { RetryEventHandler } from '../delivery/retry-event-handler.js';
-import type { NodeLike } from './node-like.js';
-import { TaskSpawner } from '../util/task-spawner.js';
-import { pushNode } from './node-context-stack.js';
-import { getLogger } from '../util/logging.js';
-import type { NodeAttachClient, AttachInfo } from './admission/node-attach-client.js';
-import type { NodeWelcomeFrame } from 'naylence-core';
-import { RootSessionManager } from './root-session-manager.js';
-import { UpstreamSessionManager } from './upstream-session-manager.js';
-import type { SessionManager } from './session-manager.js';
-import { NoopAdmissionClient } from './admission/noop-admission-client.js';
-import { NodeMetaRecord, NODE_META_NAMESPACE } from './node-meta.js';
-import type { TransportListener } from '../connector/transport-listener.js';
-import type { ServiceManager } from '../service/service-manager.js';
-import { DefaultServiceManager } from '../service/default-service-manager.js';
+} from "naylence-core";
+import type {
+  DeliveryAckFrame,
+  FameConnector,
+  FameEnvelopeHandler,
+  FameRPCHandler,
+} from "naylence-core";
+import { generateId } from "naylence-core";
+import { secureDigest } from "../util/util.js";
+import type { DeliveryPolicy } from "../delivery/delivery-policy.js";
+import type { SecurityManager } from "../security/security-manager.js";
+import type { CryptoProvider } from "../security/crypto/providers/crypto-provider.js";
+import type { AdmissionClient } from "./admission/admission-client.js";
+import type { NodeEventListener } from "./node-event-listener.js";
+import type { StorageProvider, KeyValueStore } from "../storage/index.js";
+import { InMemoryStorageProvider } from "../storage/in-memory-storage.js";
+import { NodeEnvelopeFactory } from "./node-envelope-factory.js";
+import type { EnvelopeFactory } from "naylence-core";
+import { BindingManager } from "./binding-manager.js";
+import type { BindingStoreEntry, BindingManagerOptions } from "./binding-manager.js";
+import { EnvelopeListenerManager } from "./envelope-listener-manager.js";
+import { DefaultDeliveryTracker } from "../delivery/default-delivery-tracker.js";
+import type { RetryPolicy } from "../delivery/retry-policy.js";
+import type { RetryEventHandler } from "../delivery/retry-event-handler.js";
+import type { NodeLike } from "./node-like.js";
+import { TaskSpawner } from "../util/task-spawner.js";
+import { pushNode } from "./node-context-stack.js";
+import { getLogger } from "../util/logging.js";
+import type { NodeAttachClient, AttachInfo } from "./admission/node-attach-client.js";
+import type { NodeWelcomeFrame } from "naylence-core";
+import { RootSessionManager } from "./root-session-manager.js";
+import { UpstreamSessionManager } from "./upstream-session-manager.js";
+import type { SessionManager } from "./session-manager.js";
+import { NoopAdmissionClient } from "./admission/noop-admission-client.js";
+import { NodeMetaRecord, NODE_META_NAMESPACE } from "./node-meta.js";
+import type { TransportListener } from "../connector/transport-listener.js";
+import type { ServiceManager } from "../service/service-manager.js";
+import { DefaultServiceManager } from "../service/default-service-manager.js";
 
-const SYSTEM_INBOX = '__sys__';
+const SYSTEM_INBOX = "__sys__";
 
-const logger = getLogger('fame-node');
+const logger = getLogger("fame-node");
 
 function isSnakeCase(name: string): boolean {
-  return name.includes('_');
+  return name.includes("_");
 }
 
 function camelToSnake(name: string): string {
   return name
-    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-    .replace(/([A-Z])([A-Z][a-z])/g, '$1_$2')
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
     .toLowerCase();
 }
 
@@ -73,10 +78,13 @@ function getCandidateNames(eventName: string): string[] {
   return Array.from(candidates);
 }
 
-function resolveListenerMethod(listener: NodeEventListener, eventName: string): ((...args: any[]) => any) | undefined {
+function resolveListenerMethod(
+  listener: NodeEventListener,
+  eventName: string
+): ((...args: any[]) => any) | undefined {
   for (const candidate of getCandidateNames(eventName)) {
     const handler = (listener as any)[candidate];
-    if (typeof handler === 'function') {
+    if (typeof handler === "function") {
       return handler.bind(listener);
     }
   }
@@ -178,7 +186,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
     const fallbackCryptoProvider: CryptoProvider = {};
     this._cryptoProvider = options.cryptoProvider ?? fallbackCryptoProvider;
 
-    const envelopeFactory = options.envelopeFactory ?? new NodeEnvelopeFactory(() => this.sid ?? '');
+    const envelopeFactory =
+      options.envelopeFactory ?? new NodeEnvelopeFactory(() => this.sid ?? "");
     this._envelopeFactory = envelopeFactory;
 
     const tracker = options.deliveryTracker ?? new DefaultDeliveryTracker(this._storageProvider);
@@ -191,7 +200,9 @@ export class FameNode extends TaskSpawner implements NodeLike {
     const transportListeners = options.transportListeners ? [...options.transportListeners] : [];
     this._transportListeners = transportListeners;
 
-    const listeners: NodeEventListener[] = options.eventListeners ? [...options.eventListeners] : [];
+    const listeners: NodeEventListener[] = options.eventListeners
+      ? [...options.eventListeners]
+      : [];
 
     if (this._securityManager && !listeners.includes(this._securityManager)) {
       listeners.push(this._securityManager);
@@ -224,8 +235,9 @@ export class FameNode extends TaskSpawner implements NodeLike {
       bindingManagerOptions.bindingStore = options.bindingStore;
     }
 
-  this._bindingManager = new BindingManager(bindingManagerOptions);
-  (this as unknown as { _binding_manager?: BindingManager })._binding_manager = this._bindingManager;
+    this._bindingManager = new BindingManager(bindingManagerOptions);
+    (this as unknown as { _binding_manager?: BindingManager })._binding_manager =
+      this._bindingManager;
 
     this._envelopeListenerManager = new EnvelopeListenerManager({
       bindingManager: this._bindingManager,
@@ -251,7 +263,10 @@ export class FameNode extends TaskSpawner implements NodeLike {
     this._serviceManager = serviceManager;
 
     this._defaultBindingPath = this._physicalPath;
-    this._sid = this._hasParent && options.physicalPath === undefined ? null : this.computeSid(this._physicalPath);
+    this._sid =
+      this._hasParent && options.physicalPath === undefined
+        ? null
+        : this.computeSid(this._physicalPath);
     this._handshakeCompleted = !this._hasParent;
     this._welcomeExpiresAt = null;
     this._attachExpiresAt = null;
@@ -270,7 +285,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
   }
 
   private async initializeRootSessionManager(): Promise<void> {
-    const admissionClient = this._admissionClient ?? new NoopAdmissionClient({ systemId: this._id });
+    const admissionClient =
+      this._admissionClient ?? new NoopAdmissionClient({ systemId: this._id });
 
     const manager = new RootSessionManager({
       node: this,
@@ -286,11 +302,11 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
   private async initializeUpstreamSessionManager(): Promise<void> {
     if (!this._attachClient) {
-      throw new Error('Attach client is required for upstream nodes');
+      throw new Error("Attach client is required for upstream nodes");
     }
 
     if (!this._admissionClient) {
-      throw new Error('Admission client is required for upstream nodes');
+      throw new Error("Admission client is required for upstream nodes");
     }
 
     const manager = new UpstreamSessionManager({
@@ -342,7 +358,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
       this._handshakeCompleted = true;
     }
 
-    await this.dispatchEvent('onWelcome', welcome);
+    await this.dispatchEvent("onWelcome", welcome);
   }
 
   private async handleAttach(info: AttachInfo, connector: FameConnector): Promise<void> {
@@ -362,13 +378,13 @@ export class FameNode extends TaskSpawner implements NodeLike {
       this._sid = this.computeSid(this._physicalPath);
     }
 
-    await this.dispatchEvent('onNodeAttachToUpstream', this, info);
+    await this.dispatchEvent("onNodeAttachToUpstream", this, info);
   }
 
   private async handleEpochChange(epoch: string): Promise<void> {
     await this._bindingManager.rebindAddressesUpstream();
     await this._bindingManager.readvertiseCapabilitiesUpstream();
-    await this.dispatchEvent('onEpochChange', this, epoch);
+    await this.dispatchEvent("onEpochChange", this, epoch);
   }
 
   private async stopSessionManager(): Promise<void> {
@@ -394,22 +410,22 @@ export class FameNode extends TaskSpawner implements NodeLike {
       return;
     }
 
-    if (frameType === 'NodeHeartbeat') {
-      logger.debug('received_heartbeat_frame', {
+    if (frameType === "NodeHeartbeat") {
+      logger.debug("received_heartbeat_frame", {
         envelopeId: envelope.id,
         corrId: envelope.corrId ?? null,
       });
       this._lastHeartbeatAt = Date.now();
-      await this.dispatchEvent('onHeartbeatReceived', envelope);
+      await this.dispatchEvent("onHeartbeatReceived", envelope);
       return;
     }
 
-    if (frameType === 'DeliveryAck') {
+    if (frameType === "DeliveryAck") {
       await this.handleDeliveryAck(envelope, context);
       return;
     }
 
-    logger.debug('unhandled_system_frame', {
+    logger.debug("unhandled_system_frame", {
       envelopeId: envelope.id,
       frameType,
     });
@@ -420,21 +436,21 @@ export class FameNode extends TaskSpawner implements NodeLike {
     context?: FameDeliveryContext
   ): Promise<void> {
     const frame = envelope.frame as DeliveryAckFrame | undefined;
-    if (!frame || frame.type !== 'DeliveryAck') {
+    if (!frame || frame.type !== "DeliveryAck") {
       return;
     }
 
     await this._deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, envelope, context);
 
     if (frame.ok !== false) {
-      logger.debug('delivery_ack_received', {
+      logger.debug("delivery_ack_received", {
         envelopeId: envelope.id,
         corrId: envelope.corrId ?? null,
       });
       return;
     }
 
-  logger.warning('delivery_nack_received', {
+    logger.warning("delivery_nack_received", {
       envelopeId: envelope.id,
       corrId: envelope.corrId ?? null,
       code: frame.code ?? null,
@@ -450,7 +466,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
     envelope: FameEnvelope,
     _context?: FameDeliveryContext
   ): Promise<void> {
-    logger.debug('delivery_nack_processed', {
+    logger.debug("delivery_nack_processed", {
       envelopeId: envelope.id,
       code: frame.code ?? null,
       reason: frame.reason ?? null,
@@ -558,57 +574,60 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
   async start(): Promise<void> {
     if (this._isStarted) {
-      throw new Error('Node already started');
+      throw new Error("Node already started");
     }
 
-      const release = pushNode(this);
-      try {
-        await this.dispatchEvent('onNodeInitialized', this);
-        await this.initializeSessionManager();
+    const release = pushNode(this);
+    try {
+      await this.dispatchEvent("onNodeInitialized", this);
+      await this.initializeSessionManager();
 
-        if (!this._sid && this._physicalPath) {
-          this._sid = this.computeSid(this._physicalPath);
-        }
+      if (!this._sid && this._physicalPath) {
+        this._sid = this.computeSid(this._physicalPath);
+      }
 
-        await this.persistNodeMeta();
+      await this.persistNodeMeta();
 
-        await this.listen(SYSTEM_INBOX, async (env, ctx) => {
-          await this.handleSystemFrame(env, ctx);
-          return null;
-        });
+      await this.listen(SYSTEM_INBOX, async (env, ctx) => {
+        await this.handleSystemFrame(env, ctx);
+        return null;
+      });
 
       await this._serviceManager.start();
 
-      await this.dispatchEvent('onNodeStarted', this);
+      await this.dispatchEvent("onNodeStarted", this);
 
       await this._bindingManager.restore();
       await this._envelopeListenerManager.start();
 
-        this._releaseNodeContext = release;
-        this._isStarted = true;
-      } catch (error) {
-        release();
+      this._releaseNodeContext = release;
+      this._isStarted = true;
+    } catch (error) {
+      release();
       try {
         await this._serviceManager.stop();
       } catch {
         // Best-effort cleanup
       }
-        await this.stopSessionManager();
-        throw error;
-      }
+      await this.stopSessionManager();
+      throw error;
+    }
+  }
+
+  async prepareToStop(): Promise<void> {
+    await this.dispatchEvent("onNodePreparingToStop", this);
   }
 
   async stop(): Promise<void> {
     if (!this._isStarted) {
       return;
     }
-
-    await this.dispatchEvent('onNodePreparingToStop', this);
+    await this.prepareToStop();
     await this.shutdownTasks({ gracePeriod: 100, joinTimeout: 100 });
     await this._envelopeListenerManager.stop();
     await this.stopSessionManager();
     await this._serviceManager.stop();
-    await this.dispatchEvent('onNodeStopped', this);
+    await this.dispatchEvent("onNodeStopped", this);
     this._isStarted = false;
     if (this._releaseNodeContext) {
       this._releaseNodeContext();
@@ -722,10 +741,10 @@ export class FameNode extends TaskSpawner implements NodeLike {
       effectiveContext = localDeliveryContext(this.id);
     } else {
       if (context.originType && context.originType !== DeliveryOriginType.LOCAL) {
-        throw new Error('Can only send with LOCAL origin context');
+        throw new Error("Can only send with LOCAL origin context");
       }
       if (context.fromConnector) {
-        throw new Error('fromConnector must be null in LOCAL context');
+        throw new Error("fromConnector must be null in LOCAL context");
       }
 
       effectiveContext = {
@@ -769,7 +788,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
     }
 
     if (!envelope.replyTo) {
-      envelope.replyTo = formatAddress(SYSTEM_INBOX, this._physicalPath ?? '');
+      envelope.replyTo = formatAddress(SYSTEM_INBOX, this._physicalPath ?? "");
     }
 
     const retryHandler = retryPolicy ? new DefaultRetryHandler(deliverFn) : null;
@@ -792,19 +811,19 @@ export class FameNode extends TaskSpawner implements NodeLike {
     const ackEnvelope = await this._deliveryTracker.awaitAck(envelope.id, effectiveTimeout);
     const ackFrame = ackEnvelope.frame;
 
-    if (!ackFrame || ackFrame.type !== 'DeliveryAck') {
-      throw new Error('Expected DeliveryAck frame in acknowledgement');
+    if (!ackFrame || ackFrame.type !== "DeliveryAck") {
+      throw new Error("Expected DeliveryAck frame in acknowledgement");
     }
 
     return ackFrame as DeliveryAckFrame;
   }
 
   async deliver(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
-    const processedEnvelope = await this.runEnvelopeListeners(
-      'onDeliver',
-      1,
-      [this, envelope, context]
-    );
+    const processedEnvelope = await this.runEnvelopeListeners("onDeliver", 1, [
+      this,
+      envelope,
+      context,
+    ]);
 
     if (!processedEnvelope) {
       return;
@@ -815,11 +834,11 @@ export class FameNode extends TaskSpawner implements NodeLike {
     if (
       frameType &&
       [
-        'AddressBind',
-        'AddressUnbind',
-        'CapabilityAdvertise',
-        'CapabilityWithdraw',
-        'NodeHeartbeat',
+        "AddressBind",
+        "AddressUnbind",
+        "CapabilityAdvertise",
+        "CapabilityWithdraw",
+        "NodeHeartbeat",
       ].includes(frameType)
     ) {
       await this.forwardUpstream(processedEnvelope, context);
@@ -829,22 +848,27 @@ export class FameNode extends TaskSpawner implements NodeLike {
     if (
       frameType &&
       [
-        'AddressBindAck',
-        'AddressUnbindAck',
-        'CapabilityAdvertiseAck',
-        'CapabilityWithdrawAck',
+        "AddressBindAck",
+        "AddressUnbindAck",
+        "CapabilityAdvertiseAck",
+        "CapabilityWithdrawAck",
       ].includes(frameType)
     ) {
       await this._deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, processedEnvelope, context);
       return;
     }
 
-    if (frameType === 'DeliveryAck') {
-      await this._deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, processedEnvelope, context);
-      return;
-    }
+    // if (frameType === 'DeliveryAck') {
+    //   if (!context || context.originType !== DeliveryOriginType.LOCAL) {
+    //     await this._deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, processedEnvelope, context);
+    //     return;
+    //   }
+    // }
 
-    if (frameType && ['Data', 'SecureOpen', 'SecureAccept', 'SecureClose'].includes(frameType)) {
+    if (
+      frameType &&
+      ["Data", "DeliveryAck", "SecureOpen", "SecureAccept", "SecureClose"].includes(frameType)
+    ) {
       if (processedEnvelope.to && this.hasLocal(processedEnvelope.to)) {
         await this.deliverLocal(processedEnvelope.to, processedEnvelope, context);
         return;
@@ -866,7 +890,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
       if (!context.fromConnector || context.fromConnector !== this._upstreamConnector) {
         await this.forwardUpstream(processedEnvelope, context);
       } else {
-        logger.error('attempted_upstream_loop', {
+        logger.error("attempted_upstream_loop", {
           envelopeId: processedEnvelope.id,
         });
       }
@@ -874,14 +898,14 @@ export class FameNode extends TaskSpawner implements NodeLike {
     }
 
     if (!processedEnvelope.to) {
-      logger.error('dropping_envelope_without_destination', {
+      logger.error("dropping_envelope_without_destination", {
         envelopeId: processedEnvelope.id,
         capabilities: processedEnvelope.capabilities ?? [],
       });
       return;
     }
 
-    logger.warning('no_local_handler_for_address', {
+    logger.warning("no_local_handler_for_address", {
       address: processedEnvelope.to.toString?.() ?? String(processedEnvelope.to),
       originType: context?.originType ?? null,
     });
@@ -892,11 +916,12 @@ export class FameNode extends TaskSpawner implements NodeLike {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<void> {
-    const processedEnvelope = await this.runEnvelopeListeners(
-      'onDeliverLocal',
-      2,
-      [this, address, envelope, context]
-    );
+    const processedEnvelope = await this.runEnvelopeListeners("onDeliverLocal", 2, [
+      this,
+      address,
+      envelope,
+      context,
+    ]);
     if (!processedEnvelope) {
       return;
     }
@@ -909,13 +934,15 @@ export class FameNode extends TaskSpawner implements NodeLike {
     const channelMessage = createChannelMessage(processedEnvelope, context);
     await binding.channel.send(channelMessage);
 
-    await this.runEnvelopeListeners('onDeliverLocalComplete', 2, [this, address, processedEnvelope, context]);
+    await this.runEnvelopeListeners("onDeliverLocalComplete", 2, [
+      this,
+      address,
+      processedEnvelope,
+      context,
+    ]);
   }
 
-  async forwardUpstream(
-    envelope: FameEnvelope,
-    context?: FameDeliveryContext
-  ): Promise<void> {
+  async forwardUpstream(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
     if (context?.originType === DeliveryOriginType.UPSTREAM) {
       return;
     }
@@ -923,49 +950,57 @@ export class FameNode extends TaskSpawner implements NodeLike {
     let processedEnvelope: FameEnvelope | null = null;
 
     try {
-      processedEnvelope = await this.runEnvelopeListeners(
-        'onForwardUpstream',
-        1,
-        [this, envelope, context]
-      );
+      processedEnvelope = await this.runEnvelopeListeners("onForwardUpstream", 1, [
+        this,
+        envelope,
+        context,
+      ]);
 
       if (!processedEnvelope) {
         return;
       }
 
       if (!this._upstreamConnector) {
-        await this.runEnvelopeListeners(
-          'onForwardUpstreamComplete',
-          1,
-          [this, processedEnvelope, undefined, undefined, context]
-        );
+        await this.runEnvelopeListeners("onForwardUpstreamComplete", 1, [
+          this,
+          processedEnvelope,
+          undefined,
+          undefined,
+          context,
+        ]);
         return;
       }
 
       const manager = this._sessionManager;
       if (!manager || !(manager instanceof UpstreamSessionManager)) {
-        await this.runEnvelopeListeners(
-          'onForwardUpstreamComplete',
-          1,
-          [this, processedEnvelope, undefined, undefined, context]
-        );
+        await this.runEnvelopeListeners("onForwardUpstreamComplete", 1, [
+          this,
+          processedEnvelope,
+          undefined,
+          undefined,
+          context,
+        ]);
         return;
       }
 
       await manager.send(processedEnvelope);
 
-      await this.runEnvelopeListeners(
-        'onForwardUpstreamComplete',
-        1,
-        [this, processedEnvelope, undefined, undefined, context]
-      );
+      await this.runEnvelopeListeners("onForwardUpstreamComplete", 1, [
+        this,
+        processedEnvelope,
+        undefined,
+        undefined,
+        context,
+      ]);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      await this.runEnvelopeListeners(
-        'onForwardUpstreamComplete',
-        1,
-        [this, processedEnvelope ?? envelope, undefined, err, context]
-      );
+      await this.runEnvelopeListeners("onForwardUpstreamComplete", 1, [
+        this,
+        processedEnvelope ?? envelope,
+        undefined,
+        err,
+        context,
+      ]);
       throw err;
     }
   }
@@ -1006,7 +1041,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
     };
 
     const processCandidate = (candidate: unknown) => {
-      if (!candidate || typeof candidate !== 'object') {
+      if (!candidate || typeof candidate !== "object") {
         return;
       }
 
@@ -1018,9 +1053,9 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
         let grant: Record<string, any> | null | undefined;
 
-        if (typeof asAny.asCallbackGrant === 'function') {
+        if (typeof asAny.asCallbackGrant === "function") {
           grant = asAny.asCallbackGrant();
-        } else if (typeof asAny.getCallbackGrant === 'function') {
+        } else if (typeof asAny.getCallbackGrant === "function") {
           grant = asAny.getCallbackGrant();
         }
 
@@ -1028,7 +1063,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
           addGrant(grant);
         }
       } catch (error) {
-        logger.warning('callback_grant_collection_failed', {
+        logger.warning("callback_grant_collection_failed", {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -1061,7 +1096,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
     const argsWithNode = args.length > 0 && args[0] === this ? args : [this, ...args];
 
     const envelopeIndex = argsWithNode.findIndex(
-      (value) => value && typeof value === 'object' && 'frame' in value
+      (value) => value && typeof value === "object" && "frame" in value
     );
 
     if (envelopeIndex === -1) {
@@ -1106,11 +1141,13 @@ export class FameNode extends TaskSpawner implements NodeLike {
   private async persistNodeMeta(): Promise<void> {
     try {
       const store = await this._nodeMetaStorePromise;
-      const existing = await store.get('self');
-      const record = existing ? Object.assign(existing, { id: this._id }) : new NodeMetaRecord(this._id);
-      await store.set('self', record);
+      const existing = await store.get("self");
+      const record = existing
+        ? Object.assign(existing, { id: this._id })
+        : new NodeMetaRecord(this._id);
+      await store.set("self", record);
     } catch (error) {
-      logger.warning('node_meta_persist_failed', {
+      logger.warning("node_meta_persist_failed", {
         error: error instanceof Error ? error.message : String(error),
       });
     }

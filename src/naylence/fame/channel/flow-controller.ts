@@ -22,7 +22,7 @@
  * flow at any time.
  */
 
-import { FlowFlags } from 'naylence-core';
+import { FlowFlags } from "naylence-core";
 
 /**
  * Simple condition variable implementation for TypeScript/Node.js
@@ -177,11 +177,11 @@ export class FlowController {
   async acquire(flowId: string): Promise<void> {
     this.ensureFlow(flowId);
     const condition = this.conditions.get(flowId)!;
-    
+
     while (this.credits.get(flowId)! <= 0) {
       await condition.wait();
     }
-    
+
     const current = this.credits.get(flowId)!;
     this.credits.set(flowId, current - 1);
   }

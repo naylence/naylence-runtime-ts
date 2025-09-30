@@ -1,12 +1,12 @@
 /**
  * in-memory-binding.ts - In-memory binding implementation
- * 
- * TypeScript port of Python's InMemoryBinding that connects a FameAddress 
+ *
+ * TypeScript port of Python's InMemoryBinding that connects a FameAddress
  * to an InMemoryReadWriteChannel, managing the binding lifecycle.
  */
 
-import { FameAddress } from 'naylence-core';
-import { InMemoryReadWriteChannel, InMemoryChannelConfig } from './in-memory-channel.js';
+import { FameAddress } from "naylence-core";
+import { InMemoryReadWriteChannel, InMemoryChannelConfig } from "./in-memory-channel.js";
 
 /**
  * Binding configuration options
@@ -26,8 +26,8 @@ export class InMemoryBinding {
 
   constructor(address: FameAddress | string, config: InMemoryBindingConfig = {}) {
     // Convert string address to FameAddress if needed
-    this.address = typeof address === 'string' ? new FameAddress(address) : address;
-    
+    this.address = typeof address === "string" ? new FameAddress(address) : address;
+
     // Use provided channel or create a new one
     this.channel = config.channel || new InMemoryReadWriteChannel(config);
   }
@@ -43,7 +43,7 @@ export class InMemoryBinding {
    * Create a binding with a custom channel
    */
   static withChannel(
-    address: FameAddress | string, 
+    address: FameAddress | string,
     channel: InMemoryReadWriteChannel
   ): InMemoryBinding {
     return new InMemoryBinding(address, { channel });

@@ -1,13 +1,13 @@
-import type { CreateResourceOptions } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
+import type { CreateResourceOptions } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
 
-import type { TransportListener } from './transport-listener.js';
-import type { TransportListenerConfig } from './transport-listener-config.js';
+import type { TransportListener } from "./transport-listener.js";
+import type { TransportListenerConfig } from "./transport-listener-config.js";
 
-export const TRANSPORT_LISTENER_FACTORY_BASE_TYPE = 'TransportListenerFactory';
+export const TRANSPORT_LISTENER_FACTORY_BASE_TYPE = "TransportListenerFactory";
 
 export abstract class TransportListenerFactory<
-  C extends TransportListenerConfig = TransportListenerConfig
+  C extends TransportListenerConfig = TransportListenerConfig,
 > extends AbstractResourceFactory<TransportListener, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,

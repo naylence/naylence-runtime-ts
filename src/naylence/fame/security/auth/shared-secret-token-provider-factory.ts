@@ -1,18 +1,21 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import type { CredentialProvider } from '../credential/credential-provider.js';
-import { CredentialProviderFactory, type CredentialProviderConfig } from '../credential/credential-provider-factory.js';
-import { normalizeSecretSource, type SecretSourceType } from '../credential/secret-source.js';
-import type { TokenProvider } from './token-provider.js';
+import type { CredentialProvider } from "../credential/credential-provider.js";
+import {
+  CredentialProviderFactory,
+  type CredentialProviderConfig,
+} from "../credential/credential-provider-factory.js";
+import { normalizeSecretSource, type SecretSourceType } from "../credential/secret-source.js";
+import type { TokenProvider } from "./token-provider.js";
 import {
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
   TokenProviderFactory,
   type TokenProviderConfig,
-} from './token-provider-factory.js';
-import { SharedSecretTokenProvider } from './shared-secret-token-provider.js';
+} from "./token-provider-factory.js";
+import { SharedSecretTokenProvider } from "./shared-secret-token-provider.js";
 
 export interface SharedSecretTokenProviderConfig extends TokenProviderConfig {
-  type: 'SharedSecretTokenProvider';
+  type: "SharedSecretTokenProvider";
   secret: SecretSourceType;
 }
 
@@ -24,11 +27,11 @@ function normalizeConfig(
   config?: SharedSecretTokenProviderConfig | Record<string, unknown> | null
 ): NormalizedSharedSecretConfig {
   if (!config) {
-    throw new Error('SharedSecretTokenProvider requires configuration');
+    throw new Error("SharedSecretTokenProvider requires configuration");
   }
 
   const candidate = config as SharedSecretTokenProviderConfig & Record<string, unknown>;
-  const secretSource: SecretSourceType = candidate.secret ?? 'env://SHARED_SECRET';
+  const secretSource: SecretSourceType = candidate.secret ?? "env://SHARED_SECRET";
 
   return {
     secretConfig: normalizeSecretSource(secretSource),
@@ -36,7 +39,7 @@ function normalizeConfig(
 }
 
 export class SharedSecretTokenProviderFactory extends TokenProviderFactory<SharedSecretTokenProviderConfig> {
-  public readonly type = 'SharedSecretTokenProvider';
+  public readonly type = "SharedSecretTokenProvider";
 
   public async create(
     config?: SharedSecretTokenProviderConfig | Record<string, unknown> | null
@@ -52,6 +55,6 @@ export class SharedSecretTokenProviderFactory extends TokenProviderFactory<Share
 
 registerFactory<TokenProvider, SharedSecretTokenProviderConfig>(
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
-  'SharedSecretTokenProvider',
+  "SharedSecretTokenProvider",
   SharedSecretTokenProviderFactory
 );

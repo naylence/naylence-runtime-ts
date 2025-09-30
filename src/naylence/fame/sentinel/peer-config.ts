@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import type { AdmissionConfig } from '../node/admission/admission-client-factory.js';
+import type { AdmissionConfig } from "../node/admission/admission-client-factory.js";
 
 export interface PeerConfig {
   directUrl: string | null;
@@ -26,7 +26,7 @@ export function normalizePeerConfigs(input: unknown): PeerConfig[] {
   const peers: PeerConfig[] = [];
 
   for (const candidate of input) {
-    if (!candidate || typeof candidate !== 'object') {
+    if (!candidate || typeof candidate !== "object") {
       continue;
     }
 
@@ -38,7 +38,7 @@ export function normalizePeerConfigs(input: unknown): PeerConfig[] {
     const { directUrl = null, admission = null } = parsed.data;
 
     peers.push({
-      directUrl: typeof directUrl === 'string' ? directUrl : null,
+      directUrl: typeof directUrl === "string" ? directUrl : null,
       admission: (admission ?? null) as AdmissionConfig | Record<string, unknown> | null,
     });
   }

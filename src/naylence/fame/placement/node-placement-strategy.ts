@@ -1,8 +1,13 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource, registerFactory } from 'naylence-factory';
-import type { NodeHelloFrame } from 'naylence-core';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+  registerFactory,
+} from "naylence-factory";
+import type { NodeHelloFrame } from "naylence-core";
 
-export const NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE = 'NodePlacementStrategyFactory' as const;
+export const NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE = "NodePlacementStrategyFactory" as const;
 
 export interface PlacementDecision {
   accept: boolean;
@@ -27,7 +32,7 @@ export interface NodePlacementConfig extends ResourceConfig {
 }
 
 export abstract class NodePlacementStrategyFactory<
-  C extends NodePlacementConfig = NodePlacementConfig
+  C extends NodePlacementConfig = NodePlacementConfig,
 > extends AbstractResourceFactory<NodePlacementStrategy, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -35,7 +40,7 @@ export abstract class NodePlacementStrategyFactory<
   ): Promise<NodePlacementStrategy>;
 
   public static async createNodePlacementStrategy<
-    C extends NodePlacementConfig = NodePlacementConfig
+    C extends NodePlacementConfig = NodePlacementConfig,
   >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
@@ -48,7 +53,7 @@ export abstract class NodePlacementStrategyFactory<
       );
 
       if (!strategy) {
-        throw new Error('Failed to create node placement strategy from configuration');
+        throw new Error("Failed to create node placement strategy from configuration");
       }
 
       return strategy;
@@ -63,13 +68,13 @@ export abstract class NodePlacementStrategyFactory<
       );
     } catch (error) {
       const message =
-        'Failed to create default node placement strategy' +
-        (error instanceof Error && error.message ? `: ${error.message}` : '');
+        "Failed to create default node placement strategy" +
+        (error instanceof Error && error.message ? `: ${error.message}` : "");
       throw new Error(message);
     }
 
     if (!strategy) {
-      throw new Error('Failed to create default node placement strategy');
+      throw new Error("Failed to create default node placement strategy");
     }
 
     return strategy;

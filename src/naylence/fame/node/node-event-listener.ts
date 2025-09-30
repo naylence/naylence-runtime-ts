@@ -8,34 +8,34 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeWelcomeFrame,
-} from 'naylence-core';
+} from "naylence-core";
 
-import type { AttachInfo } from './admission/node-attach-client.js';
+import type { AttachInfo } from "./admission/node-attach-client.js";
 // Import NodeLike from the proper module
-import type { NodeLike } from './node-like.js';
+import type { NodeLike } from "./node-like.js";
 
 /**
  * Protocol for components that need to respond to node lifecycle events.
- * 
+ *
  * This protocol enables clean, event-driven initialization and management of
  * various node subsystems (security, routing, monitoring, etc.), replacing
  * ad-hoc initialization patterns with a structured event-based approach.
- * 
+ *
  * Components implementing this protocol can be registered with nodes to
  * receive lifecycle events and perform their specific setup, processing,
  * and cleanup tasks at the appropriate times.
- * 
+ *
  * All methods have default implementations (empty/pass-through), so implementing
  * classes only need to override the events they care about.
  */
 export interface NodeEventListener {
   /**
    * The priority of this event listener for ordering during event dispatch.
-   * 
+   *
    * Lower values mean higher priority (executed first). Event listeners with
    * the same priority are ordered according to their original placement in
    * the event_listeners list.
-   * 
+   *
    * Default priority is 1000 to allow both higher priority (< 1000) and
    * lower priority (> 1000) listeners to be easily added.
    */
@@ -43,7 +43,7 @@ export interface NodeEventListener {
 
   /**
    * Called when a node has been started and is ready for operation.
-   * 
+   *
    * This event is dispatched after the node has:
    * - Established its physical path and SID
    * - Connected to upstream (if applicable)
@@ -54,7 +54,7 @@ export interface NodeEventListener {
 
   /**
    * Called when a child node receives a welcome frame during admission.
-   * 
+   *
    * This event allows components to handle setup and initialization
    * based on the welcome frame from the parent.
    */
@@ -62,7 +62,7 @@ export interface NodeEventListener {
 
   /**
    * Called when a heartbeat acknowledgment is received from upstream.
-   * 
+   *
    * This event allows components to perform processing on heartbeat frames
    * as needed by their specific requirements.
    */
@@ -75,7 +75,7 @@ export interface NodeEventListener {
 
   /**
    * Called when a node has been fully initialized but before it starts.
-   * 
+   *
    * This event is dispatched after the node has completed construction,
    * including all sub-components like routing capabilities, but before
    * the node actually starts operating. This is the ideal place to:
@@ -87,27 +87,31 @@ export interface NodeEventListener {
 
   /**
    * Called when a sentinel successfully attaches to a peer.
-   * 
+   *
    * This event is dispatched after the sentinel has:
    * - Successfully connected to a peer
    * - Received peer attachment information
    * - But before normal peer-to-peer operation begins
-   * 
+   *
    * This is the ideal place to handle peer-specific setup, including:
    * - Processing peer information and capabilities
    * - Setting up peer-specific configurations
    * - Updating subsystems with peer routing information
    */
-  onNodeAttachToPeer?(node: NodeLike, attachInfo: AttachInfo, connector: FameConnector): Promise<void>;
+  onNodeAttachToPeer?(
+    node: NodeLike,
+    attachInfo: AttachInfo,
+    connector: FameConnector
+  ): Promise<void>;
 
   /**
    * Called when a child node successfully attaches to an upstream parent.
-   * 
+   *
    * This event is dispatched after the node has:
    * - Received attachment information from the parent
    * - Updated its physical path and SID
    * - But before normal operation begins
-   * 
+   *
    * This is the ideal place to handle parent-specific setup, policy
    * validation, and other attach-specific initialization logic.
    */
@@ -115,31 +119,40 @@ export interface NodeEventListener {
 
   /**
    * Called when an envelope is received by the node.
-   * 
+   *
    * This event allows components to perform processing on incoming envelopes
    * as needed by their specific requirements.
-   * 
+   *
    * @returns The processed envelope or null to halt processing
    */
-  onEnvelopeReceived?(node: NodeLike, envelope: FameEnvelope, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onEnvelopeReceived?(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called when a node is about to deliver an envelope locally.
-   * 
+   *
    * This event allows components to process, transform, or filter
    * envelopes before local delivery. Components can:
    * - Apply validation policies (security, routing, content validation)
    * - Transform or decrypt envelope content
    * - Log or monitor delivery events
    * - Reject envelopes by returning null
-   * 
+   *
    * @returns Transformed envelope for continued processing, or null to halt delivery
    */
-  onDeliverLocal?(node: NodeLike, address: FameAddress, envelope: FameEnvelope, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onDeliverLocal?(
+    node: NodeLike,
+    address: FameAddress,
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called when a node is about to process an envelope for delivery.
-   * 
+   *
    * This event allows components to handle all envelope processing
    * including validation, transformation, and other inbound processing.
    * Components can:
@@ -148,14 +161,18 @@ export interface NodeEventListener {
    * - Log or monitor envelope processing
    * - Transform envelope content
    * - Reject envelopes by returning null
-   * 
+   *
    * @returns Transformed envelope for continued processing, or null to halt delivery
    */
-  onDeliver?(node: NodeLike, envelope: FameEnvelope, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onDeliver?(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called when a node is about to forward an envelope upstream.
-   * 
+   *
    * This event allows components to handle outbound processing
    * including transformation, validation, and other outbound processing.
    * Components can:
@@ -164,14 +181,18 @@ export interface NodeEventListener {
    * - Apply outbound policies and monitoring
    * - Transform envelope content
    * - Reject forwarding by returning null
-   * 
+   *
    * @returns Transformed envelope for continued processing, or null to halt forwarding
    */
-  onForwardUpstream?(node: NodeLike, envelope: FameEnvelope, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardUpstream?(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called when a sentinel is about to forward an envelope to a downstream route.
-   * 
+   *
    * This event allows components to handle outbound processing
    * for routing-specific forwarding including transformation, validation, and other
    * outbound processing for downstream routes.
@@ -181,14 +202,19 @@ export interface NodeEventListener {
    * - Monitor and log routing operations
    * - Transform envelope content
    * - Reject forwarding by returning null
-   * 
+   *
    * @returns Transformed envelope for continued processing, or null to halt forwarding
    */
-  onForwardToRoute?(node: NodeLike, nextSegment: string, envelope: FameEnvelope, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardToRoute?(
+    node: NodeLike,
+    nextSegment: string,
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called when a sentinel is about to forward an envelope to a peer.
-   * 
+   *
    * This event allows components to handle outbound processing
    * for peer forwarding including transformation, validation, and other outbound
    * processing for peer-to-peer communication.
@@ -198,14 +224,19 @@ export interface NodeEventListener {
    * - Monitor and log peer communications
    * - Transform envelope content
    * - Reject forwarding by returning null
-   * 
+   *
    * @returns Transformed envelope for continued processing, or null to halt forwarding
    */
-  onForwardToPeer?(node: NodeLike, peerSegment: string, envelope: FameEnvelope, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardToPeer?(
+    node: NodeLike,
+    peerSegment: string,
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called after a node completes forwarding an envelope upstream.
-   * 
+   *
    * This event allows components to handle post-forwarding processing
    * including cleanup, logging, metrics collection, and error handling.
    * Components can:
@@ -214,14 +245,20 @@ export interface NodeEventListener {
    * - Handle errors and perform cleanup
    * - Update state based on forwarding results
    * - Perform audit logging
-   * 
+   *
    * @returns The envelope for continued processing
    */
-  onForwardUpstreamComplete?(node: NodeLike, envelope: FameEnvelope, result?: any, error?: Error, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardUpstreamComplete?(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    result?: any,
+    error?: Error,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called after a sentinel completes forwarding an envelope to a downstream route.
-   * 
+   *
    * This event allows components to handle post-forwarding processing
    * for routing-specific operations including cleanup, logging, and error handling.
    * Components can:
@@ -230,14 +267,21 @@ export interface NodeEventListener {
    * - Handle routing errors and perform cleanup
    * - Update routing state based on results
    * - Perform routing audit logging
-   * 
+   *
    * @returns The envelope for continued processing
    */
-  onForwardToRouteComplete?(node: NodeLike, nextSegment: string, envelope: FameEnvelope, result?: any, error?: Error, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardToRouteComplete?(
+    node: NodeLike,
+    nextSegment: string,
+    envelope: FameEnvelope,
+    result?: any,
+    error?: Error,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called after a sentinel completes forwarding an envelope to a peer.
-   * 
+   *
    * This event allows components to handle post-forwarding processing
    * for peer communication including cleanup, logging, and error handling.
    * Components can:
@@ -246,14 +290,21 @@ export interface NodeEventListener {
    * - Handle peer communication errors and perform cleanup
    * - Update peer state based on results
    * - Perform peer audit logging
-   * 
+   *
    * @returns The envelope for continued processing
    */
-  onForwardToPeerComplete?(node: NodeLike, peerSegment: string, envelope: FameEnvelope, result?: any, error?: Error, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardToPeerComplete?(
+    node: NodeLike,
+    peerSegment: string,
+    envelope: FameEnvelope,
+    result?: any,
+    error?: Error,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called when a sentinel is about to forward an envelope to multiple peers.
-   * 
+   *
    * This event allows components to handle outbound processing
    * for multi-peer forwarding including transformation, validation, and other outbound
    * processing for broadcast-style peer communication.
@@ -263,14 +314,20 @@ export interface NodeEventListener {
    * - Monitor and log broadcast operations
    * - Transform envelope content
    * - Reject forwarding by returning null
-   * 
+   *
    * @returns Transformed envelope for continued processing, or null to halt forwarding
    */
-  onForwardToPeers?(node: NodeLike, envelope: FameEnvelope, peers?: any, excludePeers?: any, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardToPeers?(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    peers?: any,
+    excludePeers?: any,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called after a sentinel completes forwarding an envelope to multiple peers.
-   * 
+   *
    * This event allows components to handle post-forwarding processing
    * for multi-peer communication including cleanup, logging, and error handling.
    * Components can:
@@ -279,14 +336,22 @@ export interface NodeEventListener {
    * - Handle broadcast errors and perform cleanup
    * - Update peer state based on results
    * - Perform broadcast audit logging
-   * 
+   *
    * @returns The envelope for continued processing
    */
-  onForwardToPeersComplete?(node: NodeLike, envelope: FameEnvelope, peers?: any, excludePeers?: any, result?: any, error?: Error, context?: FameDeliveryContext): Promise<FameEnvelope | null>;
+  onForwardToPeersComplete?(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    peers?: any,
+    excludePeers?: any,
+    result?: any,
+    error?: Error,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null>;
 
   /**
    * Called when a child node is attaching to handle security validation.
-   * 
+   *
    * This event allows components to validate keys and security compatibility
    * between the parent (us) and the attaching child node.
    */
@@ -302,7 +367,7 @@ export interface NodeEventListener {
 
   /**
    * Called when the node receives an epoch change notification.
-   * 
+   *
    * This event is dispatched when the node's epoch changes, which typically
    * happens when the upstream parent's routing state changes. This is an
    * ideal place to handle:
@@ -315,7 +380,7 @@ export interface NodeEventListener {
 
   /**
    * Called when a node is preparing to stop but has not yet fully shut down.
-   * 
+   *
    * This event is dispatched before the node begins its shutdown sequence,
    * allowing components to perform pre-shutdown tasks such as:
    * - Flushing caches or buffers
@@ -326,7 +391,7 @@ export interface NodeEventListener {
 
   /**
    * Called when a node is being stopped and should clean up resources.
-   * 
+   *
    * This event is dispatched during node shutdown, allowing components
    * to clean up resources, stop background tasks, and gracefully shut down
    * their services (monitoring, security, routing, etc.).
@@ -336,7 +401,7 @@ export interface NodeEventListener {
 
 /**
  * Abstract base class providing default implementations for NodeEventListener.
- * 
+ *
  * This class provides a convenient base for implementing node event listeners
  * where you only need to override specific lifecycle methods. All methods
  * have sensible default implementations.
@@ -372,7 +437,11 @@ export abstract class BaseNodeEventListener implements NodeEventListener {
     // Default implementation does nothing
   }
 
-  async onNodeAttachToPeer?(_node: NodeLike, _attachInfo: AttachInfo, _connector: FameConnector): Promise<void> {
+  async onNodeAttachToPeer?(
+    _node: NodeLike,
+    _attachInfo: AttachInfo,
+    _connector: FameConnector
+  ): Promise<void> {
     // Default implementation does nothing
   }
 
@@ -380,57 +449,118 @@ export abstract class BaseNodeEventListener implements NodeEventListener {
     // Default implementation does nothing
   }
 
-  async onEnvelopeReceived?(_node: NodeLike, envelope: FameEnvelope, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onEnvelopeReceived?(
+    _node: NodeLike,
+    envelope: FameEnvelope,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onDeliverLocal?(_node: NodeLike, _address: FameAddress, envelope: FameEnvelope, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onDeliverLocal?(
+    _node: NodeLike,
+    _address: FameAddress,
+    envelope: FameEnvelope,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onDeliver?(_node: NodeLike, envelope: FameEnvelope, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onDeliver?(
+    _node: NodeLike,
+    envelope: FameEnvelope,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardUpstream?(_node: NodeLike, envelope: FameEnvelope, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardUpstream?(
+    _node: NodeLike,
+    envelope: FameEnvelope,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardToRoute?(_node: NodeLike, _nextSegment: string, envelope: FameEnvelope, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardToRoute?(
+    _node: NodeLike,
+    _nextSegment: string,
+    envelope: FameEnvelope,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardToPeer?(_node: NodeLike, _peerSegment: string, envelope: FameEnvelope, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardToPeer?(
+    _node: NodeLike,
+    _peerSegment: string,
+    envelope: FameEnvelope,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardUpstreamComplete?(_node: NodeLike, envelope: FameEnvelope, _result?: any, _error?: Error, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardUpstreamComplete?(
+    _node: NodeLike,
+    envelope: FameEnvelope,
+    _result?: any,
+    _error?: Error,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardToRouteComplete?(_node: NodeLike, _nextSegment: string, envelope: FameEnvelope, _result?: any, _error?: Error, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardToRouteComplete?(
+    _node: NodeLike,
+    _nextSegment: string,
+    envelope: FameEnvelope,
+    _result?: any,
+    _error?: Error,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardToPeerComplete?(_node: NodeLike, _peerSegment: string, envelope: FameEnvelope, _result?: any, _error?: Error, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardToPeerComplete?(
+    _node: NodeLike,
+    _peerSegment: string,
+    envelope: FameEnvelope,
+    _result?: any,
+    _error?: Error,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardToPeers?(_node: NodeLike, envelope: FameEnvelope, _peers?: any, _excludePeers?: any, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardToPeers?(
+    _node: NodeLike,
+    envelope: FameEnvelope,
+    _peers?: any,
+    _excludePeers?: any,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }
 
-  async onForwardToPeersComplete?(_node: NodeLike, envelope: FameEnvelope, _peers?: any, _excludePeers?: any, _result?: any, _error?: Error, _context?: FameDeliveryContext): Promise<FameEnvelope | null> {
+  async onForwardToPeersComplete?(
+    _node: NodeLike,
+    envelope: FameEnvelope,
+    _peers?: any,
+    _excludePeers?: any,
+    _result?: any,
+    _error?: Error,
+    _context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
   }

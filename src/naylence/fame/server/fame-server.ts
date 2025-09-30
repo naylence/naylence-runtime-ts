@@ -1,13 +1,17 @@
-import fastify, { type FastifyInstance, type FastifyListenOptions, type FastifyServerOptions } from 'fastify';
-import { getLogger } from '../util/logging.js';
+import fastify, {
+  type FastifyInstance,
+  type FastifyListenOptions,
+  type FastifyServerOptions,
+} from "fastify";
+import { getLogger } from "../util/logging.js";
 import {
   normalizeFameServerConfig,
   type FameServerClientConfig,
   type FameServerConfig,
   type FameServerConfigInput,
-} from './fame-server-config.js';
+} from "./fame-server-config.js";
 
-const logger = getLogger('fame-fastify-server');
+const logger = getLogger("fame-fastify-server");
 
 export interface CreateFameServerOptions {
   config?: FameServerConfigInput | null;
@@ -29,7 +33,10 @@ export interface StartServerOptions {
   listen?: FastifyListenOptions;
 }
 
-export type FameServerRouteRegistrar = (instance: FastifyInstance, config: FameServerConfig) => Promise<void> | void;
+export type FameServerRouteRegistrar = (
+  instance: FastifyInstance,
+  config: FameServerConfig
+) => Promise<void> | void;
 
 export function createFameFastifyServer(options?: CreateFameServerOptions): FameFastifyServer {
   const config = normalizeFameServerConfig(options?.config ?? undefined);
@@ -47,14 +54,16 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
     disableRequestLogging: options?.fastifyOptions?.disableRequestLogging ?? true,
     trustProxy: options?.fastifyOptions?.trustProxy ?? defaultTrustProxy,
     bodyLimit: options?.fastifyOptions?.bodyLimit ?? config.bodyLimitBytes,
-    ajv: options?.fastifyOptions?.ajv ?? { customOptions: { removeAdditional: 'all', useDefaults: true } },
+    ajv: options?.fastifyOptions?.ajv ?? {
+      customOptions: { removeAdditional: "all", useDefaults: true },
+    },
     routerOptions,
   };
 
   const app = options?.existingInstance ?? fastify(fastifyOptions);
 
   const maybePluginTimeout = app as { setPluginTimeout?: (timeout: number) => unknown };
-  if (typeof maybePluginTimeout.setPluginTimeout === 'function') {
+  if (typeof maybePluginTimeout.setPluginTimeout === "function") {
     maybePluginTimeout.setPluginTimeout(config.pluginTimeoutMs);
   }
 
@@ -65,8 +74,8 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
   nodeServer.requestTimeout = config.requestTimeoutMs;
 
   app.addContentTypeParser(
-    'application/x-www-form-urlencoded',
-    { parseAs: 'string' },
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
     (_request, payload, done) => {
       try {
         const params = new URLSearchParams(payload as string);
@@ -83,9 +92,9 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
 
   const requestStartTimes = new WeakMap<object, number>();
 
-  app.addHook('onRequest', (request, _reply, done) => {
+  app.addHook("onRequest", (request, _reply, done) => {
     requestStartTimes.set(request, Date.now());
-    logger.debug('http_request_received', {
+    logger.debug("http_request_received", {
       request_id: request.id,
       method: request.method,
       url: request.url,
@@ -94,14 +103,14 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
     done();
   });
 
-  app.addHook('onResponse', (request, reply, done) => {
+  app.addHook("onResponse", (request, reply, done) => {
     const startedAt = requestStartTimes.get(request);
-    logger.debug('http_request_completed', {
+    logger.debug("http_request_completed", {
       request_id: request.id,
       method: request.method,
       url: request.url,
       status_code: reply.statusCode,
-      duration_ms: typeof startedAt === 'number' ? Date.now() - startedAt : null,
+      duration_ms: typeof startedAt === "number" ? Date.now() - startedAt : null,
     });
     if (startedAt !== undefined) {
       requestStartTimes.delete(request);
@@ -110,7 +119,7 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
   });
 
   app.setErrorHandler((error, request, reply) => {
-    logger.error('http_request_error', {
+    logger.error("http_request_error", {
       request_id: request.id,
       method: request.method,
       url: request.url,
@@ -118,8 +127,8 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
       error: error instanceof Error ? error.message : String(error),
     });
     void reply.status(reply.statusCode >= 400 ? reply.statusCode : 500).send({
-      error: 'internal_server_error',
-      message: 'Unexpected server error',
+      error: "internal_server_error",
+      message: "Unexpected server error",
     });
   });
 
@@ -129,12 +138,12 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
 
   async function start(options?: StartServerOptions): Promise<void> {
     if (started) {
-      throw new Error('Fame Fastify server is already running');
+      throw new Error("Fame Fastify server is already running");
     }
 
     const signal = options?.signal;
     if (signal?.aborted) {
-      throw new Error('Cannot start server, abort signal already triggered');
+      throw new Error("Cannot start server, abort signal already triggered");
     }
 
     const listenOptions: FastifyListenOptions = {
@@ -146,29 +155,29 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
     listeningAddress = await app.listen(listenOptions);
     started = true;
 
-    logger.info('fame_server_listening', {
+    logger.info("fame_server_listening", {
       address: listeningAddress,
       host: listenOptions.host,
       port: listenOptions.port,
-      base_path: config.basePath || '/',
+      base_path: config.basePath || "/",
     });
 
     if (signal) {
       const handleAbort = (): void => {
-        logger.warning('fame_server_abort_signal_received');
+        logger.warning("fame_server_abort_signal_received");
         void stop().catch((error) => {
-          logger.error('fame_server_stop_failed', {
+          logger.error("fame_server_stop_failed", {
             error: error instanceof Error ? error.message : String(error),
           });
         });
       };
-      signal.addEventListener('abort', handleAbort, { once: true });
+      signal.addEventListener("abort", handleAbort, { once: true });
       abortCleanup = () => {
-        signal.removeEventListener('abort', handleAbort);
+        signal.removeEventListener("abort", handleAbort);
         abortCleanup = null;
       };
 
-      app.addHook('onClose', (_instance, done) => {
+      app.addHook("onClose", (_instance, done) => {
         if (abortCleanup) {
           abortCleanup();
         }
@@ -188,7 +197,7 @@ export function createFameFastifyServer(options?: CreateFameServerOptions): Fame
 
     await app.close();
     started = false;
-    logger.info('fame_server_stopped', {
+    logger.info("fame_server_stopped", {
       previous_address: listeningAddress,
     });
     listeningAddress = null;
@@ -222,12 +231,15 @@ export async function registerFameServerRoutes(
     return;
   }
 
-  await server.app.register(async (scopedInstance) => {
-    await registrar(scopedInstance, server.config);
-  }, { prefix });
+  await server.app.register(
+    async (scopedInstance) => {
+      await registrar(scopedInstance, server.config);
+    },
+    { prefix }
+  );
 }
 
-function cloneTrustProxy(value: FameServerConfig['trustProxy']): boolean | string | string[] {
+function cloneTrustProxy(value: FameServerConfig["trustProxy"]): boolean | string | string[] {
   if (Array.isArray(value)) {
     return Array.from(value);
   }

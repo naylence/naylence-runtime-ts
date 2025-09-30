@@ -1,4 +1,4 @@
-import type { NodeLike } from './node-like.js';
+import type { NodeLike } from "./node-like.js";
 
 const nodeStack: NodeLike[] = [];
 
@@ -9,7 +9,7 @@ export function getCurrentNode(): NodeLike | null {
 export function getNode(): NodeLike {
   const current = getCurrentNode();
   if (!current) {
-    throw new Error('No Fame node is currently bound to the context');
+    throw new Error("No Fame node is currently bound to the context");
   }
   return current;
 }

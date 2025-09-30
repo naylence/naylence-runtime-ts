@@ -1,15 +1,15 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 import {
   NodePlacementStrategyFactory,
   registerNodePlacementStrategyFactory,
   type NodePlacementStrategy,
   type NodePlacementConfig,
-} from './node-placement-strategy.js';
-import { StaticNodePlacementStrategy } from './static-node-placement-strategy.js';
+} from "./node-placement-strategy.js";
+import { StaticNodePlacementStrategy } from "./static-node-placement-strategy.js";
 
 export interface StaticNodePlacementConfig extends NodePlacementConfig {
-  type: 'StaticNodePlacementStrategy' | 'WebSocketNodePlacementStrategy';
+  type: "StaticNodePlacementStrategy" | "WebSocketNodePlacementStrategy";
   targetSystemId?: string;
   targetPhysicalPath?: string;
   target_system_id?: string;
@@ -19,14 +19,14 @@ export interface StaticNodePlacementConfig extends NodePlacementConfig {
 const staticNodePlacementConfigSchema = z
   .object({
     type: z
-      .enum(['StaticNodePlacementStrategy', 'WebSocketNodePlacementStrategy'])
-      .default('StaticNodePlacementStrategy'),
+      .enum(["StaticNodePlacementStrategy", "WebSocketNodePlacementStrategy"])
+      .default("StaticNodePlacementStrategy"),
     targetSystemId: z
-      .string({ message: 'targetSystemId must be a string' })
-      .min(1, { message: 'targetSystemId cannot be empty' }),
+      .string({ message: "targetSystemId must be a string" })
+      .min(1, { message: "targetSystemId cannot be empty" }),
     targetPhysicalPath: z
-      .string({ message: 'targetPhysicalPath must be a string' })
-      .min(1, { message: 'targetPhysicalPath cannot be empty' }),
+      .string({ message: "targetPhysicalPath must be a string" })
+      .min(1, { message: "targetPhysicalPath cannot be empty" }),
   })
   .passthrough();
 
@@ -37,20 +37,23 @@ function normalizeConfig(
     ...(config as Record<string, unknown> | undefined),
   };
 
-  if (candidate.type === 'WebSocketNodePlacementStrategy') {
+  if (candidate.type === "WebSocketNodePlacementStrategy") {
     emitDeprecationWarning();
   }
 
-  if (candidate.targetSystemId === undefined && typeof candidate.target_system_id === 'string') {
+  if (candidate.targetSystemId === undefined && typeof candidate.target_system_id === "string") {
     candidate.targetSystemId = candidate.target_system_id;
   }
-  if (candidate.targetPhysicalPath === undefined && typeof candidate.target_physical_path === 'string') {
+  if (
+    candidate.targetPhysicalPath === undefined &&
+    typeof candidate.target_physical_path === "string"
+  ) {
     candidate.targetPhysicalPath = candidate.target_physical_path;
   }
 
   const parsed = staticNodePlacementConfigSchema.parse({
     ...candidate,
-    type: 'StaticNodePlacementStrategy',
+    type: "StaticNodePlacementStrategy",
   });
 
   return {
@@ -62,23 +65,23 @@ function normalizeConfig(
 
 function emitDeprecationWarning(): void {
   const message =
-    'WebSocketNodePlacementStrategy is deprecated; use StaticNodePlacementStrategy instead';
-  if (typeof process !== 'undefined' && typeof process.emitWarning === 'function') {
-    process.emitWarning(message, { type: 'DeprecationWarning' });
+    "WebSocketNodePlacementStrategy is deprecated; use StaticNodePlacementStrategy instead";
+  if (typeof process !== "undefined" && typeof process.emitWarning === "function") {
+    process.emitWarning(message, { type: "DeprecationWarning" });
   } else {
     console.warn(message);
   }
 }
 
 export class StaticNodePlacementStrategyFactory extends NodePlacementStrategyFactory<StaticNodePlacementConfig> {
-  public readonly type = 'StaticNodePlacementStrategy';
+  public readonly type = "StaticNodePlacementStrategy";
   public readonly isDefault = true;
 
   public async create(
     config?: StaticNodePlacementConfig | Record<string, unknown> | null
   ): Promise<NodePlacementStrategy> {
     if (!config) {
-      throw new Error('StaticNodePlacementStrategy requires configuration');
+      throw new Error("StaticNodePlacementStrategy requires configuration");
     }
 
     const normalized = normalizeConfig(config);
@@ -90,7 +93,14 @@ export class StaticNodePlacementStrategyFactory extends NodePlacementStrategyFac
   }
 }
 
-registerNodePlacementStrategyFactory('StaticNodePlacementStrategy', StaticNodePlacementStrategyFactory, {
-  isDefault: true,
-});
-registerNodePlacementStrategyFactory('WebSocketNodePlacementStrategy', StaticNodePlacementStrategyFactory);
+registerNodePlacementStrategyFactory(
+  "StaticNodePlacementStrategy",
+  StaticNodePlacementStrategyFactory,
+  {
+    isDefault: true,
+  }
+);
+registerNodePlacementStrategyFactory(
+  "WebSocketNodePlacementStrategy",
+  StaticNodePlacementStrategyFactory
+);

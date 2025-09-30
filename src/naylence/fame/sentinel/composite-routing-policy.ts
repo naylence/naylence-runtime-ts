@@ -1,8 +1,8 @@
-import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope } from "naylence-core";
 
-import { Drop } from './router.js';
-import type { RouterState, RoutingAction } from './router.js';
-import type { RoutingPolicy } from './routing-policy.js';
+import { Drop } from "./router.js";
+import type { RouterState, RoutingAction } from "./router.js";
+import type { RoutingPolicy } from "./routing-policy.js";
 
 /**
  * Composite routing policy that evaluates child policies in order.

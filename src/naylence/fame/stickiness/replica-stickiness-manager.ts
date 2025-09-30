@@ -1,4 +1,4 @@
-import type { Stickiness } from 'naylence-core';
+import type { Stickiness } from "naylence-core";
 
 export interface ReplicaStickinessManager {
   offer(): Stickiness | null;

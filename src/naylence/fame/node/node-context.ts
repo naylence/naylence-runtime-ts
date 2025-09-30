@@ -1,22 +1,22 @@
-import { z } from 'zod';
+import { z } from "zod";
 import {
   AuthorizationContextSchema,
   type AuthorizationContext,
   FameDeliveryContextSchema,
   type FameDeliveryContext,
   SecurityContextSchema,
-} from 'naylence-core';
+} from "naylence-core";
 
 export const FameNodeAuthorizationContextSchema = AuthorizationContextSchema.and(
   z.object({
-  sub: z.string().optional(),
-  aud: z.string().optional(),
-  assignedPath: z.string().optional(),
-  acceptedCapabilities: z.array(z.string()).optional(),
-  acceptedLogicals: z.array(z.string()).optional(),
-  instanceId: z.string().optional(),
-  scopes: z.array(z.string()).optional(),
-  attachExpiresAt: z.coerce.date().optional(),
+    sub: z.string().optional(),
+    aud: z.string().optional(),
+    assignedPath: z.string().optional(),
+    acceptedCapabilities: z.array(z.string()).optional(),
+    acceptedLogicals: z.array(z.string()).optional(),
+    instanceId: z.string().optional(),
+    scopes: z.array(z.string()).optional(),
+    attachExpiresAt: z.coerce.date().optional(),
   })
 );
 
@@ -33,13 +33,15 @@ export type FameAuthorizedDeliveryContext = FameDeliveryContext &
   z.infer<typeof FameAuthorizedDeliveryContextSchema>;
 
 export interface CreateNodeDeliveryContextOptions
-  extends Omit<z.input<typeof FameAuthorizedDeliveryContextSchema>, 'security'> {
+  extends Omit<z.input<typeof FameAuthorizedDeliveryContextSchema>, "security"> {
   security?: z.input<typeof SecurityContextSchema> | null;
   authorization?: z.input<typeof FameNodeAuthorizationContextSchema> | null;
 }
 
 function isNonEmptyObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && Object.keys(value as Record<string, unknown>).length);
+  return Boolean(
+    value && typeof value === "object" && Object.keys(value as Record<string, unknown>).length
+  );
 }
 
 export function createNodeDeliveryContext(

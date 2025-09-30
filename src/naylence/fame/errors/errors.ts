@@ -6,7 +6,10 @@
  * Base class for all Fame-related errors.
  */
 export abstract class FameError extends Error {
-  constructor(message: string, public readonly code?: number) {
+  constructor(
+    message: string,
+    public readonly code?: number
+  ) {
     super(message);
     this.name = this.constructor.name;
     // Maintain proper prototype chain for instanceof checks
@@ -96,7 +99,7 @@ export const WebSocketCloseCode = {
   BAD_GATEWAY: 1014,
 } as const;
 
-export type WebSocketCloseCode = typeof WebSocketCloseCode[keyof typeof WebSocketCloseCode];
+export type WebSocketCloseCode = (typeof WebSocketCloseCode)[keyof typeof WebSocketCloseCode];
 
 /**
  * Check if an error is a Fame-related error.

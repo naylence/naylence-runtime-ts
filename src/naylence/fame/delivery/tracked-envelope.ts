@@ -1,21 +1,21 @@
-import { FameEnvelope, FameResponseType } from 'naylence-core';
+import { FameEnvelope, FameResponseType } from "naylence-core";
 
 export enum EnvelopeStatus {
-  PENDING = 'pending',
-  ACKED = 'acked',
-  NACKED = 'nacked',
-  RESPONDED = 'responded',
-  STREAMING = 'streaming',
-  TIMED_OUT = 'timed_out',
-  FAILED = 'failed',
-  RECEIVED = 'received',
-  HANDLED = 'handled',
-  FAILED_TO_HANDLE = 'failed_to_handle',
+  PENDING = "pending",
+  ACKED = "acked",
+  NACKED = "nacked",
+  RESPONDED = "responded",
+  STREAMING = "streaming",
+  TIMED_OUT = "timed_out",
+  FAILED = "failed",
+  RECEIVED = "received",
+  HANDLED = "handled",
+  FAILED_TO_HANDLE = "failed_to_handle",
 }
 
 export enum MailboxType {
-  INBOX = 'inbox',
-  OUTBOX = 'outbox',
+  INBOX = "inbox",
+  OUTBOX = "outbox",
 }
 
 export interface TrackedEnvelopeInit {

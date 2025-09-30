@@ -1,47 +1,47 @@
-import { Expressions, createResource, registerFactory } from 'naylence-factory';
+import { Expressions, createResource, registerFactory } from "naylence-factory";
 
-import type { SecurityManager } from './security-manager.js';
-import type { SecurityProfileConfig } from './security-manager-config.js';
+import type { SecurityManager } from "./security-manager.js";
+import type { SecurityProfileConfig } from "./security-manager-config.js";
 import {
   SECURITY_MANAGER_FACTORY_BASE_TYPE,
   SecurityManagerFactory,
   type SecurityManagerComponentOverrides,
-} from './security-manager-factory.js';
-import type { DefaultSecurityManagerConfig } from './default-security-manager-factory.js';
-import { getLogger } from '../util/logging.js';
+} from "./security-manager-factory.js";
+import type { DefaultSecurityManagerConfig } from "./default-security-manager-factory.js";
+import { getLogger } from "../util/logging.js";
 
-const logger = getLogger('node-security-profile-factory');
+const logger = getLogger("node-security-profile-factory");
 
-export const ENV_VAR_JWT_TRUSTED_ISSUER = 'FAME_JWT_TRUSTED_ISSUER';
-export const ENV_VAR_JWT_ALGORITHM = 'FAME_JWT_ALGORITHM';
-export const ENV_VAR_JWT_AUDIENCE = 'FAME_JWT_AUDIENCE';
-export const ENV_VAR_JWKS_URL = 'FAME_JWKS_URL';
-export const ENV_VAR_DEFAULT_ENCRYPTION_LEVEL = 'FAME_DEFAULT_ENCRYPTION_LEVEL';
-export const ENV_VAR_HMAC_SECRET = 'FAME_HMAC_SECRET';
-export const ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER = 'FAME_JWT_REVERSE_AUTH_TRUSTED_ISSUER';
-export const ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE = 'FAME_JWT_REVERSE_AUTH_AUDIENCE';
+export const ENV_VAR_JWT_TRUSTED_ISSUER = "FAME_JWT_TRUSTED_ISSUER";
+export const ENV_VAR_JWT_ALGORITHM = "FAME_JWT_ALGORITHM";
+export const ENV_VAR_JWT_AUDIENCE = "FAME_JWT_AUDIENCE";
+export const ENV_VAR_JWKS_URL = "FAME_JWKS_URL";
+export const ENV_VAR_DEFAULT_ENCRYPTION_LEVEL = "FAME_DEFAULT_ENCRYPTION_LEVEL";
+export const ENV_VAR_HMAC_SECRET = "FAME_HMAC_SECRET";
+export const ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER = "FAME_JWT_REVERSE_AUTH_TRUSTED_ISSUER";
+export const ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE = "FAME_JWT_REVERSE_AUTH_AUDIENCE";
 
-export const PROFILE_NAME_STRICT_OVERLAY = 'strict-overlay';
-export const PROFILE_NAME_OVERLAY = 'overlay';
-export const PROFILE_NAME_OVERLAY_CALLBACK = 'overlay-callback';
-export const PROFILE_NAME_GATED = 'gated';
-export const PROFILE_NAME_GATED_CALLBACK = 'gated-callback';
-export const PROFILE_NAME_OPEN = 'open';
+export const PROFILE_NAME_STRICT_OVERLAY = "strict-overlay";
+export const PROFILE_NAME_OVERLAY = "overlay";
+export const PROFILE_NAME_OVERLAY_CALLBACK = "overlay-callback";
+export const PROFILE_NAME_GATED = "gated";
+export const PROFILE_NAME_GATED_CALLBACK = "gated-callback";
+export const PROFILE_NAME_OPEN = "open";
 
-const DEFAULT_REVERSE_AUTH_ISSUER = 'reverse-auth.naylence.ai';
-const DEFAULT_REVERSE_AUTH_AUDIENCE = 'dev.naylence.ai';
+const DEFAULT_REVERSE_AUTH_ISSUER = "reverse-auth.naylence.ai";
+const DEFAULT_REVERSE_AUTH_AUDIENCE = "dev.naylence.ai";
 
 const STRICT_OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
-  type: 'DefaultSecurityManager',
+  type: "DefaultSecurityManager",
   security_policy: {
-    type: 'DefaultSecurityPolicy',
+    type: "DefaultSecurityPolicy",
     signing: {
-      signing_material: 'x509-chain',
+      signing_material: "x509-chain",
       require_cert_sid_match: true,
       inbound: {
-        signature_policy: 'required',
-        unsigned_violation_action: 'nack',
-        invalid_signature_action: 'nack',
+        signature_policy: "required",
+        unsigned_violation_action: "nack",
+        invalid_signature_action: "nack",
       },
       response: {
         mirror_request_signing: true,
@@ -59,26 +59,26 @@ const STRICT_OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
         allow_plaintext: true,
         allow_channel: true,
         allow_sealed: true,
-        plaintext_violation_action: 'nack',
-        channel_violation_action: 'nack',
-        sealed_violation_action: 'nack',
+        plaintext_violation_action: "nack",
+        channel_violation_action: "nack",
+        sealed_violation_action: "nack",
       },
       response: {
         mirror_request_level: true,
-        minimum_response_level: 'plaintext',
+        minimum_response_level: "plaintext",
         escalate_sealed_responses: false,
       },
       outbound: {
-        default_level: Expressions.env(ENV_VAR_DEFAULT_ENCRYPTION_LEVEL, 'plaintext'),
+        default_level: Expressions.env(ENV_VAR_DEFAULT_ENCRYPTION_LEVEL, "plaintext"),
         escalate_if_peer_supports: false,
         prefer_sealed_for_sensitive: false,
       },
     },
   },
   authorizer: {
-    type: 'DefaultAuthorizer',
+    type: "DefaultAuthorizer",
     verifier: {
-      type: 'JWKSJWTTokenVerifier',
+      type: "JWKSJWTTokenVerifier",
       jwks_url: Expressions.env(ENV_VAR_JWKS_URL),
       issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
     },
@@ -86,15 +86,15 @@ const STRICT_OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
 };
 
 const OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
-  type: 'DefaultSecurityManager',
+  type: "DefaultSecurityManager",
   security_policy: {
-    type: 'DefaultSecurityPolicy',
+    type: "DefaultSecurityPolicy",
     signing: {
-      signing_material: 'raw-key',
+      signing_material: "raw-key",
       inbound: {
-        signature_policy: 'required',
-        unsigned_violation_action: 'nack',
-        invalid_signature_action: 'nack',
+        signature_policy: "required",
+        unsigned_violation_action: "nack",
+        invalid_signature_action: "nack",
       },
       response: {
         mirror_request_signing: true,
@@ -112,44 +112,44 @@ const OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
         allow_plaintext: true,
         allow_channel: false,
         allow_sealed: false,
-        plaintext_violation_action: 'nack',
-        channel_violation_action: 'nack',
-        sealed_violation_action: 'nack',
+        plaintext_violation_action: "nack",
+        channel_violation_action: "nack",
+        sealed_violation_action: "nack",
       },
       response: {
         mirror_request_level: false,
-        minimum_response_level: 'plaintext',
+        minimum_response_level: "plaintext",
         escalate_sealed_responses: false,
       },
       outbound: {
-        default_level: 'plaintext',
+        default_level: "plaintext",
         escalate_if_peer_supports: false,
         prefer_sealed_for_sensitive: false,
       },
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
+    type: "OAuth2Authorizer",
     issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
-    required_scopes: ['node.connect'],
+    required_scopes: ["node.connect"],
     require_scope: true,
     default_ttl_sec: 3600,
     max_ttl_sec: 86400,
-    algorithm: Expressions.env(ENV_VAR_JWT_ALGORITHM, 'RS256'),
+    algorithm: Expressions.env(ENV_VAR_JWT_ALGORITHM, "RS256"),
     audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
   },
 };
 
 const OVERLAY_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
-  type: 'DefaultSecurityManager',
+  type: "DefaultSecurityManager",
   security_policy: {
-    type: 'DefaultSecurityPolicy',
+    type: "DefaultSecurityPolicy",
     signing: {
-      signing_material: 'raw-key',
+      signing_material: "raw-key",
       inbound: {
-        signature_policy: 'required',
-        unsigned_violation_action: 'nack',
-        invalid_signature_action: 'nack',
+        signature_policy: "required",
+        unsigned_violation_action: "nack",
+        invalid_signature_action: "nack",
       },
       response: {
         mirror_request_signing: true,
@@ -167,24 +167,24 @@ const OVERLAY_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
         allow_plaintext: true,
         allow_channel: false,
         allow_sealed: false,
-        plaintext_violation_action: 'nack',
-        channel_violation_action: 'nack',
-        sealed_violation_action: 'nack',
+        plaintext_violation_action: "nack",
+        channel_violation_action: "nack",
+        sealed_violation_action: "nack",
       },
       response: {
         mirror_request_level: false,
-        minimum_response_level: 'plaintext',
+        minimum_response_level: "plaintext",
         escalate_sealed_responses: false,
       },
       outbound: {
-        default_level: 'plaintext',
+        default_level: "plaintext",
         escalate_if_peer_supports: false,
         prefer_sealed_for_sensitive: false,
       },
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
+    type: "OAuth2Authorizer",
     issuer: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER, DEFAULT_REVERSE_AUTH_ISSUER),
     audience: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE),
     require_scope: true,
@@ -192,17 +192,17 @@ const OVERLAY_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
     max_ttl_sec: 86400,
     reverse_auth_ttl_sec: 86400,
     token_verifier_config: {
-      type: 'JWTTokenVerifier',
-      algorithm: 'HS256',
+      type: "JWTTokenVerifier",
+      algorithm: "HS256",
       hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
       issuer: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER, DEFAULT_REVERSE_AUTH_ISSUER),
       ttl_sec: 86400,
     },
     token_issuer_config: {
-      type: 'JWTTokenIssuer',
-      algorithm: 'HS256',
+      type: "JWTTokenIssuer",
+      algorithm: "HS256",
       hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
-      kid: 'hmac-reverse-auth-key',
+      kid: "hmac-reverse-auth-key",
       issuer: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER, DEFAULT_REVERSE_AUTH_ISSUER),
       ttl_sec: 86400,
       audience: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE, DEFAULT_REVERSE_AUTH_AUDIENCE),
@@ -211,14 +211,14 @@ const OVERLAY_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
 };
 
 const GATED_PROFILE: DefaultSecurityManagerConfig = {
-  type: 'DefaultSecurityManager',
+  type: "DefaultSecurityManager",
   security_policy: {
-    type: 'DefaultSecurityPolicy',
+    type: "DefaultSecurityPolicy",
     signing: {
       inbound: {
-        signature_policy: 'disabled',
-        unsigned_violation_action: 'allow',
-        invalid_signature_action: 'allow',
+        signature_policy: "disabled",
+        unsigned_violation_action: "allow",
+        invalid_signature_action: "allow",
       },
       response: {
         mirror_request_signing: false,
@@ -236,43 +236,43 @@ const GATED_PROFILE: DefaultSecurityManagerConfig = {
         allow_plaintext: true,
         allow_channel: false,
         allow_sealed: false,
-        plaintext_violation_action: 'allow',
-        channel_violation_action: 'nack',
-        sealed_violation_action: 'nack',
+        plaintext_violation_action: "allow",
+        channel_violation_action: "nack",
+        sealed_violation_action: "nack",
       },
       response: {
         mirror_request_level: true,
-        minimum_response_level: 'plaintext',
+        minimum_response_level: "plaintext",
         escalate_sealed_responses: false,
       },
       outbound: {
-        default_level: 'plaintext',
+        default_level: "plaintext",
         escalate_if_peer_supports: false,
         prefer_sealed_for_sensitive: false,
       },
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
+    type: "OAuth2Authorizer",
     issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
-    required_scopes: ['node.connect'],
+    required_scopes: ["node.connect"],
     require_scope: true,
     default_ttl_sec: 3600,
     max_ttl_sec: 86400,
-    algorithm: Expressions.env(ENV_VAR_JWT_ALGORITHM, 'RS256'),
+    algorithm: Expressions.env(ENV_VAR_JWT_ALGORITHM, "RS256"),
     audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
   },
 };
 
 const GATED_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
-  type: 'DefaultSecurityManager',
+  type: "DefaultSecurityManager",
   security_policy: {
-    type: 'DefaultSecurityPolicy',
+    type: "DefaultSecurityPolicy",
     signing: {
       inbound: {
-        signature_policy: 'disabled',
-        unsigned_violation_action: 'allow',
-        invalid_signature_action: 'allow',
+        signature_policy: "disabled",
+        unsigned_violation_action: "allow",
+        invalid_signature_action: "allow",
       },
       response: {
         mirror_request_signing: false,
@@ -290,24 +290,24 @@ const GATED_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
         allow_plaintext: true,
         allow_channel: false,
         allow_sealed: false,
-        plaintext_violation_action: 'allow',
-        channel_violation_action: 'nack',
-        sealed_violation_action: 'nack',
+        plaintext_violation_action: "allow",
+        channel_violation_action: "nack",
+        sealed_violation_action: "nack",
       },
       response: {
         mirror_request_level: true,
-        minimum_response_level: 'plaintext',
+        minimum_response_level: "plaintext",
         escalate_sealed_responses: false,
       },
       outbound: {
-        default_level: 'plaintext',
+        default_level: "plaintext",
         escalate_if_peer_supports: false,
         prefer_sealed_for_sensitive: false,
       },
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
+    type: "OAuth2Authorizer",
     issuer: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER, DEFAULT_REVERSE_AUTH_ISSUER),
     audience: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE),
     require_scope: true,
@@ -315,17 +315,17 @@ const GATED_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
     max_ttl_sec: 86400,
     reverse_auth_ttl_sec: 86400,
     token_verifier_config: {
-      type: 'JWTTokenVerifier',
-      algorithm: 'HS256',
+      type: "JWTTokenVerifier",
+      algorithm: "HS256",
       hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
       issuer: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER, DEFAULT_REVERSE_AUTH_ISSUER),
       ttl_sec: 86400,
     },
     token_issuer_config: {
-      type: 'JWTTokenIssuer',
-      algorithm: 'HS256',
+      type: "JWTTokenIssuer",
+      algorithm: "HS256",
       hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
-      kid: 'hmac-reverse-auth-key',
+      kid: "hmac-reverse-auth-key",
       issuer: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER, DEFAULT_REVERSE_AUTH_ISSUER),
       ttl_sec: 86400,
       audience: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE, DEFAULT_REVERSE_AUTH_AUDIENCE),
@@ -334,12 +334,12 @@ const GATED_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
 };
 
 const OPEN_PROFILE: DefaultSecurityManagerConfig = {
-  type: 'DefaultSecurityManager',
+  type: "DefaultSecurityManager",
   security_policy: {
-    type: 'NoSecurityPolicy',
+    type: "NoSecurityPolicy",
   },
   authorizer: {
-    type: 'NoopAuthorizer',
+    type: "NoopAuthorizer",
   },
 };
 
@@ -353,7 +353,7 @@ const PROFILE_MAP: Record<string, DefaultSecurityManagerConfig> = {
 };
 
 export class NodeSecurityProfileFactory extends SecurityManagerFactory<SecurityProfileConfig> {
-  public readonly type = 'SecurityProfile';
+  public readonly type = "SecurityProfile";
 
   public async create(
     config?: SecurityProfileConfig | Record<string, unknown> | null,
@@ -362,7 +362,7 @@ export class NodeSecurityProfileFactory extends SecurityManagerFactory<SecurityP
     const profile = normalizeProfile(config);
     const profileConfig = resolveProfileConfig(profile);
 
-    logger.debug('enabling_security_profile', { profile });
+    logger.debug("enabling_security_profile", { profile });
 
     const factoryArgs: unknown[] = [];
     if (overrides !== undefined) {
@@ -392,11 +392,11 @@ function normalizeProfile(
 
   const candidate = config as SecurityProfileConfig & Record<string, unknown>;
   const value =
-    typeof candidate.profile === 'string' && candidate.profile.trim().length > 0
+    typeof candidate.profile === "string" && candidate.profile.trim().length > 0
       ? candidate.profile
-      : typeof candidate.profile_name === 'string' && candidate.profile_name.trim().length > 0
+      : typeof candidate.profile_name === "string" && candidate.profile_name.trim().length > 0
         ? candidate.profile_name
-        : typeof candidate.profileName === 'string' && candidate.profileName.trim().length > 0
+        : typeof candidate.profileName === "string" && candidate.profileName.trim().length > 0
           ? candidate.profileName
           : PROFILE_NAME_OVERLAY;
 
@@ -418,6 +418,6 @@ function deepClone<T>(value: T): T {
 
 registerFactory<SecurityManager, SecurityProfileConfig>(
   SECURITY_MANAGER_FACTORY_BASE_TYPE,
-  'SecurityProfile',
+  "SecurityProfile",
   NodeSecurityProfileFactory
 );

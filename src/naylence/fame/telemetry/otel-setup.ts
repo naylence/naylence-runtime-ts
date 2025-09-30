@@ -1,8 +1,8 @@
-import type { Sampler } from '@opentelemetry/api';
-import type { SpanExporter, SpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { getLogger } from '../util/logging.js';
+import type { Sampler } from "@opentelemetry/api";
+import type { SpanExporter, SpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { getLogger } from "../util/logging.js";
 
-const logger = getLogger('telemetry.open-telemetry');
+const logger = getLogger("telemetry.open-telemetry");
 
 export interface SetupOtelOptions {
   serviceName: string;
@@ -15,15 +15,16 @@ export interface SetupOtelOptions {
 export async function setupOtel(options: SetupOtelOptions): Promise<void> {
   try {
     const [apiModule, resourcesModule, nodeModule, traceBaseModule] = await Promise.all([
-      import('@opentelemetry/api'),
-      import('@opentelemetry/resources'),
-      import('@opentelemetry/sdk-trace-node'),
-      import('@opentelemetry/sdk-trace-base'),
+      import("@opentelemetry/api"),
+      import("@opentelemetry/resources"),
+      import("@opentelemetry/sdk-trace-node"),
+      import("@opentelemetry/sdk-trace-base"),
     ]);
 
     const { trace } = apiModule;
-    const { defaultResource, resourceFromAttributes } = resourcesModule as typeof import('@opentelemetry/resources');
-    const { NodeTracerProvider } = nodeModule as typeof import('@opentelemetry/sdk-trace-node');
+    const { defaultResource, resourceFromAttributes } =
+      resourcesModule as typeof import("@opentelemetry/resources");
+    const { NodeTracerProvider } = nodeModule as typeof import("@opentelemetry/sdk-trace-node");
     const {
       BatchSpanProcessor,
       ConsoleSpanExporter,
@@ -31,13 +32,13 @@ export async function setupOtel(options: SetupOtelOptions): Promise<void> {
       AlwaysOnSampler,
       AlwaysOffSampler,
       TraceIdRatioBasedSampler,
-    } = traceBaseModule as typeof import('@opentelemetry/sdk-trace-base');
+    } = traceBaseModule as typeof import("@opentelemetry/sdk-trace-base");
 
     const currentProvider = trace.getTracerProvider();
     if (currentProvider && currentProvider instanceof NodeTracerProvider) {
       return;
     }
-    if (currentProvider && currentProvider.constructor?.name === 'NodeTracerProvider') {
+    if (currentProvider && currentProvider.constructor?.name === "NodeTracerProvider") {
       return;
     }
 
@@ -50,9 +51,9 @@ export async function setupOtel(options: SetupOtelOptions): Promise<void> {
 
     const baseResource = defaultResource();
     const mergedResource = resourceFromAttributes({
-      'service.name': options.serviceName,
-      'service.instance.id': generateInstanceId(),
-      'deployment.environment': options.environment ?? 'dev',
+      "service.name": options.serviceName,
+      "service.instance.id": generateInstanceId(),
+      "deployment.environment": options.environment ?? "dev",
     });
     const resource = baseResource.merge(mergedResource);
 
@@ -74,20 +75,20 @@ export async function setupOtel(options: SetupOtelOptions): Promise<void> {
     providerWithProcessor.addSpanProcessor?.(spanProcessor);
     provider.register();
   } catch (error) {
-    logger.error('open_telemetry_not_available', { error });
+    logger.error("open_telemetry_not_available", { error });
   }
 }
 
 function generateInstanceId(): string {
   try {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return crypto.randomUUID().replace(/-/g, '');
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID().replace(/-/g, "");
     }
   } catch {
     // Ignore crypto availability errors
   }
   const random = Math.random().toString(16).slice(2);
-  return random.padEnd(32, '0').slice(0, 32);
+  return random.padEnd(32, "0").slice(0, 32);
 }
 
 function resolveSampler(
@@ -99,15 +100,15 @@ function resolveSampler(
     TraceIdRatioBasedSampler: new (ratio: number) => Sampler;
   }
 ): Sampler {
-  const normalized = (samplerSetting ?? 'parentbased_always_on').toLowerCase();
+  const normalized = (samplerSetting ?? "parentbased_always_on").toLowerCase();
   let base: Sampler;
 
-  if (normalized === 'always_off') {
+  if (normalized === "always_off") {
     base = new samplers.AlwaysOffSampler();
-  } else if (normalized === 'always_on' || normalized === 'parentbased_always_on') {
+  } else if (normalized === "always_on" || normalized === "parentbased_always_on") {
     base = new samplers.AlwaysOnSampler();
-  } else if (normalized.startsWith('ratio:')) {
-    const ratioValue = Number.parseFloat(normalized.slice('ratio:'.length));
+  } else if (normalized.startsWith("ratio:")) {
+    const ratioValue = Number.parseFloat(normalized.slice("ratio:".length));
     const ratio = Number.isFinite(ratioValue) ? Math.min(Math.max(ratioValue, 0), 1) : 1;
     base = new samplers.TraceIdRatioBasedSampler(ratio);
   } else {
@@ -124,19 +125,24 @@ async function resolveExporter(
 ): Promise<SpanExporter> {
   if (endpoint) {
     try {
-      const exporterModule = await import('@opentelemetry/exporter-trace-otlp-http');
-      if ('OTLPTraceExporter' in exporterModule) {
+      const exporterModule = await import("@opentelemetry/exporter-trace-otlp-http");
+      if ("OTLPTraceExporter" in exporterModule) {
         const { OTLPTraceExporter } = exporterModule as {
-          OTLPTraceExporter: new (config: { url: string; headers?: Record<string, string> }) => SpanExporter;
+          OTLPTraceExporter: new (config: {
+            url: string;
+            headers?: Record<string, string>;
+          }) => SpanExporter;
         };
-        const exporterOptions: { url: string; headers?: Record<string, string> } = { url: endpoint };
+        const exporterOptions: { url: string; headers?: Record<string, string> } = {
+          url: endpoint,
+        };
         if (headers && Object.keys(headers).length > 0) {
           exporterOptions.headers = headers;
         }
         return new OTLPTraceExporter(exporterOptions);
       }
     } catch (error) {
-      logger.error('open_telemetry_exporter_not_available', { error });
+      logger.error("open_telemetry_exporter_not_available", { error });
     }
   }
 

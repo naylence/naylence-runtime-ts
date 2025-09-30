@@ -9,13 +9,13 @@ import {
   type FameEnvelope,
   parseAddress,
   parseAddressComponents,
-} from 'naylence-core';
+} from "naylence-core";
 
-import type { RoutingNodeLike } from '../node/routing-node-like.js';
-import type { AddressRouteInfo } from './key-frame-handler.js';
-import { getLogger } from '../util/logging.js';
-import { isPoolLogical } from '../util/logicals.js';
-import { normalizePath } from '../util/util.js';
+import type { RoutingNodeLike } from "../node/routing-node-like.js";
+import type { AddressRouteInfo } from "./key-frame-handler.js";
+import { getLogger } from "../util/logging.js";
+import { isPoolLogical } from "../util/logicals.js";
+import { normalizePath } from "../util/util.js";
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -39,20 +39,11 @@ type AddressRouteMapLike =
   | Record<string, AddressRouteInfo | undefined>
   | undefined;
 
-type PeerRouteMapLike =
-  | Map<string, string>
-  | Record<string, string | undefined>
-  | undefined;
+type PeerRouteMapLike = Map<string, string> | Record<string, string | undefined> | undefined;
 
-type RouteRegistryLike =
-  | Map<string, unknown>
-  | Record<string, unknown>
-  | undefined;
+type RouteRegistryLike = Map<string, unknown> | Record<string, unknown> | undefined;
 
-type DownstreamLegacyMapLike =
-  | Map<string, unknown>
-  | Record<string, unknown>
-  | undefined;
+type DownstreamLegacyMapLike = Map<string, unknown> | Record<string, unknown> | undefined;
 
 export interface RouteManagerLike {
   downstreamRoutes?: RouteRegistryLike;
@@ -68,7 +59,7 @@ export interface PoolKey {
   readonly pattern: string;
 }
 
-const logger = getLogger('address-bind-frame-handler');
+const logger = getLogger("address-bind-frame-handler");
 
 function hasRoute(container: RouteRegistryLike, key: string): boolean {
   if (!container) {
@@ -77,19 +68,23 @@ function hasRoute(container: RouteRegistryLike, key: string): boolean {
   if (container instanceof Map) {
     return container.has(key);
   }
-  if (typeof container === 'object') {
+  if (typeof container === "object") {
     return Object.prototype.hasOwnProperty.call(container, key);
   }
   return false;
 }
 
-function setAddressRoute(container: AddressRouteMapLike, key: string, value: AddressRouteInfo): void {
+function setAddressRoute(
+  container: AddressRouteMapLike,
+  key: string,
+  value: AddressRouteInfo
+): void {
   if (!container) {
     return;
   }
   if (container instanceof Map) {
     container.set(key, value);
-  } else if (typeof container === 'object') {
+  } else if (typeof container === "object") {
     container[key] = value;
   }
 }
@@ -101,7 +96,7 @@ function getAddressRoute(container: AddressRouteMapLike, key: string): AddressRo
   if (container instanceof Map) {
     return container.get(key) ?? null;
   }
-  if (typeof container === 'object') {
+  if (typeof container === "object") {
     return container[key] ?? null;
   }
   return null;
@@ -113,7 +108,7 @@ function deleteAddressRoute(container: AddressRouteMapLike, key: string): void {
   }
   if (container instanceof Map) {
     container.delete(key);
-  } else if (typeof container === 'object') {
+  } else if (typeof container === "object") {
     delete container[key];
   }
 }
@@ -124,7 +119,7 @@ function deleteLegacyRoute(container: DownstreamLegacyMapLike, key: string): voi
   }
   if (container instanceof Map) {
     container.delete(key);
-  } else if (typeof container === 'object') {
+  } else if (typeof container === "object") {
     delete container[key];
   }
 }
@@ -135,7 +130,7 @@ function setPeerRoute(container: PeerRouteMapLike, key: string, value: string): 
   }
   if (container instanceof Map) {
     container.set(key, value);
-  } else if (typeof container === 'object') {
+  } else if (typeof container === "object") {
     container[key] = value;
   }
 }
@@ -150,10 +145,10 @@ async function getDownstreamRouteEntry(
   if (store instanceof Map) {
     return store.get(key) ?? null;
   }
-  if (typeof store === 'object' && 'get' in store && typeof store.get === 'function') {
+  if (typeof store === "object" && "get" in store && typeof store.get === "function") {
     return await store.get(key);
   }
-  if (typeof store === 'object') {
+  if (typeof store === "object") {
     return (store as Record<string, RouteEntryLike>)[key] ?? null;
   }
   return null;
@@ -163,10 +158,10 @@ function extractAssignedPath(entry: RouteEntryLike): string | null {
   if (!entry) {
     return null;
   }
-  if (typeof entry.assignedPath === 'string') {
+  if (typeof entry.assignedPath === "string") {
     return entry.assignedPath;
   }
-  if (typeof entry.assigned_path === 'string') {
+  if (typeof entry.assigned_path === "string") {
     return entry.assigned_path;
   }
   return null;
@@ -210,12 +205,12 @@ export class AddressBindFrameHandler {
     context: FameDeliveryContext | undefined
   ): Promise<void> {
     if (!context || !context.originType) {
-      throw new Error('AddressBind handling requires delivery context with originType');
+      throw new Error("AddressBind handling requires delivery context with originType");
     }
 
     const frame = envelope.frame as AddressBindFrame | undefined;
-    if (!frame || frame.type !== 'AddressBind') {
-      throw new Error(`Expected AddressBindFrame, got ${frame?.type ?? 'unknown'}`);
+    if (!frame || frame.type !== "AddressBind") {
+      throw new Error(`Expected AddressBindFrame, got ${frame?.type ?? "unknown"}`);
     }
 
     const sourceSystemId = this.getSourceSystemId(context);
@@ -227,7 +222,9 @@ export class AddressBindFrameHandler {
       context.originType === DeliveryOriginType.DOWNSTREAM &&
       !hasRoute(this.routeManager.downstreamRoutes, sourceSystemId)
     ) {
-      throw new Error(`Cannot accept address bind from unknown downstream system ${sourceSystemId}`);
+      throw new Error(
+        `Cannot accept address bind from unknown downstream system ${sourceSystemId}`
+      );
     }
 
     if (
@@ -259,8 +256,8 @@ export class AddressBindFrameHandler {
     if (isHostBased && host && isPoolLogical(host)) {
       isPoolBind = true;
       poolKey = createPoolKey(name, host);
-    } else if (!isHostBased && (location.endsWith('/*') || location.endsWith('/**'))) {
-      const trimmed = location.endsWith('/*') ? location.slice(0, -2) : location.slice(0, -3);
+    } else if (!isHostBased && (location.endsWith("/*") || location.endsWith("/**"))) {
+      const trimmed = location.endsWith("/*") ? location.slice(0, -2) : location.slice(0, -3);
       const root = normalizePath(trimmed);
       isPoolBind = true;
       poolKey = createPoolKey(name, root);
@@ -277,7 +274,7 @@ export class AddressBindFrameHandler {
       }
 
       ack = {
-        type: 'AddressBindAck',
+        type: "AddressBindAck",
         address: addressStr,
         ok: true,
         refId: envelope.id,
@@ -308,11 +305,11 @@ export class AddressBindFrameHandler {
       } else if (context.originType === DeliveryOriginType.PEER) {
         setPeerRoute(this.routeManager._peer_addresses_routes, addressStr, sourceSystemId);
       } else {
-        throw new Error('Unsupported origin type for address bind');
+        throw new Error("Unsupported origin type for address bind");
       }
 
       ack = {
-        type: 'AddressBindAck',
+        type: "AddressBindAck",
         address: addressStr,
         ok: true,
         refId: envelope.id,
@@ -320,15 +317,16 @@ export class AddressBindFrameHandler {
     }
 
     if (context.originType === DeliveryOriginType.DOWNSTREAM) {
-      const routingNodeId = typeof this.routingNode.id === 'string' && this.routingNode.id
-        ? this.routingNode.id
-        : 'sentinel';
+      const routingNodeId =
+        typeof this.routingNode.id === "string" && this.routingNode.id
+          ? this.routingNode.id
+          : "sentinel";
 
       const ackContext: FameDeliveryContext = {
         originType: DeliveryOriginType.LOCAL,
         fromSystemId: routingNodeId,
         security: context.security,
-        meta: { 'message-type': 'response' },
+        meta: { "message-type": "response" },
         expectedResponseType: FameResponseType.NONE,
       };
 
@@ -338,7 +336,7 @@ export class AddressBindFrameHandler {
       });
 
       if (!this.routingNode.forwardToRoute) {
-        throw new Error('Routing node does not support forwardToRoute');
+        throw new Error("Routing node does not support forwardToRoute");
       }
 
       await this.routingNode.forwardToRoute(sourceSystemId, ackEnvelope, ackContext);
@@ -352,7 +350,7 @@ export class AddressBindFrameHandler {
       await this.routingNode.forwardToPeers(envelope, undefined, [sourceSystemId], context);
     }
 
-    logger.debug('address_bound', { address: addressStr, segment: sourceSystemId });
+    logger.debug("address_bound", { address: addressStr, segment: sourceSystemId });
   }
 
   public async acceptAddressUnbind(
@@ -360,8 +358,8 @@ export class AddressBindFrameHandler {
     context: FameDeliveryContext | undefined
   ): Promise<void> {
     const frame = envelope.frame as AddressUnbindFrame | undefined;
-    if (!frame || frame.type !== 'AddressUnbind') {
-      throw new Error(`Expected AddressUnbindFrame, got ${frame?.type ?? 'unknown'}`);
+    if (!frame || frame.type !== "AddressUnbind") {
+      throw new Error(`Expected AddressUnbindFrame, got ${frame?.type ?? "unknown"}`);
     }
 
     const sourceSystemId = this.getSourceSystemId(context);
@@ -391,8 +389,8 @@ export class AddressBindFrameHandler {
     if (isHostBased && host && isPoolLogical(host)) {
       isPoolUnbind = true;
       poolKey = createPoolKey(name, host);
-    } else if (!isHostBased && (location.endsWith('/*') || location.endsWith('/**'))) {
-      const trimmed = location.endsWith('/*') ? location.slice(0, -2) : location.slice(0, -3);
+    } else if (!isHostBased && (location.endsWith("/*") || location.endsWith("/**"))) {
+      const trimmed = location.endsWith("/*") ? location.slice(0, -2) : location.slice(0, -3);
       const root = normalizePath(trimmed);
       isPoolUnbind = true;
       poolKey = createPoolKey(name, root);
@@ -424,12 +422,13 @@ export class AddressBindFrameHandler {
     }
 
     if (context && context.originType === DeliveryOriginType.DOWNSTREAM) {
-      const routingNodeId = typeof this.routingNode.id === 'string' && this.routingNode.id
-        ? this.routingNode.id
-        : 'sentinel';
+      const routingNodeId =
+        typeof this.routingNode.id === "string" && this.routingNode.id
+          ? this.routingNode.id
+          : "sentinel";
 
       const ack: AddressUnbindAckFrame = {
-        type: 'AddressUnbindAck',
+        type: "AddressUnbindAck",
         address: addressStr,
         ok: true,
         refId: envelope.id,
@@ -439,7 +438,7 @@ export class AddressBindFrameHandler {
         originType: DeliveryOriginType.LOCAL,
         fromSystemId: routingNodeId,
         security: context.security,
-        meta: { 'message-type': 'response' },
+        meta: { "message-type": "response" },
         expectedResponseType: FameResponseType.NONE,
       };
 
@@ -449,13 +448,13 @@ export class AddressBindFrameHandler {
       });
 
       if (!this.routingNode.forwardToRoute) {
-        throw new Error('Routing node does not support forwardToRoute');
+        throw new Error("Routing node does not support forwardToRoute");
       }
 
       await this.routingNode.forwardToRoute(sourceSystemId, ackEnvelope, ackContext);
     }
 
-    logger.debug('address_unbound', { address: addressStr, segment: sourceSystemId });
+    logger.debug("address_unbound", { address: addressStr, segment: sourceSystemId });
   }
 
   private getSourceSystemId(context: FameDeliveryContext | undefined): string | null {

@@ -1,17 +1,8 @@
-import type {
-  FameAddress,
-  FameDeliveryContext,
-  FameEnvelope,
-} from 'naylence-core';
+import type { FameAddress, FameDeliveryContext, FameEnvelope } from "naylence-core";
 
-import { BaseNodeEventListener } from '../node/node-event-listener.js';
-import type { NodeLike } from '../node/node-like.js';
-import type {
-  TraceEmitter,
-  TraceSpan,
-  TraceSpanOptions,
-  TraceSpanScope,
-} from './trace-emitter.js';
+import { BaseNodeEventListener } from "../node/node-event-listener.js";
+import type { NodeLike } from "../node/node-like.js";
+import type { TraceEmitter, TraceSpan, TraceSpanOptions, TraceSpanScope } from "./trace-emitter.js";
 
 interface ActiveSpan {
   scope: TraceSpanScope;
@@ -20,21 +11,21 @@ interface ActiveSpan {
 
 function buildEnvelopeAttributes(envelope: FameEnvelope): Record<string, unknown> {
   return {
-    'env.id': envelope.id,
-    'env.trace_id': envelope.traceId,
-    'env.corr_id': envelope.corrId,
-    'env.flow_id': envelope.flowId,
-    'env.seq_id': envelope.seqId,
-    'env.to': envelope.to ?? null,
-    'env.priority': envelope.priority ?? null,
-    'env.sid': envelope.sid ?? null,
-    'env.reply_to': envelope.replyTo ?? null,
-    'env.ts': envelope.ts?.toISOString?.() ?? null,
-    'env.frame_type': envelope.frame ? (envelope.frame as { type?: string }).type ?? null : null,
-    'env.is_signed': Boolean(envelope.sec?.sig),
-    'env.sign_kid': envelope.sec?.sig?.kid ?? null,
-    'env.is_encrypted': Boolean(envelope.sec?.enc),
-    'env.enc_kid': envelope.sec?.enc?.kid ?? null,
+    "env.id": envelope.id,
+    "env.trace_id": envelope.traceId,
+    "env.corr_id": envelope.corrId,
+    "env.flow_id": envelope.flowId,
+    "env.seq_id": envelope.seqId,
+    "env.to": envelope.to ?? null,
+    "env.priority": envelope.priority ?? null,
+    "env.sid": envelope.sid ?? null,
+    "env.reply_to": envelope.replyTo ?? null,
+    "env.ts": envelope.ts?.toISOString?.() ?? null,
+    "env.frame_type": envelope.frame ? ((envelope.frame as { type?: string }).type ?? null) : null,
+    "env.is_signed": Boolean(envelope.sec?.sig),
+    "env.sign_kid": envelope.sec?.sig?.kid ?? null,
+    "env.is_encrypted": Boolean(envelope.sec?.enc),
+    "env.enc_kid": envelope.sec?.enc?.kid ?? null,
   };
 }
 
@@ -48,10 +39,7 @@ function filterAttributes(attributes: Record<string, unknown>): Record<string, u
   return filtered;
 }
 
-export abstract class BaseTraceEmitter
-  extends BaseNodeEventListener
-  implements TraceEmitter
-{
+export abstract class BaseTraceEmitter extends BaseNodeEventListener implements TraceEmitter {
   protected node: NodeLike | null = null;
   private readonly inflight = new Map<string, ActiveSpan>();
 
@@ -68,7 +56,7 @@ export abstract class BaseTraceEmitter
     operationName: string,
     envelope: FameEnvelope,
     operationKey: string,
-    additionalAttributes: Record<string, unknown> | null = null,
+    additionalAttributes: Record<string, unknown> | null = null
   ): FameEnvelope {
     try {
       const key = this.getSpanKey(envelope, operationKey);
@@ -92,8 +80,8 @@ export abstract class BaseTraceEmitter
 
       const effectiveNode = node ?? this.node;
       if (effectiveNode) {
-        attributes['node.id'] = effectiveNode.id;
-        attributes['node.sid'] = effectiveNode.sid ?? null;
+        attributes["node.id"] = effectiveNode.id;
+        attributes["node.sid"] = effectiveNode.sid ?? null;
       }
 
       const scope = this.startSpan(operationName, {
@@ -114,9 +102,9 @@ export abstract class BaseTraceEmitter
     operationName: string,
     envelope: FameEnvelope,
     operationKey: string,
-  _result: unknown = null,
+    _result: unknown = null,
     error: unknown = null,
-    additionalAttributes: Record<string, unknown> | null = null,
+    additionalAttributes: Record<string, unknown> | null = null
   ): FameEnvelope {
     try {
       const key = this.getSpanKey(envelope, operationKey);
@@ -132,8 +120,8 @@ export abstract class BaseTraceEmitter
 
         const effectiveNode = node ?? this.node;
         if (effectiveNode) {
-          attributes['node.id'] = effectiveNode.id;
-          attributes['node.sid'] = effectiveNode.sid ?? null;
+          attributes["node.id"] = effectiveNode.id;
+          attributes["node.sid"] = effectiveNode.sid ?? null;
         }
 
         const scope = this.startSpan(operationName, {
@@ -174,22 +162,22 @@ export abstract class BaseTraceEmitter
   public override async onEnvelopeReceived(
     node: NodeLike,
     envelope: FameEnvelope,
-    context?: FameDeliveryContext,
+    context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
     try {
       const attributes = buildEnvelopeAttributes(envelope);
-      attributes['node.id'] = node.id;
-      attributes['node.sid'] = node.sid ?? null;
+      attributes["node.id"] = node.id;
+      attributes["node.sid"] = node.sid ?? null;
 
       if (context?.fromSystemId) {
-        attributes['from.node_id'] = context.fromSystemId;
+        attributes["from.node_id"] = context.fromSystemId;
       }
 
       if (context?.originType) {
-        attributes['from.origin_type'] = context.originType;
+        attributes["from.origin_type"] = context.originType;
       }
 
-      const scope = this.startSpan('env.received', {
+      const scope = this.startSpan("env.received", {
         attributes: filterAttributes(attributes),
       });
       scope.enter();
@@ -205,10 +193,10 @@ export abstract class BaseTraceEmitter
     node: NodeLike,
     nextSegment: string,
     envelope: FameEnvelope,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    return this.startEnvelopeOperationSpan(node, 'env.fwd_to_route', envelope, nextSegment, {
-      'route.segment': nextSegment,
+    return this.startEnvelopeOperationSpan(node, "env.fwd_to_route", envelope, nextSegment, {
+      "route.segment": nextSegment,
     });
   }
 
@@ -218,20 +206,28 @@ export abstract class BaseTraceEmitter
     envelope: FameEnvelope,
     result?: unknown,
     error?: Error,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    return this.completeEnvelopeOperationSpan(node, 'env.fwd_to_route', envelope, nextSegment, result, error, {
-      'route.segment': nextSegment,
-    });
+    return this.completeEnvelopeOperationSpan(
+      node,
+      "env.fwd_to_route",
+      envelope,
+      nextSegment,
+      result,
+      error,
+      {
+        "route.segment": nextSegment,
+      }
+    );
   }
 
   public override async onForwardUpstream(
     node: NodeLike,
     envelope: FameEnvelope,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    return this.startEnvelopeOperationSpan(node, 'env.fwd_upstream', envelope, 'upstream', {
-      direction: 'upstream',
+    return this.startEnvelopeOperationSpan(node, "env.fwd_upstream", envelope, "upstream", {
+      direction: "upstream",
     });
   }
 
@@ -240,21 +236,29 @@ export abstract class BaseTraceEmitter
     envelope: FameEnvelope,
     result?: unknown,
     error?: Error,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    return this.completeEnvelopeOperationSpan(node, 'env.fwd_upstream', envelope, 'upstream', result, error, {
-      direction: 'upstream',
-    });
+    return this.completeEnvelopeOperationSpan(
+      node,
+      "env.fwd_upstream",
+      envelope,
+      "upstream",
+      result,
+      error,
+      {
+        direction: "upstream",
+      }
+    );
   }
 
   public override async onForwardToPeer(
     node: NodeLike,
     peerSegment: string,
     envelope: FameEnvelope,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    return this.startEnvelopeOperationSpan(node, 'env.fwd_to_peer', envelope, peerSegment, {
-      'peer.segment': peerSegment,
+    return this.startEnvelopeOperationSpan(node, "env.fwd_to_peer", envelope, peerSegment, {
+      "peer.segment": peerSegment,
     });
   }
 
@@ -264,23 +268,31 @@ export abstract class BaseTraceEmitter
     envelope: FameEnvelope,
     result?: unknown,
     error?: Error,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    return this.completeEnvelopeOperationSpan(node, 'env.fwd_to_peer', envelope, peerSegment, result, error, {
-      'peer.segment': peerSegment,
-    });
+    return this.completeEnvelopeOperationSpan(
+      node,
+      "env.fwd_to_peer",
+      envelope,
+      peerSegment,
+      result,
+      error,
+      {
+        "peer.segment": peerSegment,
+      }
+    );
   }
 
   public override async onDeliverLocal(
     node: NodeLike,
     address: FameAddress,
     envelope: FameEnvelope,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    const addressKey = address ? String(address) : 'unknown';
-    return this.startEnvelopeOperationSpan(node, 'env.deliver_local', envelope, addressKey, {
-      'delivery.address': addressKey,
-      'delivery.type': 'local',
+    const addressKey = address ? String(address) : "unknown";
+    return this.startEnvelopeOperationSpan(node, "env.deliver_local", envelope, addressKey, {
+      "delivery.address": addressKey,
+      "delivery.type": "local",
     });
   }
 
@@ -288,13 +300,21 @@ export abstract class BaseTraceEmitter
     node: NodeLike,
     address: FameAddress,
     envelope: FameEnvelope,
-    _context?: FameDeliveryContext,
+    _context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    const addressKey = address ? String(address) : 'unknown';
-    return this.completeEnvelopeOperationSpan(node, 'env.deliver_local', envelope, addressKey, null, null, {
-      'delivery.address': addressKey,
-      'delivery.type': 'local',
-    });
+    const addressKey = address ? String(address) : "unknown";
+    return this.completeEnvelopeOperationSpan(
+      node,
+      "env.deliver_local",
+      envelope,
+      addressKey,
+      null,
+      null,
+      {
+        "delivery.address": addressKey,
+        "delivery.type": "local",
+      }
+    );
   }
 
   public override async onNodeInitialized(node: NodeLike): Promise<void> {
@@ -303,10 +323,10 @@ export abstract class BaseTraceEmitter
 
   public override async onNodeStopped(_node: NodeLike): Promise<void> {
     try {
-      if (typeof this.flush === 'function') {
+      if (typeof this.flush === "function") {
         await this.flush();
       }
-      if (typeof this.shutdown === 'function') {
+      if (typeof this.shutdown === "function") {
         await this.shutdown();
       }
     } catch {

@@ -1,23 +1,26 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import type { AuthorizerConfig } from '../security/auth/authorizer-factory.js';
-import { AuthorizerFactory } from '../security/auth/authorizer-factory.js';
-import type { TokenIssuerConfig } from '../security/auth/token-issuer-factory.js';
-import { TokenIssuerFactory } from '../security/auth/token-issuer-factory.js';
-import type { NodePlacementConfig } from '../placement/node-placement-strategy.js';
-import { NodePlacementStrategyFactory } from '../placement/node-placement-strategy.js';
-import type { TransportProvisionerConfig } from '../transport/transport-provisioner.js';
-import { TransportProvisionerFactory } from '../transport/transport-provisioner.js';
-import { DefaultWelcomeService, type DefaultWelcomeServiceOptions } from './default-welcome-service.js';
-import type { WelcomeService } from './welcome-service.js';
+import type { AuthorizerConfig } from "../security/auth/authorizer-factory.js";
+import { AuthorizerFactory } from "../security/auth/authorizer-factory.js";
+import type { TokenIssuerConfig } from "../security/auth/token-issuer-factory.js";
+import { TokenIssuerFactory } from "../security/auth/token-issuer-factory.js";
+import type { NodePlacementConfig } from "../placement/node-placement-strategy.js";
+import { NodePlacementStrategyFactory } from "../placement/node-placement-strategy.js";
+import type { TransportProvisionerConfig } from "../transport/transport-provisioner.js";
+import { TransportProvisionerFactory } from "../transport/transport-provisioner.js";
+import {
+  DefaultWelcomeService,
+  type DefaultWelcomeServiceOptions,
+} from "./default-welcome-service.js";
+import type { WelcomeService } from "./welcome-service.js";
 import {
   WELCOME_SERVICE_FACTORY_BASE_TYPE,
   WelcomeServiceFactory,
   type WelcomeServiceConfig,
-} from './welcome-service-factory.js';
+} from "./welcome-service-factory.js";
 
 export interface DefaultWelcomeServiceConfig extends WelcomeServiceConfig {
-  type: 'DefaultWelcomeService';
+  type: "DefaultWelcomeService";
   placement?: NodePlacementConfig | Record<string, unknown> | null;
   transport?: TransportProvisionerConfig | Record<string, unknown> | null;
   tokenIssuer?: TokenIssuerConfig | Record<string, unknown> | null;
@@ -36,7 +39,7 @@ interface NormalizedDefaultWelcomeServiceConfig {
 }
 
 export class DefaultWelcomeServiceFactory extends WelcomeServiceFactory<DefaultWelcomeServiceConfig> {
-  public readonly type = 'DefaultWelcomeService';
+  public readonly type = "DefaultWelcomeService";
   public readonly isDefault = true;
 
   public async create(
@@ -62,10 +65,9 @@ export class DefaultWelcomeServiceFactory extends WelcomeServiceFactory<DefaultW
 
     let authorizer = null;
     if (normalized.authorizerConfig) {
-      authorizer = (await AuthorizerFactory.createAuthorizer(
-        normalized.authorizerConfig,
-        { factoryArgs }
-      )) ?? null;
+      authorizer =
+        (await AuthorizerFactory.createAuthorizer(normalized.authorizerConfig, { factoryArgs })) ??
+        null;
     }
 
     const options: DefaultWelcomeServiceOptions = {
@@ -93,9 +95,9 @@ function normalizeConfig(
   const source = config as DefaultWelcomeServiceConfig & Record<string, unknown>;
 
   const ttlCandidate =
-    typeof source.ttlSec === 'number'
+    typeof source.ttlSec === "number"
       ? source.ttlSec
-      : typeof source.ttl_sec === 'number'
+      : typeof source.ttl_sec === "number"
         ? source.ttl_sec
         : undefined;
 
@@ -133,7 +135,7 @@ function normalizeConfig(
 
 registerFactory<WelcomeService, DefaultWelcomeServiceConfig>(
   WELCOME_SERVICE_FACTORY_BASE_TYPE,
-  'DefaultWelcomeService',
+  "DefaultWelcomeService",
   DefaultWelcomeServiceFactory,
   {
     isDefault: true,

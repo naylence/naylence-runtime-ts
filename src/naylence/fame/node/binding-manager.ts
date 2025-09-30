@@ -14,30 +14,27 @@ import {
   localDeliveryContext,
   parseAddress,
   parseAddressComponents,
-} from 'naylence-core';
+} from "naylence-core";
 import type {
   AddressBindAckFrame,
   AddressUnbindAckFrame,
   CapabilityAdvertiseAckFrame,
   CapabilityWithdrawAckFrame,
-} from 'naylence-core';
-import { InMemoryReadWriteChannel } from '../channel/in-memory/in-memory-channel.js';
-import type { KeyValueStore } from '../storage/key-value-store.js';
-import { InMemoryKeyValueStore } from '../storage/in-memory-storage.js';
-import type { EnvelopeFactory } from 'naylence-core';
-import { currentTraceId } from '../util/envelope-context.js';
-import { getLogger } from '../util/logging.js';
-import { isPoolLogical, matchesPoolLogical } from '../util/logicals.js';
+} from "naylence-core";
+import { InMemoryReadWriteChannel } from "../channel/in-memory/in-memory-channel.js";
+import type { KeyValueStore } from "../storage/key-value-store.js";
+import { InMemoryKeyValueStore } from "../storage/in-memory-storage.js";
+import type { EnvelopeFactory } from "naylence-core";
+import { currentTraceId } from "../util/envelope-context.js";
+import { getLogger } from "../util/logging.js";
+import { isPoolLogical, matchesPoolLogical } from "../util/logicals.js";
 
-const logger = getLogger('binding-manager');
+const logger = getLogger("binding-manager");
 
-const SYSTEM_INBOX = '__sys__';
+const SYSTEM_INBOX = "__sys__";
 const DEFAULT_ACK_TIMEOUT_MS = 20_000;
 
-type ForwardUpstreamFn = (
-  envelope: FameEnvelope,
-  context?: FameDeliveryContext
-) => Promise<void>;
+type ForwardUpstreamFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<void>;
 
 type BindingFactory = (address: FameAddress) => Binding;
 
@@ -135,7 +132,7 @@ export class BindingManager {
       if (!this.bindings.has(key)) {
         const binding = this.bindingFactory(new FameAddress(key));
         this.bindings.set(key, binding);
-        logger.debug('restored_binding', { address: key });
+        logger.debug("restored_binding", { address: key });
       }
     }
 
@@ -148,20 +145,16 @@ export class BindingManager {
   }
 
   async bind(participant: string, capabilities?: string[] | null): Promise<Binding> {
-    logger.debug('binding_participant', { participant });
+    logger.debug("binding_participant", { participant });
 
-    const {
-      prefixAddress,
-      addresses,
-      propagateAddress,
-      capabilityAddress,
-    } = this.computeBindingAddresses(participant);
+    const { prefixAddress, addresses, propagateAddress, capabilityAddress } =
+      this.computeBindingAddresses(participant);
 
     for (const address of addresses) {
       if (!this.bindings.has(address)) {
         const binding = this.bindingFactory(new FameAddress(address));
         this.bindings.set(address, binding);
-        logger.debug('bound_address', { address, participant });
+        logger.debug("bound_address", { address, participant });
       }
     }
 
@@ -186,7 +179,7 @@ export class BindingManager {
           try {
             await this.unbindAddressUpstream(propagatedAddress);
           } catch (rollbackError) {
-            logger.error('bind_rollback_failed', {
+            logger.error("bind_rollback_failed", {
               address: propagatedAddress.toString(),
               error: (rollbackError as Error).message,
             });
@@ -203,7 +196,7 @@ export class BindingManager {
       await this.bindingStore.set(address, { address });
     }
 
-    logger.debug('bind_success', {
+    logger.debug("bind_success", {
       participant,
       address: prefixAddress.toString(),
       capabilities,
@@ -212,7 +205,7 @@ export class BindingManager {
 
     const binding = this.bindings.get(prefixAddress.toString());
     if (!binding) {
-      throw new Error('Binding was not created');
+      throw new Error("Binding was not created");
     }
 
     if (capabilities && capabilities.length && capabilityAddress) {
@@ -226,13 +219,8 @@ export class BindingManager {
   }
 
   async unbind(participant: string): Promise<void> {
-    const {
-      prefixAddress,
-      instanceAddress,
-      addresses,
-      propagateAddress,
-      capabilityAddress,
-    } = this.computeBindingAddresses(participant, { requireExisting: true });
+    const { prefixAddress, instanceAddress, addresses, propagateAddress, capabilityAddress } =
+      this.computeBindingAddresses(participant, { requireExisting: true });
 
     if (this.hasUpstream && capabilityAddress) {
       const key = capabilityAddress.toString();
@@ -253,7 +241,7 @@ export class BindingManager {
       }
     }
 
-    logger.debug('unbind_success', {
+    logger.debug("unbind_success", {
       participant,
       address: prefixAddress.toString(),
       totalBindings: this.bindings.size,
@@ -271,10 +259,7 @@ export class BindingManager {
     await Promise.all(Object.keys(entries).map((key) => this.bindingStore.delete(key)));
   }
 
-  async handleAck(
-    envelope: FameEnvelope,
-    context?: FameDeliveryContext
-  ): Promise<void> {
+  async handleAck(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
     await this.deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, envelope, context);
   }
 
@@ -290,7 +275,7 @@ export class BindingManager {
       try {
         await this.bindAddressUpstream(new FameAddress(address));
       } catch (error) {
-        logger.error('rebind_failed', {
+        logger.error("rebind_failed", {
           address,
           error: (error as Error).message,
         });
@@ -310,7 +295,7 @@ export class BindingManager {
       try {
         await this.advertiseCapabilities(new FameAddress(address), Array.from(capabilities));
       } catch (error) {
-        logger.error('capability_replay_failed', {
+        logger.error("capability_replay_failed", {
           address,
           error: (error as Error).message,
         });
@@ -343,7 +328,7 @@ export class BindingManager {
         if (!matchesPoolLogical(host, storedHost)) {
           continue;
         }
-        const specificity = storedHost.split('.').length;
+        const specificity = storedHost.split(".").length;
         candidates.push({ specificity, binding });
       } catch {
         continue;
@@ -364,7 +349,7 @@ export class BindingManager {
   ) {
     let name: string;
     let location: string;
-    if (participant.includes('@')) {
+    if (participant.includes("@")) {
       [name, location] = parseAddress(participant);
     } else {
       name = participant;
@@ -399,9 +384,10 @@ export class BindingManager {
     let instanceAddress: FameAddress | null = null;
     if (poolClaim) {
       prefixAddress = formatAddressFromComponents(name, poolClaim);
-      const targetHost = host && host.includes('*')
-        ? host.replace('*', this.getId())
-        : poolClaim.replace('*', this.getId());
+      const targetHost =
+        host && host.includes("*")
+          ? host.replace("*", this.getId())
+          : poolClaim.replace("*", this.getId());
       instanceAddress = formatAddressFromComponents(name, targetHost);
     } else if (logical && this.isAcceptedLogicalHost(logical, acceptedLogicals)) {
       prefixAddress = baseAddress;
@@ -409,9 +395,7 @@ export class BindingManager {
       prefixAddress = baseAddress;
     } else {
       if (options.requireExisting !== true) {
-        throw new Error(
-          `Cannot bind '${participant}': location '${location}' not permitted`
-        );
+        throw new Error(`Cannot bind '${participant}': location '${location}' not permitted`);
       }
       prefixAddress = baseAddress;
     }
@@ -453,10 +437,12 @@ export class BindingManager {
 
   private async bindAddressUpstream(address: FameAddress): Promise<void> {
     const frame: AddressBindFrame = {
-      type: 'AddressBind',
+      type: "AddressBind",
       address: address.toString(),
       physicalPath: this.getPhysicalPath(),
-      encryptionKeyId: this.getEncryptionKeyId ? this.getEncryptionKeyId() ?? undefined : undefined,
+      encryptionKeyId: this.getEncryptionKeyId
+        ? (this.getEncryptionKeyId() ?? undefined)
+        : undefined,
     };
 
     const ackEnvelope = await this.sendAndWaitForAck(frame);
@@ -468,7 +454,7 @@ export class BindingManager {
 
   private async unbindAddressUpstream(address: FameAddress): Promise<void> {
     const frame: AddressUnbindFrame = {
-      type: 'AddressUnbind',
+      type: "AddressUnbind",
       address: address.toString(),
     };
 
@@ -479,16 +465,13 @@ export class BindingManager {
     }
   }
 
-  private async advertiseCapabilities(
-    address: FameAddress,
-    capabilities: string[]
-  ): Promise<void> {
+  private async advertiseCapabilities(address: FameAddress, capabilities: string[]): Promise<void> {
     if (!capabilities.length) {
       return;
     }
 
     const frame: CapabilityAdvertiseFrame = {
-      type: 'CapabilityAdvertise',
+      type: "CapabilityAdvertise",
       address: address.toString(),
       capabilities,
     };
@@ -496,7 +479,7 @@ export class BindingManager {
     const ackEnvelope = await this.sendAndWaitForAck(frame);
     const ack = ackEnvelope.frame as CapabilityAdvertiseAckFrame;
     if (!ack.ok) {
-      throw new Error(`Capability advertise rejected: ${capabilities.join(', ')}`);
+      throw new Error(`Capability advertise rejected: ${capabilities.join(", ")}`);
     }
   }
 
@@ -506,7 +489,7 @@ export class BindingManager {
     }
 
     const frame: CapabilityWithdrawFrame = {
-      type: 'CapabilityWithdraw',
+      type: "CapabilityWithdraw",
       address: address.toString(),
       capabilities,
     };
@@ -514,7 +497,7 @@ export class BindingManager {
     const ackEnvelope = await this.sendAndWaitForAck(frame);
     const ack = ackEnvelope.frame as CapabilityWithdrawAckFrame;
     if (!ack.ok) {
-      throw new Error(`Capability withdraw rejected: ${capabilities.join(', ')}`);
+      throw new Error(`Capability withdraw rejected: ${capabilities.join(", ")}`);
     }
 
     const key = address.toString();
@@ -539,7 +522,7 @@ export class BindingManager {
     const replyTo = formatAddress(SYSTEM_INBOX, this.getPhysicalPath());
 
     const traceId = currentTraceId();
-    const envelopeOptions: Parameters<EnvelopeFactory['createEnvelope']>[0] = {
+    const envelopeOptions: Parameters<EnvelopeFactory["createEnvelope"]>[0] = {
       frame,
       corrId,
       replyTo,

@@ -1,13 +1,14 @@
 /**
  * in-memory-channel.ts - In-memory ReadWriteChannel implementation
- * 
+ *
  * TypeScript port of Python's InMemoryReadWriteChannel that uses an internal
  * queue for message storage and provides async read/write operations with
  * timeout support.
  */
 
-import { ReadWriteChannel } from 'naylence-core';
-import { TaskTimeoutError } from '../../util/task-types.js';
+import { ReadWriteChannel } from "naylence-core";
+import { TaskTimeoutError } from "../../util/task-types.js";
+import { getLogger } from "../../util/logging.js";
 
 export interface InMemoryChannelConfig {
   /** Maximum queue size (0 = unlimited) */
@@ -32,6 +33,7 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
   private readonly _maxsize: number;
   private readonly _defaultTimeoutMs: number;
   private _closed = false;
+  private readonly logger = getLogger("in-memory-channel");
 
   constructor(config: InMemoryChannelConfig = {}) {
     this._maxsize = config.maxsize || 0; // 0 = unlimited
@@ -45,19 +47,23 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
    */
   async receive(timeout?: number): Promise<any> {
     if (this._closed) {
-      throw new Error('Channel is closed');
+      throw new Error("Channel is closed");
     }
 
     // If there's a message in the queue, return it immediately
     if (this._queue.length > 0) {
       const message = this._queue.shift()!;
+      this.logger.debug("receive_returning_buffered_message", {
+        queue_length: this._queue.length,
+        waiting_readers: this._waitingReaders.length,
+      });
       return message;
     }
 
     // No message available, wait for one
     return new Promise<any>((resolve, reject) => {
       const waiter: WaitingReader = { resolve, reject };
-      
+
       // Set up timeout if specified
       const timeoutMs = timeout ?? this._defaultTimeoutMs;
       if (timeoutMs > 0) {
@@ -67,11 +73,16 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
           if (index !== -1) {
             this._waitingReaders.splice(index, 1);
           }
-          reject(new TaskTimeoutError('Channel receive operation', timeoutMs));
+          reject(new TaskTimeoutError("Channel receive operation", timeoutMs));
         }, timeoutMs);
       }
 
       this._waitingReaders.push(waiter);
+      this.logger.debug("receive_waiting_for_message", {
+        queue_length: this._queue.length,
+        waiting_readers: this._waitingReaders.length,
+        timeout_ms: timeoutMs,
+      });
     });
   }
 
@@ -84,7 +95,7 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
     // In-memory channels don't need acknowledgment tracking
     // This is a no-op but satisfies the interface requirement
     if (this._closed) {
-      throw new Error('Channel is closed');
+      throw new Error("Channel is closed");
     }
     // No-op - acknowledgment is not meaningful for in-memory channels
   }
@@ -97,7 +108,7 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
    */
   async send(message: any): Promise<void> {
     if (this._closed) {
-      throw new Error('Channel is closed');
+      throw new Error("Channel is closed");
     }
 
     // If there are waiting readers, deliver directly to the first one
@@ -106,6 +117,10 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
       if (waiter.timeoutId) {
         clearTimeout(waiter.timeoutId);
       }
+      this.logger.debug("send_delivering_to_waiter", {
+        queue_length: this._queue.length,
+        waiting_readers: this._waitingReaders.length,
+      });
       waiter.resolve(message);
       return;
     }
@@ -113,12 +128,21 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
     // No waiting readers, add to queue if there's space
     if (this._maxsize === 0 || this._queue.length < this._maxsize) {
       this._queue.push(message);
+      this.logger.debug("send_enqueued_message", {
+        queue_length: this._queue.length,
+        waiting_readers: this._waitingReaders.length,
+        max_size: this._maxsize,
+      });
       return;
     }
 
     // Queue is full - in Python implementation, this would block
     // For simplicity in this TypeScript version, we'll reject immediately
     // In a full implementation, we'd want to wait for space to become available
+    this.logger.error("send_queue_full", {
+      queue_length: this._queue.length,
+      max_size: this._maxsize,
+    });
     throw new Error(`Channel queue is full (maxsize: ${this._maxsize})`);
   }
 
@@ -134,13 +158,17 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
     this._closed = true;
 
     // Reject all waiting readers
-    const error = new Error('Channel is closed');
+    const error = new Error("Channel is closed");
     for (const waiter of this._waitingReaders) {
       if (waiter.timeoutId) {
         clearTimeout(waiter.timeoutId);
       }
       waiter.reject(error);
     }
+    this.logger.debug("channel_closed", {
+      discarded_waiters: this._waitingReaders.length,
+      discarded_messages: this._queue.length,
+    });
     this._waitingReaders.length = 0;
 
     // Clear the queue

@@ -5,15 +5,15 @@ import {
   type DataFrame,
   type DeliveryAckFrame,
   type FameEnvelope,
-} from 'naylence-core';
+} from "naylence-core";
 
-import { DefaultDeliveryTrackerFactory } from '../../delivery/default-delivery-tracker-factory.js';
-import { InProcessFameFabric } from '../in-process-fame-fabric.js';
-import { FameNode } from '../../node/node.js';
-import { NODE_META_NAMESPACE, NodeMetaRecord } from '../../node/node-meta.js';
-import { InMemorySinkService } from '../../service/in-memory-sink-service.js';
-import { InMemoryStorageProvider } from '../../storage/in-memory-storage.js';
-import type { KeyValueStore } from '../../storage/key-value-store.js';
+import { DefaultDeliveryTrackerFactory } from "../../delivery/default-delivery-tracker-factory.js";
+import { InProcessFameFabric } from "../in-process-fame-fabric.js";
+import { FameNode } from "../../node/node.js";
+import { NODE_META_NAMESPACE, NodeMetaRecord } from "../../node/node-meta.js";
+import { InMemorySinkService } from "../../service/in-memory-sink-service.js";
+import { InMemoryStorageProvider } from "../../storage/in-memory-storage.js";
+import type { KeyValueStore } from "../../storage/key-value-store.js";
 
 const MAX_MESSAGES = 32;
 const PUBLISH_DELAY_MS = 0;
@@ -43,7 +43,6 @@ const dupWithBurst: DupStrategy = () => {
   return 1;
 };
 
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -61,7 +60,7 @@ async function makeFixture() {
   });
 
   const node = new FameNode({
-    requestedLogicals: ['chaos.domain'],
+    requestedLogicals: ["chaos.domain"],
     storageProvider,
     nodeMetaStore,
     deliveryTracker,
@@ -79,9 +78,9 @@ async function makeFixture() {
     },
   });
 
-  await fabric.serve(sinkService, 'sink');
+  await fabric.serve(sinkService, "sink");
 
-  const sinkName = formatAddress('chaos', 'chaos.domain');
+  const sinkName = formatAddress("chaos", "chaos.domain");
   const sinkAddress = await sinkService.createSink({ name: sinkName.toString() });
 
   return { node, fabric, sinkAddress, sinkService } as const;
@@ -113,7 +112,11 @@ async function waitForLength<T>(buffer: T[], length: number, intervalMs = 5): Pr
   }
 }
 
-async function waitForUniqueCount(buffer: string[], uniqueCount: number, intervalMs = 5): Promise<void> {
+async function waitForUniqueCount(
+  buffer: string[],
+  uniqueCount: number,
+  intervalMs = 5
+): Promise<void> {
   while (new Set(buffer).size < uniqueCount) {
     await sleep(intervalMs);
   }
@@ -208,7 +211,10 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
     return await Promise.race([
       promise,
       new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(`Timed out after ${timeoutMs}ms`)), timeoutMs);
+        timeoutId = setTimeout(
+          () => reject(new Error(`Timed out after ${timeoutMs}ms`)),
+          timeoutMs
+        );
       }),
     ]);
   } finally {
@@ -241,18 +247,18 @@ const LOSSY_SCENARIOS: Array<{ nMsgs: number; nClients: number }> = [
   { nMsgs: 128, nClients: 8 },
 ];
 
-describe('chaos credit flow', () => {
+describe("chaos credit flow", () => {
   let consoleSpy: jest.SpiedFunction<typeof console.log>;
 
   beforeAll(() => {
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterAll(() => {
     consoleSpy.mockRestore();
   });
-  describe('sink stress scenarios', () => {
-    it('delivers 1k messages to 100 subscribers within deterministic timeout', async () => {
+  describe("sink stress scenarios", () => {
+    it("delivers 1k messages to 100 subscribers within deterministic timeout", async () => {
       const messageCount = 1000;
       const subscriberCount = 100;
 
@@ -262,14 +268,17 @@ describe('chaos credit flow', () => {
         const results: string[][] = Array.from({ length: subscriberCount }, () => []);
 
         for (let idx = 0; idx < subscriberCount; idx += 1) {
-          const subscriberAddress = await node.listen(`stress-subscriber-${idx}`, async (envelope) => {
-            const frame = envelope.frame as DataFrame | undefined;
-            if (!frame || frame.type !== 'Data') {
+          const subscriberAddress = await node.listen(
+            `stress-subscriber-${idx}`,
+            async (envelope) => {
+              const frame = envelope.frame as DataFrame | undefined;
+              if (!frame || frame.type !== "Data") {
+                return null;
+              }
+              results[idx].push(String(frame.payload));
               return null;
             }
-            results[idx].push(String(frame.payload));
-            return null;
-          });
+          );
 
           await sinkService.subscribe({
             sinkAddress: sinkAddress.toString(),
@@ -281,7 +290,7 @@ describe('chaos credit flow', () => {
 
         for (let i = 0; i < messageCount; i += 1) {
           const frame: DataFrame = {
-            type: 'Data',
+            type: "Data",
             payload: `data-${i}`,
           };
 
@@ -320,7 +329,7 @@ describe('chaos credit flow', () => {
   });
 
   it.each(SCENARIOS)(
-    'delivers $nMsgs messages to $nClients subscribers without loss, duplicates, or reordering',
+    "delivers $nMsgs messages to $nClients subscribers without loss, duplicates, or reordering",
     async ({ nMsgs, nClients }) => {
       const { node, fabric, sinkAddress, sinkService } = await makeFixture();
 
@@ -328,14 +337,17 @@ describe('chaos credit flow', () => {
         const results: string[][] = Array.from({ length: nClients }, () => []);
 
         for (let idx = 0; idx < nClients; idx += 1) {
-          const subscriberAddress = await node.listen(`sink-subscriber-${idx}`, async (envelope) => {
-            const frame = envelope.frame as DataFrame | undefined;
-            if (!frame || frame.type !== 'Data') {
+          const subscriberAddress = await node.listen(
+            `sink-subscriber-${idx}`,
+            async (envelope) => {
+              const frame = envelope.frame as DataFrame | undefined;
+              if (!frame || frame.type !== "Data") {
+                return null;
+              }
+              results[idx].push(String(frame.payload));
               return null;
             }
-            results[idx].push(String(frame.payload));
-            return null;
-          });
+          );
 
           await sinkService.subscribe({
             sinkAddress: sinkAddress.toString(),
@@ -346,7 +358,7 @@ describe('chaos credit flow', () => {
         const publisher = async () => {
           for (let i = 0; i < nMsgs; i += 1) {
             const frame: DataFrame = {
-              type: 'Data',
+              type: "Data",
               payload: `#${i}`,
             };
 
@@ -396,7 +408,7 @@ describe('chaos credit flow', () => {
   );
 
   it.each(DUPLICATE_SCENARIOS)(
-    'delivers $nMsgs messages to $nClients subscribers while tolerating duplicate bursts',
+    "delivers $nMsgs messages to $nClients subscribers while tolerating duplicate bursts",
     async ({ nMsgs, nClients }) => {
       const { node, fabric, sinkAddress, sinkService } = await makeFixture();
 
@@ -404,14 +416,17 @@ describe('chaos credit flow', () => {
         const results: string[][] = Array.from({ length: nClients }, () => []);
 
         for (let idx = 0; idx < nClients; idx += 1) {
-          const subscriberAddress = await node.listen(`dup-subscriber-${idx}-${nMsgs}`, async (envelope) => {
-            const frame = envelope.frame as DataFrame | undefined;
-            if (!frame || frame.type !== 'Data') {
+          const subscriberAddress = await node.listen(
+            `dup-subscriber-${idx}-${nMsgs}`,
+            async (envelope) => {
+              const frame = envelope.frame as DataFrame | undefined;
+              if (!frame || frame.type !== "Data") {
+                return null;
+              }
+              results[idx].push(String(frame.payload));
               return null;
             }
-            results[idx].push(String(frame.payload));
-            return null;
-          });
+          );
 
           await sinkService.subscribe({
             sinkAddress: sinkAddress.toString(),
@@ -422,7 +437,7 @@ describe('chaos credit flow', () => {
         const publisher = async () => {
           for (let i = 0; i < nMsgs; i += 1) {
             const frame: DataFrame = {
-              type: 'Data',
+              type: "Data",
               payload: `#${i}`,
             };
 
@@ -472,7 +487,7 @@ describe('chaos credit flow', () => {
   );
 
   it.each(LOSSY_SCENARIOS)(
-    'delivers $nMsgs messages to $nClients subscribers within 1% loss tolerance',
+    "delivers $nMsgs messages to $nClients subscribers within 1% loss tolerance",
     async ({ nMsgs, nClients }) => {
       const { node, fabric, sinkAddress, sinkService } = await makeFixture();
 
@@ -480,14 +495,17 @@ describe('chaos credit flow', () => {
         const results: string[][] = Array.from({ length: nClients }, () => []);
 
         for (let idx = 0; idx < nClients; idx += 1) {
-          const subscriberAddress = await node.listen(`lossy-subscriber-${idx}-${nMsgs}`, async (envelope) => {
-            const frame = envelope.frame as DataFrame | undefined;
-            if (!frame || frame.type !== 'Data') {
+          const subscriberAddress = await node.listen(
+            `lossy-subscriber-${idx}-${nMsgs}`,
+            async (envelope) => {
+              const frame = envelope.frame as DataFrame | undefined;
+              if (!frame || frame.type !== "Data") {
+                return null;
+              }
+              results[idx].push(String(frame.payload));
               return null;
             }
-            results[idx].push(String(frame.payload));
-            return null;
-          });
+          );
 
           await sinkService.subscribe({
             sinkAddress: sinkAddress.toString(),
@@ -498,7 +516,7 @@ describe('chaos credit flow', () => {
         const publisher = async () => {
           for (let i = 0; i < nMsgs; i += 1) {
             const frame: DataFrame = {
-              type: 'Data',
+              type: "Data",
               payload: `#${i}`,
             };
 
@@ -541,7 +559,7 @@ describe('chaos credit flow', () => {
           timeoutMs: 2000 + nMsgs * 20,
         });
 
-  const expectedValues = Array.from({ length: nMsgs }, (_, i) => `#${i}`);
+        const expectedValues = Array.from({ length: nMsgs }, (_, i) => `#${i}`);
         const maxMissing = Math.ceil(nMsgs * LOSSY_DROP_RATE) + 1;
 
         for (const buffer of results) {

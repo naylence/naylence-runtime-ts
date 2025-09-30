@@ -1,11 +1,11 @@
-import fastify, { type FastifyInstance, type FastifyPluginAsync } from 'fastify';
-import websocketPlugin from '@fastify/websocket';
-import type { AddressInfo } from 'node:net';
+import fastify, { type FastifyInstance, type FastifyPluginAsync } from "fastify";
+import websocketPlugin from "@fastify/websocket";
+import type { AddressInfo } from "node:net";
 
-import { getLogger } from '../util/logging.js';
-import type { HttpRouter, HttpServer } from './http-server.js';
+import { getLogger } from "../util/logging.js";
+import type { HttpRouter, HttpServer } from "./http-server.js";
 
-const logger = getLogger('default-http-server');
+const logger = getLogger("default-http-server");
 
 type ServerKey = string;
 
@@ -81,7 +81,7 @@ export class DefaultHttpServer implements HttpServer {
     if (!this._actualHost || this._actualPort === null) {
       return null;
     }
-    const host = this._actualHost === '::' ? '127.0.0.1' : this._actualHost;
+    const host = this._actualHost === "::" ? "127.0.0.1" : this._actualHost;
     return `http://${host}:${this._actualPort}`;
   }
 
@@ -92,23 +92,23 @@ export class DefaultHttpServer implements HttpServer {
 
     await this._ensureCorePlugins();
 
-    logger.debug('starting_http_server', { host: this._host, port: this._port });
+    logger.debug("starting_http_server", { host: this._host, port: this._port });
 
     const address = await this._app.listen({ host: this._host, port: this._port });
 
     const nodeServer = this._app.server as { unref?: () => void };
-    if (typeof nodeServer?.unref === 'function') {
+    if (typeof nodeServer?.unref === "function") {
       nodeServer.unref();
     }
 
     const serverAddress = this._app.server.address();
-    if (serverAddress && typeof serverAddress !== 'string') {
+    if (serverAddress && typeof serverAddress !== "string") {
       const info = serverAddress as AddressInfo;
       this._actualHost = info.address;
       this._actualPort = info.port;
     } else {
       try {
-        const url = new URL(typeof address === 'string' ? address : String(address));
+        const url = new URL(typeof address === "string" ? address : String(address));
         this._actualHost = url.hostname;
         this._actualPort = Number(url.port);
       } catch {
@@ -118,7 +118,7 @@ export class DefaultHttpServer implements HttpServer {
     }
 
     this._started = true;
-    logger.debug('http_server_started', { baseUrl: this.actualBaseUrl });
+    logger.debug("http_server_started", { baseUrl: this.actualBaseUrl });
   }
 
   async stop(): Promise<void> {
@@ -126,7 +126,7 @@ export class DefaultHttpServer implements HttpServer {
       return;
     }
 
-    logger.debug('stopping_http_server', { host: this._host, port: this._port });
+    logger.debug("stopping_http_server", { host: this._host, port: this._port });
 
     await this._app.close();
     this._started = false;
@@ -152,7 +152,10 @@ export class DefaultHttpServer implements HttpServer {
     }
   }
 
-  async includeFastifyPlugin(plugin: FastifyPluginAsync, options?: Record<string, unknown>): Promise<void> {
+  async includeFastifyPlugin(
+    plugin: FastifyPluginAsync,
+    options?: Record<string, unknown>
+  ): Promise<void> {
     const wasStarted = this._started;
 
     await this._ensureCorePlugins();
@@ -188,8 +191,10 @@ export class DefaultHttpServer implements HttpServer {
   /**
    * Obtain a shared HTTP server for the given host and port.
    */
-  static async getOrCreate(params: { host?: string; port?: number } = {}): Promise<DefaultHttpServer> {
-    const host = params.host ?? '0.0.0.0';
+  static async getOrCreate(
+    params: { host?: string; port?: number } = {}
+  ): Promise<DefaultHttpServer> {
+    const host = params.host ?? "0.0.0.0";
     const port = params.port ?? 0;
     const key = makeKey(host, port);
 
@@ -211,7 +216,7 @@ export class DefaultHttpServer implements HttpServer {
    * Release a reference to the shared HTTP server.
    */
   static async release(params: { host?: string; port?: number } = {}): Promise<void> {
-    const host = params.host ?? '0.0.0.0';
+    const host = params.host ?? "0.0.0.0";
     const port = params.port ?? 0;
     const key = makeKey(host, port);
 

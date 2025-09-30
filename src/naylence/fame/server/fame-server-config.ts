@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export interface FameServerRouteConfig {
   token: string;
@@ -60,8 +60,8 @@ export interface FameServerConfigInput {
 
 const FameServerClientSchema = z
   .object({
-    clientId: z.string().trim().min(1, 'OAuth client must include clientId'),
-    clientSecret: z.string().min(1, 'OAuth client must include clientSecret'),
+    clientId: z.string().trim().min(1, "OAuth client must include clientId"),
+    clientSecret: z.string().min(1, "OAuth client must include clientSecret"),
     scopes: z.array(z.string()).optional(),
     audience: z.string().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
@@ -76,9 +76,9 @@ const FameServerClientSchema = z
 
 const FameServerConfigSchema = z
   .object({
-    host: z.string().trim().min(1).default('0.0.0.0'),
+    host: z.string().trim().min(1).default("0.0.0.0"),
     port: z.coerce.number().int().min(0).max(65535).default(8080),
-    basePath: z.string().default(''),
+    basePath: z.string().default(""),
     trustProxy: z.union([z.boolean(), z.string(), z.array(z.string())]).default(false),
     requestTimeoutMs: z.coerce.number().int().positive().default(30_000),
     keepAliveTimeoutMs: z.coerce.number().int().positive().default(5_000),
@@ -95,7 +95,7 @@ const FameServerConfigSchema = z
 
 export function normalizeFameServerConfig(input?: FameServerConfigInput | null): FameServerConfig {
   const parsed = FameServerConfigSchema.parse(input ?? {});
-  const basePath = normalizeBasePath(parsed.basePath ?? '');
+  const basePath = normalizeBasePath(parsed.basePath ?? "");
   const routes = normalizeRouteConfig(parsed.routes);
 
   const clients: FameServerClientConfig[] = [];
@@ -146,40 +146,46 @@ export function normalizeFameServerConfig(input?: FameServerConfigInput | null):
 
 export function normalizeBasePath(basePath: string): string {
   const trimmed = basePath.trim();
-  if (trimmed === '' || trimmed === '/') {
-    return '';
+  if (trimmed === "" || trimmed === "/") {
+    return "";
   }
 
-  const prefixed = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return prefixed.replace(/\/+$/, '');
+  const prefixed = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return prefixed.replace(/\/+$/, "");
 }
 
 function normalizeRoutePath(path: string): string {
-  if (!path || path === '/') {
-    return path === '/' ? '/' : '';
+  if (!path || path === "/") {
+    return path === "/" ? "/" : "";
   }
 
   const trimmed = path.trim();
-  const prefixed = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  if (prefixed === '/') {
+  const prefixed = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  if (prefixed === "/") {
     return prefixed;
   }
-  return prefixed.replace(/\/+$/, '');
+  return prefixed.replace(/\/+$/, "");
 }
 
 function normalizeRouteConfig(value: unknown): FameServerRouteConfig {
   const candidate = (value ?? {}) as Partial<FameServerRouteConfig> & Record<string, unknown>;
   return {
-    token: normalizeRoutePath(typeof candidate.token === 'string' ? candidate.token : '/oauth/token'),
+    token: normalizeRoutePath(
+      typeof candidate.token === "string" ? candidate.token : "/oauth/token"
+    ),
     jwks: normalizeRoutePath(
-      typeof candidate.jwks === 'string' ? candidate.jwks : '/.well-known/jwks.json'
+      typeof candidate.jwks === "string" ? candidate.jwks : "/.well-known/jwks.json"
     ),
     openIdConfiguration: normalizeRoutePath(
-      typeof candidate.openIdConfiguration === 'string'
+      typeof candidate.openIdConfiguration === "string"
         ? candidate.openIdConfiguration
-        : '/.well-known/openid-configuration'
+        : "/.well-known/openid-configuration"
     ),
-    health: normalizeRoutePath(typeof candidate.health === 'string' ? candidate.health : '/healthz'),
-    metrics: normalizeRoutePath(typeof candidate.metrics === 'string' ? candidate.metrics : '/metrics'),
+    health: normalizeRoutePath(
+      typeof candidate.health === "string" ? candidate.health : "/healthz"
+    ),
+    metrics: normalizeRoutePath(
+      typeof candidate.metrics === "string" ? candidate.metrics : "/metrics"
+    ),
   };
 }

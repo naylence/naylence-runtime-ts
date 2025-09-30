@@ -1,8 +1,8 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
-import type { TokenVerifier } from './token-verifier.js';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { TokenVerifier } from "./token-verifier.js";
 
-export const TOKEN_VERIFIER_FACTORY_BASE_TYPE = 'TokenVerifierFactory';
+export const TOKEN_VERIFIER_FACTORY_BASE_TYPE = "TokenVerifierFactory";
 
 export interface TokenVerifierConfig extends ResourceConfig {
   type: string;
@@ -10,7 +10,7 @@ export interface TokenVerifierConfig extends ResourceConfig {
 }
 
 export abstract class TokenVerifierFactory<
-  C extends TokenVerifierConfig = TokenVerifierConfig
+  C extends TokenVerifierConfig = TokenVerifierConfig,
 > extends AbstractResourceFactory<TokenVerifier, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -29,7 +29,7 @@ export abstract class TokenVerifierFactory<
       );
 
       if (!instance) {
-        throw new Error('Failed to create token verifier from configuration');
+        throw new Error("Failed to create token verifier from configuration");
       }
 
       return instance;
@@ -42,7 +42,7 @@ export abstract class TokenVerifierFactory<
     );
 
     if (!instance) {
-      throw new Error('Failed to create default token verifier');
+      throw new Error("Failed to create default token verifier");
     }
 
     return instance;

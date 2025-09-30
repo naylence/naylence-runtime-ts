@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from "fastify";
 
 /**
  * Shared interface for HTTP server instances used by transport listeners.

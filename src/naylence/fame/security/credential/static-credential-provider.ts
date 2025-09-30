@@ -1,4 +1,4 @@
-import type { CredentialProvider } from './credential-provider.js';
+import type { CredentialProvider } from "./credential-provider.js";
 
 export class StaticCredentialProvider implements CredentialProvider {
   private readonly credentialValue: string;
@@ -7,7 +7,7 @@ export class StaticCredentialProvider implements CredentialProvider {
     this.credentialValue = credentialValue;
   }
 
-  public async get(): Promise<string | null> {
+  public async get(): Promise<Uint8Array | string | null> {
     return this.credentialValue;
   }
 }

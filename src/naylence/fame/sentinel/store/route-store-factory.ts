@@ -1,10 +1,15 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource, registerFactory } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+  registerFactory,
+} from "naylence-factory";
 
-import { InMemoryKeyValueStore } from '../../storage/in-memory-storage.js';
-import type { RouteEntry, RouteStore } from './route-store.js';
+import { InMemoryKeyValueStore } from "../../storage/in-memory-storage.js";
+import type { RouteEntry, RouteStore } from "./route-store.js";
 
-export const ROUTE_STORE_FACTORY_BASE_TYPE = 'RouteStoreFactory';
+export const ROUTE_STORE_FACTORY_BASE_TYPE = "RouteStoreFactory";
 
 export interface RouteStoreConfig extends ResourceConfig {
   type: string;
@@ -12,7 +17,7 @@ export interface RouteStoreConfig extends ResourceConfig {
 }
 
 export abstract class RouteStoreFactory<
-  C extends RouteStoreConfig = RouteStoreConfig
+  C extends RouteStoreConfig = RouteStoreConfig,
 > extends AbstractResourceFactory<RouteStore, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -34,7 +39,7 @@ export abstract class RouteStoreFactory<
 }
 
 export class InMemoryRouteStoreFactory extends RouteStoreFactory {
-  public readonly type = 'InMemoryRouteStore';
+  public readonly type = "InMemoryRouteStore";
   public readonly isDefault = true;
   public readonly priority = 100;
 
@@ -48,7 +53,7 @@ export class InMemoryRouteStoreFactory extends RouteStoreFactory {
 
 registerFactory<RouteStore, RouteStoreConfig>(
   ROUTE_STORE_FACTORY_BASE_TYPE,
-  'InMemoryRouteStore',
+  "InMemoryRouteStore",
   InMemoryRouteStoreFactory,
   { isDefault: true, priority: 100 }
 );

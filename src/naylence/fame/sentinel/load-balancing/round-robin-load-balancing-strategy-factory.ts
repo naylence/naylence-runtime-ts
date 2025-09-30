@@ -1,19 +1,19 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
   LoadBalancingStrategyFactory,
   type LoadBalancingStrategyConfig,
-} from './load-balancing-strategy-factory.js';
-import { RoundRobinLoadBalancingStrategy } from './round-robin-load-balancing-strategy.js';
+} from "./load-balancing-strategy-factory.js";
+import { RoundRobinLoadBalancingStrategy } from "./round-robin-load-balancing-strategy.js";
 
 export interface RoundRobinLoadBalancingStrategyConfig extends LoadBalancingStrategyConfig {
-  type: 'RoundRobinLoadBalancingStrategy';
+  type: "RoundRobinLoadBalancingStrategy";
 }
 
 export class RoundRobinLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
-  public readonly type = 'RoundRobinLoadBalancingStrategy';
+  public readonly type = "RoundRobinLoadBalancingStrategy";
 
   public async create(
     _config?: RoundRobinLoadBalancingStrategyConfig | Record<string, unknown> | null,
@@ -25,6 +25,6 @@ export class RoundRobinLoadBalancingStrategyFactory extends LoadBalancingStrateg
 
 registerFactory<LoadBalancingStrategy, RoundRobinLoadBalancingStrategyConfig>(
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  'RoundRobinLoadBalancingStrategy',
+  "RoundRobinLoadBalancingStrategy",
   RoundRobinLoadBalancingStrategyFactory
 );

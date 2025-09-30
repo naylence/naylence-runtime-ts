@@ -1,4 +1,4 @@
-import type { Token } from './token.js';
+import type { Token } from "./token.js";
 
 export interface TokenProvider {
   getToken(): Promise<Token>;
@@ -6,8 +6,8 @@ export interface TokenProvider {
 
 export function isTokenProvider(candidate: unknown): candidate is TokenProvider {
   return (
-    typeof candidate === 'object' &&
+    typeof candidate === "object" &&
     candidate !== null &&
-    typeof (candidate as Partial<TokenProvider>).getToken === 'function'
+    typeof (candidate as Partial<TokenProvider>).getToken === "function"
   );
 }

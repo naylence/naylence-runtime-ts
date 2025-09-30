@@ -1,11 +1,11 @@
 /**
  * Envelope context management for cross-platform environments
- * 
+ *
  * This provides similar functionality to Python's envelope_context using AsyncLocalStorage in Node.js
  * and a simple context stack in browsers.
  */
 
-import { EnvelopeSnapshot } from './logging-types.js';
+import { EnvelopeSnapshot } from "./logging-types.js";
 
 // Cross-platform context storage
 class EnvelopeContextManager {
@@ -19,12 +19,12 @@ class EnvelopeContextManager {
 
   private initializeStorage(): void {
     // Only try to load AsyncLocalStorage in Node.js environments
-    if (typeof globalThis !== 'undefined' && (globalThis as any).process?.versions?.node) {
+    if (typeof globalThis !== "undefined" && (globalThis as any).process?.versions?.node) {
       try {
         // Try to require async_hooks synchronously - this will only work in Node.js
         // The bundler will handle this gracefully for browser builds
-        if (typeof require !== 'undefined') {
-          const { AsyncLocalStorage } = require('async_hooks');
+        if (typeof require !== "undefined") {
+          const { AsyncLocalStorage } = require("async_hooks");
           this.nodeStorage = new AsyncLocalStorage();
         }
       } catch {
@@ -41,7 +41,7 @@ class EnvelopeContextManager {
     if (this.nodeStorage) {
       return this.nodeStorage.getStore();
     }
-    
+
     // Browser fallback - return the top of the stack
     return this.browserStack[this.browserStack.length - 1];
   }
@@ -53,7 +53,7 @@ class EnvelopeContextManager {
     if (this.nodeStorage) {
       return this.nodeStorage.run(context, fn);
     }
-    
+
     // Browser fallback - use a simple stack
     this.browserStack.push(context);
     try {
@@ -70,7 +70,7 @@ class EnvelopeContextManager {
     if (this.nodeStorage) {
       return this.nodeStorage.run(context, fn);
     }
-    
+
     // Browser fallback - use a simple stack
     this.browserStack.push(context);
     try {

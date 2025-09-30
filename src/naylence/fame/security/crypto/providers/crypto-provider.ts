@@ -1,5 +1,5 @@
-import type { TokenIssuer } from '../../auth/token-issuer.js';
-import type { TokenVerifier } from '../../auth/token-verifier.js';
+import type { TokenIssuer } from "../../auth/token-issuer.js";
+import type { TokenVerifier } from "../../auth/token-verifier.js";
 
 export interface CryptoProvider {
   signingPrivatePem?: string | null;

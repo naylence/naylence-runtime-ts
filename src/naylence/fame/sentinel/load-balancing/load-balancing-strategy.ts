@@ -1,4 +1,4 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from "naylence-core";
 
 /**
  * Strategy interface for choosing a downstream segment from a pool.

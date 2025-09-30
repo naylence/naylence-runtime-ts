@@ -1,10 +1,10 @@
-import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
-import type { WebSocketSubprotocolAuthInjectionConfig } from './websocket-subprotocol-auth-injection-strategy-factory.js';
-import { TokenProviderFactory } from './token-provider-factory.js';
+import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
+import type { WebSocketSubprotocolAuthInjectionConfig } from "./websocket-subprotocol-auth-injection-strategy-factory.js";
+import { TokenProviderFactory } from "./token-provider-factory.js";
 
 export interface WebSocketSubprotocolAuthInjectionOptions {
-  type?: 'WebSocketSubprotocolAuth';
-  tokenProvider: WebSocketSubprotocolAuthInjectionConfig['tokenProvider'];
+  type?: "WebSocketSubprotocolAuth";
+  tokenProvider: WebSocketSubprotocolAuthInjectionConfig["tokenProvider"];
   subprotocolPrefix: string;
 }
 
@@ -19,7 +19,7 @@ export class WebSocketSubprotocolAuthInjectionStrategy implements AuthInjectionS
     const provider = await TokenProviderFactory.createTokenProvider(this.options.tokenProvider);
     const token = await provider.getToken();
 
-    if (!token || typeof token.value !== 'string' || token.value.length === 0) {
+    if (!token || typeof token.value !== "string" || token.value.length === 0) {
       return [];
     }
 

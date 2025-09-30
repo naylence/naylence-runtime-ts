@@ -1,5 +1,5 @@
 /**
- * General utility functions for JSON handling, string manipulation, 
+ * General utility functions for JSON handling, string manipulation,
  * path normalization, base64 encoding, hashing, and more.
  */
 
@@ -40,13 +40,17 @@ export function capitalizeFirstLetter(text: string): string {
  * Convert a value to pretty-printed JSON string.
  */
 export function jsonDumps(value: any): string {
-  return JSON.stringify(value, (_key, val) => {
-    try {
-      return defaultJsonEncoder(val);
-    } catch {
-      return val;
-    }
-  }, 2);
+  return JSON.stringify(
+    value,
+    (_key, val) => {
+      try {
+        return defaultJsonEncoder(val);
+      } catch {
+        return val;
+      }
+    },
+    2
+  );
 }
 
 /**
@@ -121,7 +125,7 @@ export function compiledPathPattern(pattern: string): RegExp {
       .replace(/\*/g, ".*") // * becomes .*
       .replace(/\?/g, "."); // ? becomes .
     compiled = new RegExp(`^${regexPattern}$`);
-    
+
     // Limit cache size to prevent memory leaks
     if (pathPatternCache.size > 256) {
       pathPatternCache.clear();
@@ -141,14 +145,14 @@ function toBase62(num: number): string {
   if (num === 0) {
     return BASE62_CHARS[0];
   }
-  
+
   const result: string[] = [];
   while (num > 0) {
     const remainder = num % 62;
     result.push(BASE62_CHARS[remainder]);
     num = Math.floor(num / 62);
   }
-  
+
   return result.reverse().join("");
 }
 
@@ -160,33 +164,33 @@ function toBase62(num: number): string {
  */
 export function secureDigest(s: string, bits: number = 128): string {
   const crypto = getCrypto();
-  
+
   if (!crypto) {
     // Fallback for browser environment - use simple hash
     let hash = 0;
     for (let i = 0; i < s.length; i++) {
       const char = s.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
     return toBase62(Math.abs(hash));
   }
-  
+
   // 1. Full SHA256 digest
   const hasher = crypto.createHash("sha256");
   hasher.update(s, "utf8");
   const fullDigest = hasher.digest();
-  
+
   // 2. Truncate to desired bits
   const nBytes = Math.floor(bits / 8);
   const truncated = fullDigest.subarray(0, nBytes);
-  
+
   // 3. Convert to big-endian integer
   let val = 0;
   for (let i = 0; i < truncated.length; i++) {
     val = val * 256 + truncated[i];
   }
-  
+
   // 4. Base-62 encode
   return toBase62(val);
 }
@@ -200,11 +204,8 @@ export function urlsafeBase64Encode(data: Uint8Array): string {
   for (let i = 0; i < data.length; i++) {
     binaryString += String.fromCharCode(data[i]);
   }
-  
-  return btoa(binaryString)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+
+  return btoa(binaryString).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 export function urlsafeBase64Decode(value: string): Uint8Array {
@@ -262,12 +263,12 @@ export function isPlainObject(value: any): value is Record<string, any> {
  */
 export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
   const result = { ...target };
-  
+
   for (const key in source) {
     if (source.hasOwnProperty(key)) {
       const sourceValue = source[key];
       const targetValue = result[key];
-      
+
       if (isPlainObject(sourceValue) && isPlainObject(targetValue)) {
         result[key] = deepMerge(targetValue, sourceValue as any);
       } else {
@@ -275,7 +276,7 @@ export function deepMerge<T extends Record<string, any>>(target: T, source: Part
       }
     }
   }
-  
+
   return result;
 }
 
@@ -287,13 +288,13 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | number | undefined;
-  
-  return function(this: any, ...args: Parameters<T>) {
+
+  return function (this: any, ...args: Parameters<T>) {
     const later = () => {
       timeout = undefined;
       func.apply(this, args);
     };
-    
+
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
   };
@@ -308,11 +309,11 @@ export function throttle<T extends (...args: any[]) => any>(
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | number | undefined;
   let previous = 0;
-  
-  return function(this: any, ...args: Parameters<T>) {
+
+  return function (this: any, ...args: Parameters<T>) {
     const now = Date.now();
     const remaining = wait - (now - previous);
-    
+
     if (remaining <= 0 || remaining > wait) {
       if (timeout) {
         clearTimeout(timeout);
@@ -334,7 +335,7 @@ export function throttle<T extends (...args: any[]) => any>(
  * Sleep for a specified number of milliseconds.
  */
 export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -347,21 +348,21 @@ export async function retryWithBackoff<T>(
   maxDelay: number = 10000
 ): Promise<T> {
   let lastError: Error;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       if (attempt === maxRetries) {
         throw lastError;
       }
-      
+
       const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
       await sleep(delay);
     }
   }
-  
+
   throw lastError!;
 }

@@ -1,19 +1,22 @@
-import { jest } from '@jest/globals';
+import { jest } from "@jest/globals";
 
-import type { NodeHelloFrame } from 'naylence-core';
+import type { NodeHelloFrame } from "naylence-core";
 
-import { NodePlacementStrategyFactory, type PlacementDecision } from '../node-placement-strategy.js';
-import { StaticNodePlacementStrategy } from '../static-node-placement-strategy.js';
-import { StaticNodePlacementStrategyFactory } from '../static-node-placement-strategy-factory.js';
-import { WebSocketPlacementStrategyFactory } from '../websocket-node-placement-strategy-factory.js';
-import { pushNode } from '../../node/node-context-stack.js';
-import type { NodeLike } from '../../node/node-like.js';
+import {
+  NodePlacementStrategyFactory,
+  type PlacementDecision,
+} from "../node-placement-strategy.js";
+import { StaticNodePlacementStrategy } from "../static-node-placement-strategy.js";
+import { StaticNodePlacementStrategyFactory } from "../static-node-placement-strategy-factory.js";
+import { WebSocketPlacementStrategyFactory } from "../websocket-node-placement-strategy-factory.js";
+import { pushNode } from "../../node/node-context-stack.js";
+import type { NodeLike } from "../../node/node-like.js";
 
 function createHelloFrame(overrides: Partial<NodeHelloFrame> = {}): NodeHelloFrame {
   return {
-    type: 'NodeHello',
-    systemId: overrides.systemId ?? 'child-node',
-    instanceId: overrides.instanceId ?? 'instance-123',
+    type: "NodeHello",
+    systemId: overrides.systemId ?? "child-node",
+    instanceId: overrides.instanceId ?? "instance-123",
     logicals: overrides.logicals,
     capabilities: overrides.capabilities,
     supportedTransports: overrides.supportedTransports,
@@ -22,36 +25,29 @@ function createHelloFrame(overrides: Partial<NodeHelloFrame> = {}): NodeHelloFra
   } satisfies NodeHelloFrame;
 }
 
-function expectDecision(
-  decision: PlacementDecision,
-  expected: Partial<PlacementDecision>
-): void {
+function expectDecision(decision: PlacementDecision, expected: Partial<PlacementDecision>): void {
   expect(decision.accept).toBe(true);
   expect(decision.assignedPath).toBe(expected.assignedPath);
-  expect(decision.targetSystemId).toBe(
-    expected.targetSystemId ?? decision.targetSystemId
-  );
+  expect(decision.targetSystemId).toBe(expected.targetSystemId ?? decision.targetSystemId);
   expect(decision.targetPhysicalPath).toBe(
     expected.targetPhysicalPath ?? decision.targetPhysicalPath
   );
   expect(decision.metadata).toEqual(expected.metadata ?? decision.metadata);
 }
 
-describe('StaticNodePlacementStrategy', () => {
-  it('treats matching system id as root node', async () => {
+describe("StaticNodePlacementStrategy", () => {
+  it("treats matching system id as root node", async () => {
     const strategy = new StaticNodePlacementStrategy({
-      targetSystemId: 'root-node',
-      targetPhysicalPath: '/root',
+      targetSystemId: "root-node",
+      targetPhysicalPath: "/root",
     });
 
-    const decision = await strategy.place(
-      createHelloFrame({ systemId: 'root-node' })
-    );
+    const decision = await strategy.place(createHelloFrame({ systemId: "root-node" }));
 
     expectDecision(decision, {
       targetSystemId: null,
       targetPhysicalPath: null,
-      assignedPath: '/root-node',
+      assignedPath: "/root-node",
       metadata: {
         accepted_logicals: null,
         accepted_capabilities: null,
@@ -59,102 +55,96 @@ describe('StaticNodePlacementStrategy', () => {
     });
   });
 
-  it('assigns child nodes under the configured path', async () => {
+  it("assigns child nodes under the configured path", async () => {
     const strategy = new StaticNodePlacementStrategy({
-      targetSystemId: 'parent-node',
-      targetPhysicalPath: '/parent/path',
+      targetSystemId: "parent-node",
+      targetPhysicalPath: "/parent/path",
     });
 
     const decision = await strategy.place(
       createHelloFrame({
-        systemId: 'child-node',
-        logicals: ['sensor'],
-        capabilities: ['telemetry'],
+        systemId: "child-node",
+        logicals: ["sensor"],
+        capabilities: ["telemetry"],
       })
     );
 
     expectDecision(decision, {
-      targetSystemId: 'parent-node',
-      targetPhysicalPath: '/parent/path',
-      assignedPath: '/parent/path/child-node',
+      targetSystemId: "parent-node",
+      targetPhysicalPath: "/parent/path",
+      assignedPath: "/parent/path/child-node",
       metadata: {
-        accepted_logicals: ['sensor'],
-        accepted_capabilities: ['telemetry'],
+        accepted_logicals: ["sensor"],
+        accepted_capabilities: ["telemetry"],
       },
     });
   });
 });
 
-describe('StaticNodePlacementStrategyFactory', () => {
+describe("StaticNodePlacementStrategyFactory", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it('creates a static strategy from camelCase config', async () => {
+  it("creates a static strategy from camelCase config", async () => {
     const factory = new StaticNodePlacementStrategyFactory();
     const strategy = await factory.create({
-      type: 'StaticNodePlacementStrategy',
-      targetSystemId: 'parent-node',
-      targetPhysicalPath: '/parent',
+      type: "StaticNodePlacementStrategy",
+      targetSystemId: "parent-node",
+      targetPhysicalPath: "/parent",
     });
 
-    const decision = await strategy.place(
-      createHelloFrame({ systemId: 'child' })
-    );
-    expect(decision.assignedPath).toBe('/parent/child');
-    expect(decision.targetSystemId).toBe('parent-node');
+    const decision = await strategy.place(createHelloFrame({ systemId: "child" }));
+    expect(decision.assignedPath).toBe("/parent/child");
+    expect(decision.targetSystemId).toBe("parent-node");
   });
 
-  it('normalizes snake_case fields', async () => {
+  it("normalizes snake_case fields", async () => {
     const factory = new StaticNodePlacementStrategyFactory();
     const strategy = await factory.create({
-      type: 'StaticNodePlacementStrategy',
-      target_system_id: 'parent-node',
-      target_physical_path: '/parent',
+      type: "StaticNodePlacementStrategy",
+      target_system_id: "parent-node",
+      target_physical_path: "/parent",
     });
 
-    const decision = await strategy.place(
-      createHelloFrame({ systemId: 'child' })
-    );
-    expect(decision.assignedPath).toBe('/parent/child');
+    const decision = await strategy.place(createHelloFrame({ systemId: "child" }));
+    expect(decision.assignedPath).toBe("/parent/child");
   });
 
-  it('emits a deprecation warning when using the legacy WebSocket type alias', async () => {
-    const emitSpy = jest
-      .spyOn(process, 'emitWarning')
-      .mockImplementation(() => void 0);
+  it("emits a deprecation warning when using the legacy WebSocket type alias", async () => {
+    const emitSpy = jest.spyOn(process, "emitWarning").mockImplementation(() => void 0);
 
     const factory = new StaticNodePlacementStrategyFactory();
     await factory.create({
-      type: 'WebSocketNodePlacementStrategy',
-      targetSystemId: 'parent-node',
-      targetPhysicalPath: '/parent',
+      type: "WebSocketNodePlacementStrategy",
+      targetSystemId: "parent-node",
+      targetPhysicalPath: "/parent",
     });
 
     expect(emitSpy).toHaveBeenCalledWith(
-      expect.stringContaining('deprecated'),
-      expect.objectContaining({ type: 'DeprecationWarning' })
+      expect.stringContaining("deprecated"),
+      expect.objectContaining({ type: "DeprecationWarning" })
     );
   });
 });
 
-describe('NodePlacementStrategyFactory defaults', () => {
-  it('matches the Python failure semantics when no default factory is registered', async () => {
-    await expect(
-      NodePlacementStrategyFactory.createNodePlacementStrategy()
-    ).rejects.toThrow('Failed to create default node placement strategy');
+describe("NodePlacementStrategyFactory defaults", () => {
+  it("matches the Python failure semantics when no default factory is registered", async () => {
+    await expect(NodePlacementStrategyFactory.createNodePlacementStrategy()).rejects.toThrow(
+      "Failed to create default node placement strategy"
+    );
   });
 });
 
-describe('WebSocketPlacementStrategyFactory', () => {
+describe("WebSocketPlacementStrategyFactory", () => {
   const baseNode: NodeLike = {
-    id: 'parent-id',
-    sid: 'parent-sid',
-    physicalPath: '/parent',
+    id: "parent-id",
+    sid: "parent-sid",
+    physicalPath: "/parent",
     acceptedLogicals: new Set(),
     envelopeFactory: {} as any,
     deliveryPolicy: null,
-    defaultBindingPath: '/',
+    defaultBindingPath: "/",
     hasParent: true,
     securityManager: null,
     admissionClient: null,
@@ -199,50 +189,46 @@ describe('WebSocketPlacementStrategyFactory', () => {
   } as unknown as NodeLike;
 
   beforeEach(() => {
-    jest.spyOn(process, 'emitWarning').mockImplementation(() => void 0);
+    jest.spyOn(process, "emitWarning").mockImplementation(() => void 0);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it('uses the node context when no resolvers are provided', async () => {
+  it("uses the node context when no resolvers are provided", async () => {
     const pop = pushNode(baseNode);
     try {
       const factory = new WebSocketPlacementStrategyFactory();
       const strategy = await factory.create({
-        type: 'WebSocketNodePlacementStrategy',
+        type: "WebSocketNodePlacementStrategy",
       });
 
-      const decision = await strategy.place(
-        createHelloFrame({ systemId: 'child' })
-      );
+      const decision = await strategy.place(createHelloFrame({ systemId: "child" }));
 
-      expect(decision.targetSystemId).toBe('parent-id');
-      expect(decision.assignedPath).toBe('/parent/child');
+      expect(decision.targetSystemId).toBe("parent-id");
+      expect(decision.assignedPath).toBe("/parent/child");
       expect(process.emitWarning).toHaveBeenCalledWith(
-        expect.stringContaining('deprecated'),
-        expect.objectContaining({ type: 'DeprecationWarning' })
+        expect.stringContaining("deprecated"),
+        expect.objectContaining({ type: "DeprecationWarning" })
       );
     } finally {
       pop();
     }
   });
 
-  it('prefers injected resolver functions over node context', async () => {
+  it("prefers injected resolver functions over node context", async () => {
     const customFactory = new WebSocketPlacementStrategyFactory(
-      () => 'injected-parent',
-      () => '/custom/path'
+      () => "injected-parent",
+      () => "/custom/path"
     );
 
     const strategy = await customFactory.create({
-      type: 'WebSocketNodePlacementStrategy',
+      type: "WebSocketNodePlacementStrategy",
     });
-    const decision = await strategy.place(
-      createHelloFrame({ systemId: 'child' })
-    );
+    const decision = await strategy.place(createHelloFrame({ systemId: "child" }));
 
-    expect(decision.targetSystemId).toBe('injected-parent');
-    expect(decision.assignedPath).toBe('/custom/path/child');
+    expect(decision.targetSystemId).toBe("injected-parent");
+    expect(decision.assignedPath).toBe("/custom/path/child");
   });
 });

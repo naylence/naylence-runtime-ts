@@ -1,20 +1,20 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import { Buffer } from 'node:buffer';
-import { timingSafeEqual } from 'node:crypto';
-import { getLogger } from '../util/logging.js';
-import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
-import { requireJose } from '../security/auth/jose-loader.js';
-import type { TokenIssuer } from '../security/auth/token-issuer.js';
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { Buffer } from "node:buffer";
+import { timingSafeEqual } from "node:crypto";
+import { getLogger } from "../util/logging.js";
+import type { CryptoProvider } from "../security/crypto/providers/crypto-provider.js";
+import { requireJose } from "../security/auth/jose-loader.js";
+import type { TokenIssuer } from "../security/auth/token-issuer.js";
 import {
   registerFameServerRoutes,
   type FameFastifyServer,
   type FameServerRouteRegistrar,
-} from './fame-server.js';
-import type { FameServerClientConfig, FameServerConfig } from './fame-server-config.js';
+} from "./fame-server.js";
+import type { FameServerClientConfig, FameServerConfig } from "./fame-server-config.js";
 
-const logger = getLogger('fame-fastify-default-routes');
+const logger = getLogger("fame-fastify-default-routes");
 
-const SUPPORTED_GRANT_TYPES = new Set(['client_credentials']);
+const SUPPORTED_GRANT_TYPES = new Set(["client_credentials"]);
 const DEFAULT_EXPIRES_IN_SECONDS = 3600;
 const CACHE_MAX_AGE_SECONDS = 300;
 
@@ -49,29 +49,29 @@ export async function registerDefaultFameServerRoutes(
 
   const registrar: FameServerRouteRegistrar = async (instance, config) => {
     instance.get(config.routes.health, async (_request, reply) => {
-      reply.header('Cache-Control', 'no-store');
+      reply.header("Cache-Control", "no-store");
       return reply.send({
-        status: 'ok',
+        status: "ok",
         uptime_sec: process.uptime(),
         timestamp: new Date().toISOString(),
       });
     });
 
     instance.get(config.routes.metrics, async (_request, reply) => {
-      reply.header('Content-Type', 'text/plain; charset=utf-8');
-      reply.header('Cache-Control', 'no-store');
-      return reply.send('# metrics_not_implemented 1\n');
+      reply.header("Content-Type", "text/plain; charset=utf-8");
+      reply.header("Cache-Control", "no-store");
+      return reply.send("# metrics_not_implemented 1\n");
     });
 
     instance.get(config.routes.jwks, async (_request, reply) => {
       const cryptoProvider = resolveCryptoProvider();
       const jwks = sanitizeJwks(cryptoProvider);
       if (!jwks) {
-        logger.warning('jwks_unavailable');
-        return reply.code(503).send({ error: 'jwks_unavailable' });
+        logger.warning("jwks_unavailable");
+        return reply.code(503).send({ error: "jwks_unavailable" });
       }
 
-      reply.header('Cache-Control', `public, max-age=${CACHE_MAX_AGE_SECONDS}`);
+      reply.header("Cache-Control", `public, max-age=${CACHE_MAX_AGE_SECONDS}`);
       return reply.send(jwks);
     });
 
@@ -88,73 +88,76 @@ export async function registerDefaultFameServerRoutes(
         token_endpoint: tokenEndpoint,
         jwks_uri: jwksUri,
         grant_types_supported: Array.from(SUPPORTED_GRANT_TYPES),
-        token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
-        response_types_supported: ['token'],
+        token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic"],
+        response_types_supported: ["token"],
         scopes_supported: scopesSupported.length > 0 ? scopesSupported : undefined,
       };
 
-      reply.header('Cache-Control', `public, max-age=${CACHE_MAX_AGE_SECONDS}`);
+      reply.header("Cache-Control", `public, max-age=${CACHE_MAX_AGE_SECONDS}`);
       return reply.send(payload);
     });
 
     instance.post(config.routes.token, async (request, reply) => {
       const body = coerceTokenPayload(request.body);
-      const grantType = (body.grant_type ?? '').toLowerCase();
+      const grantType = (body.grant_type ?? "").toLowerCase();
       if (!SUPPORTED_GRANT_TYPES.has(grantType)) {
-        logger.debug('unsupported_grant_type', { grant_type: body.grant_type });
+        logger.debug("unsupported_grant_type", { grant_type: body.grant_type });
         return sendOAuthError(reply, 400, {
-          error: 'unsupported_grant_type',
-          error_description: 'Only client_credentials grant is supported',
+          error: "unsupported_grant_type",
+          error_description: "Only client_credentials grant is supported",
         });
       }
 
       const basicCredentials = parseBasicCredentials(request.headers.authorization);
-      const clientId = (body.client_id ?? basicCredentials?.clientId ?? '').trim();
-      const clientSecret = body.client_secret ?? basicCredentials?.clientSecret ?? '';
+      const clientId = (body.client_id ?? basicCredentials?.clientId ?? "").trim();
+      const clientSecret = body.client_secret ?? basicCredentials?.clientSecret ?? "";
 
       if (!clientId || !clientSecret) {
-        logger.debug('invalid_client_credentials_missing');
+        logger.debug("invalid_client_credentials_missing");
         return sendOAuthError(reply, 401, {
-          error: 'invalid_client',
-          error_description: 'Client authentication failed',
+          error: "invalid_client",
+          error_description: "Client authentication failed",
         });
       }
 
       const client = server.getClientById(clientId);
       if (!client) {
-        logger.debug('invalid_client_id', { client_id: clientId });
+        logger.debug("invalid_client_id", { client_id: clientId });
         return sendOAuthError(reply, 401, {
-          error: 'invalid_client',
-          error_description: 'Client authentication failed',
+          error: "invalid_client",
+          error_description: "Client authentication failed",
         });
       }
 
       if (!matchSecret(client.secret, clientSecret)) {
-        logger.debug('invalid_client_secret', { client_id: clientId });
+        logger.debug("invalid_client_secret", { client_id: clientId });
         return sendOAuthError(reply, 401, {
-          error: 'invalid_client',
-          error_description: 'Client authentication failed',
+          error: "invalid_client",
+          error_description: "Client authentication failed",
         });
       }
 
       const requestedScopes = parseScopes(body.scope);
       if (!validateScopes(requestedScopes, client)) {
-        logger.debug('invalid_scope_request', { client_id: clientId, requested_scopes: requestedScopes });
+        logger.debug("invalid_scope_request", {
+          client_id: clientId,
+          requested_scopes: requestedScopes,
+        });
         return sendOAuthError(reply, 400, {
-          error: 'invalid_scope',
-          error_description: 'Requested scopes are not permitted for this client',
+          error: "invalid_scope",
+          error_description: "Requested scopes are not permitted for this client",
         });
       }
 
       const grantedScopes = requestedScopes.length > 0 ? requestedScopes : client.scopes;
 
-  const cryptoProvider = resolveCryptoProvider();
+      const cryptoProvider = resolveCryptoProvider();
       const tokenIssuer = resolveTokenIssuer(cryptoProvider);
       if (!tokenIssuer) {
-        logger.error('token_issuer_unavailable');
+        logger.error("token_issuer_unavailable");
         return sendOAuthError(reply, 500, {
-          error: 'server_error',
-          error_description: 'Token issuer is not configured',
+          error: "server_error",
+          error_description: "Token issuer is not configured",
         });
       }
 
@@ -165,13 +168,13 @@ export async function registerDefaultFameServerRoutes(
       try {
         accessToken = await tokenIssuer.issue(claims);
       } catch (error) {
-        logger.error('token_issue_failed', {
+        logger.error("token_issue_failed", {
           client_id: client.id,
           error: error instanceof Error ? error.message : String(error),
         });
         return sendOAuthError(reply, 500, {
-          error: 'server_error',
-          error_description: 'Unable to issue access token',
+          error: "server_error",
+          error_description: "Unable to issue access token",
         });
       }
 
@@ -179,16 +182,16 @@ export async function registerDefaultFameServerRoutes(
 
       const responsePayload: Record<string, unknown> = {
         access_token: accessToken,
-        token_type: 'Bearer',
+        token_type: "Bearer",
         expires_in: expiresIn,
       };
 
       if (grantedScopes.length > 0) {
-        responsePayload.scope = grantedScopes.join(' ');
+        responsePayload.scope = grantedScopes.join(" ");
       }
 
-      reply.header('Cache-Control', 'no-store');
-      reply.header('Pragma', 'no-cache');
+      reply.header("Cache-Control", "no-store");
+      reply.header("Pragma", "no-cache");
       return reply.send(responsePayload);
     });
   };
@@ -196,27 +199,27 @@ export async function registerDefaultFameServerRoutes(
   await registerFameServerRoutes(server, registrar);
 }
 
-function coerceTokenPayload(body: unknown): OAuthTokenPayload {
-  if (!body || typeof body !== 'object') {
+export function coerceTokenPayload(body: unknown): OAuthTokenPayload {
+  if (!body || typeof body !== "object") {
     return {};
   }
 
   const payload: OAuthTokenPayload = {};
   for (const [key, value] of Object.entries(body)) {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       payload[key] = value;
     }
   }
   return payload;
 }
 
-function parseBasicCredentials(header?: string): BasicCredentials | undefined {
+export function parseBasicCredentials(header?: string): BasicCredentials | undefined {
   if (!header) {
     return undefined;
   }
 
   const trimmed = header.trim();
-  if (!trimmed.toLowerCase().startsWith('basic ')) {
+  if (!trimmed.toLowerCase().startsWith("basic ")) {
     return undefined;
   }
 
@@ -226,8 +229,8 @@ function parseBasicCredentials(header?: string): BasicCredentials | undefined {
   }
 
   try {
-    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-    const separatorIndex = decoded.indexOf(':');
+    const decoded = Buffer.from(encoded, "base64").toString("utf8");
+    const separatorIndex = decoded.indexOf(":");
     if (separatorIndex === -1) {
       return undefined;
     }
@@ -247,9 +250,9 @@ function parseBasicCredentials(header?: string): BasicCredentials | undefined {
   }
 }
 
-function matchSecret(expected: string, provided: string): boolean {
-  const expectedBuffer = Buffer.from(expected, 'utf8');
-  const providedBuffer = Buffer.from(provided, 'utf8');
+export function matchSecret(expected: string, provided: string): boolean {
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  const providedBuffer = Buffer.from(provided, "utf8");
   if (expectedBuffer.length !== providedBuffer.length) {
     return false;
   }
@@ -257,7 +260,7 @@ function matchSecret(expected: string, provided: string): boolean {
   return timingSafeEqual(expectedBuffer, providedBuffer);
 }
 
-function parseScopes(scopeParam?: string): string[] {
+export function parseScopes(scopeParam?: string): string[] {
   if (!scopeParam) {
     return [];
   }
@@ -272,7 +275,7 @@ function parseScopes(scopeParam?: string): string[] {
   return Array.from(scopes);
 }
 
-function validateScopes(requested: string[], client: FameServerClientConfig): boolean {
+export function validateScopes(requested: string[], client: FameServerClientConfig): boolean {
   if (requested.length === 0 || client.scopes.length === 0) {
     return true;
   }
@@ -281,7 +284,7 @@ function validateScopes(requested: string[], client: FameServerClientConfig): bo
   return requested.every((scope) => allowed.has(scope));
 }
 
-function resolveAudience(
+export function resolveAudience(
   requestedAudience: string | undefined,
   client: FameServerClientConfig,
   config: FameServerConfig,
@@ -307,7 +310,7 @@ function resolveAudience(
   return undefined;
 }
 
-function buildTokenClaims(
+export function buildTokenClaims(
   client: FameServerClientConfig,
   scopes: string[],
   audience: string | undefined
@@ -315,11 +318,11 @@ function buildTokenClaims(
   const claims: Record<string, unknown> = {
     client_id: client.id,
     sub: client.id,
-    grant_type: 'client_credentials',
+    grant_type: "client_credentials",
   };
 
   if (scopes.length > 0) {
-    const scopeString = scopes.join(' ');
+    const scopeString = scopes.join(" ");
     claims.scope = scopeString;
     claims.scopes = scopes;
     claims.capabilities = scopes;
@@ -336,21 +339,21 @@ function buildTokenClaims(
   return claims;
 }
 
-async function inferExpiresIn(token: string): Promise<number | undefined> {
+export async function inferExpiresIn(token: string): Promise<number | undefined> {
   try {
     const jose = await requireJose();
     const payload = jose.decodeJwt(token);
-    if (typeof payload.exp === 'number') {
+    if (typeof payload.exp === "number") {
       const nowSeconds = Math.floor(Date.now() / 1000);
       return Math.max(0, payload.exp - nowSeconds);
     }
 
     const expiresIn = (payload as Record<string, unknown>).expires_in;
-    if (typeof expiresIn === 'number' && Number.isFinite(expiresIn)) {
+    if (typeof expiresIn === "number" && Number.isFinite(expiresIn)) {
       return Math.max(0, Math.floor(expiresIn));
     }
   } catch (error) {
-    logger.debug('token_expiry_inference_failed', {
+    logger.debug("token_expiry_inference_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -358,15 +361,21 @@ async function inferExpiresIn(token: string): Promise<number | undefined> {
   return undefined;
 }
 
-function sendOAuthError(reply: FastifyReply, statusCode: number, payload: OAuthErrorPayload) {
-  reply.header('Cache-Control', 'no-store');
-  reply.header('Pragma', 'no-cache');
+export function sendOAuthError(
+  reply: FastifyReply,
+  statusCode: number,
+  payload: OAuthErrorPayload
+) {
+  reply.header("Cache-Control", "no-store");
+  reply.header("Pragma", "no-cache");
   return reply.code(statusCode).send(payload);
 }
 
-function sanitizeJwks(cryptoProvider: CryptoProvider | null): { keys: Array<Record<string, unknown>> } | null {
+export function sanitizeJwks(
+  cryptoProvider: CryptoProvider | null
+): { keys: Array<Record<string, unknown>> } | null {
   const jwks = cryptoProvider?.getJwks?.();
-  if (!jwks || typeof jwks !== 'object') {
+  if (!jwks || typeof jwks !== "object") {
     return null;
   }
 
@@ -375,7 +384,7 @@ function sanitizeJwks(cryptoProvider: CryptoProvider | null): { keys: Array<Reco
     : [];
 
   const normalizedKeys = keys
-    .filter((key): key is Record<string, unknown> => Boolean(key && typeof key === 'object'))
+    .filter((key): key is Record<string, unknown> => Boolean(key && typeof key === "object"))
     .map((key) => ({ ...key }));
 
   if (normalizedKeys.length === 0) {
@@ -385,30 +394,31 @@ function sanitizeJwks(cryptoProvider: CryptoProvider | null): { keys: Array<Reco
   return { keys: normalizedKeys };
 }
 
-function buildBaseUrl(request: FastifyRequest, config: FameServerConfig): string {
-  const hostHeader = request.headers['x-forwarded-host'] ?? request.headers.host ?? request.hostname;
-  const protocolHeader = request.headers['x-forwarded-proto'];
+export function buildBaseUrl(request: FastifyRequest, config: FameServerConfig): string {
+  const hostHeader =
+    request.headers["x-forwarded-host"] ?? request.headers.host ?? request.hostname;
+  const protocolHeader = request.headers["x-forwarded-proto"];
   const protocol = Array.isArray(protocolHeader)
     ? protocolHeader[0]
-    : protocolHeader ?? request.protocol ?? 'http';
+    : (protocolHeader ?? request.protocol ?? "http");
   const host = Array.isArray(hostHeader) ? hostHeader[0] : hostHeader;
-  const normalizedHost = host ?? 'localhost';
-  const basePath = config.basePath || '';
+  const normalizedHost = host ?? "localhost";
+  const basePath = config.basePath || "";
   return `${protocol}://${normalizedHost}${basePath}`;
 }
 
-function buildAbsoluteUrl(baseUrl: string, relativePath: string): string {
-  if (!relativePath || relativePath === '/') {
-    return baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+export function buildAbsoluteUrl(baseUrl: string, relativePath: string): string {
+  if (!relativePath || relativePath === "/") {
+    return baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   }
 
-  if (relativePath.startsWith('/')) {
+  if (relativePath.startsWith("/")) {
     return `${baseUrl}${relativePath}`;
   }
   return `${baseUrl}/${relativePath}`;
 }
 
-function resolveIssuer(cryptoProvider: CryptoProvider | null, fallback: string): string {
+export function resolveIssuer(cryptoProvider: CryptoProvider | null, fallback: string): string {
   const issuer = cryptoProvider?.issuer ?? undefined;
   if (issuer && issuer.length > 0) {
     return issuer;
@@ -416,7 +426,7 @@ function resolveIssuer(cryptoProvider: CryptoProvider | null, fallback: string):
   return fallback;
 }
 
-function aggregateScopes(clients: FameServerClientConfig[]): string[] {
+export function aggregateScopes(clients: FameServerClientConfig[]): string[] {
   const scopes = new Set<string>();
   for (const client of clients) {
     for (const scope of client.scopes) {
@@ -426,7 +436,7 @@ function aggregateScopes(clients: FameServerClientConfig[]): string[] {
   return Array.from(scopes).sort();
 }
 
-function resolveTokenIssuer(cryptoProvider: CryptoProvider | null): TokenIssuer | null {
+export function resolveTokenIssuer(cryptoProvider: CryptoProvider | null): TokenIssuer | null {
   if (!cryptoProvider?.getTokenIssuer) {
     return null;
   }
@@ -434,7 +444,7 @@ function resolveTokenIssuer(cryptoProvider: CryptoProvider | null): TokenIssuer 
   try {
     return cryptoProvider.getTokenIssuer() ?? null;
   } catch (error) {
-    logger.error('token_issuer_resolution_failed', {
+    logger.error("token_issuer_resolution_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;

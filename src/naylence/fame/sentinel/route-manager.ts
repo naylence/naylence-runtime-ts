@@ -5,23 +5,23 @@ import {
   type FameConnector,
   type FameEnvelope,
   type FameMessageResponse,
-} from 'naylence-core';
+} from "naylence-core";
 
-import { ConnectorFactory, createResource } from '../connector/connector-factory.js';
-import type { ConnectorConfig } from '../connector/connector-config.js';
-import { FameTransportClose } from '../errors/errors.js';
-import { TaskSpawner } from '../util/task-spawner.js';
-import { delay } from '../util/task-utils.js';
-import { getLogger } from '../util/logging.js';
+import { ConnectorFactory, createResource } from "../connector/connector-factory.js";
+import type { ConnectorConfig } from "../connector/connector-config.js";
+import { FameTransportClose } from "../errors/errors.js";
+import { TaskSpawner } from "../util/task-spawner.js";
+import { delay } from "../util/task-utils.js";
+import { getLogger } from "../util/logging.js";
 import type {
   FameAuthorizedDeliveryContext,
   FameNodeAuthorizationContext,
-} from '../node/node-context.js';
-import type { AddressRouteInfo } from './key-frame-handler.js';
-import type { RouteStore, RouteEntry, NormalizedRouteEntry } from './store/route-store.js';
-import { getDefaultRouteStore, normalizeRouteEntry } from './store/route-store.js';
+} from "../node/node-context.js";
+import type { AddressRouteInfo } from "./key-frame-handler.js";
+import type { RouteStore, RouteEntry, NormalizedRouteEntry } from "./store/route-store.js";
+import { getDefaultRouteStore, normalizeRouteEntry } from "./store/route-store.js";
 
-const logger = getLogger('route-manager');
+const logger = getLogger("route-manager");
 
 const DEFAULT_CONNECTOR_CLEANUP_DELAY_MS = 200;
 
@@ -35,7 +35,10 @@ class AsyncLock {
     });
 
     const previous = this.tail;
-    this.tail = previous.then(() => next, () => next);
+    this.tail = previous.then(
+      () => next,
+      () => next
+    );
 
     await previous;
 
@@ -76,7 +79,7 @@ export class RouteManager extends TaskSpawner {
   public readonly _downstream_route_store: RouteStore;
   public readonly _peer_route_store: RouteStore;
 
-  private readonly deliver: RouteManagerOptions['deliver'];
+  private readonly deliver: RouteManagerOptions["deliver"];
   private readonly getId: () => string;
   private readonly _routesLock = new AsyncLock();
   private readonly stopController = new AbortController();
@@ -91,7 +94,7 @@ export class RouteManager extends TaskSpawner {
     this.deliver = options.deliver;
     this._downstream_route_store = options.routeStore ?? getDefaultRouteStore();
     this._peer_route_store = options.routeStore ?? getDefaultRouteStore();
-    this.getId = options.getId ?? (() => '');
+    this.getId = options.getId ?? (() => "");
     const configuredDelay = options.cleanupDelayMs;
     this.cleanupDelayMs = Number.isFinite(configuredDelay ?? NaN)
       ? Math.max(0, Number(configuredDelay))
@@ -129,7 +132,7 @@ export class RouteManager extends TaskSpawner {
         entry.cancelAttachTimeout?.();
         await this.safeStop(entry.connector);
       } catch (error) {
-        logger.debug('pending_route_stop_failed', {
+        logger.debug("pending_route_stop_failed", {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -157,7 +160,7 @@ export class RouteManager extends TaskSpawner {
       this.cancelPendingCleanup(segment);
       this.downstreamRoutes.set(segment, route);
     });
-    logger.debug('registered_downstream_route', { route: segment });
+    logger.debug("registered_downstream_route", { route: segment });
   }
 
   public async unregisterDownstreamRoute(segment: string): Promise<void> {
@@ -169,7 +172,7 @@ export class RouteManager extends TaskSpawner {
       this.cancelPendingCleanup(segment);
       this._peer_routes.set(segment, route);
     });
-    logger.debug('registered_peer_route', { route: segment });
+    logger.debug("registered_peer_route", { route: segment });
   }
 
   public async unregisterPeerRoute(segment: string): Promise<void> {
@@ -184,12 +187,12 @@ export class RouteManager extends TaskSpawner {
       Object.entries(entries).map(async ([segment, entry]) => {
         const normalized = this.normalizeEntry(entry);
         if (!normalized.connectorConfig) {
-          logger.warning('route_restore_missing_config', { segment });
+          logger.warning("route_restore_missing_config", { segment });
           return;
         }
 
         if (normalized.attachExpiresAt && normalized.attachExpiresAt < now) {
-          logger.debug('skipping_expired_route', { segment });
+          logger.debug("skipping_expired_route", { segment });
           return;
         }
 
@@ -226,7 +229,7 @@ export class RouteManager extends TaskSpawner {
             break;
           } catch (error) {
             if (this.isTransientError(error)) {
-              logger.warning('transient_restore_failure', {
+              logger.warning("transient_restore_failure", {
                 segment,
                 attempt,
                 error: error instanceof Error ? error.message : String(error),
@@ -236,7 +239,7 @@ export class RouteManager extends TaskSpawner {
               continue;
             }
 
-            logger.error('failed_to_restore_route', {
+            logger.error("failed_to_restore_route", {
               segment,
               error: error instanceof Error ? error.message : String(error),
             });
@@ -267,14 +270,14 @@ export class RouteManager extends TaskSpawner {
     }
 
     await this._downstream_route_store.delete(segment).catch((error) => {
-      logger.warning('route_expiration_delete_failed', {
+      logger.warning("route_expiration_delete_failed", {
         segment,
         error: error instanceof Error ? error.message : String(error),
       });
     });
 
     this.purgeRouteReferences(segment);
-    logger.debug('expired_route', { route: segment });
+    logger.debug("expired_route", { route: segment });
   }
 
   private async removeDownstreamRoute(
@@ -313,13 +316,13 @@ export class RouteManager extends TaskSpawner {
     this.purgeRouteReferences(segment);
 
     await store.delete(segment).catch((error) => {
-      logger.warning('route_delete_failed', {
+      logger.warning("route_delete_failed", {
         segment,
         error: error instanceof Error ? error.message : String(error),
       });
     });
 
-    logger.debug('removed_route', { segment });
+    logger.debug("removed_route", { segment });
   }
 
   private purgeRouteReferences(segment: string): void {
@@ -344,7 +347,6 @@ export class RouteManager extends TaskSpawner {
     for (const pool of this._pools.values()) {
       pool.delete(segment);
     }
-
   }
 
   private cancelPendingCleanup(segment: string): void {
@@ -370,41 +372,44 @@ export class RouteManager extends TaskSpawner {
     const controller = new AbortController();
     this.pendingCleanupControllers.set(segment, controller);
 
-    this.spawn(async (taskSignal) => {
-      const combined = new AbortController();
-      const abortHandler = () => combined.abort();
+    this.spawn(
+      async (taskSignal) => {
+        const combined = new AbortController();
+        const abortHandler = () => combined.abort();
 
-      controller.signal.addEventListener('abort', abortHandler);
-      if (taskSignal) {
-        if (taskSignal.aborted) {
-          combined.abort();
-        } else {
-          taskSignal.addEventListener('abort', abortHandler);
+        controller.signal.addEventListener("abort", abortHandler);
+        if (taskSignal) {
+          if (taskSignal.aborted) {
+            combined.abort();
+          } else {
+            taskSignal.addEventListener("abort", abortHandler);
+          }
         }
-      }
 
-      try {
-        await delay(delayMs, combined.signal);
-      } catch (error) {
-        if (combined.signal.aborted) {
-          logger.debug('connector_cleanup_cancelled', { segment });
-        } else {
-          logger.debug('connector_cleanup_delay_failed', {
-            segment,
-            error: error instanceof Error ? error.message : String(error),
-          });
+        try {
+          await delay(delayMs, combined.signal);
+        } catch (error) {
+          if (combined.signal.aborted) {
+            logger.debug("connector_cleanup_cancelled", { segment });
+          } else {
+            logger.debug("connector_cleanup_delay_failed", {
+              segment,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+          return;
+        } finally {
+          controller.signal.removeEventListener("abort", abortHandler);
+          taskSignal?.removeEventListener("abort", abortHandler);
+          if (this.pendingCleanupControllers.get(segment) === controller) {
+            this.pendingCleanupControllers.delete(segment);
+          }
         }
-        return;
-      } finally {
-        controller.signal.removeEventListener('abort', abortHandler);
-        taskSignal?.removeEventListener('abort', abortHandler);
-        if (this.pendingCleanupControllers.get(segment) === controller) {
-          this.pendingCleanupControllers.delete(segment);
-        }
-      }
 
-      await this.safeStop(connector);
-    }, { name: `route-cleanup-${segment}-${this.getId()}` });
+        await this.safeStop(connector);
+      },
+      { name: `route-cleanup-${segment}-${this.getId()}` }
+    );
   }
 
   private async safeStop(connector: FameConnector): Promise<void> {
@@ -412,7 +417,7 @@ export class RouteManager extends TaskSpawner {
       await connector.stop();
     } catch (error) {
       if (error instanceof Error) {
-        logger.debug('connector_stop_ignored', { error: error.message });
+        logger.debug("connector_stop_ignored", { error: error.message });
       }
     }
 
@@ -430,8 +435,8 @@ export class RouteManager extends TaskSpawner {
       while (!signal.aborted) {
         const now = new Date();
 
-        await this.scanStoreForExpirations(this._downstream_route_store, now, 'downstream');
-        await this.scanStoreForExpirations(this._peer_route_store, now, 'peer');
+        await this.scanStoreForExpirations(this._downstream_route_store, now, "downstream");
+        await this.scanStoreForExpirations(this._peer_route_store, now, "peer");
 
         try {
           await delay(1000, signal);
@@ -440,18 +445,18 @@ export class RouteManager extends TaskSpawner {
         }
       }
     } catch (error) {
-      logger.error('janitor_loop_error', {
+      logger.error("janitor_loop_error", {
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      logger.debug('janitor_loop_exited');
+      logger.debug("janitor_loop_exited");
     }
   }
 
   private async scanStoreForExpirations(
     store: RouteStore,
     now: Date,
-    kind: 'downstream' | 'peer'
+    kind: "downstream" | "peer"
   ): Promise<void> {
     const entries = await store.list();
 
@@ -463,7 +468,7 @@ export class RouteManager extends TaskSpawner {
         }
 
         await this._routesLock.runExclusive(async () => {
-          const map = kind === 'downstream' ? this.downstreamRoutes : this._peer_routes;
+          const map = kind === "downstream" ? this.downstreamRoutes : this._peer_routes;
           const connector = map.get(segment);
           if (connector) {
             map.delete(segment);
@@ -472,19 +477,21 @@ export class RouteManager extends TaskSpawner {
         });
 
         await store.delete(segment).catch((error) => {
-          logger.warning('route_auto_expire_delete_failed', {
+          logger.warning("route_auto_expire_delete_failed", {
             segment,
             error: error instanceof Error ? error.message : String(error),
           });
         });
 
         this.purgeRouteReferences(segment);
-        logger.debug('auto_expired_route', { segment });
+        logger.debug("auto_expired_route", { segment });
       })
     );
   }
 
-  private parseAuthorization(metadata: Record<string, unknown> | null): FameNodeAuthorizationContext | null {
+  private parseAuthorization(
+    metadata: Record<string, unknown> | null
+  ): FameNodeAuthorizationContext | null {
     if (!metadata) {
       return null;
     }
@@ -494,19 +501,19 @@ export class RouteManager extends TaskSpawner {
       const record = metadata;
       return {
         ...base,
-        sub: pickString(record.sub ?? record['sub']),
-        aud: pickString(record.aud ?? record['aud']),
-        assignedPath: pickString(record.assignedPath ?? record['assigned_path']),
+        sub: pickString(record.sub ?? record["sub"]),
+        aud: pickString(record.aud ?? record["aud"]),
+        assignedPath: pickString(record.assignedPath ?? record["assigned_path"]),
         acceptedCapabilities: pickStringArray(
-          record.acceptedCapabilities ?? record['accepted_capabilities']
+          record.acceptedCapabilities ?? record["accepted_capabilities"]
         ),
-        acceptedLogicals: pickStringArray(record.acceptedLogicals ?? record['accepted_logicals']),
-        instanceId: pickString(record.instanceId ?? record['instance_id']),
+        acceptedLogicals: pickStringArray(record.acceptedLogicals ?? record["accepted_logicals"]),
+        instanceId: pickString(record.instanceId ?? record["instance_id"]),
         scopes: pickStringArray(record.scopes),
-        attachExpiresAt: pickDate(record.attachExpiresAt ?? record['attach_expires_at']),
+        attachExpiresAt: pickDate(record.attachExpiresAt ?? record["attach_expires_at"]),
       } satisfies FameNodeAuthorizationContext;
     } catch (error) {
-      logger.error('corrupt_route_metadata', {
+      logger.error("corrupt_route_metadata", {
         error: error instanceof Error ? error.message : String(error),
       });
       return null;
@@ -534,7 +541,7 @@ export class RouteManager extends TaskSpawner {
   }
 
   private async createConnector(config: ConnectorConfig): Promise<FameConnector> {
-    if (ConnectorFactory && typeof ConnectorFactory.createConnector === 'function') {
+    if (ConnectorFactory && typeof ConnectorFactory.createConnector === "function") {
       return await ConnectorFactory.createConnector(config);
     }
     return await createResource(config);
@@ -545,22 +552,24 @@ export class RouteManager extends TaskSpawner {
       return true;
     }
     if (error instanceof Error) {
-      const message = error.message ?? '';
-      return message.includes('Timeout') || message.includes('ECONN') || message.includes('temporary');
+      const message = error.message ?? "";
+      return (
+        message.includes("Timeout") || message.includes("ECONN") || message.includes("temporary")
+      );
     }
     return false;
   }
 }
 
 function pickString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length ? value : undefined;
+  return typeof value === "string" && value.length ? value : undefined;
 }
 
 function pickStringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
-  const strings = value.filter((entry): entry is string => typeof entry === 'string');
+  const strings = value.filter((entry): entry is string => typeof entry === "string");
   return strings.length ? strings : undefined;
 }
 
@@ -571,7 +580,7 @@ function pickDate(value: unknown): Date | undefined {
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? undefined : value;
   }
-  if (typeof value === 'string' || typeof value === 'number') {
+  if (typeof value === "string" || typeof value === "number") {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? undefined : date;
   }

@@ -3,33 +3,33 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { createAuthorizationContext } from 'naylence-core';
+} from "naylence-core";
+import { createAuthorizationContext } from "naylence-core";
 
-import type { CredentialProvider } from '../credential/credential-provider.js';
-import type { Authorizer } from './authorizer.js';
-import type { NodeLike } from '../../node/node-like.js';
+import { credentialToString, type CredentialProvider } from "../credential/credential-provider.js";
+import type { Authorizer } from "./authorizer.js";
+import type { NodeLike } from "../../node/node-like.js";
 
 function decodeCredentials(credentials: Uint8Array): string {
-  if (typeof TextDecoder !== 'undefined') {
+  if (typeof TextDecoder !== "undefined") {
     return new TextDecoder().decode(credentials);
   }
 
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(credentials).toString('utf-8');
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(credentials).toString("utf-8");
   }
 
-  throw new Error('Unable to decode credential bytes without TextDecoder support');
+  throw new Error("Unable to decode credential bytes without TextDecoder support");
 }
 
 function normalizeToken(credentials: string | Uint8Array): string | undefined {
-  const raw = typeof credentials === 'string' ? credentials : decodeCredentials(credentials);
+  const raw = typeof credentials === "string" ? credentials : decodeCredentials(credentials);
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
     return undefined;
   }
 
-  if (trimmed.toLowerCase().startsWith('bearer ')) {
+  if (trimmed.toLowerCase().startsWith("bearer ")) {
     const candidate = trimmed.slice(7).trim();
     return candidate.length > 0 ? candidate : undefined;
   }
@@ -40,9 +40,9 @@ function normalizeToken(credentials: string | Uint8Array): string | undefined {
 function isAuthorizationContext(value: unknown): value is AuthorizationContext {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      'authenticated' in (value as Record<string, unknown>) &&
-      typeof (value as Record<string, unknown>).authenticated === 'boolean'
+      typeof value === "object" &&
+      "authenticated" in (value as Record<string, unknown>) &&
+      typeof (value as Record<string, unknown>).authenticated === "boolean"
   );
 }
 
@@ -56,9 +56,9 @@ export class SharedSecretAuthorizer implements Authorizer {
   public async authenticate(
     credentials: string | Uint8Array
   ): Promise<AuthorizationContext | undefined> {
-    const expectedSecret = await this.credentialProvider.get();
+    const expectedSecret = credentialToString(await this.credentialProvider.get());
     if (!expectedSecret) {
-      throw new Error('Shared secret not configured');
+      throw new Error("Shared secret not configured");
     }
 
     const token = normalizeToken(credentials);
@@ -72,8 +72,8 @@ export class SharedSecretAuthorizer implements Authorizer {
 
     return createAuthorizationContext({
       authenticated: true,
-      principal: 'shared_secret_user',
-      authMethod: 'shared_secret',
+      principal: "shared_secret_user",
+      authMethod: "shared_secret",
     });
   }
 
@@ -103,7 +103,7 @@ export class SharedSecretAuthorizer implements Authorizer {
     return createAuthorizationContext({
       ...authContext,
       authorized: true,
-      authMethod: authContext.authMethod ?? 'shared_secret',
+      authMethod: authContext.authMethod ?? "shared_secret",
     });
   }
 
@@ -138,7 +138,7 @@ export class SharedSecretAuthorizer implements Authorizer {
       ...authContext,
       claims,
       authorized: true,
-      authMethod: authContext.authMethod ?? 'shared_secret',
+      authMethod: authContext.authMethod ?? "shared_secret",
       principal: authContext.principal ?? frame.systemId,
     });
   }

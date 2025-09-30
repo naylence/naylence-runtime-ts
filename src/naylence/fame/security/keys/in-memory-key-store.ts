@@ -1,9 +1,9 @@
-import { getLogger } from '../../util/logging.js';
-import type { KeyRecord } from './key-store.js';
-import { KeyStore } from './key-store.js';
-import { JWKValidationError, validateJwkComplete } from '../crypto/jwk-validation.js';
+import { getLogger } from "../../util/logging.js";
+import type { KeyRecord } from "./key-store.js";
+import { KeyStore } from "./key-store.js";
+import { JWKValidationError, validateJwkComplete } from "../crypto/jwk-validation.js";
 
-const logger = getLogger('in-memory-key-store');
+const logger = getLogger("in-memory-key-store");
 
 export class InMemoryKeyStore extends KeyStore {
   private readonly keysByStorageKey: Map<string, KeyRecord>;
@@ -26,8 +26,8 @@ export class InMemoryKeyStore extends KeyStore {
   }
 
   private buildStorageKey(kid: string, jwk: KeyRecord): string {
-    const physicalPath = typeof jwk.physical_path === 'string' ? jwk.physical_path : '';
-    const use = typeof jwk.use === 'string' ? jwk.use : '';
+    const physicalPath = typeof jwk.physical_path === "string" ? jwk.physical_path : "";
+    const use = typeof jwk.use === "string" ? jwk.use : "";
     return `${kid}::${physicalPath}::${use}`;
   }
 
@@ -59,14 +59,14 @@ export class InMemoryKeyStore extends KeyStore {
       validateJwkComplete(jwk);
     } catch (error) {
       if (error instanceof JWKValidationError) {
-        logger.warning('rejected_invalid_jwk_individual', { kid, error: error.message });
+        logger.warning("rejected_invalid_jwk_individual", { kid, error: error.message });
         return;
       }
       throw error;
     }
 
-    const physicalPath = typeof jwk.physical_path === 'string' ? jwk.physical_path : undefined;
-    const use = typeof jwk.use === 'string' ? jwk.use : undefined;
+    const physicalPath = typeof jwk.physical_path === "string" ? jwk.physical_path : undefined;
+    const use = typeof jwk.use === "string" ? jwk.use : undefined;
 
     const storageKey = this.buildStorageKey(kid, jwk);
 
@@ -76,20 +76,17 @@ export class InMemoryKeyStore extends KeyStore {
         if (existingStorageKey === storageKey) {
           continue;
         }
-        const existingKid = typeof existingJwk.kid === 'string' ? existingJwk.kid : undefined;
-        const existingPath = typeof existingJwk.physical_path === 'string' ? existingJwk.physical_path : undefined;
-        const existingUse = typeof existingJwk.use === 'string' ? existingJwk.use : undefined;
-        if (
-          existingKid &&
-          existingPath === physicalPath &&
-          existingUse === use
-        ) {
+        const existingKid = typeof existingJwk.kid === "string" ? existingJwk.kid : undefined;
+        const existingPath =
+          typeof existingJwk.physical_path === "string" ? existingJwk.physical_path : undefined;
+        const existingUse = typeof existingJwk.use === "string" ? existingJwk.use : undefined;
+        if (existingKid && existingPath === physicalPath && existingUse === use) {
           staleKeys.push({ kid: existingKid, storageKey: existingStorageKey });
         }
       }
 
       if (staleKeys.length > 0) {
-        logger.debug('removing_stale_keys_before_adding_new_key', {
+        logger.debug("removing_stale_keys_before_adding_new_key", {
           new_kid: kid,
           physical_path: physicalPath,
           use,
@@ -146,7 +143,7 @@ export class InMemoryKeyStore extends KeyStore {
     const grouped = new Map<string, KeyRecord[]>();
     for (const key of this.keysByStorageKey.values()) {
       const physicalPath = key.physical_path;
-      if (typeof physicalPath !== 'string') {
+      if (typeof physicalPath !== "string") {
         continue;
       }
       if (!grouped.has(physicalPath)) {
@@ -170,7 +167,7 @@ export class InMemoryKeyStore extends KeyStore {
     }
 
     if (keysToRemove.length > 0) {
-      logger.debug('removed_keys_for_path', {
+      logger.debug("removed_keys_for_path", {
         physical_path: physicalPath,
         removed_key_ids: keysToRemove.map(({ kid }) => kid),
         count: keysToRemove.length,
@@ -190,7 +187,7 @@ export class InMemoryKeyStore extends KeyStore {
       this.deleteStorageKey(kid, storageKey);
     }
 
-    logger.debug('removed_individual_key', { kid });
+    logger.debug("removed_individual_key", { kid });
     return true;
   }
 }

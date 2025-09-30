@@ -6,7 +6,7 @@ export interface Token {
 }
 
 export function isTokenExpired(token: Token): boolean {
-  if (typeof token.expiresAt !== 'number') {
+  if (typeof token.expiresAt !== "number") {
     return false;
   }
   return token.expiresAt <= Date.now();

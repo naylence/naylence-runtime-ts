@@ -1,6 +1,6 @@
 /**
  * Cross-platform logging utilities for Naylence Fame
- * 
+ *
  * This module provides structured logging that works in both Node.js and browser environments.
  * It mimics the functionality of the Python structlog-based logging system.
  */
@@ -17,21 +17,23 @@ export enum LogLevel {
 }
 
 export const LogLevelNames: Record<LogLevel, string> = {
-  [LogLevel.TRACE]: 'TRACE',
-  [LogLevel.DEBUG]: 'DEBUG',
-  [LogLevel.INFO]: 'INFO',
-  [LogLevel.WARNING]: 'WARNING',
-  [LogLevel.ERROR]: 'ERROR',
-  [LogLevel.CRITICAL]: 'CRITICAL',
-  [LogLevel.OFF]: 'OFF',
+  [LogLevel.TRACE]: "TRACE",
+  [LogLevel.DEBUG]: "DEBUG",
+  [LogLevel.INFO]: "INFO",
+  [LogLevel.WARNING]: "WARNING",
+  [LogLevel.ERROR]: "ERROR",
+  [LogLevel.CRITICAL]: "CRITICAL",
+  [LogLevel.OFF]: "OFF",
 };
 
 // Environment detection
 export const isNode = (() => {
   try {
-    return typeof globalThis !== 'undefined' && 
-           typeof (globalThis as any).process !== 'undefined' && 
-           (globalThis as any).process.versions?.node;
+    return (
+      typeof globalThis !== "undefined" &&
+      typeof (globalThis as any).process !== "undefined" &&
+      (globalThis as any).process.versions?.node
+    );
   } catch {
     return false;
   }

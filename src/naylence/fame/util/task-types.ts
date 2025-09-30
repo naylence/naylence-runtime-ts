@@ -1,6 +1,6 @@
 /**
  * Cross-platform task spawning and management utilities
- * 
+ *
  * This module provides functionality similar to Python's asyncio.Task and TaskSpawner,
  * adapted for JavaScript/TypeScript environments.
  */
@@ -37,23 +37,23 @@ export interface ShutdownOptions {
 
 // Task states
 export enum TaskState {
-  RUNNING = 'running',
-  COMPLETED = 'completed',
-  FAILED = 'failed',
-  CANCELLED = 'cancelled',
+  RUNNING = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+  CANCELLED = "cancelled",
 }
 
 // Errors that can be thrown by tasks
 export class TaskTimeoutError extends Error {
   constructor(taskName?: string, timeout?: number) {
-    super(`Task ${taskName || 'unknown'} timed out after ${timeout}ms`);
-    this.name = 'TaskTimeoutError';
+    super(`Task ${taskName || "unknown"} timed out after ${timeout}ms`);
+    this.name = "TaskTimeoutError";
   }
 }
 
 export class TaskCancelledError extends Error {
   constructor(taskName?: string) {
-    super(`Task ${taskName || 'unknown'} was cancelled`);
-    this.name = 'TaskCancelledError';
+    super(`Task ${taskName || "unknown"} was cancelled`);
+    this.name = "TaskCancelledError";
   }
 }

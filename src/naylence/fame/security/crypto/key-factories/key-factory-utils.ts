@@ -1,6 +1,6 @@
-import type { KeyLike } from 'jose';
-import type { JoseModule } from '../../auth/jose-loader.js';
-import { DevKeyPair } from './dev-key-pair.js';
+import type { KeyLike } from "jose";
+import type { JoseModule } from "../../auth/jose-loader.js";
+import { DevKeyPair } from "./dev-key-pair.js";
 
 export async function buildDevKeyPair(
   jose: JoseModule,

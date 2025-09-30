@@ -1,19 +1,19 @@
-import { InMemoryStorageProvider } from '../storage/in-memory-storage.js';
-import type { StorageProvider } from '../storage/storage-provider.js';
-import { getLogger } from '../util/logging.js';
-import { DefaultDeliveryTracker } from './default-delivery-tracker.js';
-import type { DeliveryTrackerEventHandler } from './default-delivery-tracker.js';
+import { InMemoryStorageProvider } from "../storage/in-memory-storage.js";
+import type { StorageProvider } from "../storage/storage-provider.js";
+import { getLogger } from "../util/logging.js";
+import { DefaultDeliveryTracker } from "./default-delivery-tracker.js";
+import type { DeliveryTrackerEventHandler } from "./default-delivery-tracker.js";
 import {
   DeliveryTrackerConfig,
   DeliveryTrackerFactory,
   DeliveryTrackerFactoryContext,
   registerDeliveryTrackerFactory,
-} from './delivery-tracker-factory.js';
+} from "./delivery-tracker-factory.js";
 
-const logger = getLogger('default-delivery-tracker-factory');
+const logger = getLogger("default-delivery-tracker-factory");
 
 export interface DefaultDeliveryTrackerConfig extends DeliveryTrackerConfig {
-  type: 'DefaultDeliveryTracker';
+  type: "DefaultDeliveryTracker";
   futuresGcGraceSecs?: number;
   futuresSweepIntervalSecs?: number;
 }
@@ -24,7 +24,7 @@ interface NormalizedDefaultDeliveryTrackerConfig {
 }
 
 export class DefaultDeliveryTrackerFactory extends DeliveryTrackerFactory<DefaultDeliveryTrackerConfig> {
-  public readonly type = 'DefaultDeliveryTracker';
+  public readonly type = "DefaultDeliveryTracker";
   public override readonly isDefault = true;
 
   public async create(
@@ -35,7 +35,7 @@ export class DefaultDeliveryTrackerFactory extends DeliveryTrackerFactory<Defaul
     const normalizedConfig = normalizeDefaultDeliveryTrackerConfig(config);
     const storageProvider = resolveStorageProvider(context.storageProvider);
 
-    logger.debug('creating_default_delivery_tracker', {
+    logger.debug("creating_default_delivery_tracker", {
       futuresGcGraceSecs: normalizedConfig.futuresGcGraceSecs,
       futuresSweepIntervalSecs: normalizedConfig.futuresSweepIntervalSecs,
       storageProvider: storageProvider.constructor.name,
@@ -74,15 +74,15 @@ function normalizeDefaultDeliveryTrackerConfig(
   const candidate = config as DefaultDeliveryTrackerConfig & Record<string, unknown>;
 
   const futuresGcGraceSecs = extractNumber(candidate, [
-    'futuresGcGraceSecs',
-    'futures_gc_grace_secs',
-    'futures_gc_graceSeconds',
+    "futuresGcGraceSecs",
+    "futures_gc_grace_secs",
+    "futures_gc_graceSeconds",
   ]);
 
   const futuresSweepIntervalSecs = extractNumber(candidate, [
-    'futuresSweepIntervalSecs',
-    'futures_sweep_interval_secs',
-    'futures_sweepIntervalSecs',
+    "futuresSweepIntervalSecs",
+    "futures_sweep_interval_secs",
+    "futures_sweepIntervalSecs",
   ]);
 
   return {
@@ -95,10 +95,10 @@ function extractNumber(source: Record<string, unknown>, keys: string[]): number 
   for (const key of keys) {
     if (key in source) {
       const value = source[key];
-      if (typeof value === 'number' && Number.isFinite(value)) {
+      if (typeof value === "number" && Number.isFinite(value)) {
         return value;
       }
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (typeof value === "string" && value.trim().length > 0) {
         const parsed = Number(value);
         if (!Number.isNaN(parsed)) {
           return parsed;
@@ -125,4 +125,4 @@ function resolveStorageProvider(provided: StorageProvider | undefined): StorageP
   return new InMemoryStorageProvider();
 }
 
-registerDeliveryTrackerFactory('DefaultDeliveryTracker', DefaultDeliveryTrackerFactory);
+registerDeliveryTrackerFactory("DefaultDeliveryTracker", DefaultDeliveryTrackerFactory);

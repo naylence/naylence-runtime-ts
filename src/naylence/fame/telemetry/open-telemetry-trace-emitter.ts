@@ -5,17 +5,17 @@ import type {
   Span as OtelSpan,
   SpanOptions,
   Tracer,
-} from '@opentelemetry/api';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
+} from "@opentelemetry/api";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 
-import { BaseTraceEmitter } from './base-trace-emitter.js';
-import type { TraceSpan, TraceSpanOptions, TraceSpanScope } from './trace-emitter.js';
+import { BaseTraceEmitter } from "./base-trace-emitter.js";
+import type { TraceSpan, TraceSpanOptions, TraceSpanScope } from "./trace-emitter.js";
 import {
   resetOtelSpanId,
   resetOtelTraceId,
   setOtelSpanId,
   setOtelTraceId,
-} from './otel-context.js';
+} from "./otel-context.js";
 
 class OpenTelemetryTraceSpan implements TraceSpan {
   public constructor(private readonly span: OtelSpan) {}
@@ -111,8 +111,8 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
 
     const span = this.tracer.startSpan(name, spanOptions);
 
-    const envelopeTraceId = options?.attributes?.['env.trace_id'];
-    if (typeof envelopeTraceId === 'string') {
+    const envelopeTraceId = options?.attributes?.["env.trace_id"];
+    if (typeof envelopeTraceId === "string") {
       this.applyEnvelopeTraceId(span, envelopeTraceId);
     }
 
@@ -122,7 +122,7 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   public override async flush(): Promise<void> {
     try {
       const provider = trace.getTracerProvider() as unknown as { forceFlush?: () => Promise<void> };
-      if (provider && typeof provider.forceFlush === 'function') {
+      if (provider && typeof provider.forceFlush === "function") {
         await provider.forceFlush();
       }
     } catch {
@@ -133,7 +133,7 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   public override async shutdown(): Promise<void> {
     try {
       const provider = trace.getTracerProvider() as unknown as { shutdown?: () => Promise<void> };
-      if (provider && typeof provider.shutdown === 'function') {
+      if (provider && typeof provider.shutdown === "function") {
         await provider.shutdown();
       }
     } catch {
@@ -154,12 +154,12 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   }
 
   private convertEnvTraceIdToOtel(envTraceId: string): string {
-    const normalized = envTraceId.slice(0, 16).padEnd(16, '0');
-    let hex = '';
+    const normalized = envTraceId.slice(0, 16).padEnd(16, "0");
+    let hex = "";
     for (let i = 0; i < 16; i += 1) {
       const code = normalized.charCodeAt(i);
       const byte = Number.isNaN(code) ? 0 : code & 0xff;
-      hex += byte.toString(16).padStart(2, '0');
+      hex += byte.toString(16).padStart(2, "0");
     }
     return hex;
   }
@@ -172,9 +172,12 @@ function normalizeAttributeValue(value: unknown): AttributeValue {
   return normalizePrimitiveAttribute(value, false);
 }
 
-function normalizePrimitiveAttribute(value: unknown, forceString: boolean): string | number | boolean {
+function normalizePrimitiveAttribute(
+  value: unknown,
+  forceString: boolean
+): string | number | boolean {
   if (!forceString) {
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       return value;
     }
     if (value instanceof Date) {
@@ -186,11 +189,11 @@ function normalizePrimitiveAttribute(value: unknown, forceString: boolean): stri
     return value.toISOString();
   }
 
-  if (typeof value === 'boolean') {
+  if (typeof value === "boolean") {
     return value;
   }
 
-  if (!forceString && typeof value === 'number') {
+  if (!forceString && typeof value === "number") {
     return value;
   }
 

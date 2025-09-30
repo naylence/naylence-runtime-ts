@@ -1,10 +1,10 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
 
-import type { LoadBalancerStickinessManager } from './load-balancer-stickiness-manager.js';
+import type { LoadBalancerStickinessManager } from "./load-balancer-stickiness-manager.js";
 
 export const LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE =
-  'LoadBalancerStickinessManagerFactory';
+  "LoadBalancerStickinessManagerFactory";
 
 export interface LoadBalancerStickinessManagerConfig extends ResourceConfig {
   type: string;
@@ -12,7 +12,7 @@ export interface LoadBalancerStickinessManagerConfig extends ResourceConfig {
 }
 
 export abstract class LoadBalancerStickinessManagerFactory<
-  C extends LoadBalancerStickinessManagerConfig = LoadBalancerStickinessManagerConfig
+  C extends LoadBalancerStickinessManagerConfig = LoadBalancerStickinessManagerConfig,
 > extends AbstractResourceFactory<LoadBalancerStickinessManager, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -20,7 +20,7 @@ export abstract class LoadBalancerStickinessManagerFactory<
   ): Promise<LoadBalancerStickinessManager>;
 
   public static async createLoadBalancerStickinessManager<
-    C extends LoadBalancerStickinessManagerConfig = LoadBalancerStickinessManagerConfig
+    C extends LoadBalancerStickinessManagerConfig = LoadBalancerStickinessManagerConfig,
   >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}

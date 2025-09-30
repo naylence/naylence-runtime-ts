@@ -1,13 +1,13 @@
-import type { FameDeliveryContext, FameEnvelope, ResourceConfig } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope, ResourceConfig } from "naylence-core";
 
-import { deepMerge } from '../../util/util.js';
-import type { NodeLike } from '../../node/node-like.js';
-import type { EncryptionOptions } from '../encryption/encryption-manager.js';
+import { deepMerge } from "../../util/util.js";
+import type { NodeLike } from "../../node/node-like.js";
+import type { EncryptionOptions } from "../encryption/encryption-manager.js";
 
 export enum CryptoLevel {
-  PLAINTEXT = 'plaintext',
-  CHANNEL = 'channel',
-  SEALED = 'sealed',
+  PLAINTEXT = "plaintext",
+  CHANNEL = "channel",
+  SEALED = "sealed",
 }
 
 export const CRYPTO_LEVEL_SECURITY_ORDER: Record<CryptoLevel, number> = {
@@ -21,21 +21,21 @@ export function compareCryptoLevels(a: CryptoLevel, b: CryptoLevel): number {
 }
 
 export enum SecurityAction {
-  ALLOW = 'allow',
-  REJECT = 'reject',
-  NACK = 'nack',
+  ALLOW = "allow",
+  REJECT = "reject",
+  NACK = "nack",
 }
 
 export enum SignaturePolicy {
-  REQUIRED = 'required',
-  OPTIONAL = 'optional',
-  DISABLED = 'disabled',
-  FORBIDDEN = 'forbidden',
+  REQUIRED = "required",
+  OPTIONAL = "optional",
+  DISABLED = "disabled",
+  FORBIDDEN = "forbidden",
 }
 
 export enum SigningMaterial {
-  RAW_KEY = 'raw-key',
-  X509_CHAIN = 'x509-chain',
+  RAW_KEY = "raw-key",
+  X509_CHAIN = "x509-chain",
 }
 
 export interface SecurityPolicyConfig extends ResourceConfig {
@@ -77,7 +77,8 @@ export function normalizeInboundCryptoRules(
       value.plaintextViolationAction ?? DEFAULT_INBOUND_CRYPTO_RULES.plaintextViolationAction,
     channelViolationAction:
       value.channelViolationAction ?? DEFAULT_INBOUND_CRYPTO_RULES.channelViolationAction,
-    sealedViolationAction: value.sealedViolationAction ?? DEFAULT_INBOUND_CRYPTO_RULES.sealedViolationAction,
+    sealedViolationAction:
+      value.sealedViolationAction ?? DEFAULT_INBOUND_CRYPTO_RULES.sealedViolationAction,
   };
 }
 
@@ -102,8 +103,10 @@ export function normalizeResponseCryptoRules(
     return { ...DEFAULT_RESPONSE_CRYPTO_RULES };
   }
   return {
-    mirrorRequestLevel: value.mirrorRequestLevel ?? DEFAULT_RESPONSE_CRYPTO_RULES.mirrorRequestLevel,
-    minimumResponseLevel: value.minimumResponseLevel ?? DEFAULT_RESPONSE_CRYPTO_RULES.minimumResponseLevel,
+    mirrorRequestLevel:
+      value.mirrorRequestLevel ?? DEFAULT_RESPONSE_CRYPTO_RULES.mirrorRequestLevel,
+    minimumResponseLevel:
+      value.minimumResponseLevel ?? DEFAULT_RESPONSE_CRYPTO_RULES.minimumResponseLevel,
     escalateSealedResponses:
       value.escalateSealedResponses ?? DEFAULT_RESPONSE_CRYPTO_RULES.escalateSealedResponses,
   };
@@ -149,15 +152,16 @@ export interface EncryptionConfigInit {
   sealedAlgorithms?: readonly string[];
 }
 
-export interface EncryptionConfig extends Required<Omit<EncryptionConfigInit, 'inbound' | 'response' | 'outbound'>> {
+export interface EncryptionConfig
+  extends Required<Omit<EncryptionConfigInit, "inbound" | "response" | "outbound">> {
   inbound: InboundCryptoRules;
   response: ResponseCryptoRules;
   outbound: OutboundCryptoRules;
 }
 
 const DEFAULT_ENCRYPTION_CONFIG: EncryptionConfig = {
-  supportedChannelAlgorithms: ['chacha20-poly1305-channel'],
-  supportedSealedAlgorithms: ['chacha20-poly1305', 'aes-256-gcm', 'ECDH-ES+A256GCM'],
+  supportedChannelAlgorithms: ["chacha20-poly1305-channel"],
+  supportedSealedAlgorithms: ["chacha20-poly1305", "aes-256-gcm", "ECDH-ES+A256GCM"],
   inbound: { ...DEFAULT_INBOUND_CRYPTO_RULES },
   response: { ...DEFAULT_RESPONSE_CRYPTO_RULES },
   outbound: { ...DEFAULT_OUTBOUND_CRYPTO_RULES },
@@ -307,9 +311,12 @@ export function normalizeResponseSigningRules(
     return { ...DEFAULT_RESPONSE_SIGNING_RULES };
   }
   return {
-    mirrorRequestSigning: value.mirrorRequestSigning ?? DEFAULT_RESPONSE_SIGNING_RULES.mirrorRequestSigning,
-    alwaysSignResponses: value.alwaysSignResponses ?? DEFAULT_RESPONSE_SIGNING_RULES.alwaysSignResponses,
-    signErrorResponses: value.signErrorResponses ?? DEFAULT_RESPONSE_SIGNING_RULES.signErrorResponses,
+    mirrorRequestSigning:
+      value.mirrorRequestSigning ?? DEFAULT_RESPONSE_SIGNING_RULES.mirrorRequestSigning,
+    alwaysSignResponses:
+      value.alwaysSignResponses ?? DEFAULT_RESPONSE_SIGNING_RULES.alwaysSignResponses,
+    signErrorResponses:
+      value.signErrorResponses ?? DEFAULT_RESPONSE_SIGNING_RULES.signErrorResponses,
   };
 }
 
@@ -353,7 +360,7 @@ export interface SigningConfigInit {
 }
 
 export interface SigningConfig
-  extends Required<Omit<SigningConfigInit, 'inbound' | 'response' | 'outbound'>> {
+  extends Required<Omit<SigningConfigInit, "inbound" | "response" | "outbound">> {
   inbound: InboundSigningRules;
   response: ResponseSigningRules;
   outbound: OutboundSigningRules;
@@ -447,13 +454,18 @@ export function normalizeSigningConfig(
   const signingMaterial = value.signingMaterial ?? DEFAULT_SIGNING_CONFIG.signingMaterial;
   const validateCertNameConstraints =
     value.validateCertNameConstraints ?? DEFAULT_SIGNING_CONFIG.validateCertNameConstraints;
-  const requireCertSidMatch = value.requireCertSidMatch ?? DEFAULT_SIGNING_CONFIG.requireCertSidMatch;
+  const requireCertSidMatch =
+    value.requireCertSidMatch ?? DEFAULT_SIGNING_CONFIG.requireCertSidMatch;
   const requireCertLogicalMatch =
     value.requireCertLogicalMatch ?? DEFAULT_SIGNING_CONFIG.requireCertLogicalMatch;
 
   if (signingMaterial === SigningMaterial.RAW_KEY) {
-    if (validateCertNameConstraints !== true || requireCertSidMatch !== false || requireCertLogicalMatch !== false) {
-      throw new Error('X.509 validation options present but signingMaterial is RAW_KEY');
+    if (
+      validateCertNameConstraints !== true ||
+      requireCertSidMatch !== false ||
+      requireCertLogicalMatch !== false
+    ) {
+      throw new Error("X.509 validation options present but signingMaterial is RAW_KEY");
     }
   }
 
@@ -534,20 +546,20 @@ const DEFAULT_SECURITY_REQUIREMENTS: Required<SecurityRequirementsInit> & {
 } = {
   signingRequired: false,
   verificationRequired: false,
-  supportedSigningAlgorithms: new Set(['EdDSA']),
+  supportedSigningAlgorithms: new Set(["EdDSA"]),
   encryptionRequired: false,
   decryptionRequired: false,
-  supportedEncryptionAlgorithms: new Set(['X25519', 'ChaCha20Poly1305']),
+  supportedEncryptionAlgorithms: new Set(["X25519", "ChaCha20Poly1305"]),
   requireKeyExchange: false,
   requireSigningKeyExchange: false,
   requireEncryptionKeyExchange: false,
   requireNodeAuthorization: false,
   requireCertificates: false,
   minimumCryptoLevel: CryptoLevel.PLAINTEXT,
-  preferredSigningAlgorithms: ['EdDSA'],
-  preferredEncryptionAlgorithms: ['X25519', 'ChaCha20Poly1305'],
-  preferredSigningAlgorithm: 'EdDSA',
-  preferredEncryptionAlgorithm: 'X25519',
+  preferredSigningAlgorithms: ["EdDSA"],
+  preferredEncryptionAlgorithms: ["X25519", "ChaCha20Poly1305"],
+  preferredSigningAlgorithm: "EdDSA",
+  preferredEncryptionAlgorithm: "X25519",
 };
 
 export function normalizeSecurityRequirements(
@@ -566,7 +578,9 @@ export function normalizeSecurityRequirements(
         DEFAULT_SECURITY_REQUIREMENTS.supportedEncryptionAlgorithms
       ),
       preferredSigningAlgorithms: [...DEFAULT_SECURITY_REQUIREMENTS.preferredSigningAlgorithms],
-      preferredEncryptionAlgorithms: [...DEFAULT_SECURITY_REQUIREMENTS.preferredEncryptionAlgorithms],
+      preferredEncryptionAlgorithms: [
+        ...DEFAULT_SECURITY_REQUIREMENTS.preferredEncryptionAlgorithms,
+      ],
     };
   }
 
@@ -591,26 +605,34 @@ export function normalizeSecurityRequirements(
     verificationRequired:
       value.verificationRequired ?? DEFAULT_SECURITY_REQUIREMENTS.verificationRequired,
     supportedSigningAlgorithms,
-    encryptionRequired: value.encryptionRequired ?? DEFAULT_SECURITY_REQUIREMENTS.encryptionRequired,
-    decryptionRequired: value.decryptionRequired ?? DEFAULT_SECURITY_REQUIREMENTS.decryptionRequired,
+    encryptionRequired:
+      value.encryptionRequired ?? DEFAULT_SECURITY_REQUIREMENTS.encryptionRequired,
+    decryptionRequired:
+      value.decryptionRequired ?? DEFAULT_SECURITY_REQUIREMENTS.decryptionRequired,
     supportedEncryptionAlgorithms,
-    requireKeyExchange: value.requireKeyExchange ?? DEFAULT_SECURITY_REQUIREMENTS.requireKeyExchange,
+    requireKeyExchange:
+      value.requireKeyExchange ?? DEFAULT_SECURITY_REQUIREMENTS.requireKeyExchange,
     requireSigningKeyExchange:
       value.requireSigningKeyExchange ?? DEFAULT_SECURITY_REQUIREMENTS.requireSigningKeyExchange,
     requireEncryptionKeyExchange:
-      value.requireEncryptionKeyExchange ?? DEFAULT_SECURITY_REQUIREMENTS.requireEncryptionKeyExchange,
+      value.requireEncryptionKeyExchange ??
+      DEFAULT_SECURITY_REQUIREMENTS.requireEncryptionKeyExchange,
     requireNodeAuthorization:
       value.requireNodeAuthorization ?? DEFAULT_SECURITY_REQUIREMENTS.requireNodeAuthorization,
-    requireCertificates: value.requireCertificates ?? DEFAULT_SECURITY_REQUIREMENTS.requireCertificates,
-    minimumCryptoLevel: value.minimumCryptoLevel ?? DEFAULT_SECURITY_REQUIREMENTS.minimumCryptoLevel,
+    requireCertificates:
+      value.requireCertificates ?? DEFAULT_SECURITY_REQUIREMENTS.requireCertificates,
+    minimumCryptoLevel:
+      value.minimumCryptoLevel ?? DEFAULT_SECURITY_REQUIREMENTS.minimumCryptoLevel,
     preferredSigningAlgorithms:
       value.preferredSigningAlgorithms ?? DEFAULT_SECURITY_REQUIREMENTS.preferredSigningAlgorithms,
     preferredEncryptionAlgorithms:
-      value.preferredEncryptionAlgorithms ?? DEFAULT_SECURITY_REQUIREMENTS.preferredEncryptionAlgorithms,
+      value.preferredEncryptionAlgorithms ??
+      DEFAULT_SECURITY_REQUIREMENTS.preferredEncryptionAlgorithms,
     preferredSigningAlgorithm:
       value.preferredSigningAlgorithm ?? DEFAULT_SECURITY_REQUIREMENTS.preferredSigningAlgorithm,
     preferredEncryptionAlgorithm:
-      value.preferredEncryptionAlgorithm ?? DEFAULT_SECURITY_REQUIREMENTS.preferredEncryptionAlgorithm,
+      value.preferredEncryptionAlgorithm ??
+      DEFAULT_SECURITY_REQUIREMENTS.preferredEncryptionAlgorithm,
   };
 }
 
@@ -633,10 +655,7 @@ export interface SecurityPolicy {
     nodeLike?: NodeLike
   ): Promise<EncryptionOptions | undefined>;
 
-  shouldVerifySignature(
-    envelope: FameEnvelope,
-    context?: FameDeliveryContext
-  ): Promise<boolean>;
+  shouldVerifySignature(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<boolean>;
 
   shouldDecryptEnvelope(
     envelope: FameEnvelope,
@@ -644,10 +663,7 @@ export interface SecurityPolicy {
     nodeLike?: NodeLike
   ): Promise<boolean>;
 
-  classifyMessageCryptoLevel(
-    envelope: FameEnvelope,
-    context?: FameDeliveryContext
-  ): CryptoLevel;
+  classifyMessageCryptoLevel(envelope: FameEnvelope, context?: FameDeliveryContext): CryptoLevel;
 
   isInboundCryptoLevelAllowed(
     cryptoLevel: CryptoLevel,
@@ -673,15 +689,9 @@ export interface SecurityPolicy {
     nodeLike?: NodeLike
   ): Promise<CryptoLevel>;
 
-  isSignatureRequired(
-    envelope: FameEnvelope,
-    context?: FameDeliveryContext
-  ): boolean;
+  isSignatureRequired(envelope: FameEnvelope, context?: FameDeliveryContext): boolean;
 
-  getUnsignedViolationAction(
-    envelope: FameEnvelope,
-    context?: FameDeliveryContext
-  ): SecurityAction;
+  getUnsignedViolationAction(envelope: FameEnvelope, context?: FameDeliveryContext): SecurityAction;
 
   getInvalidSignatureViolationAction(
     envelope: FameEnvelope,

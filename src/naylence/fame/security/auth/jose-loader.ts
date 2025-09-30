@@ -1,10 +1,10 @@
-export type JoseModule = typeof import('jose');
+export type JoseModule = typeof import("jose");
 
 let joseModulePromise: Promise<JoseModule> | null = null;
 
 export async function requireJose(): Promise<JoseModule> {
   if (!joseModulePromise) {
-    joseModulePromise = import('jose').catch((error) => {
+    joseModulePromise = import("jose").catch((error) => {
       joseModulePromise = null;
       const dependencyError = new Error(
         'The "jose" dependency is required for JWT verification. Install it with: npm install jose'
@@ -17,4 +17,4 @@ export async function requireJose(): Promise<JoseModule> {
   return joseModulePromise;
 }
 
-export type { JWTVerifyOptions } from 'jose';
+export type { JWTVerifyOptions } from "jose";

@@ -1,22 +1,26 @@
-import { createResource, registerFactory } from 'naylence-factory';
+import { createResource, registerFactory } from "naylence-factory";
 
-import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
   LoadBalancingStrategyFactory,
   type LoadBalancingStrategyConfig,
-} from './load-balancing/load-balancing-strategy-factory.js';
-import { CapabilityAwareRoutingPolicy } from './capability-aware-routing-policy.js';
-import { ROUTING_POLICY_FACTORY_BASE, RoutingPolicyFactory, type RoutingPolicyConfig } from './routing-policy.js';
-import type { RoutingPolicy } from './routing-policy.js';
+} from "./load-balancing/load-balancing-strategy-factory.js";
+import { CapabilityAwareRoutingPolicy } from "./capability-aware-routing-policy.js";
+import {
+  ROUTING_POLICY_FACTORY_BASE,
+  RoutingPolicyFactory,
+  type RoutingPolicyConfig,
+} from "./routing-policy.js";
+import type { RoutingPolicy } from "./routing-policy.js";
 
 export interface CapabilityAwareRoutingPolicyConfig extends RoutingPolicyConfig {
-  type: 'CapabilityAwareRoutingPolicy';
+  type: "CapabilityAwareRoutingPolicy";
   loadBalancingStrategy?: LoadBalancingStrategyConfig | Record<string, unknown> | null;
 }
 
 export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
-  public readonly type = 'CapabilityAwareRoutingPolicy';
+  public readonly type = "CapabilityAwareRoutingPolicy";
 
   public async create(
     config?: CapabilityAwareRoutingPolicyConfig | Record<string, unknown> | null,
@@ -45,12 +49,12 @@ export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
   ): CapabilityAwareRoutingPolicyConfig {
     if (!config) {
       return {
-        type: 'CapabilityAwareRoutingPolicy',
+        type: "CapabilityAwareRoutingPolicy",
         loadBalancingStrategy: null,
       };
     }
 
-    if ('type' in config && config.type !== 'CapabilityAwareRoutingPolicy') {
+    if ("type" in config && config.type !== "CapabilityAwareRoutingPolicy") {
       throw new Error(
         `CapabilityAwareRoutingPolicyFactory only supports CapabilityAwareRoutingPolicy config, got type ${String(
           (config as { type?: unknown }).type
@@ -61,7 +65,7 @@ export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
     const loadBalancingStrategy = this.extractStrategyConfig(config);
 
     return {
-      type: 'CapabilityAwareRoutingPolicy',
+      type: "CapabilityAwareRoutingPolicy",
       loadBalancingStrategy,
     };
   }
@@ -69,41 +73,40 @@ export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
   private extractStrategyConfig(
     config: CapabilityAwareRoutingPolicyConfig | Record<string, unknown>
   ): LoadBalancingStrategyConfig | Record<string, unknown> | null {
-    if ('loadBalancingStrategy' in config) {
+    if ("loadBalancingStrategy" in config) {
       const value = (config as CapabilityAwareRoutingPolicyConfig).loadBalancingStrategy;
-      if (
-        value === undefined ||
-        value === null ||
-        typeof value === 'object'
-      ) {
+      if (value === undefined || value === null || typeof value === "object") {
         return (value as LoadBalancingStrategyConfig | Record<string, unknown> | null) ?? null;
       }
 
-      throw new Error('loadBalancingStrategy must be an object or null when provided');
+      throw new Error("loadBalancingStrategy must be an object or null when provided");
     }
 
     const raw = (config as Record<string, unknown>).loadBalancingStrategy;
-    if (raw === undefined || raw === null || typeof raw === 'object') {
+    if (raw === undefined || raw === null || typeof raw === "object") {
       return (raw as LoadBalancingStrategyConfig | Record<string, unknown> | null) ?? null;
     }
 
-    throw new Error('loadBalancingStrategy must be an object or null when provided');
+    throw new Error("loadBalancingStrategy must be an object or null when provided");
   }
 
   private async tryCreateStrategy(
-    config: CapabilityAwareRoutingPolicyConfig['loadBalancingStrategy']
+    config: CapabilityAwareRoutingPolicyConfig["loadBalancingStrategy"]
   ): Promise<LoadBalancingStrategy | null> {
     if (!config) {
       return null;
     }
 
-    return await createResource<LoadBalancingStrategy>(LOAD_BALANCING_STRATEGY_FACTORY_BASE, config);
+    return await createResource<LoadBalancingStrategy>(
+      LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+      config
+    );
   }
 }
 
 registerFactory<RoutingPolicy, CapabilityAwareRoutingPolicyConfig>(
   ROUTING_POLICY_FACTORY_BASE,
-  'CapabilityAwareRoutingPolicy',
+  "CapabilityAwareRoutingPolicy",
   CapabilityAwareRoutingPolicyFactory,
   { isDefault: true, priority: 50 }
 );

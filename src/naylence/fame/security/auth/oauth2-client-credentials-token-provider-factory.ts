@@ -1,20 +1,23 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import { CredentialProviderFactory, type CredentialProviderConfig } from '../credential/credential-provider-factory.js';
-import { normalizeSecretSource, type SecretSourceType } from '../credential/secret-source.js';
-import type { TokenProvider } from './token-provider.js';
+import {
+  CredentialProviderFactory,
+  type CredentialProviderConfig,
+} from "../credential/credential-provider-factory.js";
+import { normalizeSecretSource, type SecretSourceType } from "../credential/secret-source.js";
+import type { TokenProvider } from "./token-provider.js";
 import {
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
   TokenProviderFactory,
   type TokenProviderConfig,
-} from './token-provider-factory.js';
+} from "./token-provider-factory.js";
 import {
   OAuth2ClientCredentialsTokenProvider,
   type OAuth2ClientCredentialsTokenProviderOptions,
-} from './oauth2-client-credentials-token-provider.js';
+} from "./oauth2-client-credentials-token-provider.js";
 
 export interface OAuth2ClientCredentialsTokenProviderConfig extends TokenProviderConfig {
-  type: 'OAuth2ClientCredentialsTokenProvider';
+  type: "OAuth2ClientCredentialsTokenProvider";
   tokenUrl: string;
   clientId: SecretSourceType;
   clientSecret: SecretSourceType;
@@ -34,19 +37,21 @@ function normalizeConfig(
   config?: OAuth2ClientCredentialsTokenProviderConfig | Record<string, unknown> | null
 ): NormalizedOAuth2Config {
   if (!config) {
-    throw new Error('OAuth2ClientCredentialsTokenProvider requires configuration');
+    throw new Error("OAuth2ClientCredentialsTokenProvider requires configuration");
   }
 
   const candidate = config as OAuth2ClientCredentialsTokenProviderConfig & Record<string, unknown>;
-  if (typeof candidate.tokenUrl !== 'string' || candidate.tokenUrl.length === 0) {
-    throw new Error('OAuth2ClientCredentialsTokenProvider tokenUrl must be a non-empty string');
+  if (typeof candidate.tokenUrl !== "string" || candidate.tokenUrl.length === 0) {
+    throw new Error("OAuth2ClientCredentialsTokenProvider tokenUrl must be a non-empty string");
   }
 
   const clientIdSource: SecretSourceType = candidate.clientId;
   const clientSecretSource: SecretSourceType = candidate.clientSecret;
 
   const scopes = Array.isArray(candidate.scopes)
-    ? candidate.scopes.filter((scope): scope is string => typeof scope === 'string' && scope.length > 0)
+    ? candidate.scopes.filter(
+        (scope): scope is string => typeof scope === "string" && scope.length > 0
+      )
     : [];
 
   const normalized: NormalizedOAuth2Config = {
@@ -56,7 +61,7 @@ function normalizeConfig(
     scopes,
   };
 
-  if (typeof candidate.audience === 'string' && candidate.audience.length > 0) {
+  if (typeof candidate.audience === "string" && candidate.audience.length > 0) {
     normalized.audience = candidate.audience;
   }
 
@@ -64,7 +69,7 @@ function normalizeConfig(
 }
 
 export class OAuth2ClientCredentialsTokenProviderFactory extends TokenProviderFactory<OAuth2ClientCredentialsTokenProviderConfig> {
-  public readonly type = 'OAuth2ClientCredentialsTokenProvider';
+  public readonly type = "OAuth2ClientCredentialsTokenProvider";
 
   public async create(
     config?: OAuth2ClientCredentialsTokenProviderConfig | Record<string, unknown> | null
@@ -93,6 +98,6 @@ export class OAuth2ClientCredentialsTokenProviderFactory extends TokenProviderFa
 
 registerFactory<TokenProvider, OAuth2ClientCredentialsTokenProviderConfig>(
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
-  'OAuth2ClientCredentialsTokenProvider',
+  "OAuth2ClientCredentialsTokenProvider",
   OAuth2ClientCredentialsTokenProviderFactory
 );

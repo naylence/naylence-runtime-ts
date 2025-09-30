@@ -1,4 +1,4 @@
-import type { NodeEventListener } from '../node/node-event-listener.js';
+import type { NodeEventListener } from "../node/node-event-listener.js";
 
 /**
  * Minimal span contract used by telemetry emitters.

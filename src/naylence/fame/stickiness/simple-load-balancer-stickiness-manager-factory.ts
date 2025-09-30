@@ -1,20 +1,20 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import type { LoadBalancerStickinessManager } from './load-balancer-stickiness-manager.js';
+import type { LoadBalancerStickinessManager } from "./load-balancer-stickiness-manager.js";
 import {
   LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE,
   LoadBalancerStickinessManagerFactory,
   type LoadBalancerStickinessManagerConfig,
-} from './load-balancer-stickiness-manager-factory.js';
-import { SimpleLoadBalancerStickinessManager } from './simple-load-balancer-stickiness-manager.js';
+} from "./load-balancer-stickiness-manager-factory.js";
+import { SimpleLoadBalancerStickinessManager } from "./simple-load-balancer-stickiness-manager.js";
 
 export interface SimpleLoadBalancerStickinessManagerConfig
   extends LoadBalancerStickinessManagerConfig {
-  type: 'SimpleLoadBalancerStickinessManager';
+  type: "SimpleLoadBalancerStickinessManager";
 }
 
 export class SimpleLoadBalancerStickinessManagerFactory extends LoadBalancerStickinessManagerFactory<SimpleLoadBalancerStickinessManagerConfig> {
-  public readonly type = 'SimpleLoadBalancerStickinessManager';
+  public readonly type = "SimpleLoadBalancerStickinessManager";
   public readonly isDefault = true;
 
   public async create(
@@ -22,7 +22,7 @@ export class SimpleLoadBalancerStickinessManagerFactory extends LoadBalancerStic
   ): Promise<LoadBalancerStickinessManager> {
     let resolvedConfig: SimpleLoadBalancerStickinessManagerConfig | null = null;
 
-    if (config && typeof config === 'object') {
+    if (config && typeof config === "object") {
       resolvedConfig = {
         type: this.type,
         ...(config as Record<string, unknown>),
@@ -35,7 +35,7 @@ export class SimpleLoadBalancerStickinessManagerFactory extends LoadBalancerStic
 
 registerFactory(
   LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE,
-  'SimpleLoadBalancerStickinessManager',
+  "SimpleLoadBalancerStickinessManager",
   SimpleLoadBalancerStickinessManagerFactory,
   { isDefault: true }
 );

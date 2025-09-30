@@ -1,20 +1,24 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import { DefaultKeyManager } from './default-key-manager.js';
-import type { KeyStore } from './key-store.js';
-import { getKeyStore } from './key-store.js';
-import { KeyStoreFactory, type KeyStoreConfig } from './key-store-factory.js';
-import { KeyManagerFactory, KEY_MANAGER_FACTORY_BASE_TYPE, type KeyManagerConfig } from './key-manager-factory.js';
+import { DefaultKeyManager } from "./default-key-manager.js";
+import type { KeyStore } from "./key-store.js";
+import { getKeyStore } from "./key-store.js";
+import { KeyStoreFactory, type KeyStoreConfig } from "./key-store-factory.js";
+import {
+  KeyManagerFactory,
+  KEY_MANAGER_FACTORY_BASE_TYPE,
+  type KeyManagerConfig,
+} from "./key-manager-factory.js";
 
 export interface DefaultKeyManagerConfig extends KeyManagerConfig {
-  type: 'DefaultKeyManager';
+  type: "DefaultKeyManager";
   hasUpstream?: boolean;
   nodeId?: string;
   keyStore?: KeyStoreConfig | null;
 }
 
 export class DefaultKeyManagerFactory extends KeyManagerFactory<DefaultKeyManagerConfig> {
-  public readonly type = 'DefaultKeyManager';
+  public readonly type = "DefaultKeyManager";
   public readonly isDefault = true;
   public readonly priority = 100;
 
@@ -23,7 +27,7 @@ export class DefaultKeyManagerFactory extends KeyManagerFactory<DefaultKeyManage
     keyStore?: KeyStore | null
   ): Promise<DefaultKeyManager> {
     const resolvedConfig: DefaultKeyManagerConfig = {
-      type: 'DefaultKeyManager',
+      type: "DefaultKeyManager",
       ...(config ?? {}),
     } as DefaultKeyManagerConfig;
 
@@ -41,9 +45,7 @@ export class DefaultKeyManagerFactory extends KeyManagerFactory<DefaultKeyManage
   }
 }
 
-registerFactory(
-  KEY_MANAGER_FACTORY_BASE_TYPE,
-  'DefaultKeyManager',
-  DefaultKeyManagerFactory,
-  { isDefault: true, priority: 100 }
-);
+registerFactory(KEY_MANAGER_FACTORY_BASE_TYPE, "DefaultKeyManager", DefaultKeyManagerFactory, {
+  isDefault: true,
+  priority: 100,
+});

@@ -3,18 +3,18 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { createAuthorizationContext } from 'naylence-core';
+} from "naylence-core";
+import { createAuthorizationContext } from "naylence-core";
 
-import type { Authorizer } from './authorizer.js';
-import type { NodeLike } from '../../node/node-like.js';
+import type { Authorizer } from "./authorizer.js";
+import type { NodeLike } from "../../node/node-like.js";
 
 function isAuthorizationContext(value: unknown): value is AuthorizationContext {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      'authenticated' in (value as Record<string, unknown>) &&
-      typeof (value as Record<string, unknown>).authenticated === 'boolean'
+      typeof value === "object" &&
+      "authenticated" in (value as Record<string, unknown>) &&
+      typeof (value as Record<string, unknown>).authenticated === "boolean"
   );
 }
 
@@ -25,7 +25,7 @@ function buildAuthorizationContext(
   const sanitized = { ...rest } as Partial<AuthorizationContext>;
   const authenticated = true;
   const authorized = true;
-  const authMethod = sanitized.authMethod ?? 'noop_authorizer';
+  const authMethod = sanitized.authMethod ?? "noop_authorizer";
 
   delete sanitized.authenticated;
   delete sanitized.authorized;

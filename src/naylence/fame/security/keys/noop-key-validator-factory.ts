@@ -1,18 +1,18 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
 import {
   ATTACHMENT_KEY_VALIDATOR_FACTORY_BASE_TYPE,
   AttachmentKeyValidatorFactory,
   type AttachmentKeyValidatorConfig,
-} from './attachment-key-validator-factory.js';
-import { NoopKeyValidator } from './noop-key-validator.js';
+} from "./attachment-key-validator-factory.js";
+import { NoopKeyValidator } from "./noop-key-validator.js";
 
 export interface NoopKeyValidatorConfig extends AttachmentKeyValidatorConfig {
-  type: 'NoopKeyValidator';
+  type: "NoopKeyValidator";
 }
 
 export class NoopKeyValidatorFactory extends AttachmentKeyValidatorFactory<NoopKeyValidatorConfig> {
-  public readonly type = 'NoopKeyValidator';
+  public readonly type = "NoopKeyValidator";
   public readonly isDefault = true;
   public readonly priority = 0;
 
@@ -26,7 +26,7 @@ export class NoopKeyValidatorFactory extends AttachmentKeyValidatorFactory<NoopK
 
 registerFactory(
   ATTACHMENT_KEY_VALIDATOR_FACTORY_BASE_TYPE,
-  'NoopKeyValidator',
+  "NoopKeyValidator",
   NoopKeyValidatorFactory,
   { isDefault: true, priority: 0 }
 );

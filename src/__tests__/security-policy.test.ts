@@ -1,13 +1,13 @@
-import { DeliveryOriginType, type FameDeliveryContext, type FameEnvelope } from 'naylence-core';
+import { DeliveryOriginType, type FameDeliveryContext, type FameEnvelope } from "naylence-core";
 
-import type { NodeLike } from '../naylence/fame/node/node-like';
+import type { NodeLike } from "../naylence/fame/node/node-like";
 import {
   DefaultSecurityPolicy,
   type DefaultSecurityPolicyOptions,
-} from '../naylence/fame/security/policy/default-security-policy';
-import { DefaultSecurityPolicyFactory } from '../naylence/fame/security/policy/default-security-policy-factory';
-import { NoSecurityPolicy } from '../naylence/fame/security/policy/no-security-policy';
-import { NoSecurityPolicyFactory } from '../naylence/fame/security/policy/no-security-policy-factory';
+} from "../naylence/fame/security/policy/default-security-policy";
+import { DefaultSecurityPolicyFactory } from "../naylence/fame/security/policy/default-security-policy-factory";
+import { NoSecurityPolicy } from "../naylence/fame/security/policy/no-security-policy";
+import { NoSecurityPolicyFactory } from "../naylence/fame/security/policy/no-security-policy-factory";
 import {
   CryptoLevel,
   SecurityAction,
@@ -19,18 +19,18 @@ import {
   normalizeEncryptionConfig,
   normalizeSecurityRequirements,
   normalizeSigningConfig,
-} from '../naylence/fame/security/policy/security-policy';
+} from "../naylence/fame/security/policy/security-policy";
 import {
   SECURITY_POLICY_FACTORY_BASE_TYPE,
   SecurityPolicyFactory,
-} from '../naylence/fame/security/policy/security-policy-factory';
-import { ResourceFactoryRegistry } from 'naylence-factory';
+} from "../naylence/fame/security/policy/security-policy-factory";
+import { ResourceFactoryRegistry } from "naylence-factory";
 
 function makeEnvelope(overrides: Partial<FameEnvelope> = {}): FameEnvelope {
-  const frame = overrides.frame ?? ({ type: 'Data', payload: {} } as any);
+  const frame = overrides.frame ?? ({ type: "Data", payload: {} } as any);
   return {
     id: overrides.id ?? `env-${Math.random().toString(36).slice(2)}`,
-    frame: frame as FameEnvelope['frame'],
+    frame: frame as FameEnvelope["frame"],
     meta: overrides.meta ?? {},
     sec: overrides.sec,
     to: overrides.to,
@@ -75,8 +75,8 @@ function makePolicy(options: DefaultSecurityPolicyOptions = {}): DefaultSecurity
     options.encryption instanceof EncryptionConfiguration
       ? options.encryption
       : new EncryptionConfiguration({
-          supportedChannelAlgorithms: ['channel-alg'],
-          supportedSealedAlgorithms: ['sealed-alg'],
+          supportedChannelAlgorithms: ["channel-alg"],
+          supportedSealedAlgorithms: ["sealed-alg"],
           inbound: {
             allowPlaintext: true,
             allowChannel: true,
@@ -105,23 +105,23 @@ function makePolicy(options: DefaultSecurityPolicyOptions = {}): DefaultSecurity
 }
 
 const SAMPLE_KEY = {
-  kid: 'key-1',
-  use: 'enc',
-  kty: 'OKP',
-  crv: 'X25519',
-  x: 'AAAAAAAAAAAAAAAAAAAAAA',
+  kid: "key-1",
+  use: "enc",
+  kty: "OKP",
+  crv: "X25519",
+  x: "AAAAAAAAAAAAAAAAAAAAAA",
 };
 
 function makeNodeStub(
-  options: { physicalPath?: string; cryptoProvider?: Partial<NodeLike['cryptoProvider']> } = {}
+  options: { physicalPath?: string; cryptoProvider?: Partial<NodeLike["cryptoProvider"]> } = {}
 ): NodeLike {
-  const physicalPath = options.physicalPath ?? '/node/path';
+  const physicalPath = options.physicalPath ?? "/node/path";
   const cryptoProvider = (options.cryptoProvider ?? {
     getJwks: () => ({ keys: [] }),
-  }) as NodeLike['cryptoProvider'];
+  }) as NodeLike["cryptoProvider"];
 
   return {
-    id: 'node-stub',
+    id: "node-stub",
     sid: null,
     physicalPath,
     acceptedLogicals: new Set<string>(),
@@ -129,7 +129,7 @@ function makeNodeStub(
       createEnvelope: jest.fn(),
     } as any,
     deliveryPolicy: null,
-    defaultBindingPath: '/',
+    defaultBindingPath: "/",
     hasParent: false,
     securityManager: null,
     admissionClient: null,
@@ -145,8 +145,8 @@ function makeNodeStub(
     bind: jest.fn(async () => ({}) as any),
     unbind: jest.fn(async () => {}),
     send: jest.fn(async () => null),
-    listen: jest.fn(async () => '' as any),
-    listenRpc: jest.fn(async () => '' as any),
+    listen: jest.fn(async () => "" as any),
+    listenRpc: jest.fn(async () => "" as any),
     invoke: jest.fn(async () => null),
     invokeByCapability: jest.fn(async () => null),
   } as unknown as NodeLike;
@@ -157,8 +157,8 @@ afterEach(() => {
   ResourceFactoryRegistry.clearCache();
 });
 
-describe('NoSecurityPolicy', () => {
-  it('returns defaults for signing and encryption decisions', async () => {
+describe("NoSecurityPolicy", () => {
+  it("returns defaults for signing and encryption decisions", async () => {
     const policy = new NoSecurityPolicy();
     const envelope = makeEnvelope();
 
@@ -168,10 +168,10 @@ describe('NoSecurityPolicy', () => {
     expect(await policy.shouldVerifySignature(envelope)).toBe(false);
   });
 
-  it('decrypts only encrypted envelopes and reports plaintext requirements', async () => {
+  it("decrypts only encrypted envelopes and reports plaintext requirements", async () => {
     const policy = new NoSecurityPolicy();
     const plain = makeEnvelope();
-    const encrypted = makeEnvelope({ sec: { enc: { alg: 'sealed' } } as any });
+    const encrypted = makeEnvelope({ sec: { enc: { alg: "sealed" } } as any });
 
     expect(await policy.shouldDecryptEnvelope(plain)).toBe(false);
     expect(await policy.shouldDecryptEnvelope(encrypted)).toBe(true);
@@ -182,7 +182,7 @@ describe('NoSecurityPolicy', () => {
     expect(requirements.minimumCryptoLevel).toBe(CryptoLevel.PLAINTEXT);
   });
 
-  it('allows inbound crypto and uses allow actions for unsigned cases', async () => {
+  it("allows inbound crypto and uses allow actions for unsigned cases", async () => {
     const policy = new NoSecurityPolicy();
     const envelope = makeEnvelope();
 
@@ -200,8 +200,8 @@ describe('NoSecurityPolicy', () => {
   });
 });
 
-describe('DefaultSecurityPolicy', () => {
-  it('honors custom signing policy overrides', async () => {
+describe("DefaultSecurityPolicy", () => {
+  it("honors custom signing policy overrides", async () => {
     const customSigning = jest.fn().mockResolvedValue(true);
     const policy = makePolicy({ customSigningPolicy: customSigning });
     const envelope = makeEnvelope();
@@ -210,12 +210,12 @@ describe('DefaultSecurityPolicy', () => {
     expect(customSigning).toHaveBeenCalledWith(envelope, undefined, undefined);
   });
 
-  it('falls back to default signing when custom policy is non-boolean', async () => {
-    const customSigning = jest.fn().mockResolvedValue('skip-it');
+  it("falls back to default signing when custom policy is non-boolean", async () => {
+    const customSigning = jest.fn().mockResolvedValue("skip-it");
     const policy = makePolicy({ customSigningPolicy: customSigning });
-    const encryptSpy = jest.spyOn(policy, 'shouldEncryptEnvelope').mockResolvedValue(false);
+    const encryptSpy = jest.spyOn(policy, "shouldEncryptEnvelope").mockResolvedValue(false);
     const outboundSpy = jest
-      .spyOn(policy as any, 'shouldSignOutboundRequest')
+      .spyOn(policy as any, "shouldSignOutboundRequest")
       .mockReturnValue(true);
 
     expect(await policy.shouldSignEnvelope(makeEnvelope(), makeContext())).toBe(true);
@@ -224,14 +224,14 @@ describe('DefaultSecurityPolicy', () => {
     outboundSpy.mockRestore();
   });
 
-  it('skips signing when envelope already contains signature', async () => {
+  it("skips signing when envelope already contains signature", async () => {
     const policy = makePolicy();
-    const envelope = makeEnvelope({ sec: { sig: { alg: 'EdDSA' } } as any });
+    const envelope = makeEnvelope({ sec: { sig: { alg: "EdDSA" } } as any });
 
     expect(await policy.shouldSignEnvelope(envelope)).toBe(false);
   });
 
-  it('requires signing when encryption will be applied', async () => {
+  it("requires signing when encryption will be applied", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -253,13 +253,13 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
     const envelope = makeEnvelope();
-    const spy = jest.spyOn(policy, 'shouldEncryptEnvelope').mockResolvedValue(true);
+    const spy = jest.spyOn(policy, "shouldEncryptEnvelope").mockResolvedValue(true);
 
     expect(await policy.shouldSignEnvelope(envelope, makeContext())).toBe(true);
     spy.mockRestore();
   });
 
-  it('mirrors signatures for signed inbound responses', async () => {
+  it("mirrors signatures for signed inbound responses", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -283,14 +283,14 @@ describe('DefaultSecurityPolicy', () => {
 
     const envelope = makeEnvelope();
     const context = makeContext({
-      meta: { 'message-type': 'response' },
+      meta: { "message-type": "response" },
       security: { inboundWasSigned: true },
     });
 
     expect(await policy.shouldSignEnvelope(envelope, context)).toBe(true);
   });
 
-  it('mirrors signatures for responses to encrypted inbound requests', async () => {
+  it("mirrors signatures for responses to encrypted inbound requests", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -313,41 +313,41 @@ describe('DefaultSecurityPolicy', () => {
     });
 
     const context = makeContext({
-      meta: { 'message-type': 'response' },
+      meta: { "message-type": "response" },
       security: { inboundCryptoLevel: CryptoLevel.CHANNEL },
     });
 
     expect(await policy.shouldSignEnvelope(makeEnvelope(), context)).toBe(true);
   });
 
-  it('computes response signing using inbound signature flag', () => {
+  it("computes response signing using inbound signature flag", () => {
     const policy = makePolicy();
     const context = makeContext({
-      meta: { 'message-type': 'response' },
+      meta: { "message-type": "response" },
       security: { inboundWasSigned: true },
     });
 
     expect((policy as any).shouldSignResponse(makeEnvelope(), context)).toBe(true);
   });
 
-  it('computes response signing using inbound encryption level', () => {
+  it("computes response signing using inbound encryption level", () => {
     const policy = makePolicy();
     const context = makeContext({
-      meta: { 'message-type': 'response' },
+      meta: { "message-type": "response" },
       security: { inboundCryptoLevel: CryptoLevel.SEALED },
     });
 
     expect((policy as any).shouldSignResponse(makeEnvelope(), context)).toBe(true);
   });
 
-  it('returns false from response signing when no conditions match', () => {
+  it("returns false from response signing when no conditions match", () => {
     const policy = makePolicy();
-    const context = makeContext({ meta: { 'message-type': 'response' } });
+    const context = makeContext({ meta: { "message-type": "response" } });
 
     expect((policy as any).shouldSignResponse(makeEnvelope(), context)).toBe(false);
   });
 
-  it('signs error responses when configured to do so', async () => {
+  it("signs error responses when configured to do so", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -369,13 +369,13 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
 
-    const envelope = makeEnvelope({ frame: { type: 'Error' } as any });
-    const context = makeContext({ meta: { 'message-type': 'response' } });
+    const envelope = makeEnvelope({ frame: { type: "Error" } as any });
+    const context = makeContext({ meta: { "message-type": "response" } });
 
     expect(await policy.shouldSignEnvelope(envelope, context)).toBe(true);
   });
 
-  it('always signs responses when configured without mirroring', async () => {
+  it("always signs responses when configured without mirroring", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -398,11 +398,11 @@ describe('DefaultSecurityPolicy', () => {
     });
 
     const envelope = makeEnvelope();
-    const context = makeContext({ meta: { 'message-type': 'response' } });
+    const context = makeContext({ meta: { "message-type": "response" } });
     expect(await policy.shouldSignEnvelope(envelope, context)).toBe(true);
   });
 
-  it('consults response signing rules when encryption requires signing but mirroring is disabled', async () => {
+  it("consults response signing rules when encryption requires signing but mirroring is disabled", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -423,9 +423,9 @@ describe('DefaultSecurityPolicy', () => {
         },
       }),
     });
-    const encryptSpy = jest.spyOn(policy, 'shouldEncryptEnvelope').mockResolvedValue(true);
-    const responseSpy = jest.spyOn(policy as any, 'shouldSignResponse').mockReturnValue(false);
-    const context = makeContext({ meta: { 'message-type': 'response' } });
+    const encryptSpy = jest.spyOn(policy, "shouldEncryptEnvelope").mockResolvedValue(true);
+    const responseSpy = jest.spyOn(policy as any, "shouldSignResponse").mockReturnValue(false);
+    const context = makeContext({ meta: { "message-type": "response" } });
 
     expect(await policy.shouldSignEnvelope(makeEnvelope(), context)).toBe(false);
     expect(encryptSpy).toHaveBeenCalled();
@@ -435,7 +435,7 @@ describe('DefaultSecurityPolicy', () => {
     responseSpy.mockRestore();
   });
 
-  it('signs outbound sensitive operations when enabled', async () => {
+  it("signs outbound sensitive operations when enabled", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -459,7 +459,7 @@ describe('DefaultSecurityPolicy', () => {
     const sensitivitySpy = jest
       .spyOn(
         policy as unknown as { isSensitiveOperation: (envelope: FameEnvelope) => boolean },
-        'isSensitiveOperation'
+        "isSensitiveOperation"
       )
       .mockReturnValue(true);
 
@@ -468,7 +468,7 @@ describe('DefaultSecurityPolicy', () => {
     sensitivitySpy.mockRestore();
   });
 
-  it('signs outbound requests when recipient expects signatures', async () => {
+  it("signs outbound requests when recipient expects signatures", async () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -493,7 +493,7 @@ describe('DefaultSecurityPolicy', () => {
     expect(await policy.shouldSignEnvelope(makeEnvelope(), makeContext())).toBe(true);
   });
 
-  it('determines encryption requirements based on context and headers', async () => {
+  it("determines encryption requirements based on context and headers", async () => {
     const policy = makePolicy();
     const envelope = makeEnvelope();
 
@@ -506,13 +506,13 @@ describe('DefaultSecurityPolicy', () => {
     expect(await policy.shouldEncryptEnvelope(encryptedEnvelope, makeContext())).toBe(false);
 
     const decisionSpy = jest
-      .spyOn(policy, 'decideOutboundCryptoLevel')
+      .spyOn(policy, "decideOutboundCryptoLevel")
       .mockResolvedValue(CryptoLevel.SEALED);
     expect(await policy.shouldEncryptEnvelope(envelope, makeContext())).toBe(true);
     decisionSpy.mockRestore();
   });
 
-  it('honors custom encryption policy decisions', async () => {
+  it("honors custom encryption policy decisions", async () => {
     const customEncryption = jest.fn().mockResolvedValue(false);
     const policy = makePolicy({ customEncryptionPolicy: customEncryption });
     const envelope = makeEnvelope();
@@ -521,12 +521,12 @@ describe('DefaultSecurityPolicy', () => {
     expect(customEncryption).toHaveBeenCalled();
   });
 
-  it('falls back to outbound decision when custom encryption policy is non-boolean', async () => {
-    const customEncryption = jest.fn().mockResolvedValue('escalate');
+  it("falls back to outbound decision when custom encryption policy is non-boolean", async () => {
+    const customEncryption = jest.fn().mockResolvedValue("escalate");
     const policy = makePolicy({ customEncryptionPolicy: customEncryption });
     const envelope = makeEnvelope();
     const outboundSpy = jest
-      .spyOn(policy, 'decideOutboundCryptoLevel')
+      .spyOn(policy, "decideOutboundCryptoLevel")
       .mockResolvedValue(CryptoLevel.CHANNEL);
 
     expect(await policy.shouldEncryptEnvelope(envelope, makeContext())).toBe(true);
@@ -534,11 +534,11 @@ describe('DefaultSecurityPolicy', () => {
     outboundSpy.mockRestore();
   });
 
-  it('encrypts responses when mirroring sealed requests', async () => {
+  it("encrypts responses when mirroring sealed requests", async () => {
     const policy = makePolicy({
       encryption: new EncryptionConfiguration({
-        supportedChannelAlgorithms: ['channel-alg'],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedChannelAlgorithms: ["channel-alg"],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: true,
@@ -562,33 +562,33 @@ describe('DefaultSecurityPolicy', () => {
 
     const context = makeContext({
       originType: DeliveryOriginType.LOCAL,
-      meta: { 'message-type': 'response' },
+      meta: { "message-type": "response" },
       security: { inboundCryptoLevel: CryptoLevel.SEALED },
     });
 
     expect(await policy.shouldEncryptEnvelope(makeEnvelope(), context)).toBe(true);
   });
 
-  it('returns channel encryption options when channel should be used', async () => {
+  it("returns channel encryption options when channel should be used", async () => {
     const policy = makePolicy();
-    const envelope = makeEnvelope({ to: 'peer@/channel' });
+    const envelope = makeEnvelope({ to: "peer@/channel" });
     const channelSpy = jest
       .spyOn(
         policy as unknown as { shouldUseChannelEncryption: (...args: any[]) => Promise<boolean> },
-        'shouldUseChannelEncryption'
+        "shouldUseChannelEncryption"
       )
       .mockResolvedValue(true);
 
     const options = await policy.getEncryptionOptions(envelope, makeContext());
     expect(options).toEqual({
-      encryptionType: 'channel',
-      destination: 'peer@/channel',
+      encryptionType: "channel",
+      destination: "peer@/channel",
     });
 
     channelSpy.mockRestore();
   });
 
-  it('evaluates channel encryption helper across scenarios', async () => {
+  it("evaluates channel encryption helper across scenarios", async () => {
     const policy = makePolicy();
     const helper = policy as unknown as {
       shouldUseChannelEncryption: (
@@ -610,7 +610,7 @@ describe('DefaultSecurityPolicy', () => {
         makeEnvelope(),
         makeContext({
           originType: DeliveryOriginType.LOCAL,
-          meta: { 'message-type': 'response' },
+          meta: { "message-type": "response" },
           security: { inboundCryptoLevel: CryptoLevel.SEALED },
         })
       )
@@ -618,8 +618,8 @@ describe('DefaultSecurityPolicy', () => {
 
     const desiredLevelPolicy = makePolicy({
       encryption: new EncryptionConfiguration({
-        supportedChannelAlgorithms: ['channel-alg'],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedChannelAlgorithms: ["channel-alg"],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: true,
@@ -641,7 +641,7 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
     const decideSpy = jest
-      .spyOn(desiredLevelPolicy, 'decideOutboundCryptoLevel')
+      .spyOn(desiredLevelPolicy, "decideOutboundCryptoLevel")
       .mockResolvedValue(CryptoLevel.CHANNEL);
 
     expect(
@@ -672,7 +672,7 @@ describe('DefaultSecurityPolicy', () => {
         makeEnvelope(),
         makeContext({
           originType: DeliveryOriginType.LOCAL,
-          meta: { 'message-type': 'response' },
+          meta: { "message-type": "response" },
         })
       )
     ).toBe(true);
@@ -680,7 +680,7 @@ describe('DefaultSecurityPolicy', () => {
     decideSpy.mockRestore();
   });
 
-  it('rejects channel encryption for non-data or pre-encrypted envelopes', async () => {
+  it("rejects channel encryption for non-data or pre-encrypted envelopes", async () => {
     const policy = makePolicy();
     const helper = policy as unknown as {
       shouldUseChannelEncryption: (
@@ -692,55 +692,55 @@ describe('DefaultSecurityPolicy', () => {
 
     expect(
       await helper.shouldUseChannelEncryption(
-        makeEnvelope({ frame: { type: 'Error' } as any }),
+        makeEnvelope({ frame: { type: "Error" } as any }),
         makeContext({ originType: DeliveryOriginType.LOCAL })
       )
     ).toBe(false);
 
     expect(
       await helper.shouldUseChannelEncryption(
-        makeEnvelope({ sec: { enc: { alg: 'sealed' } } as any }),
+        makeEnvelope({ sec: { enc: { alg: "sealed" } } as any }),
         makeContext({ originType: DeliveryOriginType.LOCAL })
       )
     ).toBe(false);
   });
 
-  it('fetches recipient encryption keys when available locally', async () => {
+  it("fetches recipient encryption keys when available locally", async () => {
     const keyProvider = {
       getKey: jest.fn(),
       getKeysForPath: jest.fn(async () => [SAMPLE_KEY]),
     };
     const policy = makePolicy({ keyProvider });
-    const envelope = makeEnvelope({ to: 'peer@/path' });
+    const envelope = makeEnvelope({ to: "peer@/path" });
     const channelSpy = jest
       .spyOn(
         policy as unknown as { shouldUseChannelEncryption: (...args: any[]) => Promise<boolean> },
-        'shouldUseChannelEncryption'
+        "shouldUseChannelEncryption"
       )
       .mockResolvedValue(false);
 
     const options = await policy.getEncryptionOptions(envelope, makeContext());
     expect(options).toBeDefined();
-    expect(options).toMatchObject({ recipientKeyId: 'key-1' });
+    expect(options).toMatchObject({ recipientKeyId: "key-1" });
     expect(options?.recipientPublicKey).toBeInstanceOf(Uint8Array);
     expect(keyProvider.getKeysForPath).toHaveBeenCalled();
 
     channelSpy.mockRestore();
   });
 
-  it('falls back to upstream key request when no key is found', async () => {
+  it("falls back to upstream key request when no key is found", async () => {
     const policy = makePolicy({
       keyProvider: {
         getKey: jest.fn(),
         getKeysForPath: jest.fn(async () => []),
       },
     });
-    const envelope = makeEnvelope({ to: 'peer@/path' });
+    const envelope = makeEnvelope({ to: "peer@/path" });
 
     jest
       .spyOn(
         policy as unknown as { shouldUseChannelEncryption: (...args: any[]) => Promise<boolean> },
-        'shouldUseChannelEncryption'
+        "shouldUseChannelEncryption"
       )
       .mockResolvedValue(false);
     jest
@@ -748,32 +748,32 @@ describe('DefaultSecurityPolicy', () => {
         policy as unknown as {
           lookupRecipientEncryptionKey: (...args: any[]) => Promise<[string, Uint8Array]>;
         },
-        'lookupRecipientEncryptionKey'
+        "lookupRecipientEncryptionKey"
       )
-      .mockRejectedValue(new Error('missing'));
+      .mockRejectedValue(new Error("missing"));
 
     const options = await policy.getEncryptionOptions(envelope, makeContext());
-    expect(options).toEqual({ requestAddress: 'peer@/path' });
+    expect(options).toEqual({ requestAddress: "peer@/path" });
   });
 
-  it('returns undefined encryption options when destination is absent', async () => {
+  it("returns undefined encryption options when destination is absent", async () => {
     const policy = makePolicy();
     expect(await policy.getEncryptionOptions(makeEnvelope({ to: undefined }))).toBeUndefined();
   });
 
-  it('skips malformed keys when looking up recipient encryption material', async () => {
+  it("skips malformed keys when looking up recipient encryption material", async () => {
     const invalidMetadataKey = {
       kid: null,
-      use: 'enc',
-      kty: 'OKP',
-      crv: 'X25519',
-      x: 'AAAAAAAAAAAAAAAAAAAAAA',
+      use: "enc",
+      kty: "OKP",
+      crv: "X25519",
+      x: "AAAAAAAAAAAAAAAAAAAAAA",
     };
     const missingXKey = {
-      kid: 'missing-x',
-      use: 'enc',
-      kty: 'OKP',
-      crv: 'X25519',
+      kid: "missing-x",
+      use: "enc",
+      kty: "OKP",
+      crv: "X25519",
     };
     const keyProvider = {
       getKey: jest.fn(),
@@ -793,19 +793,19 @@ describe('DefaultSecurityPolicy', () => {
             nodePath?: string
           ) => Promise<[string, Uint8Array]>;
         }
-      ).lookupRecipientEncryptionKey('peer@/path')
-    ).rejects.toThrow('No encryption key found');
+      ).lookupRecipientEncryptionKey("peer@/path")
+    ).rejects.toThrow("No encryption key found");
 
     expect(keyProvider.getKeysForPath).toHaveBeenCalledTimes(1);
   });
 
-  it('looks up recipient keys across derived paths and participants', async () => {
+  it("looks up recipient keys across derived paths and participants", async () => {
     const pathKey = {
-      kid: 'path-key',
-      use: 'enc',
-      kty: 'OKP',
-      crv: 'X25519',
-      x: 'AAAAAAAAAAAAAAAAAAAAAA',
+      kid: "path-key",
+      use: "enc",
+      kty: "OKP",
+      crv: "X25519",
+      x: "AAAAAAAAAAAAAAAAAAAAAA",
     };
     const fallbackKeyProvider = {
       getKey: jest.fn(),
@@ -824,19 +824,19 @@ describe('DefaultSecurityPolicy', () => {
           nodePath?: string
         ) => Promise<[string, Uint8Array]>;
       }
-    ).lookupRecipientEncryptionKey('peer@/path');
+    ).lookupRecipientEncryptionKey("peer@/path");
 
-    expect(kid).toBe('path-key');
+    expect(kid).toBe("path-key");
     expect(fallbackKeyProvider.getKeysForPath).toHaveBeenCalledTimes(2);
   });
 
-  it('fetches participant-level keys when direct and path lookups are empty', async () => {
+  it("fetches participant-level keys when direct and path lookups are empty", async () => {
     const participantKey = {
-      kid: 'participant-key',
-      use: 'enc',
-      kty: 'OKP',
-      crv: 'X25519',
-      x: 'AAAAAAAAAAAAAAAAAAAAAA',
+      kid: "participant-key",
+      use: "enc",
+      kty: "OKP",
+      crv: "X25519",
+      x: "AAAAAAAAAAAAAAAAAAAAAA",
     };
     const keyProvider = {
       getKey: jest.fn(),
@@ -855,20 +855,20 @@ describe('DefaultSecurityPolicy', () => {
           nodePath?: string
         ) => Promise<[string, Uint8Array]>;
       }
-    ).lookupRecipientEncryptionKey('peer@/path');
+    ).lookupRecipientEncryptionKey("peer@/path");
 
-    expect(result[0]).toBe('participant-key');
+    expect(result[0]).toBe("participant-key");
     expect(result[1]).toBeInstanceOf(Uint8Array);
     expect(keyProvider.getKeysForPath).toHaveBeenCalledTimes(3);
   });
 
-  it('supports FameAddress-like objects during recipient key resolution', async () => {
+  it("supports FameAddress-like objects during recipient key resolution", async () => {
     const keyProvider = {
       getKey: jest.fn(),
       getKeysForPath: jest.fn(async () => [SAMPLE_KEY]),
     };
     const policy = makePolicy({ keyProvider });
-    const addressLike = { toString: () => 'peer@/path' } as any;
+    const addressLike = { toString: () => "peer@/path" } as any;
 
     const [kid, keyBytes] = await (
       policy as unknown as {
@@ -879,11 +879,11 @@ describe('DefaultSecurityPolicy', () => {
       }
     ).lookupRecipientEncryptionKey(addressLike);
 
-    expect(kid).toBe('key-1');
+    expect(kid).toBe("key-1");
     expect(keyBytes).toBeInstanceOf(Uint8Array);
   });
 
-  it('throws when recipient address cannot be converted to a string', async () => {
+  it("throws when recipient address cannot be converted to a string", async () => {
     const keyProvider = {
       getKey: jest.fn(),
       getKeysForPath: jest.fn(),
@@ -897,13 +897,13 @@ describe('DefaultSecurityPolicy', () => {
             address: string | undefined
           ) => Promise<[string, Uint8Array]>;
         }
-      ).lookupRecipientEncryptionKey('' as unknown as string)
-    ).rejects.toThrow('No recipient address in envelope');
+      ).lookupRecipientEncryptionKey("" as unknown as string)
+    ).rejects.toThrow("No recipient address in envelope");
   });
 
-  it('returns null for mismatched local node paths during key resolution', async () => {
+  it("returns null for mismatched local node paths during key resolution", async () => {
     const policy = makePolicy();
-    const node = makeNodeStub({ physicalPath: '/other/path' });
+    const node = makeNodeStub({ physicalPath: "/other/path" });
     const result = await (
       policy as unknown as {
         tryResolveLocalEncryptionKey: (
@@ -911,12 +911,12 @@ describe('DefaultSecurityPolicy', () => {
           nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', node);
+    ).tryResolveLocalEncryptionKey("/local/path", node);
 
     expect(result).toBeNull();
   });
 
-  it('throws when recipient address lacks participant component', async () => {
+  it("throws when recipient address lacks participant component", async () => {
     const policy = makePolicy({
       keyProvider: {
         getKey: jest.fn(),
@@ -932,18 +932,18 @@ describe('DefaultSecurityPolicy', () => {
             nodePath?: string
           ) => Promise<[string, Uint8Array]>;
         }
-      ).lookupRecipientEncryptionKey('/invalid-address')
+      ).lookupRecipientEncryptionKey("/invalid-address")
     ).rejects.toThrow(/Missing '@' in address/);
   });
 
-  it('falls back to default key provider when none is configured', async () => {
-    const keyModule = await import('../naylence/fame/security/keys/key-provider');
+  it("falls back to default key provider when none is configured", async () => {
+    const keyModule = await import("../naylence/fame/security/keys/key-provider");
     const providerMock = {
       getKey: jest.fn(),
       getKeysForPath: jest.fn(async () => [SAMPLE_KEY]),
     };
     const getProviderSpy = jest
-      .spyOn(keyModule, 'getKeyProvider')
+      .spyOn(keyModule, "getKeyProvider")
       .mockReturnValue(providerMock as any);
     const policy = makePolicy();
 
@@ -954,14 +954,14 @@ describe('DefaultSecurityPolicy', () => {
           nodePath?: string
         ) => Promise<[string, Uint8Array]>;
       }
-    ).lookupRecipientEncryptionKey('peer@/path');
+    ).lookupRecipientEncryptionKey("peer@/path");
 
-    expect(kid).toBe('key-1');
+    expect(kid).toBe("key-1");
     expect(getProviderSpy).toHaveBeenCalled();
     getProviderSpy.mockRestore();
   });
 
-  it('throws after exhausting all recipient key lookup strategies', async () => {
+  it("throws after exhausting all recipient key lookup strategies", async () => {
     const keyProvider = {
       getKey: jest.fn(),
       getKeysForPath: jest.fn(async () => []),
@@ -976,11 +976,11 @@ describe('DefaultSecurityPolicy', () => {
             nodePath?: string
           ) => Promise<[string, Uint8Array]>;
         }
-      ).lookupRecipientEncryptionKey('peer@/path')
-    ).rejects.toThrow('No encryption key found for address peer@/path');
+      ).lookupRecipientEncryptionKey("peer@/path")
+    ).rejects.toThrow("No encryption key found for address peer@/path");
   });
 
-  it('prefers local crypto provider keys when available', async () => {
+  it("prefers local crypto provider keys when available", async () => {
     const policy = makePolicy({
       keyProvider: {
         getKey: jest.fn(),
@@ -990,12 +990,12 @@ describe('DefaultSecurityPolicy', () => {
     const cryptoProvider = {
       getJwks: () => ({
         keys: [
-          { use: 'enc', kty: 'OKP', crv: 'X25519', kid: 'local', x: 'AAAAAAAAAAAAAAAAAAAAAA' },
+          { use: "enc", kty: "OKP", crv: "X25519", kid: "local", x: "AAAAAAAAAAAAAAAAAAAAAA" },
         ],
       }),
     };
     const node = makeNodeStub({
-      physicalPath: '/local/path',
+      physicalPath: "/local/path",
       cryptoProvider: cryptoProvider as any,
     });
 
@@ -1006,20 +1006,20 @@ describe('DefaultSecurityPolicy', () => {
           nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', node);
+    ).tryResolveLocalEncryptionKey("/local/path", node);
 
-    expect(result).toEqual(['local', expect.any(Uint8Array)]);
+    expect(result).toEqual(["local", expect.any(Uint8Array)]);
   });
 
-  it('skips invalid local crypto provider keys', async () => {
+  it("skips invalid local crypto provider keys", async () => {
     const policy = makePolicy();
     const cryptoProvider = {
       getJwks: () => ({
-        keys: [{ use: 'enc', kty: 'OKP', crv: 'X25519', kid: 'bad-local' }],
+        keys: [{ use: "enc", kty: "OKP", crv: "X25519", kid: "bad-local" }],
       }),
     };
     const node = makeNodeStub({
-      physicalPath: '/local/path',
+      physicalPath: "/local/path",
       cryptoProvider: cryptoProvider as any,
     });
 
@@ -1030,12 +1030,12 @@ describe('DefaultSecurityPolicy', () => {
           nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', node);
+    ).tryResolveLocalEncryptionKey("/local/path", node);
 
     expect(result).toBeNull();
   });
 
-  it('ignores local crypto keys that fail validation', async () => {
+  it("ignores local crypto keys that fail validation", async () => {
     const policy = makePolicy({
       keyProvider: {
         getKey: jest.fn(),
@@ -1046,17 +1046,17 @@ describe('DefaultSecurityPolicy', () => {
       getJwks: () => ({
         keys: [
           {
-            use: 'enc',
-            kty: 'OKP',
-            crv: 'Ed25519',
-            kid: 'unsupported-curve',
-            x: 'AAAAAAAAAAAAAAAAAAAAAA',
+            use: "enc",
+            kty: "OKP",
+            crv: "Ed25519",
+            kid: "unsupported-curve",
+            x: "AAAAAAAAAAAAAAAAAAAAAA",
           },
         ],
       }),
     };
     const node = makeNodeStub({
-      physicalPath: '/local/path',
+      physicalPath: "/local/path",
       cryptoProvider: cryptoProvider as any,
     });
 
@@ -1067,12 +1067,12 @@ describe('DefaultSecurityPolicy', () => {
           nodeLike?: NodeLike
         ) => Promise<[string, Uint8Array] | null>;
       }
-    ).tryResolveLocalEncryptionKey('/local/path', node);
+    ).tryResolveLocalEncryptionKey("/local/path", node);
 
     expect(result).toBeNull();
   });
 
-  it('respects inbound signature policies', async () => {
+  it("respects inbound signature policies", async () => {
     const requiredPolicy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -1116,7 +1116,7 @@ describe('DefaultSecurityPolicy', () => {
         },
       }),
     });
-    const signed = makeEnvelope({ sec: { sig: { alg: 'EdDSA' } } as any });
+    const signed = makeEnvelope({ sec: { sig: { alg: "EdDSA" } } as any });
     expect(await optionalPolicy.shouldVerifySignature(signed)).toBe(true);
 
     const disabledPolicy = makePolicy({
@@ -1164,16 +1164,16 @@ describe('DefaultSecurityPolicy', () => {
     expect(await forbiddenPolicy.shouldVerifySignature(signed)).toBe(false);
   });
 
-  it('decrypts local destinations but leaves forwarding traffic encrypted', async () => {
+  it("decrypts local destinations but leaves forwarding traffic encrypted", async () => {
     const policy = makePolicy();
     const node = {
-      physicalPath: '/local/path',
+      physicalPath: "/local/path",
       hasLocal: jest.fn().mockReturnValue(true),
     } as unknown as NodeLike;
 
     const encrypted = makeEnvelope({
-      to: 'peer@/local/path',
-      sec: { enc: { alg: 'sealed-alg' } } as any,
+      to: "peer@/local/path",
+      sec: { enc: { alg: "sealed-alg" } } as any,
     });
 
     expect(await policy.shouldDecryptEnvelope(encrypted, undefined, node)).toBe(true);
@@ -1181,16 +1181,16 @@ describe('DefaultSecurityPolicy', () => {
     (node.hasLocal as jest.Mock).mockReturnValue(false);
     expect(await policy.shouldDecryptEnvelope(encrypted, undefined, node)).toBe(false);
 
-    const fallback = makeEnvelope({ sec: { enc: { alg: 'sealed-alg' } } as any });
+    const fallback = makeEnvelope({ sec: { enc: { alg: "sealed-alg" } } as any });
     expect(await policy.shouldDecryptEnvelope(fallback)).toBe(true);
   });
 
-  it('treats address conversion failures as non-local', () => {
+  it("treats address conversion failures as non-local", () => {
     const policy = makePolicy();
     const node = { hasLocal: jest.fn() } as unknown as NodeLike;
     const badAddress = {
       toString: () => {
-        throw new Error('boom');
+        throw new Error("boom");
       },
     } as any;
 
@@ -1198,11 +1198,11 @@ describe('DefaultSecurityPolicy', () => {
     expect(node.hasLocal as jest.Mock).not.toHaveBeenCalled();
   });
 
-  it('classifies crypto level according to advertised algorithms', () => {
+  it("classifies crypto level according to advertised algorithms", () => {
     const policy = makePolicy({
       encryption: new EncryptionConfiguration({
-        supportedChannelAlgorithms: ['channel-alg'],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedChannelAlgorithms: ["channel-alg"],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: true,
@@ -1224,13 +1224,13 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
 
-    const channelEnvelope = makeEnvelope({ sec: { enc: { alg: 'channel-alg' } } as any });
+    const channelEnvelope = makeEnvelope({ sec: { enc: { alg: "channel-alg" } } as any });
     expect(policy.classifyMessageCryptoLevel(channelEnvelope)).toBe(CryptoLevel.CHANNEL);
 
-    const sealedEnvelope = makeEnvelope({ sec: { enc: { alg: 'sealed-alg' } } as any });
+    const sealedEnvelope = makeEnvelope({ sec: { enc: { alg: "sealed-alg" } } as any });
     expect(policy.classifyMessageCryptoLevel(sealedEnvelope)).toBe(CryptoLevel.SEALED);
 
-    const unknownAlgorithm = makeEnvelope({ sec: { enc: { alg: 'unknown' } } as any });
+    const unknownAlgorithm = makeEnvelope({ sec: { enc: { alg: "unknown" } } as any });
     expect(policy.classifyMessageCryptoLevel(unknownAlgorithm)).toBe(CryptoLevel.SEALED);
 
     const missingAlgorithm = makeEnvelope({ sec: { enc: {} } as any });
@@ -1239,11 +1239,11 @@ describe('DefaultSecurityPolicy', () => {
     expect(policy.classifyMessageCryptoLevel(makeEnvelope())).toBe(CryptoLevel.PLAINTEXT);
   });
 
-  it('evaluates inbound crypto allowances and violation actions', () => {
+  it("evaluates inbound crypto allowances and violation actions", () => {
     const policy = makePolicy({
       encryption: new EncryptionConfiguration({
         supportedChannelAlgorithms: [],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: false,
@@ -1269,23 +1269,23 @@ describe('DefaultSecurityPolicy', () => {
     expect(policy.isInboundCryptoLevelAllowed(CryptoLevel.PLAINTEXT, envelope)).toBe(true);
     expect(policy.isInboundCryptoLevelAllowed(CryptoLevel.CHANNEL, envelope)).toBe(false);
     expect(policy.isInboundCryptoLevelAllowed(CryptoLevel.SEALED, envelope)).toBe(true);
-    expect(policy.isInboundCryptoLevelAllowed('unexpected' as CryptoLevel, envelope)).toBe(false);
+    expect(policy.isInboundCryptoLevelAllowed("unexpected" as CryptoLevel, envelope)).toBe(false);
     expect(policy.getInboundViolationAction(CryptoLevel.CHANNEL, envelope)).toBe(
       SecurityAction.REJECT
     );
     expect(policy.getInboundViolationAction(CryptoLevel.SEALED, envelope)).toBe(
       SecurityAction.NACK
     );
-    expect(policy.getInboundViolationAction('unexpected' as CryptoLevel, envelope)).toBe(
+    expect(policy.getInboundViolationAction("unexpected" as CryptoLevel, envelope)).toBe(
       SecurityAction.NACK
     );
   });
 
-  it('decides response crypto level using mirror and escalation rules', async () => {
+  it("decides response crypto level using mirror and escalation rules", async () => {
     const basePolicy = makePolicy({
       encryption: new EncryptionConfiguration({
-        supportedChannelAlgorithms: ['channel-alg'],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedChannelAlgorithms: ["channel-alg"],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: true,
@@ -1307,7 +1307,7 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
 
-    const dataResponse = makeEnvelope({ frame: { type: 'Data' } as any });
+    const dataResponse = makeEnvelope({ frame: { type: "Data" } as any });
     expect(await basePolicy.decideResponseCryptoLevel(CryptoLevel.PLAINTEXT, dataResponse)).toBe(
       CryptoLevel.CHANNEL
     );
@@ -1315,7 +1315,7 @@ describe('DefaultSecurityPolicy', () => {
     const escalatePolicy = makePolicy({
       encryption: new EncryptionConfiguration({
         supportedChannelAlgorithms: [],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: true,
@@ -1341,13 +1341,13 @@ describe('DefaultSecurityPolicy', () => {
       CryptoLevel.SEALED
     );
 
-    const heartbeat = makeEnvelope({ frame: { type: 'NodeHeartbeat' } as any });
+    const heartbeat = makeEnvelope({ frame: { type: "NodeHeartbeat" } as any });
     expect(await basePolicy.decideResponseCryptoLevel(CryptoLevel.SEALED, heartbeat)).toBe(
       CryptoLevel.PLAINTEXT
     );
   });
 
-  it('escalates outbound crypto level when peer supports sealed messages', async () => {
+  it("escalates outbound crypto level when peer supports sealed messages", async () => {
     const keyProvider = {
       getKey: jest.fn(),
       getKeysForPath: jest.fn(async () => [SAMPLE_KEY]),
@@ -1355,8 +1355,8 @@ describe('DefaultSecurityPolicy', () => {
     const policy = makePolicy({
       keyProvider,
       encryption: new EncryptionConfiguration({
-        supportedChannelAlgorithms: ['channel-alg'],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedChannelAlgorithms: ["channel-alg"],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: true,
@@ -1378,26 +1378,26 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
 
-    const envelope = makeEnvelope({ to: 'peer@/path' });
+    const envelope = makeEnvelope({ to: "peer@/path" });
     expect(await policy.decideOutboundCryptoLevel(envelope, makeContext())).toBe(
       CryptoLevel.SEALED
     );
   });
 
-  it('keeps outbound crypto plaintext for non-data frames', async () => {
+  it("keeps outbound crypto plaintext for non-data frames", async () => {
     const policy = makePolicy();
-    const envelope = makeEnvelope({ frame: { type: 'NodeAttach' } as any, to: 'peer@/path' });
+    const envelope = makeEnvelope({ frame: { type: "NodeAttach" } as any, to: "peer@/path" });
 
     expect(await policy.decideOutboundCryptoLevel(envelope, makeContext())).toBe(
       CryptoLevel.PLAINTEXT
     );
   });
 
-  it('prefers sealed crypto for sensitive operations when enabled', async () => {
+  it("prefers sealed crypto for sensitive operations when enabled", async () => {
     const policy = makePolicy({
       encryption: new EncryptionConfiguration({
-        supportedChannelAlgorithms: ['channel-alg'],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedChannelAlgorithms: ["channel-alg"],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: true,
           allowChannel: true,
@@ -1418,16 +1418,16 @@ describe('DefaultSecurityPolicy', () => {
         },
       }),
     });
-    const sensitiveSpy = jest.spyOn(policy as any, 'isSensitiveOperation').mockReturnValue(true);
+    const sensitiveSpy = jest.spyOn(policy as any, "isSensitiveOperation").mockReturnValue(true);
 
     expect(
-      await policy.decideOutboundCryptoLevel(makeEnvelope({ to: 'peer@/path' }), makeContext())
+      await policy.decideOutboundCryptoLevel(makeEnvelope({ to: "peer@/path" }), makeContext())
     ).toBe(CryptoLevel.SEALED);
 
     sensitiveSpy.mockRestore();
   });
 
-  it('determines signature requirement based on frame type and inbound policy', () => {
+  it("determines signature requirement based on frame type and inbound policy", () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -1449,13 +1449,13 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
 
-    expect(policy.isSignatureRequired(makeEnvelope({ frame: { type: 'KeyRequest' } as any }))).toBe(
+    expect(policy.isSignatureRequired(makeEnvelope({ frame: { type: "KeyRequest" } as any }))).toBe(
       true
     );
-    expect(policy.isSignatureRequired(makeEnvelope({ frame: { type: 'NodeAttach' } as any }))).toBe(
+    expect(policy.isSignatureRequired(makeEnvelope({ frame: { type: "NodeAttach" } as any }))).toBe(
       false
     );
-    expect(policy.isSignatureRequired(makeEnvelope({ frame: { type: 'Data' } as any }))).toBe(true);
+    expect(policy.isSignatureRequired(makeEnvelope({ frame: { type: "Data" } as any }))).toBe(true);
 
     const forbidden = makePolicy({
       signing: new SigningConfiguration({
@@ -1478,13 +1478,13 @@ describe('DefaultSecurityPolicy', () => {
       }),
     });
     const signedEnvelope = makeEnvelope({
-      frame: { type: 'Data' } as any,
-      sec: { sig: { alg: 'EdDSA' } } as any,
+      frame: { type: "Data" } as any,
+      sec: { sig: { alg: "EdDSA" } } as any,
     });
     expect(forbidden.isSignatureRequired(signedEnvelope)).toBe(true);
   });
 
-  it('reports inbound signature enforcement actions', () => {
+  it("reports inbound signature enforcement actions", () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -1512,7 +1512,7 @@ describe('DefaultSecurityPolicy', () => {
     expect(policy.isSignatureRequired(envelope)).toBe(true);
   });
 
-  it('summarizes security requirements from configuration', () => {
+  it("summarizes security requirements from configuration", () => {
     const policy = makePolicy();
     const requirements = policy.requirements();
     expect(requirements.signingRequired).toBe(true);
@@ -1521,7 +1521,7 @@ describe('DefaultSecurityPolicy', () => {
     expect(requirements.requireKeyExchange).toBe(true);
   });
 
-  it('computes strict requirements for certificate-based policy', () => {
+  it("computes strict requirements for certificate-based policy", () => {
     const policy = makePolicy({
       signing: new SigningConfiguration({
         inbound: {
@@ -1547,7 +1547,7 @@ describe('DefaultSecurityPolicy', () => {
       }),
       encryption: new EncryptionConfiguration({
         supportedChannelAlgorithms: [],
-        supportedSealedAlgorithms: ['sealed-alg'],
+        supportedSealedAlgorithms: ["sealed-alg"],
         inbound: {
           allowPlaintext: false,
           allowChannel: false,
@@ -1576,10 +1576,10 @@ describe('DefaultSecurityPolicy', () => {
     expect(requirements.encryptionRequired).toBe(true);
     expect(requirements.requireSigningKeyExchange).toBe(true);
     expect(requirements.requireEncryptionKeyExchange).toBe(true);
-    expect(requirements.supportedEncryptionAlgorithms.has('sealed-alg')).toBe(true);
+    expect(requirements.supportedEncryptionAlgorithms.has("sealed-alg")).toBe(true);
   });
 
-  it('validates peer attachment security compatibility', () => {
+  it("validates peer attachment security compatibility", () => {
     const policy = makePolicy();
 
     const [missingSigning, msg1] = policy.validateAttachSecurityCompatibility({
@@ -1589,14 +1589,14 @@ describe('DefaultSecurityPolicy', () => {
     expect(msg1).toMatch(/signing key exchange/);
 
     const [missingEncryption, msg2] = policy.validateAttachSecurityCompatibility({
-      peerKeys: [{ use: 'sig', kty: 'OKP', crv: 'Ed25519' }],
+      peerKeys: [{ use: "sig", kty: "OKP", crv: "Ed25519" }],
     });
     expect(missingEncryption).toBe(false);
     expect(msg2).toMatch(/encryption key exchange/);
 
     const peerKeys = [
-      { use: 'sig', kty: 'OKP', crv: 'Ed25519' },
-      { use: 'enc', kty: 'OKP', crv: 'X25519' },
+      { use: "sig", kty: "OKP", crv: "Ed25519" },
+      { use: "enc", kty: "OKP", crv: "X25519" },
     ];
 
     const [noCommonEncryption, msg3] = policy.validateAttachSecurityCompatibility({
@@ -1604,10 +1604,10 @@ describe('DefaultSecurityPolicy', () => {
       peerRequirements: new SecurityRequirements({
         signingRequired: true,
         verificationRequired: true,
-        supportedSigningAlgorithms: new Set(['EdDSA']),
+        supportedSigningAlgorithms: new Set(["EdDSA"]),
         encryptionRequired: true,
         decryptionRequired: true,
-        supportedEncryptionAlgorithms: new Set(['UnknownAlg']),
+        supportedEncryptionAlgorithms: new Set(["UnknownAlg"]),
         minimumCryptoLevel: CryptoLevel.SEALED,
       }),
     });
@@ -1619,10 +1619,10 @@ describe('DefaultSecurityPolicy', () => {
       peerRequirements: new SecurityRequirements({
         signingRequired: true,
         verificationRequired: true,
-        supportedSigningAlgorithms: new Set(['RSA']),
+        supportedSigningAlgorithms: new Set(["RSA"]),
         encryptionRequired: false,
         decryptionRequired: false,
-        supportedEncryptionAlgorithms: new Set(['sealed-alg']),
+        supportedEncryptionAlgorithms: new Set(["sealed-alg"]),
         minimumCryptoLevel: CryptoLevel.PLAINTEXT,
       }),
     });
@@ -1634,17 +1634,17 @@ describe('DefaultSecurityPolicy', () => {
       peerRequirements: new SecurityRequirements({
         signingRequired: true,
         verificationRequired: true,
-        supportedSigningAlgorithms: new Set(['EdDSA']),
+        supportedSigningAlgorithms: new Set(["EdDSA"]),
         encryptionRequired: true,
         decryptionRequired: true,
-        supportedEncryptionAlgorithms: new Set(['sealed-alg']),
+        supportedEncryptionAlgorithms: new Set(["sealed-alg"]),
         minimumCryptoLevel: CryptoLevel.CHANNEL,
       }),
     });
     expect(compatible).toBe(true);
   });
 
-  it('rejects sealed-only peers when encryption disabled', () => {
+  it("rejects sealed-only peers when encryption disabled", () => {
     const policy = makePolicy({
       encryption: new EncryptionConfiguration({
         supportedChannelAlgorithms: [],
@@ -1672,17 +1672,17 @@ describe('DefaultSecurityPolicy', () => {
 
     const [ok, reason] = policy.validateAttachSecurityCompatibility({
       peerKeys: [
-        { use: 'sig', kty: 'OKP', crv: 'Ed25519' },
-        { use: 'enc', kty: 'OKP', crv: 'X25519', x: 'AAAAAAAAAAAAAAAAAAAAAA' },
+        { use: "sig", kty: "OKP", crv: "Ed25519" },
+        { use: "enc", kty: "OKP", crv: "X25519", x: "AAAAAAAAAAAAAAAAAAAAAA" },
       ],
       peerRequirements: new SecurityRequirements({
         minimumCryptoLevel: CryptoLevel.SEALED,
         signingRequired: false,
         verificationRequired: false,
-        supportedSigningAlgorithms: new Set(['EdDSA']),
+        supportedSigningAlgorithms: new Set(["EdDSA"]),
         encryptionRequired: false,
         decryptionRequired: false,
-        supportedEncryptionAlgorithms: new Set(['X25519']),
+        supportedEncryptionAlgorithms: new Set(["X25519"]),
       }),
     });
 
@@ -1691,28 +1691,28 @@ describe('DefaultSecurityPolicy', () => {
   });
 });
 
-describe('SecurityPolicyFactory integration', () => {
+describe("SecurityPolicyFactory integration", () => {
   beforeEach(() => {
     ResourceFactoryRegistry.clearCache(SECURITY_POLICY_FACTORY_BASE_TYPE);
   });
 
-  it('creates registered policies from configuration', async () => {
+  it("creates registered policies from configuration", async () => {
     const policy = await SecurityPolicyFactory.createSecurityPolicy({
-      type: 'NoSecurityPolicy',
+      type: "NoSecurityPolicy",
     });
 
     expect(policy).toBeInstanceOf(NoSecurityPolicy);
   });
 
-  it('creates default security policy when no config is provided', async () => {
+  it("creates default security policy when no config is provided", async () => {
     const policy = await SecurityPolicyFactory.createSecurityPolicy();
 
     expect(policy).toBeInstanceOf(DefaultSecurityPolicy);
   });
 });
 
-describe('DefaultSecurityPolicyFactory', () => {
-  it('uses config-provided signing when overrides are absent', async () => {
+describe("DefaultSecurityPolicyFactory", () => {
+  it("uses config-provided signing when overrides are absent", async () => {
     const factory = new DefaultSecurityPolicyFactory();
     const configSigning = new SigningConfiguration({
       inbound: {
@@ -1734,7 +1734,7 @@ describe('DefaultSecurityPolicyFactory', () => {
     }).toObject();
 
     const policy = await factory.create({
-      type: 'DefaultSecurityPolicy',
+      type: "DefaultSecurityPolicy",
       signing: configSigning,
     });
 
@@ -1742,10 +1742,10 @@ describe('DefaultSecurityPolicyFactory', () => {
     expect(requirements.signingRequired).toBe(false);
   });
 
-  it('prefers explicit overrides over normalized config', async () => {
+  it("prefers explicit overrides over normalized config", async () => {
     const factory = new DefaultSecurityPolicyFactory();
     const config = {
-      type: 'DefaultSecurityPolicy',
+      type: "DefaultSecurityPolicy",
       signing: new SigningConfiguration({
         response: {
           mirrorRequestSigning: false,
@@ -1778,17 +1778,17 @@ describe('DefaultSecurityPolicyFactory', () => {
     expect(requirements.signingRequired).toBe(true);
   });
 
-  it('throws when provided config has mismatched type', async () => {
+  it("throws when provided config has mismatched type", async () => {
     const factory = new DefaultSecurityPolicyFactory();
-    await expect(factory.create({ type: 'NotDefaultPolicy' } as any)).rejects.toThrow(
+    await expect(factory.create({ type: "NotDefaultPolicy" } as any)).rejects.toThrow(
       /DefaultSecurityPolicyFactory expects type "DefaultSecurityPolicy"/
     );
   });
 
-  it('hydrates encryption from config when overrides omit it', async () => {
+  it("hydrates encryption from config when overrides omit it", async () => {
     const factory = new DefaultSecurityPolicyFactory();
     const config = {
-      type: 'DefaultSecurityPolicy',
+      type: "DefaultSecurityPolicy",
       encryption: new EncryptionConfiguration({
         outbound: { defaultLevel: CryptoLevel.SEALED },
       }).toObject(),
@@ -1798,16 +1798,16 @@ describe('DefaultSecurityPolicyFactory', () => {
     expect(await policy.shouldEncryptEnvelope(makeEnvelope(), makeContext())).toBe(true);
   });
 
-  it('returns default config when none is provided', async () => {
+  it("returns default config when none is provided", async () => {
     const factory = new DefaultSecurityPolicyFactory();
     const policy = await factory.create();
     expect(policy).toBeInstanceOf(DefaultSecurityPolicy);
   });
 
-  it('retains explicit null encryption values in config normalization', async () => {
+  it("retains explicit null encryption values in config normalization", async () => {
     const factory = new DefaultSecurityPolicyFactory();
     const policy = await factory.create({
-      type: 'DefaultSecurityPolicy',
+      type: "DefaultSecurityPolicy",
       encryption: null,
     });
 
@@ -1817,43 +1817,43 @@ describe('DefaultSecurityPolicyFactory', () => {
   });
 });
 
-describe('NoSecurityPolicyFactory', () => {
-  it('creates policy regardless of config extras', async () => {
+describe("NoSecurityPolicyFactory", () => {
+  it("creates policy regardless of config extras", async () => {
     const factory = new NoSecurityPolicyFactory();
-    const policy = await factory.create({ type: 'NoSecurityPolicy' });
+    const policy = await factory.create({ type: "NoSecurityPolicy" });
     expect(policy).toBeInstanceOf(NoSecurityPolicy);
   });
 
-  it('throws when provided type is invalid', async () => {
+  it("throws when provided type is invalid", async () => {
     const factory = new NoSecurityPolicyFactory();
-    await expect(factory.create({ type: 'UnexpectedPolicy' } as any)).rejects.toThrow(
+    await expect(factory.create({ type: "UnexpectedPolicy" } as any)).rejects.toThrow(
       /NoSecurityPolicyFactory expects type "NoSecurityPolicy"/
     );
   });
 });
 
-describe('Security policy normalization utilities', () => {
-  it('normalizes encryption config with defaults and overrides', () => {
+describe("Security policy normalization utilities", () => {
+  it("normalizes encryption config with defaults and overrides", () => {
     const normalized = normalizeEncryptionConfig({
-      supportedChannelAlgorithms: ['custom-channel'],
+      supportedChannelAlgorithms: ["custom-channel"],
       inbound: { allowPlaintext: false },
-      plaintextAlgorithms: ['plain'],
+      plaintextAlgorithms: ["plain"],
     });
 
     expect(normalized.inbound.allowPlaintext).toBe(false);
     expect(normalized.supportedChannelAlgorithms).toEqual(
-      expect.arrayContaining(['custom-channel'])
+      expect.arrayContaining(["custom-channel"])
     );
-    expect(normalized.plaintextAlgorithms).toEqual(expect.arrayContaining(['plain']));
+    expect(normalized.plaintextAlgorithms).toEqual(expect.arrayContaining(["plain"]));
   });
 
-  it('returns object form when encryption configuration instance provided', () => {
+  it("returns object form when encryption configuration instance provided", () => {
     const base = new EncryptionConfiguration();
     const normalized = normalizeEncryptionConfig(base);
     expect(normalized).toEqual(base.toObject());
   });
 
-  it('throws when raw-key signing config mixes certificate validation options', () => {
+  it("throws when raw-key signing config mixes certificate validation options", () => {
     expect(() =>
       normalizeSigningConfig({
         signingMaterial: SigningMaterial.RAW_KEY,
@@ -1862,7 +1862,7 @@ describe('Security policy normalization utilities', () => {
     ).toThrow(/X\.509 validation options/);
   });
 
-  it('normalizes signing config for certificate-based material', () => {
+  it("normalizes signing config for certificate-based material", () => {
     const normalized = normalizeSigningConfig({
       signingMaterial: SigningMaterial.X509_CHAIN,
       validateCertNameConstraints: false,
@@ -1875,7 +1875,7 @@ describe('Security policy normalization utilities', () => {
     expect(normalized.requireCertLogicalMatch).toBe(true);
   });
 
-  it('provides default normalization when configs are omitted', () => {
+  it("provides default normalization when configs are omitted", () => {
     const encryptionDefaults = normalizeEncryptionConfig();
     expect(encryptionDefaults.inbound.allowPlaintext).toBe(true);
     expect(encryptionDefaults.outbound.defaultLevel).toBe(CryptoLevel.CHANNEL);
@@ -1885,7 +1885,7 @@ describe('Security policy normalization utilities', () => {
     expect(signingDefaults.response.mirrorRequestSigning).toBe(false);
   });
 
-  it('normalizes signing config instances and outbound rules', () => {
+  it("normalizes signing config instances and outbound rules", () => {
     const base = new SigningConfiguration({
       outbound: {
         defaultSigning: true,
@@ -1898,44 +1898,44 @@ describe('Security policy normalization utilities', () => {
     expect(normalized.outbound.defaultSigning).toBe(true);
   });
 
-  it('returns existing security requirements instance as-is', () => {
+  it("returns existing security requirements instance as-is", () => {
     const existing = new SecurityRequirements({ signingRequired: true });
     expect(normalizeSecurityRequirements(existing)).toBe(existing);
   });
 
-  it('normalizes security requirements from plain input', () => {
+  it("normalizes security requirements from plain input", () => {
     const normalized = normalizeSecurityRequirements({
       signingRequired: true,
       verificationRequired: true,
-      supportedSigningAlgorithms: ['Alg1', 'Alg2'],
+      supportedSigningAlgorithms: ["Alg1", "Alg2"],
       encryptionRequired: false,
       decryptionRequired: false,
-      supportedEncryptionAlgorithms: ['Enc1'],
+      supportedEncryptionAlgorithms: ["Enc1"],
       requireKeyExchange: false,
       requireSigningKeyExchange: false,
       requireEncryptionKeyExchange: false,
       requireNodeAuthorization: false,
       requireCertificates: false,
       minimumCryptoLevel: CryptoLevel.CHANNEL,
-      preferredSigningAlgorithms: ['Alg1'],
-      preferredEncryptionAlgorithms: ['Enc1'],
-      preferredSigningAlgorithm: 'Alg1',
-      preferredEncryptionAlgorithm: 'Enc1',
+      preferredSigningAlgorithms: ["Alg1"],
+      preferredEncryptionAlgorithms: ["Enc1"],
+      preferredSigningAlgorithm: "Alg1",
+      preferredEncryptionAlgorithm: "Enc1",
     });
 
     expect(normalized.signingRequired).toBe(true);
     expect(Array.from(normalized.supportedSigningAlgorithms)).toEqual(
-      expect.arrayContaining(['Alg1', 'Alg2'])
+      expect.arrayContaining(["Alg1", "Alg2"])
     );
     expect(Array.from(normalized.supportedEncryptionAlgorithms)).toEqual(
-      expect.arrayContaining(['Enc1'])
+      expect.arrayContaining(["Enc1"])
     );
     expect(normalized.minimumCryptoLevel).toBe(CryptoLevel.CHANNEL);
   });
 
-  it('supplies default security requirements when omitted', () => {
+  it("supplies default security requirements when omitted", () => {
     const defaults = normalizeSecurityRequirements();
     expect(defaults.signingRequired).toBe(false);
-    expect(defaults.supportedSigningAlgorithms.has('EdDSA')).toBe(true);
+    expect(defaults.supportedSigningAlgorithms.has("EdDSA")).toBe(true);
   });
 });

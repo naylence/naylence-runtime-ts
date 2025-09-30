@@ -1,11 +1,11 @@
-import type { ResourceConfig } from 'naylence-factory';
+import type { ResourceConfig } from "naylence-factory";
 
 /**
  * Base configuration shape for security manager factories.
  */
 export interface SecurityManagerConfig extends ResourceConfig {
-	type: string;
-	[key: string]: unknown;
+  type: string;
+  [key: string]: unknown;
 }
 
 /**
@@ -13,6 +13,6 @@ export interface SecurityManagerConfig extends ResourceConfig {
  * where a profile name may be provided for lookups.
  */
 export interface SecurityProfileConfig extends SecurityManagerConfig {
-	type: 'SecurityProfile';
-	profile?: string | null;
+  type: "SecurityProfile";
+  profile?: string | null;
 }

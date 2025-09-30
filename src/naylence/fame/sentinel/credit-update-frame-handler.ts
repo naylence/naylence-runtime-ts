@@ -1,9 +1,9 @@
-import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope } from "naylence-core";
 
-import { getLogger } from '../util/logging.js';
-import type { RouteManager } from './route-manager.js';
+import { getLogger } from "../util/logging.js";
+import type { RouteManager } from "./route-manager.js";
 
-const logger = getLogger('credit-update-frame-handler');
+const logger = getLogger("credit-update-frame-handler");
 
 export interface CreditUpdateFrameHandlerOptions {
   routeManager: RouteManager;
@@ -22,13 +22,13 @@ export class CreditUpdateFrameHandler {
   ): Promise<void> {
     const flowId = envelope.flowId;
     if (!flowId) {
-      logger.warning('credit_update_missing_flow_id');
+      logger.warning("credit_update_missing_flow_id");
       return;
     }
 
     const targetConnector = this.routeManager.getFlowRoute(flowId);
     if (!targetConnector) {
-      logger.warning('credit_update_unknown_flow', { flowId });
+      logger.warning("credit_update_unknown_flow", { flowId });
       return;
     }
 

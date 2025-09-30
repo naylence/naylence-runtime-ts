@@ -1,8 +1,8 @@
-import { createFameEnvelope, type FameEnvelopeWith, type NodeWelcomeFrame } from 'naylence-core';
-import { getLogger } from '../../util/logging.js';
-import type { AdmissionClient } from './admission-client.js';
+import { createFameEnvelope, type FameEnvelopeWith, type NodeWelcomeFrame } from "naylence-core";
+import { getLogger } from "../../util/logging.js";
+import type { AdmissionClient } from "./admission-client.js";
 
-const logger = getLogger('noop-admission-client');
+const logger = getLogger("noop-admission-client");
 
 export interface NoopAdmissionClientOptions {
   readonly systemId?: string;
@@ -16,7 +16,7 @@ export class NoopAdmissionClient implements AdmissionClient {
   private readonly autoAcceptLogicals: boolean;
 
   constructor(options: NoopAdmissionClientOptions = {}) {
-    this.defaultSystemId = options.systemId ?? 'noop-system';
+    this.defaultSystemId = options.systemId ?? "noop-system";
     this.autoAcceptLogicals = options.autoAcceptLogicals ?? true;
   }
 
@@ -25,10 +25,11 @@ export class NoopAdmissionClient implements AdmissionClient {
     instanceId: string,
     requestedLogicals?: string[]
   ): Promise<FameEnvelopeWith<NodeWelcomeFrame>> {
-    const effectiveSystemId = systemId && systemId.trim().length > 0 ? systemId : this.defaultSystemId;
+    const effectiveSystemId =
+      systemId && systemId.trim().length > 0 ? systemId : this.defaultSystemId;
     const acceptedLogicals = this.autoAcceptLogicals ? [...(requestedLogicals ?? [])] : [];
 
-    logger.debug('noop_admission_hello', {
+    logger.debug("noop_admission_hello", {
       systemId: effectiveSystemId,
       instanceId,
       requestedLogicals,
@@ -36,7 +37,7 @@ export class NoopAdmissionClient implements AdmissionClient {
     });
 
     const welcomeFrame: NodeWelcomeFrame = {
-      type: 'NodeWelcome',
+      type: "NodeWelcome",
       systemId: effectiveSystemId,
       instanceId,
       acceptedLogicals,
@@ -47,6 +48,6 @@ export class NoopAdmissionClient implements AdmissionClient {
   }
 
   public async close(): Promise<void> {
-    logger.debug('noop_admission_close');
+    logger.debug("noop_admission_close");
   }
 }

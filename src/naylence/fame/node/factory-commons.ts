@@ -1,54 +1,61 @@
-import { generateId } from 'naylence-core';
-import type { CreateResourceOptions } from 'naylence-factory';
-import { createResource } from 'naylence-factory';
+import { generateId } from "naylence-core";
+import type { CreateResourceOptions } from "naylence-factory";
+import { createResource } from "naylence-factory";
 
-import type { AdmissionClient } from './admission/admission-client.js';
-import { AdmissionClientFactory } from './admission/admission-client-factory.js';
-import { DefaultNodeAttachClient } from './admission/default-node-attach-client.js';
-import type { DefaultNodeAttachClientOptions } from './admission/default-node-attach-client.js';
-import type { FameNodeConfig } from './node-config.js';
-import type { NodeEventListener } from './node-event-listener.js';
-import type { TransportListener } from '../connector/transport-listener.js';
-import { TransportListenerFactory } from '../connector/transport-listener-factory.js';
-import type { TransportListenerConfig } from '../connector/transport-listener-config.js';
-import type { StorageProvider } from '../storage/storage-provider.js';
-import { StorageProviderFactory } from '../storage/storage-provider-factory.js';
-import { InMemoryStorageProvider } from '../storage/in-memory-storage.js';
-import type { KeyValueStore } from '../storage/key-value-store.js';
-import { NodeMetaRecord, NODE_META_NAMESPACE } from './node-meta.js';
-import type { BindingStoreEntry } from './binding-manager.js';
-import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
-import { DeliveryPolicyFactory } from '../delivery/delivery-policy-factory.js';
-import { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
-import type { KeyStore } from '../security/keys/key-store.js';
-import { KeyStoreFactory } from '../security/keys/key-store-factory.js';
-import type { AttachmentKeyValidator } from '../security/keys/attachment-key-validator.js';
-import { AttachmentKeyValidatorFactory } from '../security/keys/attachment-key-validator-factory.js';
-import type { SecurityManager } from '../security/security-manager.js';
-import { SecurityManagerFactory, SECURITY_MANAGER_FACTORY_BASE_TYPE } from '../security/security-manager-factory.js';
-import type { ReplicaStickinessManager } from '../stickiness/replica-stickiness-manager.js';
-import { ReplicaStickinessManagerFactory } from '../stickiness/replica-stickiness-manager-factory.js';
-import type { TraceEmitter } from '../telemetry/trace-emitter.js';
-import { TraceEmitterFactory } from '../telemetry/trace-emitter-factory.js';
-import type { TraceEmitterConfig } from '../telemetry/trace-emitter-config.js';
-import type { DeliveryPolicyConfig } from '../delivery/delivery-policy-config.js';
-import type { StorageProviderConfig } from '../storage/storage-provider-factory.js';
-import type { KeyStoreConfig } from '../security/keys/key-store-factory.js';
-import type { AttachmentKeyValidatorConfig } from '../security/keys/attachment-key-validator-factory.js';
-import type { SecurityManagerConfig } from '../security/security-manager-config.js';
-import { getLogger } from '../util/logging.js';
-import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
+import type { AdmissionClient } from "./admission/admission-client.js";
+import { AdmissionClientFactory } from "./admission/admission-client-factory.js";
+import { DefaultNodeAttachClient } from "./admission/default-node-attach-client.js";
+import type { DefaultNodeAttachClientOptions } from "./admission/default-node-attach-client.js";
+import type { FameNodeConfig } from "./node-config.js";
+import type { NodeEventListener } from "./node-event-listener.js";
+import type { TransportListener } from "../connector/transport-listener.js";
+import { TransportListenerFactory } from "../connector/transport-listener-factory.js";
+import type { TransportListenerConfig } from "../connector/transport-listener-config.js";
+import type { StorageProvider } from "../storage/storage-provider.js";
+import { StorageProviderFactory } from "../storage/storage-provider-factory.js";
+import { InMemoryStorageProvider } from "../storage/in-memory-storage.js";
+import type { KeyValueStore } from "../storage/key-value-store.js";
+import { NodeMetaRecord, NODE_META_NAMESPACE } from "./node-meta.js";
+import type { BindingStoreEntry } from "./binding-manager.js";
+import type { DeliveryPolicy } from "../delivery/delivery-policy.js";
+import { DeliveryPolicyFactory } from "../delivery/delivery-policy-factory.js";
+import { DefaultDeliveryTracker } from "../delivery/default-delivery-tracker.js";
+import type { KeyStore } from "../security/keys/key-store.js";
+import { KeyStoreFactory } from "../security/keys/key-store-factory.js";
+import type { AttachmentKeyValidator } from "../security/keys/attachment-key-validator.js";
+import { AttachmentKeyValidatorFactory } from "../security/keys/attachment-key-validator-factory.js";
+import type { SecurityManager } from "../security/security-manager.js";
+import {
+  SecurityManagerFactory,
+  SECURITY_MANAGER_FACTORY_BASE_TYPE,
+} from "../security/security-manager-factory.js";
+import type { ReplicaStickinessManager } from "../stickiness/replica-stickiness-manager.js";
+import { ReplicaStickinessManagerFactory } from "../stickiness/replica-stickiness-manager-factory.js";
+import type { TraceEmitter } from "../telemetry/trace-emitter.js";
+import { TraceEmitterFactory } from "../telemetry/trace-emitter-factory.js";
+import type { TraceEmitterConfig } from "../telemetry/trace-emitter-config.js";
+import type { DeliveryPolicyConfig } from "../delivery/delivery-policy-config.js";
+import type { StorageProviderConfig } from "../storage/storage-provider-factory.js";
+import type { KeyStoreConfig } from "../security/keys/key-store-factory.js";
+import type { AttachmentKeyValidatorConfig } from "../security/keys/attachment-key-validator-factory.js";
+import type { SecurityManagerConfig } from "../security/security-manager-config.js";
+import { getLogger } from "../util/logging.js";
+import type { CryptoProvider } from "../security/crypto/providers/crypto-provider.js";
 
-const BINDING_STORE_NAMESPACE = '__binding_store';
+const BINDING_STORE_NAMESPACE = "__binding_store";
 
-const logger = getLogger('node-factory');
+const logger = getLogger("node-factory");
 
 class BindingStoreEntryRecord implements BindingStoreEntry {
   public readonly address: string;
   public encryptionKeyId: string | null;
   public physicalPath: string | null;
 
-  constructor(address: string, encryptionKeyId: string | null = null, physicalPath: string | null = null) {
+  constructor(
+    address: string,
+    encryptionKeyId: string | null = null,
+    physicalPath: string | null = null
+  ) {
     this.address = address;
     this.encryptionKeyId = encryptionKeyId;
     this.physicalPath = physicalPath;
@@ -95,7 +102,7 @@ export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonN
     NodeMetaRecord,
     NODE_META_NAMESPACE
   );
-  const nodeMeta = await nodeMetaStore.get('self');
+  const nodeMeta = await nodeMetaStore.get("self");
 
   const admissionClient = await resolveAdmissionClient(config.admission ?? null, expressionOptions);
   const requestedLogicals = [...config.requestedLogicals];
@@ -111,7 +118,11 @@ export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonN
     config.attachmentKeyValidator ?? null,
     expressionOptions
   );
-  const keyStore = await resolveKeyStore(config.keyStore ?? null, storageProvider, expressionOptions);
+  const keyStore = await resolveKeyStore(
+    config.keyStore ?? null,
+    storageProvider,
+    expressionOptions
+  );
 
   const deliveryPolicy = await resolveDeliveryPolicy(config.delivery ?? null, expressionOptions);
 
@@ -175,7 +186,7 @@ export async function makeCommonOptions(config: FameNodeConfig): Promise<CommonN
     systemId,
     hasParent,
     requestedLogicals,
-  ...(requestedCapabilities ? { requestedCapabilities } : {}),
+    ...(requestedCapabilities ? { requestedCapabilities } : {}),
     serviceConfigs: [...config.services],
     envContext: { ...config.envContext },
     publicUrl: config.publicUrl ?? null,
@@ -208,7 +219,7 @@ async function resolveStorageProvider(
         cloneCreateOptions(options)
       );
     } catch (error) {
-      logger.warning('storage_provider_creation_failed', {
+      logger.warning("storage_provider_creation_failed", {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -220,7 +231,7 @@ async function resolveAdmissionClient(
   config: Record<string, unknown> | AdmissionClient | null,
   options: CreateResourceOptions
 ): Promise<AdmissionClient | null> {
-  if (config && typeof (config as AdmissionClient).hello === 'function') {
+  if (config && typeof (config as AdmissionClient).hello === "function") {
     return config as AdmissionClient;
   }
 
@@ -230,14 +241,17 @@ async function resolveAdmissionClient(
       cloneCreateOptions(options)
     );
   } catch (error) {
-    logger.warning('admission_client_creation_failed', {
+    logger.warning("admission_client_creation_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
   }
 }
 
-function determineHasParent(config: FameNodeConfig, admissionClient: AdmissionClient | null): boolean {
+function determineHasParent(
+  config: FameNodeConfig,
+  admissionClient: AdmissionClient | null
+): boolean {
   if (config.hasParent) {
     return true;
   }
@@ -256,7 +270,9 @@ async function resolveReplicaStickinessManager(
     return null;
   }
 
-  const hasWildcardLogical = requestedLogicals.some((logical) => typeof logical === 'string' && logical.trim().startsWith('*.'));
+  const hasWildcardLogical = requestedLogicals.some(
+    (logical) => typeof logical === "string" && logical.trim().startsWith("*.")
+  );
   if (!hasWildcardLogical) {
     return null;
   }
@@ -267,7 +283,7 @@ async function resolveReplicaStickinessManager(
       cloneCreateOptions(options)
     );
   } catch (error) {
-    logger.debug('replica_stickiness_manager_unavailable', { error });
+    logger.debug("replica_stickiness_manager_unavailable", { error });
     return null;
   }
 }
@@ -282,7 +298,7 @@ async function resolveAttachmentKeyValidator(
       cloneCreateOptions(options)
     );
   } catch (error) {
-    logger.warning('attachment_key_validator_creation_failed', {
+    logger.warning("attachment_key_validator_creation_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
@@ -311,7 +327,7 @@ async function resolveDeliveryPolicy(
       cloneCreateOptions(options)
     );
   } catch (error) {
-    logger.warning('delivery_policy_creation_failed', {
+    logger.warning("delivery_policy_creation_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
@@ -332,7 +348,7 @@ async function resolveTransportListeners(
       cloneCreateOptions(options)
     );
   } catch (error) {
-    logger.warning('transport_listener_creation_failed', {
+    logger.warning("transport_listener_creation_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return [];
@@ -349,7 +365,7 @@ async function resolveTraceEmitter(
       cloneCreateOptions(options)
     );
   } catch (error) {
-    logger.warning('trace_emitter_creation_failed', {
+    logger.warning("trace_emitter_creation_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
@@ -372,7 +388,7 @@ async function resolveSecurityManager(
 }
 
 function createExpressionOptions(envContext: Record<string, unknown>): CreateResourceOptions {
-  if (!envContext || typeof envContext !== 'object') {
+  if (!envContext || typeof envContext !== "object") {
     return {};
   }
 
@@ -425,7 +441,7 @@ async function createSecurityManagerFromConfig(
     );
     return manager ?? null;
   } catch (error) {
-    logger.warning('security_manager_creation_failed', {
+    logger.warning("security_manager_creation_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
@@ -443,39 +459,39 @@ function addEventListener(listener: unknown, collection: NodeEventListener[]): v
 
 function isNodeEventListener(value: unknown): value is NodeEventListener {
   return Boolean(
-    value && typeof value === 'object' && typeof (value as NodeEventListener).priority === 'number'
+    value && typeof value === "object" && typeof (value as NodeEventListener).priority === "number"
   );
 }
 
 function extractCryptoProvider(
   config: SecurityManagerConfig | Record<string, unknown> | null
 ): CryptoProvider | null {
-  if (!config || typeof config !== 'object') {
+  if (!config || typeof config !== "object") {
     return null;
   }
 
   const record = config as Record<string, unknown>;
 
   const tryCandidate = (candidate: unknown): CryptoProvider | null => {
-    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
       return null;
     }
 
-    if (typeof (candidate as { type?: unknown }).type === 'string') {
+    if (typeof (candidate as { type?: unknown }).type === "string") {
       return null;
     }
 
     return candidate as CryptoProvider;
   };
 
-  if ('cryptoProvider' in record) {
+  if ("cryptoProvider" in record) {
     const provider = tryCandidate(record.cryptoProvider);
     if (provider) {
       return provider;
     }
   }
 
-  if ('crypto_provider' in record) {
+  if ("crypto_provider" in record) {
     const provider = tryCandidate(record.crypto_provider);
     if (provider) {
       return provider;

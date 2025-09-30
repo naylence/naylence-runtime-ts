@@ -1,6 +1,6 @@
 /**
  * BaseAsyncConnector - Abstract async transport adapter with optional flow control
- * 
+ *
  * Enhanced connector with cleaner shutdown, better back-pressure reporting,
  * and richer metrics/logging. Maintains backwards compatibility with subclasses.
  */
@@ -9,19 +9,19 @@
  * Error thrown when a task is cancelled during shutdown - not a critical error
  */
 export class TaskCancellationError extends Error {
-  constructor(message: string = 'Task cancelled') {
+  constructor(message: string = "Task cancelled") {
     super(message);
-    this.name = 'TaskCancellationError';
+    this.name = "TaskCancellationError";
   }
 }
 
-import { TaskSpawner } from '../util/task-spawner.js';
-import { TaskSpawnerConfig } from '../util/task-types.js';
-import { FlowController } from '../channel/flow-controller.js';
-import { _NoopFlowController } from './noop-flow-controller.js';
-import { getLogger } from '../util/logging.js';
-import { MetricsEmitter } from '../util/metrics-emitter.js';
-import { withEnvelopeContextAsync } from '../util/envelope-context.js';
+import { TaskSpawner } from "../util/task-spawner.js";
+import { TaskSpawnerConfig } from "../util/task-types.js";
+import { FlowController } from "../channel/flow-controller.js";
+import { _NoopFlowController } from "./noop-flow-controller.js";
+import { getLogger } from "../util/logging.js";
+import { MetricsEmitter } from "../util/metrics-emitter.js";
+import { withEnvelopeContextAsync } from "../util/envelope-context.js";
 import {
   ConnectorState,
   ConnectorStateUtils,
@@ -36,20 +36,16 @@ import {
   FlowFlags,
   FameResponseType,
   AuthorizationContext,
-} from 'naylence-core';
-import {
-  FameMessageTooLarge,
-  FameTransportClose,
-  BackPressureFull,
-} from '../errors/errors.js';
+} from "naylence-core";
+import { FameMessageTooLarge, FameTransportClose, BackPressureFull } from "../errors/errors.js";
 
-const logger = getLogger('base-async-connector');
+const logger = getLogger("base-async-connector");
 
 // Environment variables
-const ENV_VAR_SHOW_ENVELOPES = 'FAME_SHOW_ENVELOPES';
-const ENV_VAR_FAME_FLOW_CONTROL = 'FAME_FLOW_CONTROL';
+const ENV_VAR_SHOW_ENVELOPES = "FAME_SHOW_ENVELOPES";
+const ENV_VAR_FAME_FLOW_CONTROL = "FAME_FLOW_CONTROL";
 
-const FLOW_CONTROL_ENABLED = process.env[ENV_VAR_FAME_FLOW_CONTROL] !== '0';
+const FLOW_CONTROL_ENABLED = process.env[ENV_VAR_FAME_FLOW_CONTROL] !== "0";
 const FAME_MAX_MESSAGE_SIZE = 1024 * 256;
 
 // Sentinel object for stopping send loop
@@ -85,7 +81,7 @@ export interface BaseAsyncConnectorConfig {
 
 /**
  * Abstract base class for async transport adapters with optional flow control.
- * 
+ *
  * Provides:
  * - Async send/receive loops with proper error handling
  * - Optional credit-based flow control
@@ -96,7 +92,7 @@ export interface BaseAsyncConnectorConfig {
 export abstract class BaseAsyncConnector extends TaskSpawner implements FameConnector {
   private readonly _metrics: MetricsEmitter | undefined;
   private _handler?: FameEnvelopeHandler;
-  
+
   // FameConnector required property
   private _authorizationContext: AuthorizationContext | undefined;
 
@@ -121,13 +117,13 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
   private readonly _initialWindow: number;
   private readonly _connectorFlowId: string;
 
-  // Shutdown timeouts  
+  // Shutdown timeouts
   private readonly _shutdownGracePeriod: number;
   private readonly _shutdownJoinTimeout: number;
 
   constructor(config: BaseAsyncConnectorConfig = {}) {
     super(config.taskSpawner);
-    
+
     this._maxQueueSize = config.maxQueueSize ?? 1000;
     this._metrics = config.metricsEmitter;
     this._initialWindow = config.initialWindow ?? 32;
@@ -195,7 +191,7 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
     if (this._state !== newState) {
       const oldState = this._state;
       this._state = newState;
-      logger.debug('connector_state_transition', {
+      logger.debug("connector_state_transition", {
         connector_id: this._connectorFlowId,
         old_state: oldState,
         new_state: newState,
@@ -219,14 +215,14 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
     }
 
     if (this._handler !== undefined) {
-      throw new Error('Connector already started');
+      throw new Error("Connector already started");
     }
 
     this._handler = inboundHandler;
-    
+
     // Start background tasks
-    this.spawn((signal) => this._sendLoop(signal), { name: 'send-loop' });
-    this.spawn((signal) => this._receiveLoop(signal), { name: 'receive-loop' });
+    this.spawn((signal) => this._sendLoop(signal), { name: "send-loop" });
+    this.spawn((signal) => this._receiveLoop(signal), { name: "receive-loop" });
 
     this._setState(ConnectorState.STARTED);
   }
@@ -243,7 +239,7 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
    */
   async stop(): Promise<void> {
     if (!ConnectorStateUtils.canStop(this._state)) {
-      logger.debug('connector_stop_already_stopped', {
+      logger.debug("connector_stop_already_stopped", {
         current_state: this._state,
         connector_id: this._connectorFlowId,
       });
@@ -251,8 +247,8 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
     }
 
     this._setState(ConnectorState.STOPPED);
-    await this._shutdown(1000, 'normal closure');
-    
+    await this._shutdown(1000, "normal closure");
+
     if (this._lastError) {
       throw this._lastError;
     }
@@ -261,9 +257,9 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
   /**
    * Close the connector with optional code and reason
    */
-  async close(code = 1000, reason = 'normal closure'): Promise<void> {
+  async close(code = 1000, reason = "normal closure"): Promise<void> {
     if (!ConnectorStateUtils.canClose(this._state)) {
-      logger.warning('connector_close_invalid_state', {
+      logger.warning("connector_close_invalid_state", {
         current_state: this._state,
         connector_id: this._connectorFlowId,
       });
@@ -272,7 +268,7 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
 
     this._setState(ConnectorState.CLOSED);
     await this._shutdown(code, reason);
-    
+
     if (this._lastError) {
       throw this._lastError;
     }
@@ -294,8 +290,10 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
    * Push data to the receive queue for processing.
    * Subclasses should implement this to handle incoming data.
    */
-  async pushToReceive(_rawOrEnvelope: Uint8Array | FameEnvelope | FameChannelMessage): Promise<void> {
-    throw new Error('Subclasses must implement pushToReceive()');
+  async pushToReceive(
+    _rawOrEnvelope: Uint8Array | FameEnvelope | FameChannelMessage
+  ): Promise<void> {
+    throw new Error("Subclasses must implement pushToReceive()");
   }
 
   // Backwards compatibility alias
@@ -312,19 +310,24 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
    */
   async send(envelope: FameEnvelope): Promise<void> {
     if (this._closed) {
-      throw new FameTransportClose('Connection closed', 1006);
+      throw new FameTransportClose("Connection closed", 1006);
     }
 
     // Apply flow control if enabled and not a credit update
-    if (this._fcEnabled && !(envelope.frame && 'flow_id' in envelope.frame && 'credits' in envelope.frame)) {
+    if (
+      this._fcEnabled &&
+      !(envelope.frame && "flow_id" in envelope.frame && "credits" in envelope.frame)
+    ) {
       const flowId = envelope.flowId || this._connectorFlowId;
       envelope.flowId = flowId;
-      
+
       const t0 = this._metrics ? performance.now() : 0;
       await this._flowCtrl.acquire(flowId);
-      
+
       if (this._metrics) {
-        this._metrics.histogram('connector.acquire_latency', performance.now() - t0, { flow_id: flowId });
+        this._metrics.histogram("connector.acquire_latency", performance.now() - t0, {
+          flow_id: flowId,
+        });
       }
 
       // Set sequence ID and flow flags if using real flow controller
@@ -338,9 +341,11 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
     // Serialize envelope
     const raw = new TextEncoder().encode(JSON.stringify(envelope));
     const rawSize = raw.length;
-    
+
     if (rawSize > FAME_MAX_MESSAGE_SIZE) {
-      throw new FameMessageTooLarge(`Message size ${rawSize} exceeds maximum ${FAME_MAX_MESSAGE_SIZE}`);
+      throw new FameMessageTooLarge(
+        `Message size ${rawSize} exceeds maximum ${FAME_MAX_MESSAGE_SIZE}`
+      );
     }
 
     // Check queue capacity before adding for backpressure
@@ -351,17 +356,17 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
 
     // Add to queue and notify send loop
     this._sendQueue.push(raw);
-    
+
     // Log for debugging
-    logger.debug('send_envelope_queued', {
+    logger.debug("send_envelope_queued", {
       queue_length: this._sendQueue.length,
       max_queue_size: this._maxQueueSize,
     });
-    
+
     this._wakeUpSendLoop();
 
     if (this._metrics) {
-      this._metrics.gauge('connector.send_queue_depth', this._sendQueue.length, {
+      this._metrics.gauge("connector.send_queue_depth", this._sendQueue.length, {
         connector: this.constructor.name,
       });
     }
@@ -384,18 +389,23 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
     try {
       while (!this._closed && !this._sendLoopShutdown && !signal?.aborted) {
         // Wait for data in queue with cancellation support
-        while (this._sendQueue.length === 0 && !this._closed && !this._sendLoopShutdown && !signal?.aborted) {
+        while (
+          this._sendQueue.length === 0 &&
+          !this._closed &&
+          !this._sendLoopShutdown &&
+          !signal?.aborted
+        ) {
           await new Promise<void>((resolve, reject) => {
             // Remove redundant signal check - the event listener handles it
             this._sendPromiseResolve = resolve;
             const timeoutId = setTimeout(resolve, 100); // Fallback timeout
-            
+
             // Listen for cancellation
             const abortHandler = () => {
               clearTimeout(timeoutId);
               reject(new TaskCancellationError());
             };
-            signal?.addEventListener('abort', abortHandler, { once: true });
+            signal?.addEventListener("abort", abortHandler, { once: true });
           });
         }
 
@@ -405,17 +415,17 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
         const item = this._sendQueue[0];
         if (!item) continue;
 
-        logger.debug('send_loop_processing_item', {
+        logger.debug("send_loop_processing_item", {
           queue_length_before_send: this._sendQueue.length,
         });
 
         // Send through transport (this may block)
         await this._transportSendBytes(item as Uint8Array);
-        
+
         // Only remove from queue after successful send
         this._sendQueue.shift();
-        
-        logger.debug('send_loop_item_sent', {
+
+        logger.debug("send_loop_item_sent", {
           queue_length_after_send: this._sendQueue.length,
         });
       }
@@ -426,13 +436,13 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
         await this._shutdown(code, reason, undefined, error);
       } else if (error instanceof TaskCancellationError) {
         // Task cancellation is expected during shutdown - log as debug, not critical
-        logger.debug('send loop cancelled', {
+        logger.debug("send loop cancelled", {
           connector: this.constructor.name,
           reason: error.message,
         });
         // Don't re-throw - this is normal during shutdown
       } else {
-        logger.critical('unexpected exception in send loop', {
+        logger.critical("unexpected exception in send loop", {
           connector: this.constructor.name,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -446,7 +456,7 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
    */
   private async _recvLoop(signal?: AbortSignal): Promise<void> {
     if (!this._handler) {
-      throw new Error('Handler not set');
+      throw new Error("Handler not set");
     }
 
     try {
@@ -457,12 +467,12 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
         let env: FameEnvelope;
 
         // Parse the incoming message
-        if (message && typeof message === 'object' && 'envelope' in message) {
+        if (message && typeof message === "object" && "envelope" in message) {
           // FameChannelMessage
           const channelMsg = message as FameChannelMessage;
           env = channelMsg.envelope;
           messageContext = channelMsg.context;
-        } else if (message && typeof message === 'object' && 'frame' in message) {
+        } else if (message && typeof message === "object" && "frame" in message) {
           // FameEnvelope
           env = message as FameEnvelope;
         } else if (message instanceof Uint8Array) {
@@ -471,7 +481,7 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
             const jsonStr = new TextDecoder().decode(message);
             env = JSON.parse(jsonStr) as FameEnvelope;
           } catch (error) {
-            logger.error('Invalid envelope', {
+            logger.error("Invalid envelope", {
               message: message.toString(),
               error: error instanceof Error ? error.message : String(error),
             });
@@ -484,7 +494,9 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
           await this._shutdownWithError(message, code, reason);
           return;
         } else {
-          throw new Error(`Expected FameEnvelope, Uint8Array, or FameTransportClose, got ${typeof message}`);
+          throw new Error(
+            `Expected FameEnvelope, Uint8Array, or FameTransportClose, got ${typeof message}`
+          );
         }
 
         // Process the envelope
@@ -493,23 +505,23 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
           ...(env.flowId && { flow_id: env.flowId }),
         };
         await withEnvelopeContextAsync(envelopeContext, async () => {
-          logger.trace('connector_received_envelope', { envelope: env });
-          
-          if (process.env[ENV_VAR_SHOW_ENVELOPES] === 'true') {
+          logger.trace("connector_received_envelope", { envelope: env });
+
+          if (process.env[ENV_VAR_SHOW_ENVELOPES] === "true") {
             console.log(`\n📨 Received envelope:\n${JSON.stringify(env, null, 2)}`);
           }
 
           // Handle credit updates
-          if (env.frame && env.frame.type === 'CreditUpdate') {
+          if (env.frame && env.frame.type === "CreditUpdate") {
             const creditFrame = env.frame as CreditUpdateFrame;
             this._flowCtrl.addCredits(creditFrame.flowId, creditFrame.credits);
             return;
           }
 
           // Deliver to handler
-          const context = messageContext || { 
-            fromConnector: this, 
-            expectedResponseType: FameResponseType.NONE 
+          const context = messageContext || {
+            fromConnector: this,
+            expectedResponseType: FameResponseType.NONE,
           };
           await this._handler!(env, context);
 
@@ -526,13 +538,13 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
         await this._shutdown(code, reason, undefined, error);
       } else if (error instanceof TaskCancellationError) {
         // Task cancellation is expected during shutdown - log as debug, not critical
-        logger.debug('receive loop cancelled', {
+        logger.debug("receive loop cancelled", {
           connector: this.constructor.name,
           reason: error.message,
         });
         // Don't re-throw - this is normal during shutdown
       } else {
-        logger.critical('unexpected_error_in recv_loop', {
+        logger.critical("unexpected_error_in recv_loop", {
           error: error instanceof Error ? error.message : String(error),
         });
         throw error;
@@ -554,19 +566,19 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
 
     const delta = this._initialWindow;
     this._flowCtrl.addCredits(flowId, delta);
-    
+
     const ackEnv = createFameEnvelope({
       ...(traceId && { traceId }),
       flowId,
       windowId: 0,
-      frame: { 
+      frame: {
         type: "CreditUpdate",
-        flowId: flowId, 
-        credits: delta 
+        flowId: flowId,
+        credits: delta,
       } as CreditUpdateFrame,
       flags: FlowFlags.ACK,
     });
-    
+
     await this.send(ackEnv);
   }
 
@@ -577,11 +589,7 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
   /**
    * Shutdown the connector due to an error
    */
-  private async _shutdownWithError(
-    exc: Error,
-    code = 1006,
-    reason?: string
-  ): Promise<void> {
+  private async _shutdownWithError(exc: Error, code = 1006, reason?: string): Promise<void> {
     const errorReason = reason || `${exc.constructor.name}: ${exc.message}`;
     await this._shutdown(code, errorReason, undefined, exc);
   }
@@ -598,14 +606,14 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
     if (this._closed) {
       return;
     }
-    
+
     this._closed = true;
     this._closeCode = code;
     this._closeReason = reason;
-    
+
     // Use provided gracePeriod or fall back to configured value
     const effectiveGracePeriod = gracePeriod ?? this._shutdownGracePeriod;
-    
+
     if (exc) {
       this._lastError = exc;
     }
@@ -628,12 +636,12 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
 
     // Shutdown spawned tasks
     try {
-      await this.shutdownTasks({ 
+      await this.shutdownTasks({
         gracePeriod: effectiveGracePeriod * 1000, // Convert to milliseconds
-        joinTimeout: this._shutdownJoinTimeout 
+        joinTimeout: this._shutdownJoinTimeout,
       });
     } catch (error) {
-      logger.warning('task_shutdown_error', {
+      logger.warning("task_shutdown_error", {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -661,7 +669,9 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
   /**
    * Receive a message from the transport
    */
-  protected abstract _transportReceive(): Promise<Uint8Array | FameEnvelope | FameChannelMessage | FameTransportClose>;
+  protected abstract _transportReceive(): Promise<
+    Uint8Array | FameEnvelope | FameChannelMessage | FameTransportClose
+  >;
 
   /**
    * Close the underlying transport

@@ -7,21 +7,21 @@ import {
   NodeAttachAckFrame,
   NodeAttachFrame,
   type Stickiness,
-} from 'naylence-core';
+} from "naylence-core";
 
-import type { RoutingNodeLike } from '../node/routing-node-like.js';
-import type { RouteManager, PendingRouteEntry } from './route-manager.js';
+import type { RoutingNodeLike } from "../node/routing-node-like.js";
+import type { RouteManager, PendingRouteEntry } from "./route-manager.js";
 import {
   AttachmentKeyValidator,
   KeyValidationError,
-} from '../security/keys/attachment-key-validator.js';
-import type { LoadBalancerStickinessManager } from '../stickiness/load-balancer-stickiness-manager.js';
-import { TaskSpawner } from '../util/task-spawner.js';
-import { delay } from '../util/task-utils.js';
-import { getLogger } from '../util/logging.js';
-import type { ConnectorConfig } from '../connector/connector-config.js';
+} from "../security/keys/attachment-key-validator.js";
+import type { LoadBalancerStickinessManager } from "../stickiness/load-balancer-stickiness-manager.js";
+import { TaskSpawner } from "../util/task-spawner.js";
+import { delay } from "../util/task-utils.js";
+import { getLogger } from "../util/logging.js";
+import type { ConnectorConfig } from "../connector/connector-config.js";
 
-const logger = getLogger('node-attach-frame-handler');
+const logger = getLogger("node-attach-frame-handler");
 
 const DOWNSTREAM_ORIGINS = new Set<DeliveryOriginType>([
   DeliveryOriginType.DOWNSTREAM,
@@ -34,10 +34,10 @@ type RoutingNodeWithExtras = RoutingNodeLike & {
 };
 
 function buildAssignedPath(basePath: string, systemId: string): string {
-  if (!basePath || basePath === '/') {
+  if (!basePath || basePath === "/") {
     return `/${systemId}`;
   }
-  return `${basePath.replace(/\/$/, '')}/${systemId}`;
+  return `${basePath.replace(/\/$/, "")}/${systemId}`;
 }
 
 export interface NodeAttachFrameHandlerOptions {
@@ -68,16 +68,16 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     envelope: FameEnvelope,
     context: FameDeliveryContext | null | undefined
   ): Promise<void> {
-    logger.debug('handling_node_attach_request');
+    logger.debug("handling_node_attach_request");
 
     if (!context) {
-      throw new Error('missing FameDeliveryContext');
+      throw new Error("missing FameDeliveryContext");
     }
 
     const frame = envelope.frame as NodeAttachFrame | undefined;
-    if (!frame || frame.type !== 'NodeAttach') {
+    if (!frame || frame.type !== "NodeAttach") {
       throw new Error(
-        `Invalid envelope frame. Expected: NodeAttachFrame, actual: ${frame?.type ?? 'unknown'}`
+        `Invalid envelope frame. Expected: NodeAttachFrame, actual: ${frame?.type ?? "unknown"}`
       );
     }
 
@@ -90,7 +90,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     const attachedSystemId = frame.systemId;
     const connectorConfig = this.takePendingRouteMetadata(attachedSystemId);
     if (!connectorConfig) {
-      throw new Error('Missing pending config metadata');
+      throw new Error("Missing pending config metadata");
     }
 
     const pendingRoute = this.takePendingRoute(attachedSystemId);
@@ -101,7 +101,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     const { connector, attached, buffer } = pendingRoute;
     pendingRoute.cancelAttachTimeout?.();
     if (connector !== context.fromConnector) {
-      throw new Error('Connector in context does not match pending connector');
+      throw new Error("Connector in context does not match pending connector");
     }
 
     const validationResult = await this.validateAttachmentKeys(
@@ -112,7 +112,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       attachedSystemId
     );
 
-    if (validationResult === 'rejected') {
+    if (validationResult === "rejected") {
       return;
     }
 
@@ -143,20 +143,21 @@ export class NodeAttachFrameHandler extends TaskSpawner {
         isRebind = true;
         oldAssignedPath = buildAssignedPath(this.routingNode.physicalPath, attachedSystemId);
         await this.routeManager.unregisterDownstreamRoute(attachedSystemId).catch((error) => {
-          logger.warning('failed_to_unregister_downstream_route_before_rebind', {
+          logger.warning("failed_to_unregister_downstream_route_before_rebind", {
             system_id: attachedSystemId,
             error: error instanceof Error ? error.message : String(error),
           });
         });
       }
-      assignedPath = frame.assignedPath ?? buildAssignedPath(this.routingNode.physicalPath, attachedSystemId);
+      assignedPath =
+        frame.assignedPath ?? buildAssignedPath(this.routingNode.physicalPath, attachedSystemId);
     } else if (frame.originType === DeliveryOriginType.PEER) {
       const hasExistingRoute = this.routeManager._peer_routes.has(attachedSystemId);
       if (hasExistingRoute) {
         isRebind = true;
         oldAssignedPath = frame.assignedPath ?? `/${attachedSystemId}`;
         await this.routeManager.unregisterPeerRoute(attachedSystemId).catch((error) => {
-          logger.warning('failed_to_unregister_peer_route_before_rebind', {
+          logger.warning("failed_to_unregister_peer_route_before_rebind", {
             system_id: attachedSystemId,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -164,10 +165,10 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       }
       assignedPath = frame.assignedPath ?? `/${attachedSystemId}`;
     } else {
-      throw new Error('Unsupported origin type for node attach');
+      throw new Error("Unsupported origin type for node attach");
     }
 
-    await this.routingNode.dispatchEvent('onChildAttach', {
+    await this.routingNode.dispatchEvent("onChildAttach", {
       childSystemId: attachedSystemId,
       childKeys: frame.keys,
       nodeLike: this.routingNode,
@@ -187,7 +188,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
 
     const ackEnvelope = this.createNodeAttachAckEnvelope({
       ok: true,
-      originalEnvId: envelope.id ?? 'unknown',
+      originalEnvId: envelope.id ?? "unknown",
       assignedPath,
       expiresAt: attachExpiresAt,
       ...(envelope.corrId ? { correlationId: envelope.corrId } : {}),
@@ -197,14 +198,15 @@ export class NodeAttachFrameHandler extends TaskSpawner {
         : {}),
     });
 
-    logger.debug('sending_node_attach_ack', { env_id: ackEnvelope.id ?? 'unknown' });
+    logger.debug("sending_node_attach_ack", { env_id: ackEnvelope.id ?? "unknown" });
 
     await this.sendAndNotify(connector, ackEnvelope, attachedSystemId, context);
 
     if (connectorConfig.durable) {
-      const routeStore = frame.originType === DeliveryOriginType.DOWNSTREAM
-        ? this.routeManager._downstream_route_store
-        : this.routeManager._peer_route_store;
+      const routeStore =
+        frame.originType === DeliveryOriginType.DOWNSTREAM
+          ? this.routeManager._downstream_route_store
+          : this.routeManager._peer_route_store;
 
       const routeEntry = {
         systemId: attachedSystemId,
@@ -250,7 +252,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     try {
       return this.stickinessManager.negotiate(stickiness);
     } catch (error) {
-      logger.debug('stickiness_negotiate_skipped', {
+      logger.debug("stickiness_negotiate_skipped", {
         error: error instanceof Error ? error.message : String(error),
       });
       return null;
@@ -260,7 +262,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
   private computeAttachExpiry(earliestKeyExpiry: Date | null): Date | null {
     let attachExpiresAt: Date | null = null;
 
-    if (typeof this.maxTtlSec === 'number' && Number.isFinite(this.maxTtlSec)) {
+    if (typeof this.maxTtlSec === "number" && Number.isFinite(this.maxTtlSec)) {
       attachExpiresAt = new Date(Date.now() + this.maxTtlSec * 1000);
     }
 
@@ -270,14 +272,14 @@ export class NodeAttachFrameHandler extends TaskSpawner {
 
     if (!attachExpiresAt || earliestKeyExpiry < attachExpiresAt) {
       if (attachExpiresAt) {
-        logger.warning('attachment_ttl_limited_by_key_expiry', {
+        logger.warning("attachment_ttl_limited_by_key_expiry", {
           limited_attach_expires_at: earliestKeyExpiry.toISOString(),
           original_attach_expires_at: attachExpiresAt.toISOString(),
         });
       } else {
-        logger.debug('attachment_ttl_set_by_key_expiry', {
+        logger.debug("attachment_ttl_set_by_key_expiry", {
           attach_expires_at: earliestKeyExpiry.toISOString(),
-          reason: 'no_max_ttl_configured',
+          reason: "no_max_ttl_configured",
         });
       }
       return earliestKeyExpiry;
@@ -292,11 +294,11 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     connector: FameConnector,
     context: FameDeliveryContext,
     systemId: string
-  ): Promise<{ earliestKeyExpiry: Date | null } | 'rejected'> {
+  ): Promise<{ earliestKeyExpiry: Date | null } | "rejected"> {
     if (!this.attachmentKeyValidator) {
-      logger.debug('child_key_validation_skipped', {
+      logger.debug("child_key_validation_skipped", {
         child_id: systemId,
-        reason: 'no_validator',
+        reason: "no_validator",
       });
       return { earliestKeyExpiry: null };
     }
@@ -312,7 +314,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       }
 
       if (keyInfos.length > 0) {
-        logger.debug('node_attach_key_validation_passed', {
+        logger.debug("node_attach_key_validation_passed", {
           system_id: systemId,
           instance_id: frame.instanceId,
           correlation_id: envelope.corrId,
@@ -326,34 +328,33 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       if (error instanceof KeyValidationError) {
         const rejectionAck = this.createNodeAttachAckEnvelope({
           ok: false,
-          originalEnvId: envelope.id ?? 'unknown',
+          originalEnvId: envelope.id ?? "unknown",
           ...(envelope.corrId ? { correlationId: envelope.corrId } : {}),
           ...(envelope.traceId ? { traceId: envelope.traceId } : {}),
           reason: `Certificate validation failed: ${error.message}`,
         });
 
         await this.sendAndNotify(connector, rejectionAck, systemId, context).catch((sendError) => {
-          logger.error('failed_sending_negative_attach_ack', {
+          logger.error("failed_sending_negative_attach_ack", {
             error: sendError instanceof Error ? sendError.message : String(sendError),
           });
         });
 
-        logger.error('node_attach_key_validation_failed', {
+        logger.error("node_attach_key_validation_failed", {
           system_id: systemId,
           instance_id: frame.instanceId,
           correlation_id: envelope.corrId,
           error_code: error.code,
           error_message: error.message,
           kid: error.kid,
-          action: 'rejecting_attachment',
+          action: "rejecting_attachment",
         });
 
-        this.spawn(
-          () => this.closeConnectionAfterDelay(connector, 100),
-          { name: `close-invalid-key-connection-${systemId}` }
-        );
+        this.spawn(() => this.closeConnectionAfterDelay(connector, 100), {
+          name: `close-invalid-key-connection-${systemId}`,
+        });
 
-        return 'rejected';
+        return "rejected";
       }
 
       throw error;
@@ -371,7 +372,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     stickiness?: Stickiness | null | undefined;
   }): FameEnvelope {
     const frame: NodeAttachAckFrame = {
-      type: 'NodeAttachAck',
+      type: "NodeAttachAck",
       ok: options.ok,
       refId: options.originalEnvId,
       targetSystemId: this.routingNode.id,
@@ -404,7 +405,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       }
     }
 
-    const envelopeOptions: Parameters<RoutingNodeLike['envelopeFactory']['createEnvelope']>[0] = {
+    const envelopeOptions: Parameters<RoutingNodeLike["envelopeFactory"]["createEnvelope"]>[0] = {
       frame,
     };
 
@@ -419,13 +420,16 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     return this.routingNode.envelopeFactory.createEnvelope(envelopeOptions);
   }
 
-  private async closeConnectionAfterDelay(connector: FameConnector, delaySeconds: number): Promise<void> {
+  private async closeConnectionAfterDelay(
+    connector: FameConnector,
+    delaySeconds: number
+  ): Promise<void> {
     try {
       await delay(delaySeconds * 1000);
-      await connector.close(1008, 'attach-unauthorized');
-      logger.debug('closed_unauthorized_connection');
+      await connector.close(1008, "attach-unauthorized");
+      logger.debug("closed_unauthorized_connection");
     } catch (error) {
-      logger.error('failed_to_close_unauthorized_connection', {
+      logger.error("failed_to_close_unauthorized_connection", {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -441,7 +445,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
 
     try {
       processed = await this.routingNode.dispatchEnvelopeEvent(
-        'onForwardToRoute',
+        "onForwardToRoute",
         this.routingNode,
         forwardRoute,
         envelope,
@@ -449,14 +453,14 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       );
 
       if (!processed) {
-        throw new Error('Envelope was blocked by onForwardToRoute event');
+        throw new Error("Envelope was blocked by onForwardToRoute event");
       }
 
       await connector.send(processed);
 
       await this.routingNode
         .dispatchEnvelopeEvent(
-          'onForwardToRouteComplete',
+          "onForwardToRouteComplete",
           this.routingNode,
           forwardRoute,
           processed,
@@ -469,7 +473,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       const err = error instanceof Error ? error : new Error(String(error));
       await this.routingNode
         .dispatchEnvelopeEvent(
-          'onForwardToRouteComplete',
+          "onForwardToRouteComplete",
           this.routingNode,
           forwardRoute,
           processed ?? envelope,

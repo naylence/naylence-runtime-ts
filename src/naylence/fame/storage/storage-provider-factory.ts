@@ -1,14 +1,14 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
   registerFactory,
-} from 'naylence-factory';
+} from "naylence-factory";
 
-import type { StorageProvider } from './storage-provider.js';
+import type { StorageProvider } from "./storage-provider.js";
 
-export const STORAGE_PROVIDER_FACTORY_BASE_TYPE = 'StorageProviderFactory';
+export const STORAGE_PROVIDER_FACTORY_BASE_TYPE = "StorageProviderFactory";
 
 export interface StorageProviderConfig extends ResourceConfig {
   /**
@@ -18,7 +18,7 @@ export interface StorageProviderConfig extends ResourceConfig {
 }
 
 export abstract class StorageProviderFactory<
-  C extends StorageProviderConfig = StorageProviderConfig
+  C extends StorageProviderConfig = StorageProviderConfig,
 > extends AbstractResourceFactory<StorageProvider, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -30,11 +30,7 @@ export abstract class StorageProviderFactory<
     options: CreateResourceOptions = {}
   ): Promise<StorageProvider> {
     const instance = config
-      ? await createResource<StorageProvider>(
-          STORAGE_PROVIDER_FACTORY_BASE_TYPE,
-          config,
-          options
-        )
+      ? await createResource<StorageProvider>(STORAGE_PROVIDER_FACTORY_BASE_TYPE, config, options)
       : await createDefaultResource<StorageProvider>(
           STORAGE_PROVIDER_FACTORY_BASE_TYPE,
           null,
@@ -42,7 +38,7 @@ export abstract class StorageProviderFactory<
         );
 
     if (!instance) {
-      throw new Error('Failed to create storage provider from configuration');
+      throw new Error("Failed to create storage provider from configuration");
     }
 
     return instance;

@@ -4,27 +4,27 @@ import {
   createFameEnvelope,
   type DataFrame,
   type NodeHelloFrame,
-} from 'naylence-core';
+} from "naylence-core";
 
-import { InProcessFameFabric } from '../in-process-fame-fabric.js';
-import type { NodeLike } from '../../node/node-like.js';
-import type { ServiceManager } from '../../service/service-manager.js';
-import type { SinkService } from '../../service/sink-service.js';
-import type { FameEnvelopeHandler } from 'naylence-core';
+import { InProcessFameFabric } from "../in-process-fame-fabric.js";
+import type { NodeLike } from "../../node/node-like.js";
+import type { ServiceManager } from "../../service/service-manager.js";
+import type { SinkService } from "../../service/sink-service.js";
+import type { FameEnvelopeHandler } from "naylence-core";
 
-jest.mock('../../node/node-like-factory.js', () => ({
+jest.mock("../../node/node-like-factory.js", () => ({
   NodeLikeFactory: {
     createNode: jest.fn(),
   },
 }));
 
-const { NodeLikeFactory } = jest.requireMock('../../node/node-like-factory.js') as {
+const { NodeLikeFactory } = jest.requireMock("../../node/node-like-factory.js") as {
   NodeLikeFactory: {
     createNode: jest.Mock;
   };
 };
 
-describe('InProcessFameFabric', () => {
+describe("InProcessFameFabric", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -44,15 +44,18 @@ describe('InProcessFameFabric', () => {
     return {
       start: jest.fn(async () => undefined),
       stop: jest.fn(async () => undefined),
-      registerService: jest.fn(async () => new FameAddress('service@/local')),
+      registerService: jest.fn(async () => new FameAddress("service@/local")),
       getLocalServices: jest.fn(() => new Map()),
       resolveByCapability: jest.fn(() => sinkService),
       resolveAddressByCapability: jest.fn(async () => null),
     } as ServiceManager;
   }
 
-  function createMockNode(serviceManager: ServiceManager, overrides: Partial<NodeLike> = {}): NodeLike {
-    const subscriberAddress = new FameAddress('subscriber@/listeners');
+  function createMockNode(
+    serviceManager: ServiceManager,
+    overrides: Partial<NodeLike> = {}
+  ): NodeLike {
+    const subscriberAddress = new FameAddress("subscriber@/listeners");
     const emptyAsyncIterator = async function* () {
       // no-op async iterator used for method stubs
     };
@@ -72,18 +75,18 @@ describe('InProcessFameFabric', () => {
     return { ...base, ...overrides } as unknown as NodeLike;
   }
 
-  it('creates and manages node lifecycle when fabric owns the node', async () => {
+  it("creates and manages node lifecycle when fabric owns the node", async () => {
     const sinkService = createMockSinkService();
     const serviceManager = createServiceManager(sinkService);
     const createdNode = createMockNode(serviceManager);
 
     NodeLikeFactory.createNode.mockResolvedValue(createdNode);
 
-    const fabric = new InProcessFameFabric(undefined, { node: { type: 'TestNode' } });
+    const fabric = new InProcessFameFabric(undefined, { node: { type: "TestNode" } });
 
     await fabric.start();
 
-    expect(NodeLikeFactory.createNode).toHaveBeenCalledWith({ type: 'TestNode' });
+    expect(NodeLikeFactory.createNode).toHaveBeenCalledWith({ type: "TestNode" });
     expect(createdNode.start).toHaveBeenCalledTimes(1);
     expect(fabric.node).toBe(createdNode);
 
@@ -91,12 +94,12 @@ describe('InProcessFameFabric', () => {
     expect(createdNode.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('subscribes to sinks and decodes data payloads before invoking handler', async () => {
+  it("subscribes to sinks and decodes data payloads before invoking handler", async () => {
     const sinkService = createMockSinkService();
     const serviceManager = createServiceManager(sinkService);
 
     let capturedHandler: FameEnvelopeHandler | null = null;
-    const subscriberAddress = new FameAddress('subscriber@/sink');
+    const subscriberAddress = new FameAddress("subscriber@/sink");
 
     const mockNode = createMockNode(serviceManager, {
       listen: jest.fn(async (_name: string, handler: FameEnvelopeHandler) => {
@@ -108,12 +111,12 @@ describe('InProcessFameFabric', () => {
     const fabric = new InProcessFameFabric(mockNode);
     await fabric.start();
 
-    const sinkAddress = new FameAddress('sink@/data');
+    const sinkAddress = new FameAddress("sink@/data");
     const messageHandler = jest.fn(async () => undefined);
 
-    await fabric.subscribe(sinkAddress, messageHandler, ' custom-name ');
+    await fabric.subscribe(sinkAddress, messageHandler, " custom-name ");
 
-    expect(mockNode.listen).toHaveBeenCalledWith('custom-name', expect.any(Function));
+    expect(mockNode.listen).toHaveBeenCalledWith("custom-name", expect.any(Function));
     expect(sinkService.subscribe).toHaveBeenCalledWith({
       sinkAddress: sinkAddress.toString(),
       subscriberAddress: subscriberAddress.toString(),
@@ -122,18 +125,18 @@ describe('InProcessFameFabric', () => {
     expect(capturedHandler).toBeInstanceOf(Function);
 
     const dataFrame: DataFrame = {
-      type: 'Data',
-      payload: { hello: 'world' },
+      type: "Data",
+      payload: { hello: "world" },
     };
     const envelope = createFameEnvelope({ frame: dataFrame });
 
     const response = await capturedHandler!(envelope);
 
-    expect(messageHandler).toHaveBeenCalledWith({ hello: 'world' });
+    expect(messageHandler).toHaveBeenCalledWith({ hello: "world" });
     expect(response).toBeNull();
   });
 
-  it('throws when sink subscription receives a non-data frame', async () => {
+  it("throws when sink subscription receives a non-data frame", async () => {
     const sinkService = createMockSinkService();
     const serviceManager = createServiceManager(sinkService);
 
@@ -141,26 +144,26 @@ describe('InProcessFameFabric', () => {
     const mockNode = createMockNode(serviceManager, {
       listen: jest.fn(async (_name: string, handler: FameEnvelopeHandler) => {
         capturedHandler = handler;
-        return new FameAddress('subscriber@/invalid');
+        return new FameAddress("subscriber@/invalid");
       }),
     });
 
     const fabric = new InProcessFameFabric(mockNode);
     await fabric.start();
 
-    const sinkAddress = new FameAddress('sink@/data');
+    const sinkAddress = new FameAddress("sink@/data");
     const handler = jest.fn(async () => undefined);
 
-    await fabric.subscribe(sinkAddress, handler, 'listener');
+    await fabric.subscribe(sinkAddress, handler, "listener");
 
     const nodeHelloFrame: NodeHelloFrame = {
-      type: 'NodeHello',
-      systemId: 'sys',
-      instanceId: 'instance',
+      type: "NodeHello",
+      systemId: "sys",
+      instanceId: "instance",
     };
     const envelope = createFameEnvelope({ frame: nodeHelloFrame });
 
-    await expect(capturedHandler!(envelope)).rejects.toThrow('Invalid envelope frame type');
+    await expect(capturedHandler!(envelope)).rejects.toThrow("Invalid envelope frame type");
     expect(handler).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,11 @@
-import type { DeliveryPolicy } from './delivery-policy.js';
-import type { DeliveryPolicyConfig } from './delivery-policy-config.js';
-import { DeliveryPolicyFactory, registerDeliveryPolicyFactory } from './delivery-policy-factory.js';
-import { AtLeastOnceDeliveryPolicy } from './at-least-once-delivery-policy.js';
-import { RetryPolicy, type RetryPolicyOptions } from './retry-policy.js';
+import type { DeliveryPolicy } from "./delivery-policy.js";
+import type { DeliveryPolicyConfig } from "./delivery-policy-config.js";
+import { DeliveryPolicyFactory, registerDeliveryPolicyFactory } from "./delivery-policy-factory.js";
+import { AtLeastOnceDeliveryPolicy } from "./at-least-once-delivery-policy.js";
+import { RetryPolicy, type RetryPolicyOptions } from "./retry-policy.js";
 
 export interface AtLeastOnceDeliveryPolicyConfig extends DeliveryPolicyConfig {
-  type: 'AtLeastOnceDeliveryPolicy';
+  type: "AtLeastOnceDeliveryPolicy";
   senderRetryPolicy?: RetryPolicy | RetryPolicyOptions | Record<string, unknown> | null;
   receiverRetryPolicy?: RetryPolicy | RetryPolicyOptions | Record<string, unknown> | null;
 }
@@ -23,7 +23,7 @@ interface NormalizedAtLeastOnceConfig {
 }
 
 export class AtLeastOnceDeliveryPolicyFactory extends DeliveryPolicyFactory<AtLeastOnceDeliveryPolicyConfig> {
-  public readonly type = 'AtLeastOnceDeliveryPolicy';
+  public readonly type = "AtLeastOnceDeliveryPolicy";
   public override readonly isDefault = true;
 
   public async create(
@@ -32,9 +32,7 @@ export class AtLeastOnceDeliveryPolicyFactory extends DeliveryPolicyFactory<AtLe
     const normalized = normalizeAtLeastOnceConfig(config);
 
     const options = {
-      ...(normalized.senderRetryPolicy
-        ? { senderRetryPolicy: normalized.senderRetryPolicy }
-        : {}),
+      ...(normalized.senderRetryPolicy ? { senderRetryPolicy: normalized.senderRetryPolicy } : {}),
       ...(normalized.receiverRetryPolicy
         ? { receiverRetryPolicy: normalized.receiverRetryPolicy }
         : {}),
@@ -79,11 +77,11 @@ function resolveRetryPolicy(input: RetryPolicyInput): RetryPolicy | undefined {
   const record = input as Record<string, unknown>;
 
   const options: RetryPolicyOptions = {
-    ...(withOption(record, ['maxRetries', 'max_retries']) ?? {}),
-    ...(withOption(record, ['baseDelayMs', 'base_delay_ms']) ?? {}),
-    ...(withOption(record, ['maxDelayMs', 'max_delay_ms']) ?? {}),
-    ...(withOption(record, ['jitterMs', 'jitter_ms']) ?? {}),
-    ...(withOption(record, ['backoffFactor', 'backoff_factor']) ?? {}),
+    ...(withOption(record, ["maxRetries", "max_retries"]) ?? {}),
+    ...(withOption(record, ["baseDelayMs", "base_delay_ms"]) ?? {}),
+    ...(withOption(record, ["maxDelayMs", "max_delay_ms"]) ?? {}),
+    ...(withOption(record, ["jitterMs", "jitter_ms"]) ?? {}),
+    ...(withOption(record, ["backoffFactor", "backoff_factor"]) ?? {}),
   };
 
   return new RetryPolicy(options);
@@ -93,10 +91,10 @@ function extractNumber(source: Record<string, unknown>, keys: string[]): number 
   for (const key of keys) {
     if (key in source) {
       const value = source[key];
-      if (typeof value === 'number' && Number.isFinite(value)) {
+      if (typeof value === "number" && Number.isFinite(value)) {
         return value;
       }
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (typeof value === "string" && value.trim().length > 0) {
         const parsed = Number(value);
         if (!Number.isNaN(parsed)) {
           return parsed;
@@ -120,9 +118,6 @@ function withOption(
   return { [camelKey as keyof RetryPolicyOptions]: value } as Partial<RetryPolicyOptions>;
 }
 
-registerDeliveryPolicyFactory('AtLeastOnceDeliveryPolicy', AtLeastOnceDeliveryPolicyFactory);
+registerDeliveryPolicyFactory("AtLeastOnceDeliveryPolicy", AtLeastOnceDeliveryPolicyFactory);
 
-registerDeliveryPolicyFactory(
-  'AtLeastOnceMessageDeliveryPolicy',
-  AtLeastOnceDeliveryPolicyFactory
-);
+registerDeliveryPolicyFactory("AtLeastOnceMessageDeliveryPolicy", AtLeastOnceDeliveryPolicyFactory);

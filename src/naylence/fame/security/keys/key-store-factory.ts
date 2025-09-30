@@ -1,18 +1,18 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
-import type { KeyStore } from './key-store.js';
-import type { StorageProvider } from '../../storage/storage-provider.js';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { KeyStore } from "./key-store.js";
+import type { StorageProvider } from "../../storage/storage-provider.js";
 
-export const KEY_STORE_FACTORY_BASE_TYPE = 'KeyStoreFactory';
+export const KEY_STORE_FACTORY_BASE_TYPE = "KeyStoreFactory";
 
 export interface KeyStoreConfig extends ResourceConfig {
   type: string;
   [key: string]: unknown;
 }
 
-export abstract class KeyStoreFactory<C extends KeyStoreConfig = KeyStoreConfig>
-  extends AbstractResourceFactory<KeyStore, C>
-{
+export abstract class KeyStoreFactory<
+  C extends KeyStoreConfig = KeyStoreConfig,
+> extends AbstractResourceFactory<KeyStore, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
     ...factoryArgs: unknown[]
@@ -41,7 +41,7 @@ export abstract class KeyStoreFactory<C extends KeyStoreConfig = KeyStoreConfig>
       : await createDefaultResource<KeyStore>(KEY_STORE_FACTORY_BASE_TYPE, null, creationOptions);
 
     if (!instance) {
-      throw new Error('Failed to create key store from configuration');
+      throw new Error("Failed to create key store from configuration");
     }
 
     return instance;

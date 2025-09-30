@@ -1,4 +1,4 @@
-import { MAX_OAUTH2_TTL_SEC, TTL_NEVER_EXPIRES } from '../constants/ttl-constants.js';
+import { MAX_OAUTH2_TTL_SEC, TTL_NEVER_EXPIRES } from "../constants/ttl-constants.js";
 
 export class TtlValidationError extends Error {}
 
@@ -48,38 +48,46 @@ export function validateTtlSec(
   return ttlSec;
 }
 
-export function validateJwtTokenTtlSec(ttlSec: Numeric | null | undefined): Numeric | null | undefined {
+export function validateJwtTokenTtlSec(
+  ttlSec: Numeric | null | undefined
+): Numeric | null | undefined {
   return validateTtlSec(ttlSec, {
     min: 60,
     max: MAX_OAUTH2_TTL_SEC,
     allowNeverExpires: false,
-    context: 'JWT token TTL',
+    context: "JWT token TTL",
   });
 }
 
-export function validateOAuth2TtlSec(ttlSec: Numeric | null | undefined): Numeric | null | undefined {
+export function validateOAuth2TtlSec(
+  ttlSec: Numeric | null | undefined
+): Numeric | null | undefined {
   return validateTtlSec(ttlSec, {
     min: 60,
     max: MAX_OAUTH2_TTL_SEC,
     allowNeverExpires: false,
-    context: 'OAuth2 authorization TTL',
+    context: "OAuth2 authorization TTL",
   });
 }
 
-export function validateCacheTtlSec(ttlSec: Numeric | null | undefined): Numeric | null | undefined {
+export function validateCacheTtlSec(
+  ttlSec: Numeric | null | undefined
+): Numeric | null | undefined {
   return validateTtlSec(ttlSec, {
     min: 1,
     max: 3600,
     allowNeverExpires: true,
-    context: 'Cache TTL',
+    context: "Cache TTL",
   });
 }
 
-export function validateKeyCorrelationTtlSec(ttlSec: Numeric | null | undefined): Numeric | null | undefined {
+export function validateKeyCorrelationTtlSec(
+  ttlSec: Numeric | null | undefined
+): Numeric | null | undefined {
   return validateTtlSec(ttlSec, {
     min: 0.1,
     max: 300,
     allowNeverExpires: false,
-    context: 'Key correlation TTL',
+    context: "Key correlation TTL",
   });
 }

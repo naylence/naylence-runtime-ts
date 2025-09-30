@@ -1,9 +1,9 @@
-import { secureDigest } from '../../../util/util.js';
-import { InMemoryKeyStore } from '../in-memory-key-store.js';
-import { KeyStore } from '../key-store.js';
-import { getKeyStore, setKeyStore } from '../key-store.js';
-import { getKeyProvider } from '../key-provider.js';
-import type { KeyRecord } from '../key-store.js';
+import { secureDigest } from "../../../util/util.js";
+import { InMemoryKeyStore } from "../in-memory-key-store.js";
+import { KeyStore } from "../key-store.js";
+import { getKeyStore, setKeyStore } from "../key-store.js";
+import { getKeyProvider } from "../key-provider.js";
+import type { KeyRecord } from "../key-store.js";
 
 class TestKeyStore extends KeyStore {
   public readonly stored = new Map<string, KeyRecord>();
@@ -15,7 +15,7 @@ class TestKeyStore extends KeyStore {
   public async getKey(kid: string): Promise<KeyRecord> {
     const key = this.stored.get(kid);
     if (!key) {
-      throw new Error('missing');
+      throw new Error("missing");
     }
     return key;
   }
@@ -35,7 +35,7 @@ class TestKeyStore extends KeyStore {
   public async getKeysGroupedByPath(): Promise<Record<string, KeyRecord[]>> {
     const grouped: Record<string, KeyRecord[]> = Object.create(null);
     for (const key of this.stored.values()) {
-      const physicalPath = typeof key.physical_path === 'string' ? key.physical_path : null;
+      const physicalPath = typeof key.physical_path === "string" ? key.physical_path : null;
       if (!physicalPath) continue;
       grouped[physicalPath] = grouped[physicalPath] ?? [];
       grouped[physicalPath].push(key);
@@ -46,7 +46,7 @@ class TestKeyStore extends KeyStore {
   public async removeKeysForPath(physicalPath: string): Promise<number> {
     let count = 0;
     for (const key of Array.from(this.stored.values())) {
-      if (key.physical_path === physicalPath && typeof key.kid === 'string') {
+      if (key.physical_path === physicalPath && typeof key.kid === "string") {
         this.stored.delete(key.kid);
         count += 1;
       }
@@ -59,48 +59,48 @@ class TestKeyStore extends KeyStore {
   }
 }
 
-describe('KeyStore.addKeys', () => {
+describe("KeyStore.addKeys", () => {
   const validKey = {
-    kid: 'key-1',
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: 'abc',
-    use: 'sig',
+    kid: "key-1",
+    kty: "OKP",
+    crv: "Ed25519",
+    x: "abc",
+    use: "sig",
   };
 
   const invalidKey = {
-    kid: 'key-2',
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: 'def',
+    kid: "key-2",
+    kty: "OKP",
+    crv: "Ed25519",
+    x: "def",
   };
 
-  it('adds valid keys and skips invalid ones while annotating metadata', async () => {
+  it("adds valid keys and skips invalid ones while annotating metadata", async () => {
     const store = new TestKeyStore();
-    const physicalPath = '/fame/node';
+    const physicalPath = "/fame/node";
 
     await store.addKeys([validKey, invalidKey], physicalPath);
 
     expect(store.stored.size).toBe(1);
-    const storedKey = store.stored.get('key-1');
+    const storedKey = store.stored.get("key-1");
     expect(storedKey).toBeDefined();
     expect(storedKey?.sid).toBe(secureDigest(physicalPath));
     expect(storedKey?.physical_path).toBe(physicalPath);
-    expect(storedKey?.use).toBe('sig');
+    expect(storedKey?.use).toBe("sig");
   });
 });
 
-describe('InMemoryKeyStore', () => {
+describe("InMemoryKeyStore", () => {
   const baseKey = {
-    kid: 'key-1',
-    kty: 'OKP',
-    crv: 'Ed25519',
-    x: 'abc',
-    use: 'sig',
-    physical_path: '/fame/node',
+    kid: "key-1",
+    kty: "OKP",
+    crv: "Ed25519",
+    x: "abc",
+    use: "sig",
+    physical_path: "/fame/node",
   } as KeyRecord;
 
-  it('stores and retrieves keys', async () => {
+  it("stores and retrieves keys", async () => {
     const store = new InMemoryKeyStore();
     await store.addKey(baseKey.kid, baseKey);
 
@@ -108,63 +108,63 @@ describe('InMemoryKeyStore', () => {
     expect(await store.getKey(baseKey.kid)).toEqual(baseKey);
   });
 
-  it('removes stale keys sharing physical path and use', async () => {
+  it("removes stale keys sharing physical path and use", async () => {
     const store = new InMemoryKeyStore();
-    const firstKey = { ...baseKey, kid: 'first' };
-    const staleKey = { ...baseKey, kid: 'stale' };
+    const firstKey = { ...baseKey, kid: "first" };
+    const staleKey = { ...baseKey, kid: "stale" };
     await store.addKey(firstKey.kid, firstKey);
     await store.addKey(staleKey.kid, staleKey);
 
-    const replacement = { ...baseKey, kid: 'replacement' };
+    const replacement = { ...baseKey, kid: "replacement" };
     await store.addKey(replacement.kid, replacement);
 
-    expect(await store.hasKey('first')).toBe(false);
-    expect(await store.hasKey('stale')).toBe(false);
-    expect(await store.hasKey('replacement')).toBe(true);
+    expect(await store.hasKey("first")).toBe(false);
+    expect(await store.hasKey("stale")).toBe(false);
+    expect(await store.hasKey("replacement")).toBe(true);
   });
 
-  it('removes keys by path and individually', async () => {
+  it("removes keys by path and individually", async () => {
     const store = new InMemoryKeyStore();
-    const keyA = { ...baseKey, kid: 'A' };
-    const keyB = { ...baseKey, kid: 'B', physical_path: '/other/path' };
+    const keyA = { ...baseKey, kid: "A" };
+    const keyB = { ...baseKey, kid: "B", physical_path: "/other/path" };
 
     await store.addKey(keyA.kid, keyA);
     await store.addKey(keyB.kid, keyB);
 
-    expect(await store.removeKeysForPath('/fame/node')).toBe(1);
-    expect(await store.hasKey('A')).toBe(false);
-    expect(await store.removeKey('B')).toBe(true);
-    expect(await store.hasKey('B')).toBe(false);
+    expect(await store.removeKeysForPath("/fame/node")).toBe(1);
+    expect(await store.hasKey("A")).toBe(false);
+    expect(await store.removeKey("B")).toBe(true);
+    expect(await store.hasKey("B")).toBe(false);
   });
 });
 
-describe('KeyStore singleton helpers', () => {
+describe("KeyStore singleton helpers", () => {
   afterEach(() => {
     setKeyStore(null);
   });
 
-  it('returns a singleton key store instance', () => {
+  it("returns a singleton key store instance", () => {
     const storeA = getKeyStore();
     const storeB = getKeyStore();
     expect(storeA).toBe(storeB);
   });
 
-  it('exposes key provider facade', async () => {
+  it("exposes key provider facade", async () => {
     const mockStore = new TestKeyStore();
     setKeyStore(mockStore);
 
     const provider = getKeyProvider();
-    await mockStore.addKey('key', {
-      kid: 'key',
-      kty: 'OKP',
-      crv: 'Ed25519',
-      x: 'abc',
-      use: 'sig',
-      physical_path: '/path',
-      sid: secureDigest('/path'),
+    await mockStore.addKey("key", {
+      kid: "key",
+      kty: "OKP",
+      crv: "Ed25519",
+      x: "abc",
+      use: "sig",
+      physical_path: "/path",
+      sid: secureDigest("/path"),
     });
 
     expect(provider).toBe(mockStore);
-    expect(await provider.getKey('key')).toHaveProperty('kid', 'key');
+    expect(await provider.getKey("key")).toHaveProperty("kid", "key");
   });
 });

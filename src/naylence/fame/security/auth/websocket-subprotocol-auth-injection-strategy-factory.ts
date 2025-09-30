@@ -1,15 +1,15 @@
-import { registerFactory } from 'naylence-factory';
-import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
+import { registerFactory } from "naylence-factory";
+import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
 import {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
   AuthInjectionStrategyFactory,
   type AuthInjectionStrategyConfig,
-} from './auth-injection-strategy-factory.js';
-import { WebSocketSubprotocolAuthInjectionStrategy } from './websocket-subprotocol-auth-injection-strategy.js';
-import type { TokenProviderConfig } from './token-provider-factory.js';
+} from "./auth-injection-strategy-factory.js";
+import { WebSocketSubprotocolAuthInjectionStrategy } from "./websocket-subprotocol-auth-injection-strategy.js";
+import type { TokenProviderConfig } from "./token-provider-factory.js";
 
 export interface WebSocketSubprotocolAuthInjectionConfig extends AuthInjectionStrategyConfig {
-  type: 'WebSocketSubprotocolAuth';
+  type: "WebSocketSubprotocolAuth";
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   token_provider?: TokenProviderConfig | Record<string, unknown>;
   subprotocolPrefix?: string;
@@ -18,13 +18,13 @@ export interface WebSocketSubprotocolAuthInjectionConfig extends AuthInjectionSt
 }
 
 interface NormalizedWebSocketConfig {
-  type: 'WebSocketSubprotocolAuth';
+  type: "WebSocketSubprotocolAuth";
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   subprotocolPrefix: string;
 }
 
 export class WebSocketSubprotocolAuthInjectionStrategyFactory extends AuthInjectionStrategyFactory<WebSocketSubprotocolAuthInjectionConfig> {
-  public readonly type = 'WebSocketSubprotocolAuth';
+  public readonly type = "WebSocketSubprotocolAuth";
 
   public async create(
     config?: WebSocketSubprotocolAuthInjectionConfig | Record<string, unknown> | null
@@ -38,30 +38,33 @@ function normalizeConfig(
   config?: WebSocketSubprotocolAuthInjectionConfig | Record<string, unknown> | null
 ): NormalizedWebSocketConfig {
   if (!config) {
-    throw new Error('WebSocketSubprotocolAuthInjectionStrategy requires configuration');
+    throw new Error("WebSocketSubprotocolAuthInjectionStrategy requires configuration");
   }
 
   const candidate = config as WebSocketSubprotocolAuthInjectionConfig & Record<string, unknown>;
-  const type = typeof candidate.type === 'string' ? candidate.type : undefined;
-  if (type !== 'WebSocketSubprotocolAuth') {
+  const type = typeof candidate.type === "string" ? candidate.type : undefined;
+  if (type !== "WebSocketSubprotocolAuth") {
     throw new Error(
-      `WebSocketSubprotocolAuthInjectionStrategyFactory expects type "WebSocketSubprotocolAuth", got "${type ?? 'undefined'}"`
+      `WebSocketSubprotocolAuthInjectionStrategyFactory expects type "WebSocketSubprotocolAuth", got "${type ?? "undefined"}"`
     );
   }
 
   const tokenProvider = candidate.tokenProvider ?? candidate.token_provider;
   if (!tokenProvider) {
-    throw new Error('WebSocketSubprotocolAuthInjectionStrategy requires a tokenProvider configuration');
+    throw new Error(
+      "WebSocketSubprotocolAuthInjectionStrategy requires a tokenProvider configuration"
+    );
   }
 
   const prefixCandidate =
     candidate.subprotocolPrefix ?? candidate.subprotocol_prefix ?? candidate.param;
-  const subprotocolPrefix = typeof prefixCandidate === 'string' && prefixCandidate.trim().length > 0
-    ? prefixCandidate.trim()
-    : 'bearer';
+  const subprotocolPrefix =
+    typeof prefixCandidate === "string" && prefixCandidate.trim().length > 0
+      ? prefixCandidate.trim()
+      : "bearer";
 
   return {
-    type: 'WebSocketSubprotocolAuth',
+    type: "WebSocketSubprotocolAuth",
     tokenProvider,
     subprotocolPrefix,
   };
@@ -69,6 +72,6 @@ function normalizeConfig(
 
 registerFactory<AuthInjectionStrategy, WebSocketSubprotocolAuthInjectionConfig>(
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
-  'WebSocketSubprotocolAuth',
+  "WebSocketSubprotocolAuth",
   WebSocketSubprotocolAuthInjectionStrategyFactory
 );

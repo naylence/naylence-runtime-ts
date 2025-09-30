@@ -1,17 +1,17 @@
-import { ResourceFactoryRegistry } from 'naylence-factory';
+import { ResourceFactoryRegistry } from "naylence-factory";
 import type {
   AuthorizationContext,
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { createAuthorizationContext, DeliveryOriginType, FameResponseType } from 'naylence-core';
+} from "naylence-core";
+import { createAuthorizationContext, DeliveryOriginType, FameResponseType } from "naylence-core";
 
-import type { NodeLike } from '../../node/node-like.js';
-import type { TokenVerifier } from '../auth/token-verifier.js';
-import { DefaultAuthorizer } from '../auth/default-authorizer.js';
-import { DefaultAuthorizerFactory } from '../auth/default-authorizer-factory.js';
-import '../auth/shared-secret-token-verifier-factory.js';
+import type { NodeLike } from "../../node/node-like.js";
+import type { TokenVerifier } from "../auth/token-verifier.js";
+import { DefaultAuthorizer } from "../auth/default-authorizer.js";
+import { DefaultAuthorizerFactory } from "../auth/default-authorizer-factory.js";
+import "../auth/shared-secret-token-verifier-factory.js";
 
 interface VerifyOptions {
   expectedAudience?: string;
@@ -19,7 +19,10 @@ interface VerifyOptions {
 
 class StubTokenVerifier implements TokenVerifier {
   constructor(
-    private readonly handler: (token: string, options?: VerifyOptions) => Promise<AuthorizationContext>
+    private readonly handler: (
+      token: string,
+      options?: VerifyOptions
+    ) => Promise<AuthorizationContext>
   ) {}
 
   public async verify(token: string, options?: VerifyOptions): Promise<AuthorizationContext> {
@@ -29,13 +32,13 @@ class StubTokenVerifier implements TokenVerifier {
 
 function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
   const base: Record<string, unknown> = {
-    id: 'node-123',
+    id: "node-123",
     sid: null,
-    physicalPath: '/region/node-123',
+    physicalPath: "/region/node-123",
     acceptedLogicals: new Set<string>(),
     envelopeFactory: {} as unknown,
     deliveryPolicy: null,
-    defaultBindingPath: '/',
+    defaultBindingPath: "/",
     hasParent: false,
     securityManager: null,
     admissionClient: null,
@@ -70,11 +73,11 @@ function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
 
 function createAttachFrame(overrides: Partial<NodeAttachFrame> = {}): NodeAttachFrame {
   return {
-    type: 'NodeAttach',
+    type: "NodeAttach",
     originType: DeliveryOriginType.DOWNSTREAM,
-    systemId: 'system-1',
-    instanceId: 'instance-1',
-    assignedPath: '/region/node-123',
+    systemId: "system-1",
+    instanceId: "instance-1",
+    assignedPath: "/region/node-123",
     capabilities: [],
     acceptedLogicals: [],
     ...overrides,
@@ -88,25 +91,25 @@ function createDeliveryContext(overrides: Partial<FameDeliveryContext> = {}): Fa
   } as FameDeliveryContext;
 }
 
-describe('DefaultAuthorizer', () => {
+describe("DefaultAuthorizer", () => {
   afterEach(() => {
-    ResourceFactoryRegistry.clearCache('TokenVerifierFactory');
-    ResourceFactoryRegistry.clearCache('CredentialProviderFactory');
+    ResourceFactoryRegistry.clearCache("TokenVerifierFactory");
+    ResourceFactoryRegistry.clearCache("CredentialProviderFactory");
   });
 
-  it('authenticates credentials using token verifier and sets defaults', async () => {
+  it("authenticates credentials using token verifier and sets defaults", async () => {
     const node = createNodeStub();
 
     const verifier = new StubTokenVerifier(async (token, options) => {
-      expect(token).toBe('valid-token');
+      expect(token).toBe("valid-token");
       expect(options?.expectedAudience).toBe(node.physicalPath);
       return createAuthorizationContext({
         authenticated: true,
         authorized: true,
-        principal: 'principal-1',
+        principal: "principal-1",
         claims: {
-          sub: 'principal-1',
-          instance_id: 'instance-1',
+          sub: "principal-1",
+          instance_id: "instance-1",
           aud: options?.expectedAudience,
         },
       });
@@ -115,26 +118,26 @@ describe('DefaultAuthorizer', () => {
     const authorizer = new DefaultAuthorizer({ tokenVerifier: verifier });
     await authorizer.onNodeStarted(node);
 
-    const context = await authorizer.authenticate('Bearer valid-token');
+    const context = await authorizer.authenticate("Bearer valid-token");
 
     expect(context).toBeDefined();
     expect(context?.authenticated).toBe(true);
     expect(context?.authorized).toBe(true);
-    expect(context?.principal).toBe('principal-1');
+    expect(context?.principal).toBe("principal-1");
     expect(context?.claims?.aud).toBe(node.physicalPath);
-    expect(context?.authMethod).toBe('jwt_fame_claims');
+    expect(context?.authMethod).toBe("jwt_fame_claims");
   });
 
-  it('returns undefined when token verification fails', async () => {
+  it("returns undefined when token verification fails", async () => {
     const node = createNodeStub();
     const verifier = new StubTokenVerifier(async () => {
-      throw new Error('invalid token');
+      throw new Error("invalid token");
     });
 
     const authorizer = new DefaultAuthorizer({ tokenVerifier: verifier });
     await authorizer.onNodeStarted(node);
 
-    const context = await authorizer.authenticate('Bearer invalid');
+    const context = await authorizer.authenticate("Bearer invalid");
     expect(context).toBeUndefined();
   });
 
@@ -143,11 +146,11 @@ describe('DefaultAuthorizer', () => {
     const node = createNodeStub();
 
     const attachFrame: NodeAttachFrame = {
-      type: 'NodeAttach',
+      type: "NodeAttach",
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'system-2',
-      instanceId: 'instance-1',
-      assignedPath: '/region/node-123',
+      systemId: "system-2",
+      instanceId: "instance-1",
+      assignedPath: "/region/node-123",
       capabilities: [],
       acceptedLogicals: [],
     };
@@ -156,38 +159,34 @@ describe('DefaultAuthorizer', () => {
     const context = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
+      principal: "system-1",
       claims: {
-        sub: 'system-1',
-        instance_id: 'instance-1',
+        sub: "system-1",
+        instance_id: "instance-1",
         aud: node.id,
       },
     });
 
     await expect(
-      authorizer.authorize(
-        node,
-        envelope,
-        {
-          originType: DeliveryOriginType.DOWNSTREAM,
-          security: { authorization: context },
-        } as unknown as FameDeliveryContext
-      )
+      authorizer.authorize(node, envelope, {
+        originType: DeliveryOriginType.DOWNSTREAM,
+        security: { authorization: context },
+      } as unknown as FameDeliveryContext)
     ).rejects.toThrow("Token sub doesn't match system id");
   });
 
-  it('authorizes node attach when claims match frame', async () => {
+  it("authorizes node attach when claims match frame", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
 
     const attachFrame: NodeAttachFrame = {
-      type: 'NodeAttach',
+      type: "NodeAttach",
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'system-1',
-      instanceId: 'instance-1',
-      assignedPath: '/region/node-123',
-      capabilities: ['cap-a'],
-      acceptedLogicals: ['logical-a'],
+      systemId: "system-1",
+      instanceId: "instance-1",
+      assignedPath: "/region/node-123",
+      capabilities: ["cap-a"],
+      acceptedLogicals: ["logical-a"],
     };
 
     const envelope = { frame: attachFrame } as unknown as FameEnvelope;
@@ -195,44 +194,40 @@ describe('DefaultAuthorizer', () => {
     const context = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
-      authMethod: 'jwt_fame_claims',
+      principal: "system-1",
+      authMethod: "jwt_fame_claims",
       claims: {
-        sub: 'system-1',
-        instance_id: 'instance-1',
+        sub: "system-1",
+        instance_id: "instance-1",
         aud: node.id,
-        assigned_path: '/region/node-123',
-        accepted_capabilities: ['cap-a'],
-        accepted_logicals: ['logical-a'],
+        assigned_path: "/region/node-123",
+        accepted_capabilities: ["cap-a"],
+        accepted_logicals: ["logical-a"],
       },
     });
 
-    const result = await authorizer.authorize(
-      node,
-      envelope,
-      {
-        originType: DeliveryOriginType.DOWNSTREAM,
-        security: { authorization: context },
-      } as unknown as FameDeliveryContext
-    );
+    const result = await authorizer.authorize(node, envelope, {
+      originType: DeliveryOriginType.DOWNSTREAM,
+      security: { authorization: context },
+    } as unknown as FameDeliveryContext);
 
     expect(result).toBeDefined();
     expect(result?.authorized).toBe(true);
-    expect(result?.authMethod).toBe('jwt_fame_claims');
+    expect(result?.authMethod).toBe("jwt_fame_claims");
   });
 
-  it('augments claims during node attach request validation', async () => {
+  it("augments claims during node attach request validation", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
 
     const frame: NodeAttachFrame = {
-      type: 'NodeAttach',
+      type: "NodeAttach",
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'system-1',
-      instanceId: 'instance-1',
-      assignedPath: '/region/child',
-      capabilities: ['cap-a', 'cap-b'],
-      acceptedLogicals: ['logical-a'],
+      systemId: "system-1",
+      instanceId: "instance-1",
+      assignedPath: "/region/child",
+      capabilities: ["cap-a", "cap-b"],
+      acceptedLogicals: ["logical-a"],
     };
 
     const auth = createAuthorizationContext({
@@ -245,58 +240,58 @@ describe('DefaultAuthorizer', () => {
     expect(result).toBeDefined();
     expect(result?.authorized).toBe(true);
     expect(result?.claims).toMatchObject({
-      sub: 'system-1',
-      instance_id: 'instance-1',
+      sub: "system-1",
+      instance_id: "instance-1",
       aud: node.id,
-      assigned_path: '/region/child',
-      accepted_capabilities: ['cap-a', 'cap-b'],
-      accepted_logicals: ['logical-a'],
+      assigned_path: "/region/child",
+      accepted_capabilities: ["cap-a", "cap-b"],
+      accepted_logicals: ["logical-a"],
     });
-    expect(result?.principal).toBe('system-1');
+    expect(result?.principal).toBe("system-1");
   });
 
-  it('creates authorizer via factory using shared secret verifier', async () => {
+  it("creates authorizer via factory using shared secret verifier", async () => {
     const node = createNodeStub();
     const factory = new DefaultAuthorizerFactory();
 
     const authorizer = (await factory.create({
-      type: 'DefaultAuthorizer',
+      type: "DefaultAuthorizer",
       verifier: {
-        type: 'SharedSecretTokenVerifier',
-        secret: 'shared-secret',
+        type: "SharedSecretTokenVerifier",
+        secret: "shared-secret",
       },
     })) as DefaultAuthorizer;
 
     await authorizer.onNodeStarted(node);
-    const context = await authorizer.authenticate('Bearer shared-secret');
+    const context = await authorizer.authenticate("Bearer shared-secret");
 
     expect(context).toBeDefined();
     expect(context?.authenticated).toBe(true);
     expect(context?.authorized).toBe(true);
-    expect(context?.authMethod).toBe('shared_secret');
+    expect(context?.authMethod).toBe("shared_secret");
   });
 
-  it('returns undefined when credentials are blank', async () => {
+  it("returns undefined when credentials are blank", async () => {
     const handler = jest.fn<Promise<AuthorizationContext>, [string, VerifyOptions | undefined]>();
     const authorizer = new DefaultAuthorizer({
       tokenVerifier: new StubTokenVerifier(handler),
     });
 
-    const context = await authorizer.authenticate('   ');
+    const context = await authorizer.authenticate("   ");
 
     expect(context).toBeUndefined();
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('trims raw tokens and verifies without expected audience', async () => {
+  it("trims raw tokens and verifies without expected audience", async () => {
     const handler = jest.fn(
       async (token: string, options?: VerifyOptions): Promise<AuthorizationContext> => {
-        expect(token).toBe('raw-token');
+        expect(token).toBe("raw-token");
         expect(options).toBeUndefined();
         return createAuthorizationContext({
           authenticated: true,
           authorized: true,
-          principal: 'principal-raw',
+          principal: "principal-raw",
         });
       }
     );
@@ -305,19 +300,19 @@ describe('DefaultAuthorizer', () => {
       tokenVerifier: new StubTokenVerifier(handler),
     });
 
-    const context = await authorizer.authenticate('  raw-token  ');
+    const context = await authorizer.authenticate("  raw-token  ");
 
     expect(context?.authorized).toBe(true);
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it('decodes byte credentials with Buffer when TextDecoder is unavailable', async () => {
+  it("decodes byte credentials with Buffer when TextDecoder is unavailable", async () => {
     const globalAny = globalThis as { [key: string]: unknown };
     const originalTextDecoder = globalAny.TextDecoder;
 
     const handler = jest.fn(
       async (token: string, options?: VerifyOptions): Promise<AuthorizationContext> => {
-        expect(token).toBe('buffer-token');
+        expect(token).toBe("buffer-token");
         expect(options).toBeUndefined();
         return createAuthorizationContext({ authenticated: true, authorized: true });
       }
@@ -329,17 +324,17 @@ describe('DefaultAuthorizer', () => {
 
     try {
       globalAny.TextDecoder = undefined;
-      const bytes = Uint8Array.from(Buffer.from('Bearer buffer-token', 'utf-8'));
+      const bytes = Uint8Array.from(Buffer.from("Bearer buffer-token", "utf-8"));
       const context = await authorizer.authenticate(bytes);
 
       expect(context?.authenticated).toBe(true);
-      expect(handler).toHaveBeenCalledWith('buffer-token', undefined);
+      expect(handler).toHaveBeenCalledWith("buffer-token", undefined);
     } finally {
       globalAny.TextDecoder = originalTextDecoder;
     }
   });
 
-  it('throws when byte credentials cannot be decoded', async () => {
+  it("throws when byte credentials cannot be decoded", async () => {
     const globalAny = globalThis as { [key: string]: unknown };
     const originalTextDecoder = globalAny.TextDecoder;
     const originalBuffer = globalAny.Buffer;
@@ -359,7 +354,7 @@ describe('DefaultAuthorizer', () => {
       const bytes = new Uint8Array([66, 121]);
 
       await expect(authorizer.authenticate(bytes)).rejects.toThrow(
-        'Unable to decode credential bytes without TextDecoder support'
+        "Unable to decode credential bytes without TextDecoder support"
       );
       expect(handler).not.toHaveBeenCalled();
     } finally {
@@ -368,7 +363,7 @@ describe('DefaultAuthorizer', () => {
     }
   });
 
-  it('returns undefined when authorization context is missing or unauthenticated', async () => {
+  it("returns undefined when authorization context is missing or unauthenticated", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
     const envelope = { frame: {} } as FameEnvelope;
@@ -388,7 +383,7 @@ describe('DefaultAuthorizer', () => {
     expect(resultNotAuthenticated).toBeUndefined();
   });
 
-  it('returns existing authorization when already authorized', async () => {
+  it("returns existing authorization when already authorized", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
     const envelope = { frame: {} } as FameEnvelope;
@@ -396,7 +391,7 @@ describe('DefaultAuthorizer', () => {
     const authorization = createAuthorizationContext({
       authenticated: true,
       authorized: true,
-      authMethod: 'custom-method',
+      authMethod: "custom-method",
     });
 
     const result = await authorizer.authorize(
@@ -408,7 +403,7 @@ describe('DefaultAuthorizer', () => {
     expect(result).toBe(authorization);
   });
 
-  it('authorizes remote node attach even when claims are incomplete', async () => {
+  it("authorizes remote node attach even when claims are incomplete", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
     const frame = createAttachFrame();
@@ -431,7 +426,7 @@ describe('DefaultAuthorizer', () => {
     expect(result?.authorized).toBe(true);
   });
 
-  it('validateNodeAttachRequest returns undefined when auth context is missing or unauthenticated', async () => {
+  it("validateNodeAttachRequest returns undefined when auth context is missing or unauthenticated", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
     const frame = createAttachFrame();
@@ -447,7 +442,7 @@ describe('DefaultAuthorizer', () => {
     expect(resultNotAuthenticated).toBeUndefined();
   });
 
-  it('rejects node attach when instance id does not match claims', async () => {
+  it("rejects node attach when instance id does not match claims", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
     const frame = createAttachFrame();
@@ -456,10 +451,10 @@ describe('DefaultAuthorizer', () => {
     const authorization = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
+      principal: "system-1",
       claims: {
-        sub: 'system-1',
-        instance_id: 'instance-2',
+        sub: "system-1",
+        instance_id: "instance-2",
         aud: node.id,
       },
     });
@@ -473,10 +468,10 @@ describe('DefaultAuthorizer', () => {
           security: { authorization },
         })
       )
-    ).rejects.toThrow('Token instance ID mismatch');
+    ).rejects.toThrow("Token instance ID mismatch");
   });
 
-  it('rejects node attach when audience does not match claims', async () => {
+  it("rejects node attach when audience does not match claims", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
     const frame = createAttachFrame();
@@ -485,11 +480,11 @@ describe('DefaultAuthorizer', () => {
     const authorization = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
+      principal: "system-1",
       claims: {
-        sub: 'system-1',
+        sub: "system-1",
         instance_id: frame.instanceId,
-        aud: 'different-node',
+        aud: "different-node",
       },
     });
 
@@ -505,21 +500,21 @@ describe('DefaultAuthorizer', () => {
     ).rejects.toThrow("Token audience doesn't match target node");
   });
 
-  it('rejects node attach when assigned path differs from token claims', async () => {
+  it("rejects node attach when assigned path differs from token claims", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
-    const frame = createAttachFrame({ assignedPath: '/region/child' });
+    const frame = createAttachFrame({ assignedPath: "/region/child" });
     const envelope = { frame } as unknown as FameEnvelope;
 
     const authorization = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
+      principal: "system-1",
       claims: {
-        sub: 'system-1',
+        sub: "system-1",
         instance_id: frame.instanceId,
         aud: node.id,
-        assigned_path: '/region/other',
+        assigned_path: "/region/other",
       },
     });
 
@@ -532,24 +527,24 @@ describe('DefaultAuthorizer', () => {
           security: { authorization },
         })
       )
-    ).rejects.toThrow('Assigned path is not authorized by token');
+    ).rejects.toThrow("Assigned path is not authorized by token");
   });
 
-  it('rejects node attach when requested logicals are not authorized', async () => {
+  it("rejects node attach when requested logicals are not authorized", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
-    const frame = createAttachFrame({ acceptedLogicals: ['logical-a', 'logical-b'] });
+    const frame = createAttachFrame({ acceptedLogicals: ["logical-a", "logical-b"] });
     const envelope = { frame } as unknown as FameEnvelope;
 
     const authorization = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
+      principal: "system-1",
       claims: {
-        sub: 'system-1',
+        sub: "system-1",
         instance_id: frame.instanceId,
         aud: node.id,
-        accepted_logicals: ['logical-a'],
+        accepted_logicals: ["logical-a"],
       },
     });
 
@@ -562,24 +557,24 @@ describe('DefaultAuthorizer', () => {
           security: { authorization },
         })
       )
-    ).rejects.toThrow('Logicals not authorized by token');
+    ).rejects.toThrow("Logicals not authorized by token");
   });
 
-  it('rejects node attach when requested capabilities are not authorized', async () => {
+  it("rejects node attach when requested capabilities are not authorized", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
-    const frame = createAttachFrame({ capabilities: ['cap-a', 'cap-b'] });
+    const frame = createAttachFrame({ capabilities: ["cap-a", "cap-b"] });
     const envelope = { frame } as unknown as FameEnvelope;
 
     const authorization = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
+      principal: "system-1",
       claims: {
-        sub: 'system-1',
+        sub: "system-1",
         instance_id: frame.instanceId,
         aud: node.id,
-        accepted_capabilities: ['cap-a'],
+        accepted_capabilities: ["cap-a"],
       },
     });
 
@@ -592,21 +587,21 @@ describe('DefaultAuthorizer', () => {
           security: { authorization },
         })
       )
-    ).rejects.toThrow('Capabilities not authorized by token');
+    ).rejects.toThrow("Capabilities not authorized by token");
   });
 
-  it('rejects node attach when capabilities are requested but token supplies none', async () => {
+  it("rejects node attach when capabilities are requested but token supplies none", async () => {
     const authorizer = new DefaultAuthorizer();
     const node = createNodeStub();
-    const frame = createAttachFrame({ capabilities: ['cap-a'] });
+    const frame = createAttachFrame({ capabilities: ["cap-a"] });
     const envelope = { frame } as unknown as FameEnvelope;
 
     const authorization = createAuthorizationContext({
       authenticated: true,
       authorized: false,
-      principal: 'system-1',
+      principal: "system-1",
       claims: {
-        sub: 'system-1',
+        sub: "system-1",
         instance_id: frame.instanceId,
         aud: node.id,
       },
@@ -621,6 +616,6 @@ describe('DefaultAuthorizer', () => {
           security: { authorization },
         })
       )
-    ).rejects.toThrow('Capabilities not authorized by token');
+    ).rejects.toThrow("Capabilities not authorized by token");
   });
 });

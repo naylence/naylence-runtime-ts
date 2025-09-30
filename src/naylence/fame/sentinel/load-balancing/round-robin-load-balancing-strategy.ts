@@ -1,11 +1,15 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from "naylence-core";
 
-import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 
 export class RoundRobinLoadBalancingStrategy implements LoadBalancingStrategy {
   private readonly counters = new Map<unknown, number>();
 
-  public choose(poolKey: unknown, segments: readonly string[], _envelope: FameEnvelope): string | null {
+  public choose(
+    poolKey: unknown,
+    segments: readonly string[],
+    _envelope: FameEnvelope
+  ): string | null {
     if (!segments.length) {
       return null;
     }

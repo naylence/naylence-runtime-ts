@@ -1,7 +1,7 @@
-import type { NodeHelloFrame } from 'naylence-core';
+import type { NodeHelloFrame } from "naylence-core";
 
-import type { NodePlacementStrategy, PlacementDecision } from './node-placement-strategy.js';
-import { StaticNodePlacementStrategy } from './static-node-placement-strategy.js';
+import type { NodePlacementStrategy, PlacementDecision } from "./node-placement-strategy.js";
+import { StaticNodePlacementStrategy } from "./static-node-placement-strategy.js";
 
 type ParentResolver = () => string;
 
@@ -10,7 +10,9 @@ export interface WebSocketPlacementStrategyOptions {
   parentPathFn: ParentResolver;
 }
 
-function createStaticDelegate(options: WebSocketPlacementStrategyOptions): StaticNodePlacementStrategy {
+function createStaticDelegate(
+  options: WebSocketPlacementStrategyOptions
+): StaticNodePlacementStrategy {
   return new StaticNodePlacementStrategy({
     targetSystemId: options.parentSystemIdFn(),
     targetPhysicalPath: options.parentPathFn(),

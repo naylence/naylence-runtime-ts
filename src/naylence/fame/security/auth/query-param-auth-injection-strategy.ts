@@ -1,10 +1,10 @@
-import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
-import type { QueryParamAuthInjectionStrategyConfig } from './query-param-auth-injection-strategy-factory.js';
-import { TokenProviderFactory } from './token-provider-factory.js';
+import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
+import type { QueryParamAuthInjectionStrategyConfig } from "./query-param-auth-injection-strategy-factory.js";
+import { TokenProviderFactory } from "./token-provider-factory.js";
 
 export interface QueryParamAuthInjectionStrategyOptions {
-  type?: 'QueryParamAuth';
-  tokenProvider: QueryParamAuthInjectionStrategyConfig['tokenProvider'];
+  type?: "QueryParamAuth";
+  tokenProvider: QueryParamAuthInjectionStrategyConfig["tokenProvider"];
   paramName: string;
 }
 
@@ -19,9 +19,9 @@ export class QueryParamAuthInjectionStrategy implements AuthInjectionStrategy {
     const provider = await TokenProviderFactory.createTokenProvider(this.options.tokenProvider);
     const token = await provider.getToken();
 
-    const [basePart, hashPart] = url.split('#', 2);
-    const [pathPart, queryPart] = basePart.split('?', 2);
-    const params = new URLSearchParams(queryPart ?? '');
+    const [basePart, hashPart] = url.split("#", 2);
+    const [pathPart, queryPart] = basePart.split("?", 2);
+    const params = new URLSearchParams(queryPart ?? "");
     params.set(this.options.paramName, token.value);
 
     const queryString = params.toString();

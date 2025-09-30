@@ -1,25 +1,29 @@
-import { generateId } from 'naylence-core';
-import { getLogger } from '../../../util/logging.js';
-import { secureDigest } from '../../../util/util.js';
-import type { NodeLike } from '../../../node/node-like.js';
-import { JWTTokenIssuer } from '../../auth/jwt-token-issuer.js';
-import { JWTTokenVerifier } from '../../auth/jwt-token-verifier.js';
-import type { TokenIssuer } from '../../auth/token-issuer.js';
-import type { TokenVerifier } from '../../auth/token-verifier.js';
-import { requireJose } from '../../auth/jose-loader.js';
-import type { DevKeyPair } from '../key-factories/dev-key-pair.js';
-import { createEd25519Keypair, createRsaKeypair, createX25519Keypair } from '../key-factories/index.js';
-import type { CryptoProvider } from './crypto-provider.js';
+import { generateId } from "naylence-core";
+import { getLogger } from "../../../util/logging.js";
+import { secureDigest } from "../../../util/util.js";
+import type { NodeLike } from "../../../node/node-like.js";
+import { JWTTokenIssuer } from "../../auth/jwt-token-issuer.js";
+import { JWTTokenVerifier } from "../../auth/jwt-token-verifier.js";
+import type { TokenIssuer } from "../../auth/token-issuer.js";
+import type { TokenVerifier } from "../../auth/token-verifier.js";
+import { requireJose } from "../../auth/jose-loader.js";
+import type { DevKeyPair } from "../key-factories/dev-key-pair.js";
+import {
+  createEd25519Keypair,
+  createRsaKeypair,
+  createX25519Keypair,
+} from "../key-factories/index.js";
+import type { CryptoProvider } from "./crypto-provider.js";
 
-const logger = getLogger('default-crypto-provider');
+const logger = getLogger("default-crypto-provider");
 
-const ENV_VAR_CRYPTO_ALGORITHM = 'FAME_CRYPTO_ALGORITHM';
-const DEFAULT_CRYPTO_ALGORITHM = 'EdDSA';
-const DEFAULT_ISSUER = 'dev.naylence.ai';
-const DEFAULT_AUDIENCE = 'router-dev';
+const ENV_VAR_CRYPTO_ALGORITHM = "FAME_CRYPTO_ALGORITHM";
+const DEFAULT_CRYPTO_ALGORITHM = "EdDSA";
+const DEFAULT_ISSUER = "dev.naylence.ai";
+const DEFAULT_AUDIENCE = "router-dev";
 const DEFAULT_TTL_SEC = 3600;
 const DEFAULT_HMAC_SECRET_BYTES = 32;
-const ENCRYPTION_ALG = 'ECDH-ES';
+const ENCRYPTION_ALG = "ECDH-ES";
 
 interface CertificateContext {
   nodeId: string;
@@ -63,7 +67,9 @@ interface ProviderArtifacts {
 }
 
 export class DefaultCryptoProvider implements CryptoProvider {
-  public static async create(options: DefaultCryptoProviderOptions = {}): Promise<DefaultCryptoProvider> {
+  public static async create(
+    options: DefaultCryptoProviderOptions = {}
+  ): Promise<DefaultCryptoProvider> {
     const artifacts = await buildProviderArtifacts(options);
     return new DefaultCryptoProvider(artifacts);
   }
@@ -75,7 +81,7 @@ export class DefaultCryptoProvider implements CryptoProvider {
   private certContext: CertificateContext | null = null;
 
   private constructor(private readonly artifacts: ProviderArtifacts) {
-    logger.debug('default_crypto_provider_initialized', {
+    logger.debug("default_crypto_provider_initialized", {
       signature_key_id: artifacts.signing.keyId,
       encryption_key_id: artifacts.encryption.keyId,
       issuer: artifacts.issuer,
@@ -131,7 +137,7 @@ export class DefaultCryptoProvider implements CryptoProvider {
 
     const algorithm = this.artifacts.signing.algorithm;
 
-    if (algorithm.startsWith('HS')) {
+    if (algorithm.startsWith("HS")) {
       this.tokenIssuerInstance = new JWTTokenIssuer({
         signingKeyPem: this.hmacSecret,
         kid: this.signatureKeyId,
@@ -160,7 +166,7 @@ export class DefaultCryptoProvider implements CryptoProvider {
     }
 
     const algorithm = this.artifacts.signing.algorithm;
-    const verificationKey = algorithm.startsWith('HS') ? this.hmacSecret : this.signingPublicPem;
+    const verificationKey = algorithm.startsWith("HS") ? this.hmacSecret : this.signingPublicPem;
 
     this.tokenVerifierInstance = new JWTTokenVerifier({
       verificationKey,
@@ -222,11 +228,11 @@ export class DefaultCryptoProvider implements CryptoProvider {
       logicals: [...logicals],
     };
 
-    logger.debug('node_context_set', {
+    logger.debug("node_context_set", {
       node_id: nodeId,
       physical_path: physicalPath,
       logicals,
-      message: 'Certificate generation via external CA service required',
+      message: "Certificate generation via external CA service required",
     });
   }
 
@@ -239,10 +245,10 @@ export class DefaultCryptoProvider implements CryptoProvider {
         nodeSid: nodeLike.sid,
       };
 
-      logger.debug('node_context_updated_with_nodelike_sid', {
+      logger.debug("node_context_updated_with_nodelike_sid", {
         node_id: nodeLike.id,
         provided_sid: nodeLike.sid,
-        message: 'Certificate generation via external CA service required',
+        message: "Certificate generation via external CA service required",
       });
     }
   }
@@ -256,12 +262,12 @@ export class DefaultCryptoProvider implements CryptoProvider {
       logicals: [...logicals],
     };
 
-    logger.debug('prepared_context_for_attach', {
+    logger.debug("prepared_context_for_attach", {
       node_id: nodeId,
       physical_path: physicalPath,
       node_sid: nodeSid,
       logicals,
-      message: 'Certificate generation via external CA service required',
+      message: "Certificate generation via external CA service required",
     });
   }
 
@@ -274,10 +280,10 @@ export class DefaultCryptoProvider implements CryptoProvider {
       logicals: [...logicals],
     };
 
-    logger.debug('logicals_updated', {
+    logger.debug("logicals_updated", {
       node_id: this.certContext.nodeId,
       logicals,
-      message: 'Certificate regeneration via external CA service required',
+      message: "Certificate regeneration via external CA service required",
     });
   }
 
@@ -285,26 +291,34 @@ export class DefaultCryptoProvider implements CryptoProvider {
     this.nodeCertPem = certificatePem;
     this.nodeCertChainPem = certificateChainPem ?? null;
 
-    logger.debug('certificate_stored', {
+    logger.debug("certificate_stored", {
       has_certificate: Boolean(certificatePem),
       has_chain: Boolean(certificateChainPem),
     });
   }
 
   public createCsr(): never {
-    throw new Error('CSR creation is not supported by the TypeScript default crypto provider yet.');
+    throw new Error("CSR creation is not supported by the TypeScript default crypto provider yet.");
   }
 }
 
-async function buildProviderArtifacts(options: DefaultCryptoProviderOptions): Promise<ProviderArtifacts> {
+async function buildProviderArtifacts(
+  options: DefaultCryptoProviderOptions
+): Promise<ProviderArtifacts> {
   const algorithm = normalizeAlgorithm(options.algorithm ?? readEnvAlgorithm());
   const signatureKeyId = options.signatureKeyId?.trim() || generateId();
   const encryptionKeyId = options.encryptionKeyId?.trim() || generateId();
   const issuer = options.issuer?.trim() || DEFAULT_ISSUER;
   const audience = options.audience?.trim() || DEFAULT_AUDIENCE;
-  const ttlSec = typeof options.ttlSec === 'number' && options.ttlSec > 0 ? options.ttlSec : DEFAULT_TTL_SEC;
+  const ttlSec =
+    typeof options.ttlSec === "number" && options.ttlSec > 0 ? options.ttlSec : DEFAULT_TTL_SEC;
 
-  const signingParams: { algorithm: string; keyId: string; privatePem?: string; publicPem?: string } = {
+  const signingParams: {
+    algorithm: string;
+    keyId: string;
+    privatePem?: string;
+    publicPem?: string;
+  } = {
     algorithm,
     keyId: signatureKeyId,
   };
@@ -329,7 +343,8 @@ async function buildProviderArtifacts(options: DefaultCryptoProviderOptions): Pr
 
   const encryption = await resolveEncryptionArtifacts(encryptionParams);
 
-  const hmacSecret = options.hmacSecret?.trim() || (await generateRandomSecretBase64(DEFAULT_HMAC_SECRET_BYTES));
+  const hmacSecret =
+    options.hmacSecret?.trim() || (await generateRandomSecretBase64(DEFAULT_HMAC_SECRET_BYTES));
 
   return {
     signing,
@@ -346,7 +361,7 @@ async function resolveSigningArtifacts(params: {
   keyId: string;
   privatePem?: string;
   publicPem?: string;
-}): Promise<ProviderArtifacts['signing']> {
+}): Promise<ProviderArtifacts["signing"]> {
   const normalizedAlg = mapAlgorithmToJwt(params.algorithm);
 
   if (params.privatePem && params.publicPem) {
@@ -361,9 +376,9 @@ async function resolveSigningArtifacts(params: {
   }
 
   let keyPair: DevKeyPair;
-  if (normalizedAlg === 'EdDSA') {
+  if (normalizedAlg === "EdDSA") {
     keyPair = await createEd25519Keypair(params.keyId);
-  } else if (normalizedAlg.startsWith('RS')) {
+  } else if (normalizedAlg.startsWith("RS")) {
     keyPair = await createRsaKeypair(params.keyId);
   } else {
     throw new Error(`Unsupported signing algorithm: ${params.algorithm}`);
@@ -373,7 +388,7 @@ async function resolveSigningArtifacts(params: {
   const jwk = cloneJson(baseJwk ?? {});
   jwk.kid = params.keyId;
   jwk.alg = normalizedAlg;
-  jwk.use = 'sig';
+  jwk.use = "sig";
 
   return {
     privatePem: keyPair.privatePem,
@@ -388,7 +403,7 @@ async function resolveEncryptionArtifacts(params: {
   keyId: string;
   privatePem?: string;
   publicPem?: string;
-}): Promise<ProviderArtifacts['encryption']> {
+}): Promise<ProviderArtifacts["encryption"]> {
   if (params.privatePem && params.publicPem) {
     const jwk = await buildEncryptionJwkFromPem(params.publicPem, params.keyId);
     return {
@@ -419,13 +434,18 @@ function normalizeAlgorithm(value: string | null | undefined): string {
     return DEFAULT_CRYPTO_ALGORITHM;
   }
   const upper = trimmed.toUpperCase();
-  if (upper === 'EDDSA' || upper === 'ED25519') {
-    return 'EdDSA';
+  if (upper === "EDDSA" || upper === "ED25519") {
+    return "EdDSA";
   }
-  if (upper === 'RSA') {
-    return 'RSA';
+  if (upper === "RSA") {
+    return "RSA";
   }
-  if (upper.startsWith('RS') || upper.startsWith('PS') || upper.startsWith('ES') || upper.startsWith('HS')) {
+  if (
+    upper.startsWith("RS") ||
+    upper.startsWith("PS") ||
+    upper.startsWith("ES") ||
+    upper.startsWith("HS")
+  ) {
     return upper;
   }
   return trimmed;
@@ -433,33 +453,39 @@ function normalizeAlgorithm(value: string | null | undefined): string {
 
 function mapAlgorithmToJwt(value: string): string {
   const upper = value.toUpperCase();
-  if (upper === 'RSA') {
-    return 'RS256';
+  if (upper === "RSA") {
+    return "RS256";
   }
   return value;
 }
 
 function readEnvAlgorithm(): string | null {
-  if (typeof process === 'undefined' || !process.env) {
+  if (typeof process === "undefined" || !process.env) {
     return null;
   }
   const envValue = process.env[ENV_VAR_CRYPTO_ALGORITHM];
   return envValue ?? null;
 }
 
-async function buildSigningJwkFromPem(publicPem: string, kid: string, preferredAlg: string): Promise<Record<string, unknown>> {
+async function buildSigningJwkFromPem(
+  publicPem: string,
+  kid: string,
+  preferredAlg: string
+): Promise<Record<string, unknown>> {
   const jose = await requireJose();
-  const candidates = preferredAlg ? [preferredAlg, 'EdDSA', 'RS256', 'ES256', 'ES384', 'ES512'] : ['EdDSA', 'RS256', 'ES256', 'ES384', 'ES512'];
+  const candidates = preferredAlg
+    ? [preferredAlg, "EdDSA", "RS256", "ES256", "ES384", "ES512"]
+    : ["EdDSA", "RS256", "ES256", "ES384", "ES512"];
 
   for (const alg of candidates) {
     try {
       const key = await jose.importSPKI(publicPem, alg);
       const jwk = await jose.exportJWK(key);
-      if (jwk && typeof jwk === 'object') {
+      if (jwk && typeof jwk === "object") {
         const result: Record<string, unknown> = {
           ...jwk,
           kid,
-          use: 'sig',
+          use: "sig",
           alg,
         };
         return result;
@@ -469,51 +495,58 @@ async function buildSigningJwkFromPem(publicPem: string, kid: string, preferredA
     }
   }
 
-  throw new Error('Unable to derive JWK from signing public key PEM');
+  throw new Error("Unable to derive JWK from signing public key PEM");
 }
 
-async function buildEncryptionJwkFromPem(publicPem: string, kid: string): Promise<Record<string, unknown>> {
+async function buildEncryptionJwkFromPem(
+  publicPem: string,
+  kid: string
+): Promise<Record<string, unknown>> {
   const jose = await requireJose();
   try {
     const key = await jose.importSPKI(publicPem, ENCRYPTION_ALG);
     const jwk = await jose.exportJWK(key);
-    if (jwk && typeof jwk === 'object') {
+    if (jwk && typeof jwk === "object") {
       return {
         ...jwk,
         kid,
-        use: 'enc',
+        use: "enc",
         alg: ENCRYPTION_ALG,
       };
     }
   } catch (error) {
-    logger.warning('x25519_jwk_from_pem_failed', {
+    logger.warning("x25519_jwk_from_pem_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
   }
-  throw new Error('Unable to derive JWK from X25519 public key PEM');
+  throw new Error("Unable to derive JWK from X25519 public key PEM");
 }
 
 async function generateRandomSecretBase64(length: number): Promise<string> {
-  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.getRandomValues === "function"
+  ) {
     const bytes = new Uint8Array(length);
     globalThis.crypto.getRandomValues(bytes);
     return bytesToBase64(bytes);
   }
 
-  if (typeof process !== 'undefined') {
-    const { randomBytes } = await import('crypto');
-    return randomBytes(length).toString('base64');
+  if (typeof process !== "undefined") {
+    const { randomBytes } = await import("crypto");
+    return randomBytes(length).toString("base64");
   }
 
-  throw new Error('No cryptographic random source available to generate HMAC secret');
+  throw new Error("No cryptographic random source available to generate HMAC secret");
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(bytes).toString('base64');
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
   }
 
-  let binary = '';
+  let binary = "";
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
@@ -536,11 +569,11 @@ function splitPemCertificates(pem: string): string[] {
 }
 
 function pemToDerBase64(pem: string): string {
-  const lines = pem.replace(/\r/g, '').split('\n');
-  const base64Lines = lines.filter((line) => !line.startsWith('-----') && line.trim().length > 0);
-  const base64 = base64Lines.join('');
+  const lines = pem.replace(/\r/g, "").split("\n");
+  const base64Lines = lines.filter((line) => !line.startsWith("-----") && line.trim().length > 0);
+  const base64 = base64Lines.join("");
   // Ensure the output is valid base64 without whitespace
-  return base64.replace(/\s+/g, '');
+  return base64.replace(/\s+/g, "");
 }
 
 function cloneJson<T>(value: T): T {

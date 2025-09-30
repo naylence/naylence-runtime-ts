@@ -57,23 +57,23 @@ function _supportsColor(): boolean {
     if (process.env.CI && ["true", "1"].includes(process.env.CI)) {
       return true;
     }
-    
+
     // Check for NO_COLOR environment variable
     if (process.env.NO_COLOR) {
       return false;
     }
-    
+
     // Check for FORCE_COLOR environment variable
     if (process.env.FORCE_COLOR) {
       return true;
     }
-    
+
     // Check if stdout is a TTY (terminal)
     if (process.stdout && process.stdout.isTTY) {
       return true;
     }
   }
-  
+
   // In browser environments, assume no color support by default
   return false;
 }

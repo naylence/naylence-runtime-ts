@@ -3,27 +3,27 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { createAuthorizationContext } from 'naylence-core';
-import { DEFAULT_REVERSE_AUTH_TTL_SEC } from '../../constants/ttl-constants.js';
-import { getLogger } from '../../util/logging.js';
-import type { NodeLike } from '../../node/node-like.js';
-import type { NodeEventListener } from '../../node/node-event-listener.js';
-import type { TokenIssuer } from './token-issuer.js';
-import type { TokenVerifier } from './token-verifier.js';
-import type { TokenVerifierProvider } from './token-verifier-provider.js';
-import type { Authorizer } from './authorizer.js';
+} from "naylence-core";
+import { createAuthorizationContext } from "naylence-core";
+import { DEFAULT_REVERSE_AUTH_TTL_SEC } from "../../constants/ttl-constants.js";
+import { getLogger } from "../../util/logging.js";
+import type { NodeLike } from "../../node/node-like.js";
+import type { NodeEventListener } from "../../node/node-event-listener.js";
+import type { TokenIssuer } from "./token-issuer.js";
+import type { TokenVerifier } from "./token-verifier.js";
+import type { TokenVerifierProvider } from "./token-verifier-provider.js";
+import type { Authorizer } from "./authorizer.js";
 
-const logger = getLogger('oauth2-authorizer');
+const logger = getLogger("oauth2-authorizer");
 
 type StaticTokenProviderConfig = {
-  type: 'StaticTokenProvider';
+  type: "StaticTokenProvider";
   token: string;
   expiresAt: Date;
 } & Record<string, unknown>;
 
 type BearerTokenHeaderAuthInjectionStrategyConfig = {
-  type: 'BearerTokenHeaderAuthInjectionStrategy';
+  type: "BearerTokenHeaderAuthInjectionStrategy";
   tokenProvider: StaticTokenProviderConfig;
 } & Record<string, unknown>;
 
@@ -38,9 +38,7 @@ export interface OAuth2AuthorizerOptions {
   reverseAuthTtlSec?: number;
 }
 
-export class OAuth2Authorizer
-  implements Authorizer, TokenVerifierProvider, NodeEventListener
-{
+export class OAuth2Authorizer implements Authorizer, TokenVerifierProvider, NodeEventListener {
   public readonly priority = 1000;
 
   private readonly tokenVerifierImpl: TokenVerifier;
@@ -55,7 +53,9 @@ export class OAuth2Authorizer
     this.tokenVerifierImpl = options.tokenVerifier;
     this.tokenIssuer = options.tokenIssuer ?? undefined;
     this.audience = options.audience ?? undefined;
-    this.requiredScopes = new Set((options.requiredScopes ?? []).filter((scope) => scope.trim().length > 0));
+    this.requiredScopes = new Set(
+      (options.requiredScopes ?? []).filter((scope) => scope.trim().length > 0)
+    );
     this.requireScope = options.requireScope ?? true;
     this.reverseAuthTtlSec = options.reverseAuthTtlSec ?? DEFAULT_REVERSE_AUTH_TTL_SEC;
   }
@@ -71,25 +71,30 @@ export class OAuth2Authorizer
   async authenticate(credentials: string | Uint8Array): Promise<AuthorizationContext | undefined> {
     const token = this.normalizeBearerToken(credentials);
     if (!token) {
-      logger.debug('oauth2_authenticate_missing_token');
+      logger.debug("oauth2_authenticate_missing_token");
       return undefined;
     }
 
     try {
       const expectedAudience = this.audience ?? this.node?.physicalPath;
-      logger.debug('oauth2_authenticate_start', {
+      logger.debug("oauth2_authenticate_start", {
         expected_audience: expectedAudience,
       });
-      const context = expectedAudience !== undefined
-        ? await this.tokenVerifierImpl.verify(token, { expectedAudience })
-        : await this.tokenVerifierImpl.verify(token);
+      const context =
+        expectedAudience !== undefined
+          ? await this.tokenVerifierImpl.verify(token, { expectedAudience })
+          : await this.tokenVerifierImpl.verify(token);
 
       const claims = { ...(context.claims ?? {}) } as Record<string, unknown>;
       const scopes = this.extractScopes(claims);
       const grantedScopes = this.mergeScopes(context.grantedScopes ?? [], scopes);
 
-      if (this.requireScope && this.requiredScopes.size > 0 && !this.hasRequiredScope(grantedScopes)) {
-        logger.warning('oauth2_token_missing_required_scope', {
+      if (
+        this.requireScope &&
+        this.requiredScopes.size > 0 &&
+        !this.hasRequiredScope(grantedScopes)
+      ) {
+        logger.warning("oauth2_token_missing_required_scope", {
           required_scopes: Array.from(this.requiredScopes),
           token_scopes: Array.from(scopes),
         });
@@ -102,16 +107,16 @@ export class OAuth2Authorizer
         authorized: context.authorized ?? true,
         claims,
         grantedScopes,
-        authMethod: context.authMethod ?? 'oauth2_jwt',
+        authMethod: context.authMethod ?? "oauth2_jwt",
       });
 
-      logger.debug('oauth2_authenticate_success', {
+      logger.debug("oauth2_authenticate_success", {
         granted_scopes: Array.from(grantedScopes),
       });
 
       return normalized;
     } catch (error) {
-      logger.warning('oauth2_token_verification_failed', {
+      logger.warning("oauth2_token_verification_failed", {
         error: error instanceof Error ? error.message : String(error),
       });
       return undefined;
@@ -131,7 +136,11 @@ export class OAuth2Authorizer
 
     const grantedScopes = new Set<string>(authorization.grantedScopes ?? []);
 
-    if (this.requireScope && this.requiredScopes.size > 0 && !this.hasRequiredScope(grantedScopes)) {
+    if (
+      this.requireScope &&
+      this.requiredScopes.size > 0 &&
+      !this.hasRequiredScope(grantedScopes)
+    ) {
       return undefined;
     }
 
@@ -164,25 +173,25 @@ export class OAuth2Authorizer
         capabilities: Array.from(this.requiredScopes),
       });
 
-      logger.debug('reverse_authorization_token_generated', {
+      logger.debug("reverse_authorization_token_generated", {
         node_id: node.id,
         expires_at: expiresAt.toISOString(),
         capabilities: Array.from(this.requiredScopes),
       });
 
       const staticTokenConfig: StaticTokenProviderConfig = {
-        type: 'StaticTokenProvider',
+        type: "StaticTokenProvider",
         token,
         expiresAt,
       };
 
       const result: BearerTokenHeaderAuthInjectionStrategyConfig = {
-        type: 'BearerTokenHeaderAuthInjectionStrategy',
+        type: "BearerTokenHeaderAuthInjectionStrategy",
         tokenProvider: staticTokenConfig,
       };
       return result;
     } catch (error) {
-      logger.warning('failed_to_generate_reverse_auth_token', {
+      logger.warning("failed_to_generate_reverse_auth_token", {
         node_id: node.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -203,8 +212,12 @@ export class OAuth2Authorizer
     const scopes = this.extractScopes(claims);
     const grantedScopes = this.mergeScopes(authContext.grantedScopes ?? [], scopes);
 
-    if (this.requireScope && this.requiredScopes.size > 0 && !this.hasRequiredScope(grantedScopes)) {
-      logger.warning('oauth2_attach_missing_required_scope', {
+    if (
+      this.requireScope &&
+      this.requiredScopes.size > 0 &&
+      !this.hasRequiredScope(grantedScopes)
+    ) {
+      logger.warning("oauth2_attach_missing_required_scope", {
         required_scopes: Array.from(this.requiredScopes),
         token_scopes: Array.from(scopes),
       });
@@ -221,17 +234,19 @@ export class OAuth2Authorizer
     return createAuthorizationContext({
       ...authContext,
       claims,
-      principal: authContext.principal ?? (typeof claims.sub === 'string' ? (claims.sub as string) : frame.systemId),
+      principal:
+        authContext.principal ??
+        (typeof claims.sub === "string" ? (claims.sub as string) : frame.systemId),
       grantedScopes,
       authorized: true,
-      authMethod: authContext.authMethod ?? 'oauth2_jwt',
+      authMethod: authContext.authMethod ?? "oauth2_jwt",
     });
   }
 
   private normalizeBearerToken(credentials: string | Uint8Array): string | undefined {
-    if (typeof credentials === 'string') {
+    if (typeof credentials === "string") {
       const trimmed = credentials.trim();
-      if (trimmed.toLowerCase().startsWith('bearer ')) {
+      if (trimmed.toLowerCase().startsWith("bearer ")) {
         return trimmed.slice(7).trim();
       }
       return trimmed.length > 0 ? trimmed : undefined;
@@ -245,11 +260,14 @@ export class OAuth2Authorizer
     const scopes = new Set<string>();
 
     const add = (value: unknown): void => {
-      if (typeof value === 'string') {
-        value.split(/[\s,]+/).filter(Boolean).forEach((scope) => scopes.add(scope));
+      if (typeof value === "string") {
+        value
+          .split(/[\s,]+/)
+          .filter(Boolean)
+          .forEach((scope) => scopes.add(scope));
       } else if (Array.isArray(value)) {
         value
-          .map((scope) => (typeof scope === 'string' ? scope.trim() : ''))
+          .map((scope) => (typeof scope === "string" ? scope.trim() : ""))
           .filter(Boolean)
           .forEach((scope) => scopes.add(scope));
       }
@@ -261,7 +279,7 @@ export class OAuth2Authorizer
     const capabilities = claims.capabilities;
     if (Array.isArray(capabilities)) {
       capabilities
-        .map((scope) => (typeof scope === 'string' ? scope.trim() : ''))
+        .map((scope) => (typeof scope === "string" ? scope.trim() : ""))
         .filter(Boolean)
         .forEach((scope) => scopes.add(scope));
     }
@@ -270,7 +288,7 @@ export class OAuth2Authorizer
   }
 
   private mergeScopes(existing: string[], scopes: Set<string>): string[] {
-    const merged = new Set<string>(existing.filter((scope) => typeof scope === 'string'));
+    const merged = new Set<string>(existing.filter((scope) => typeof scope === "string"));
     for (const scope of scopes) {
       merged.add(scope);
     }

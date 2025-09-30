@@ -2,31 +2,33 @@
  * Task utility functions and helpers
  */
 
-import { SpawnedTask } from './task-types.js';
+import { SpawnedTask } from "./task-types.js";
 
 /**
  * Wait for any task to complete (first to finish wins)
  */
 export async function waitForAny<T>(tasks: SpawnedTask<T>[]): Promise<T> {
   if (tasks.length === 0) {
-    throw new Error('Cannot wait for any of zero tasks');
+    throw new Error("Cannot wait for any of zero tasks");
   }
-  
-  return Promise.race(tasks.map(task => task.promise));
+
+  return Promise.race(tasks.map((task) => task.promise));
 }
 
 /**
  * Wait for all tasks to complete
  */
 export async function waitForAll<T>(tasks: SpawnedTask<T>[]): Promise<T[]> {
-  return Promise.all(tasks.map(task => task.promise));
+  return Promise.all(tasks.map((task) => task.promise));
 }
 
 /**
  * Wait for all tasks to settle (complete or fail)
  */
-export async function waitForAllSettled<T>(tasks: SpawnedTask<T>[]): Promise<PromiseSettledResult<T>[]> {
-  return Promise.allSettled(tasks.map(task => task.promise));
+export async function waitForAllSettled<T>(
+  tasks: SpawnedTask<T>[]
+): Promise<PromiseSettledResult<T>[]> {
+  return Promise.allSettled(tasks.map((task) => task.promise));
 }
 
 /**
@@ -35,7 +37,7 @@ export async function waitForAllSettled<T>(tasks: SpawnedTask<T>[]): Promise<Pro
 export function delay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new Error('Aborted'));
+      reject(new Error("Aborted"));
       return;
     }
 
@@ -43,9 +45,9 @@ export function delay(ms: number, signal?: AbortSignal): Promise<void> {
       resolve();
     }, ms);
 
-    signal?.addEventListener('abort', () => {
+    signal?.addEventListener("abort", () => {
       clearTimeout(timeoutId);
-      reject(new Error('Aborted'));
+      reject(new Error("Aborted"));
     });
   });
 }
@@ -64,7 +66,7 @@ export function withTimeout<T>(
       setTimeout(() => {
         reject(new Error(timeoutMessage || `Operation timed out after ${timeoutMs}ms`));
       }, timeoutMs);
-    })
+    }),
   ]);
 }
 
@@ -86,35 +88,32 @@ export async function retryWithBackoff<T>(
     baseDelayMs = 100,
     maxDelayMs = 5000,
     backoffMultiplier = 2,
-    signal
+    signal,
   } = options;
 
   let lastError: Error;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (signal?.aborted) {
-      throw new Error('Aborted');
+      throw new Error("Aborted");
     }
 
     try {
       return await taskFn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       if (attempt === maxRetries) {
         throw lastError;
       }
-      
+
       // Calculate delay with exponential backoff
-      const delayMs = Math.min(
-        baseDelayMs * Math.pow(backoffMultiplier, attempt),
-        maxDelayMs
-      );
-      
+      const delayMs = Math.min(baseDelayMs * Math.pow(backoffMultiplier, attempt), maxDelayMs);
+
       await delay(delayMs, signal);
     }
   }
-  
+
   throw lastError!;
 }
 

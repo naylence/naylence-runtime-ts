@@ -1,38 +1,38 @@
-import { createResource, registerFactory } from 'naylence-factory';
+import { createResource, registerFactory } from "naylence-factory";
 
-import { getLogger } from '../util/logging.js';
+import { getLogger } from "../util/logging.js";
 import {
   ROUTING_POLICY_FACTORY_BASE,
   RoutingPolicyFactory,
   type RoutingPolicy,
   type RoutingPolicyConfig,
-} from './routing-policy.js';
+} from "./routing-policy.js";
 
-const logger = getLogger('routing-profile-factory');
+const logger = getLogger("routing-profile-factory");
 
-export const PROFILE_NAME_DEVELOPMENT = 'development';
-export const PROFILE_NAME_PRODUCTION = 'production';
-export const PROFILE_NAME_BASIC = 'basic';
-export const PROFILE_NAME_CAPABILITY_AWARE = 'capability-aware';
-export const PROFILE_NAME_HYBRID_ONLY = 'hybrid-only';
+export const PROFILE_NAME_DEVELOPMENT = "development";
+export const PROFILE_NAME_PRODUCTION = "production";
+export const PROFILE_NAME_BASIC = "basic";
+export const PROFILE_NAME_CAPABILITY_AWARE = "capability-aware";
+export const PROFILE_NAME_HYBRID_ONLY = "hybrid-only";
 
 const DEVELOPMENT_PROFILE: RoutingPolicyConfig = {
-  type: 'CompositeRoutingPolicy',
+  type: "CompositeRoutingPolicy",
   policies: [
     {
-      type: 'HybridPathRoutingPolicy',
-      loadBalancingStrategy: { type: 'HRWLoadBalancingStrategy' },
+      type: "HybridPathRoutingPolicy",
+      loadBalancingStrategy: { type: "HRWLoadBalancingStrategy" },
     },
   ],
 };
 
 const PRODUCTION_PROFILE: RoutingPolicyConfig = {
-  type: 'CompositeRoutingPolicy',
+  type: "CompositeRoutingPolicy",
   policies: [
-    { type: 'CapabilityAwareRoutingPolicy' },
+    { type: "CapabilityAwareRoutingPolicy" },
     {
-      type: 'HybridPathRoutingPolicy',
-      loadBalancingStrategy: { type: 'HRWLoadBalancingStrategy' },
+      type: "HybridPathRoutingPolicy",
+      loadBalancingStrategy: { type: "HRWLoadBalancingStrategy" },
     },
   ],
 };
@@ -40,12 +40,12 @@ const PRODUCTION_PROFILE: RoutingPolicyConfig = {
 const BASIC_PROFILE = DEVELOPMENT_PROFILE;
 
 const CAPABILITY_AWARE_PROFILE: RoutingPolicyConfig = {
-  type: 'CapabilityAwareRoutingPolicy',
+  type: "CapabilityAwareRoutingPolicy",
 };
 
 const HYBRID_ONLY_PROFILE: RoutingPolicyConfig = {
-  type: 'HybridPathRoutingPolicy',
-  loadBalancingStrategy: { type: 'HRWLoadBalancingStrategy' },
+  type: "HybridPathRoutingPolicy",
+  loadBalancingStrategy: { type: "HRWLoadBalancingStrategy" },
 };
 
 const PROFILE_MAP: Record<string, RoutingPolicyConfig> = {
@@ -57,7 +57,7 @@ const PROFILE_MAP: Record<string, RoutingPolicyConfig> = {
 };
 
 export interface RoutingProfileConfig extends RoutingPolicyConfig {
-  type: 'RoutingProfile';
+  type: "RoutingProfile";
   profile?: string | null;
 }
 
@@ -66,14 +66,14 @@ interface NormalizedRoutingProfileConfig {
 }
 
 export class RoutingProfileFactory extends RoutingPolicyFactory {
-  public readonly type = 'RoutingProfile';
+  public readonly type = "RoutingProfile";
 
   public async create(
     config?: RoutingProfileConfig | Record<string, unknown> | null,
     ...kwargs: unknown[]
   ): Promise<RoutingPolicy> {
     const normalized = this.normalizeConfig(config);
-    logger.debug('enabling_routing_profile', { profile: normalized.profile });
+    logger.debug("enabling_routing_profile", { profile: normalized.profile });
 
     const routingConfig = this.getProfileConfig(normalized.profile);
 
@@ -96,23 +96,24 @@ export class RoutingProfileFactory extends RoutingPolicyFactory {
       return { profile: PROFILE_NAME_DEVELOPMENT };
     }
 
-    if ('type' in config) {
+    if ("type" in config) {
       const typeValue = (config as { type?: unknown }).type;
-      if (typeValue !== undefined && typeValue !== 'RoutingProfile') {
+      if (typeValue !== undefined && typeValue !== "RoutingProfile") {
         throw new Error(
           `RoutingProfileFactory only supports RoutingProfile config, got type ${String(typeValue)}`
         );
       }
     }
 
-    const profileValue = 'profile' in config ? (config as { profile?: unknown }).profile : undefined;
+    const profileValue =
+      "profile" in config ? (config as { profile?: unknown }).profile : undefined;
 
     if (profileValue === undefined || profileValue === null) {
       return { profile: PROFILE_NAME_DEVELOPMENT };
     }
 
-    if (typeof profileValue !== 'string' || profileValue.trim().length === 0) {
-      throw new Error('profile must be a non-empty string when provided');
+    if (typeof profileValue !== "string" || profileValue.trim().length === 0) {
+      throw new Error("profile must be a non-empty string when provided");
     }
 
     return { profile: profileValue };
@@ -130,6 +131,6 @@ export class RoutingProfileFactory extends RoutingPolicyFactory {
 
 registerFactory<RoutingPolicy, RoutingProfileConfig>(
   ROUTING_POLICY_FACTORY_BASE,
-  'RoutingProfile',
+  "RoutingProfile",
   RoutingProfileFactory
 );

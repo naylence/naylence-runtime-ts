@@ -1,17 +1,17 @@
-import type { JWTPayload, KeyLike } from 'jose';
-import { getLogger } from '../../util/logging.js';
-import type { TokenIssuer } from './token-issuer.js';
+import type { JWTPayload, KeyLike } from "jose";
+import { getLogger } from "../../util/logging.js";
+import type { TokenIssuer } from "./token-issuer.js";
 
-const logger = getLogger('jwt-token-issuer');
+const logger = getLogger("jwt-token-issuer");
 
-let joseModulePromise: Promise<typeof import('jose')> | null = null;
+let joseModulePromise: Promise<typeof import("jose")> | null = null;
 
-async function requireJose(): Promise<typeof import('jose')> {
+async function requireJose(): Promise<typeof import("jose")> {
   if (!joseModulePromise) {
-    joseModulePromise = import('jose').catch(() => {
+    joseModulePromise = import("jose").catch(() => {
       joseModulePromise = null;
       throw new Error(
-        'The "jose" dependency is required for JWT token functionality. Install it with: npm install jose',
+        'The "jose" dependency is required for JWT token functionality. Install it with: npm install jose'
       );
     });
   }
@@ -20,12 +20,14 @@ async function requireJose(): Promise<typeof import('jose')> {
 }
 
 function isHmacAlgorithm(algorithm: string): boolean {
-  return algorithm.toUpperCase().startsWith('HS');
+  return algorithm.toUpperCase().startsWith("HS");
 }
 
 function isPkcs8Algorithm(algorithm: string): boolean {
   const upper = algorithm.toUpperCase();
-  return upper === 'EDDSA' || upper.startsWith('RS') || upper.startsWith('PS') || upper.startsWith('ES');
+  return (
+    upper === "EDDSA" || upper.startsWith("RS") || upper.startsWith("PS") || upper.startsWith("ES")
+  );
 }
 
 type SigningKey = KeyLike | Uint8Array;
@@ -51,7 +53,7 @@ export class JWTTokenIssuer implements TokenIssuer {
     signingKeyPem,
     kid,
     issuer,
-    algorithm = 'EdDSA',
+    algorithm = "EdDSA",
     ttlSec = 3600,
     audience,
   }: JWTTokenIssuerOptions) {
@@ -60,9 +62,9 @@ export class JWTTokenIssuer implements TokenIssuer {
     this.issuerId = issuer;
     this.algorithm = algorithm;
     this.ttlSec = ttlSec;
-  this.audience = audience;
+    this.audience = audience;
 
-    logger.debug('created_jwt_token_issuer', {
+    logger.debug("created_jwt_token_issuer", {
       issuer,
       kid,
       audience: audience ?? null,
@@ -83,13 +85,16 @@ export class JWTTokenIssuer implements TokenIssuer {
     const nowSeconds = Math.floor(Date.now() / 1000);
     const payload = this.buildTokenClaims(claims, nowSeconds);
 
-    const signer = new jose.SignJWT(payload)
-      .setProtectedHeader({ alg: this.algorithm, kid: this.kid, typ: 'JWT' });
+    const signer = new jose.SignJWT(payload).setProtectedHeader({
+      alg: this.algorithm,
+      kid: this.kid,
+      typ: "JWT",
+    });
 
     return signer.sign(signingKey);
   }
 
-  private async resolveSigningKey(jose: typeof import('jose')): Promise<SigningKey> {
+  private async resolveSigningKey(jose: typeof import("jose")): Promise<SigningKey> {
     if (!this.signingKey) {
       this.signingKey = this.loadSigningKey(jose);
     }
@@ -97,7 +102,7 @@ export class JWTTokenIssuer implements TokenIssuer {
     return this.signingKey;
   }
 
-  private async loadSigningKey(jose: typeof import('jose')): Promise<SigningKey> {
+  private async loadSigningKey(jose: typeof import("jose")): Promise<SigningKey> {
     if (isHmacAlgorithm(this.algorithm)) {
       return new TextEncoder().encode(this.signingKeyPem);
     }
@@ -117,7 +122,7 @@ export class JWTTokenIssuer implements TokenIssuer {
       exp: nowSeconds + this.ttlSec,
     };
 
-    if (this.audience !== undefined && !('aud' in claims)) {
+    if (this.audience !== undefined && !("aud" in claims)) {
       baseClaims.aud = this.audience;
     }
 

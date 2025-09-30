@@ -1,6 +1,6 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from "naylence-core";
 
-import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 
 type RandomSource = () => number;
 
@@ -11,7 +11,11 @@ export class RandomLoadBalancingStrategy implements LoadBalancingStrategy {
     this.random = options.rng ?? Math.random;
   }
 
-  public choose(_poolKey: unknown, segments: readonly string[], _envelope: FameEnvelope): string | null {
+  public choose(
+    _poolKey: unknown,
+    segments: readonly string[],
+    _envelope: FameEnvelope
+  ): string | null {
     if (!segments.length) {
       return null;
     }

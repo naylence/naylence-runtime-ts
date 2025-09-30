@@ -1,6 +1,6 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from "naylence-core";
 
-import { DeliveryPolicy } from './delivery-policy.js';
+import { DeliveryPolicy } from "./delivery-policy.js";
 
 /**
  * Message delivery policy that ensures envelopes are delivered at most once.

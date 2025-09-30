@@ -1,18 +1,23 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource, registerFactory } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+  registerFactory,
+} from "naylence-factory";
 
-import type { NodeLike } from './node-like.js';
+import type { NodeLike } from "./node-like.js";
 
-export const NODE_LIKE_FACTORY_BASE_TYPE = 'NodeLikeFactory';
+export const NODE_LIKE_FACTORY_BASE_TYPE = "NodeLikeFactory";
 
 export interface NodeLikeConfig extends ResourceConfig {
   type: string;
   [key: string]: unknown;
 }
 
-export abstract class NodeLikeFactory<C extends NodeLikeConfig = NodeLikeConfig>
-  extends AbstractResourceFactory<NodeLike, C>
-{
+export abstract class NodeLikeFactory<
+  C extends NodeLikeConfig = NodeLikeConfig,
+> extends AbstractResourceFactory<NodeLike, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
     ...factoryArgs: unknown[]
@@ -25,22 +30,26 @@ export abstract class NodeLikeFactory<C extends NodeLikeConfig = NodeLikeConfig>
     const configRecord = (config ?? null) as Record<string, unknown> | null;
 
     if (!configRecord) {
-      const node = await createDefaultResource<NodeLike>(NODE_LIKE_FACTORY_BASE_TYPE, null, options);
+      const node = await createDefaultResource<NodeLike>(
+        NODE_LIKE_FACTORY_BASE_TYPE,
+        null,
+        options
+      );
       if (!node) {
-        throw new Error('Failed to create default NodeLike resource');
+        throw new Error("Failed to create default NodeLike resource");
       }
       return node;
     }
 
     const typeValue = configRecord.type as unknown;
-    const hasType = typeof typeValue === 'string' && typeValue.length > 0;
+    const hasType = typeof typeValue === "string" && typeValue.length > 0;
 
     const node = hasType
       ? await createResource<NodeLike>(NODE_LIKE_FACTORY_BASE_TYPE, configRecord, options)
       : await createDefaultResource<NodeLike>(NODE_LIKE_FACTORY_BASE_TYPE, configRecord, options);
 
     if (!node) {
-      throw new Error('Failed to create NodeLike resource');
+      throw new Error("Failed to create NodeLike resource");
     }
 
     return node;

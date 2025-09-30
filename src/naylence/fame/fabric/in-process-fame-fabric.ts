@@ -13,20 +13,20 @@ import {
   isFameMessageResponse,
   type FameMessageResponse,
   type FameEnvelopeHandler,
-} from 'naylence-core';
+} from "naylence-core";
 
-import type { NodeLike } from '../node/node-like.js';
-import { NodeLikeFactory } from '../node/node-like-factory.js';
-import { getLogger } from '../util/logging.js';
-import { decodeFameDataPayload } from '../util/util.js';
-import type { ServiceManager } from '../service/service-manager.js';
-import { SinkService, isSinkService } from '../service/sink-service.js';
+import type { NodeLike } from "../node/node-like.js";
+import { NodeLikeFactory } from "../node/node-like-factory.js";
+import { getLogger } from "../util/logging.js";
+import { decodeFameDataPayload } from "../util/util.js";
+import type { ServiceManager } from "../service/service-manager.js";
+import { SinkService, isSinkService } from "../service/sink-service.js";
 import {
   normalizeExtendedFameConfig,
   type ExtendedFameConfig,
-} from '../config/extended-fame-config.js';
+} from "../config/extended-fame-config.js";
 
-const logger = getLogger('naylence.fame.fabric.in_process');
+const logger = getLogger("naylence.fame.fabric.in_process");
 
 function resolveRuntimeVersion(): string | null {
   try {
@@ -36,14 +36,14 @@ function resolveRuntimeVersion(): string | null {
       return null;
     }
 
-    if (typeof env.NAYLENCE_RUNTIME_VERSION === 'string' && env.NAYLENCE_RUNTIME_VERSION.trim()) {
+    if (typeof env.NAYLENCE_RUNTIME_VERSION === "string" && env.NAYLENCE_RUNTIME_VERSION.trim()) {
       return env.NAYLENCE_RUNTIME_VERSION.trim();
     }
 
     if (
-      typeof env.npm_package_name === 'string' &&
-      env.npm_package_name === 'naylence-runtime' &&
-      typeof env.npm_package_version === 'string'
+      typeof env.npm_package_name === "string" &&
+      env.npm_package_name === "naylence-runtime" &&
+      typeof env.npm_package_version === "string"
     ) {
       return env.npm_package_version;
     }
@@ -55,7 +55,7 @@ function resolveRuntimeVersion(): string | null {
 }
 
 function normalizeNodeConfig(config: unknown): Record<string, unknown> | null {
-  if (config && typeof config === 'object' && !Array.isArray(config)) {
+  if (config && typeof config === "object" && !Array.isArray(config)) {
     return config as Record<string, unknown>;
   }
   return null;
@@ -89,21 +89,21 @@ export class InProcessFameFabric extends FameFabric {
 
     const version = resolveRuntimeVersion();
     if (version) {
-      logger.info('naylence_runtime_startup', {
+      logger.info("naylence_runtime_startup", {
         version,
-        fabric_type: 'in_process',
+        fabric_type: "in_process",
       });
     } else {
-      logger.warning('naylence_runtime_version_not_found', {
-        message: 'Could not determine package version',
-        fabric_type: 'in_process',
+      logger.warning("naylence_runtime_version_not_found", {
+        message: "Could not determine package version",
+        fabric_type: "in_process",
       });
     }
   }
 
   private getRequiredNode(): NodeLike {
     if (!this._currentNode) {
-      throw new Error('InProcessFameFabric has not been started yet');
+      throw new Error("InProcessFameFabric has not been started yet");
     }
     return this._currentNode;
   }
@@ -114,7 +114,7 @@ export class InProcessFameFabric extends FameFabric {
       node.serviceManager ?? node.getServiceManager?.() ?? node._serviceManager;
 
     if (!manager) {
-      throw new Error('Node does not expose a service manager');
+      throw new Error("Node does not expose a service manager");
     }
 
     return manager;
@@ -126,7 +126,7 @@ export class InProcessFameFabric extends FameFabric {
     }
 
     this.logStartupVersion();
-    logger.debug('starting_fabric', { type: 'in_process' });
+    logger.debug("starting_fabric", { type: "in_process" });
 
     if (!this._currentNode) {
       const nodeConfig = normalizeNodeConfig(this._config?.node ?? null);
@@ -252,7 +252,7 @@ export class InProcessFameFabric extends FameFabric {
       envelope: FameEnvelope
     ): Promise<FameMessageResponse | null> => {
       const frame: any = envelope.frame;
-      if (!frame || frame.type !== 'Data') {
+      if (!frame || frame.type !== "Data") {
         throw new Error(
           `Invalid envelope frame type. Expected: DataFrame, actual: ${frame?.type ?? typeof frame}`
         );

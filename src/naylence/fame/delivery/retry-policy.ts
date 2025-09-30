@@ -29,13 +29,12 @@ export class RetryPolicy {
    */
   public nextDelayMs(attempt: number): number {
     const normalizedAttempt = Number.isFinite(attempt) ? Math.max(0, Math.trunc(attempt)) : 0;
-    const base = normalizedAttempt <= 0
-      ? this.baseDelayMs
-      : Math.round(this.baseDelayMs * this.backoffFactor ** normalizedAttempt);
+    const base =
+      normalizedAttempt <= 0
+        ? this.baseDelayMs
+        : Math.round(this.baseDelayMs * this.backoffFactor ** normalizedAttempt);
 
-    const jitter = this.jitterMs > 0
-      ? Math.round((Math.random() * 2 - 1) * this.jitterMs)
-      : 0;
+    const jitter = this.jitterMs > 0 ? Math.round((Math.random() * 2 - 1) * this.jitterMs) : 0;
 
     const withJitter = base + jitter;
     return Math.min(this.maxDelayMs, Math.max(0, withJitter));

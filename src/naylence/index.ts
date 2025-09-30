@@ -2,4 +2,4 @@
  * Naylence runtime modules
  */
 
-export * from './fame/index.js';
+export * from "./fame/index.js";

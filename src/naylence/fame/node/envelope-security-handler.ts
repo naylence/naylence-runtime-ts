@@ -1,33 +1,31 @@
+import type { DataFrame, FameDeliveryContext, FameEnvelope, SecurityContext } from "naylence-core";
+import { DeliveryOriginType } from "naylence-core";
+
 import type {
-  DataFrame,
-  FameDeliveryContext,
-  FameEnvelope,
-  SecurityContext,
-} from 'naylence-core';
-import { DeliveryOriginType } from 'naylence-core';
+  EncryptionManager,
+  EncryptionOptions,
+} from "../security/encryption/encryption-manager.js";
+import { EncryptionStatus } from "../security/encryption/encryption-manager.js";
+import type { KeyManagementHandler } from "../security/keys/key-management-handler.js";
+import type { SecurityPolicy } from "../security/policy/security-policy.js";
+import { CryptoLevel, SecurityAction } from "../security/policy/security-policy.js";
+import type { EnvelopeSigner } from "../security/signing/envelope-signer.js";
+import type { EnvelopeVerifier } from "../security/signing/envelope-verifier.js";
+import type { NodeLike } from "./node-like.js";
+import { getLogger } from "../util/logging.js";
 
-import type { EncryptionManager, EncryptionOptions } from '../security/encryption/encryption-manager.js';
-import { EncryptionStatus } from '../security/encryption/encryption-manager.js';
-import type { KeyManagementHandler } from '../security/keys/key-management-handler.js';
-import type { SecurityPolicy } from '../security/policy/security-policy.js';
-import { CryptoLevel, SecurityAction } from '../security/policy/security-policy.js';
-import type { EnvelopeSigner } from '../security/signing/envelope-signer.js';
-import type { EnvelopeVerifier } from '../security/signing/envelope-verifier.js';
-import type { NodeLike } from './node-like.js';
-import { getLogger } from '../util/logging.js';
-
-const logger = getLogger('envelope-security-handler');
+const logger = getLogger("envelope-security-handler");
 
 type EncryptionTarget = string;
 
-type MessageType = 'response' | 'protocol-response';
+type MessageType = "response" | "protocol-response";
 
-function isDataFrame(frame: FameEnvelope['frame']): frame is DataFrame {
-  return frame.type === 'Data';
+function isDataFrame(frame: FameEnvelope["frame"]): frame is DataFrame {
+  return frame.type === "Data";
 }
 
 function isResponseMessage(type: string | undefined): type is MessageType {
-  return type === 'response' || type === 'protocol-response';
+  return type === "response" || type === "protocol-response";
 }
 
 export class EnvelopeSecurityHandler {
@@ -62,7 +60,7 @@ export class EnvelopeSecurityHandler {
       ? await this.securityPolicy.shouldSignEnvelope(envelope, context, this.node)
       : false;
 
-    logger.debug('checking_signing', {
+    logger.debug("checking_signing", {
       has_signer: Boolean(this.envelopeSigner),
       should_sign: shouldSign,
       envp_id: envelope.id,
@@ -70,7 +68,7 @@ export class EnvelopeSecurityHandler {
 
     if (shouldSign) {
       if (!this.envelopeSigner) {
-        throw new Error('EnvelopeSigner is not configured');
+        throw new Error("EnvelopeSigner is not configured");
       }
 
       if (!envelope.sid) {
@@ -87,7 +85,7 @@ export class EnvelopeSecurityHandler {
       ? await this.securityPolicy.shouldEncryptEnvelope(envelope, context, this.node)
       : false;
 
-    logger.debug('checking_encryption', {
+    logger.debug("checking_encryption", {
       has_encryption_manager: Boolean(this.encryptionManager),
       should_encrypt: shouldEncrypt,
       envp_id: envelope.id,
@@ -96,19 +94,20 @@ export class EnvelopeSecurityHandler {
 
     if (this.encryptionManager && this.securityPolicy) {
       if (envelope.sec?.enc) {
-        logger.debug('skipping_encryption_already_encrypted', {
+        logger.debug("skipping_encryption_already_encrypted", {
           envp_id: envelope.id,
           destination: envelope.to ? String(envelope.to) : undefined,
         });
         return true;
       }
 
-      const messageType = context.meta?.['message-type'] as string | undefined;
+      const messageType = context.meta?.["message-type"] as string | undefined;
       let desiredCryptoLevel: CryptoLevel;
 
       if (isResponseMessage(messageType)) {
-        const requestCryptoLevel = (context.security?.inboundCryptoLevel as CryptoLevel | undefined)
-          ?? CryptoLevel.PLAINTEXT;
+        const requestCryptoLevel =
+          (context.security?.inboundCryptoLevel as CryptoLevel | undefined) ??
+          CryptoLevel.PLAINTEXT;
 
         desiredCryptoLevel = await this.securityPolicy.decideResponseCryptoLevel(
           requestCryptoLevel,
@@ -116,12 +115,12 @@ export class EnvelopeSecurityHandler {
           context
         );
 
-        logger.debug('response_crypto_level_decided', {
+        logger.debug("response_crypto_level_decided", {
           envp_id: envelope.id,
           crypto_level: desiredCryptoLevel,
           destination: envelope.to ? String(envelope.to) : undefined,
           original_request_crypto_level: requestCryptoLevel,
-          original_request_id: context.meta?.['response-to-id'],
+          original_request_id: context.meta?.["response-to-id"],
         });
       } else {
         desiredCryptoLevel = await this.securityPolicy.decideOutboundCryptoLevel(
@@ -130,7 +129,7 @@ export class EnvelopeSecurityHandler {
           this.node
         );
 
-        logger.debug('outbound_crypto_level_decided', {
+        logger.debug("outbound_crypto_level_decided", {
           envp_id: envelope.id,
           frame_type: envelope.frame.type,
           crypto_level: desiredCryptoLevel,
@@ -139,12 +138,12 @@ export class EnvelopeSecurityHandler {
       }
 
       if (desiredCryptoLevel === CryptoLevel.SEALED) {
-        logger.debug('applying_sealed_encryption', { envp_id: envelope.id });
+        logger.debug("applying_sealed_encryption", { envp_id: envelope.id });
         return await this.handleSealedEncryption(envelope, context);
       }
 
       if (desiredCryptoLevel === CryptoLevel.CHANNEL) {
-        logger.debug('applying_channel_encryption', { envp_id: envelope.id });
+        logger.debug("applying_channel_encryption", { envp_id: envelope.id });
         return await this.handleChannelEncryption(envelope, context);
       }
     } else if (this.encryptionManager && shouldEncrypt) {
@@ -168,11 +167,12 @@ export class EnvelopeSecurityHandler {
 
       let resolvedLevel = inboundCryptoLevel;
       if (existingLevel) {
-        if (
-          existingLevel === CryptoLevel.SEALED && inboundCryptoLevel !== CryptoLevel.SEALED
-        ) {
+        if (existingLevel === CryptoLevel.SEALED && inboundCryptoLevel !== CryptoLevel.SEALED) {
           resolvedLevel = existingLevel;
-        } else if (existingLevel === CryptoLevel.CHANNEL && inboundCryptoLevel === CryptoLevel.PLAINTEXT) {
+        } else if (
+          existingLevel === CryptoLevel.CHANNEL &&
+          inboundCryptoLevel === CryptoLevel.PLAINTEXT
+        ) {
           resolvedLevel = existingLevel;
         }
       }
@@ -198,17 +198,22 @@ export class EnvelopeSecurityHandler {
       }
     } else if (context && this.securityPolicy.isSignatureRequired(envelope, context)) {
       const frameType = envelope.frame.type;
-      if (frameType === 'KeyRequest' || frameType === 'KeyAnnounce' || frameType === 'SecureOpen' || frameType === 'SecureAccept') {
-        logger.error('critical_frame_unsigned_rejected', {
+      if (
+        frameType === "KeyRequest" ||
+        frameType === "KeyAnnounce" ||
+        frameType === "SecureOpen" ||
+        frameType === "SecureAccept"
+      ) {
+        logger.error("critical_frame_unsigned_rejected", {
           envp_id: envelope.id,
           frame_type: frameType,
-          reason: 'critical_frames_must_be_signed',
+          reason: "critical_frames_must_be_signed",
         });
         return [envelope, false];
       }
 
       const action = this.securityPolicy.getUnsignedViolationAction(envelope, context);
-      logger.warning('unsigned_envelope_violation', {
+      logger.warning("unsigned_envelope_violation", {
         envp_id: envelope.id,
         frame_type: frameType,
         action,
@@ -222,25 +227,28 @@ export class EnvelopeSecurityHandler {
     return [envelope, true];
   }
 
-  public async handleChannelHandshakeComplete(channelId: string, destination: string): Promise<void> {
-    logger.debug('channel_handshake_completed', { channel_id: channelId, destination });
+  public async handleChannelHandshakeComplete(
+    channelId: string,
+    destination: string
+  ): Promise<void> {
+    logger.debug("channel_handshake_completed", { channel_id: channelId, destination });
 
     if (this.encryptionManager?.notifyChannelEstablished) {
       await this.encryptionManager.notifyChannelEstablished(channelId);
-      logger.debug('notified_encryption_manager_channel_ready', { channel_id: channelId });
+      logger.debug("notified_encryption_manager_channel_ready", { channel_id: channelId });
     }
   }
 
   public async handleChannelHandshakeFailed(
     channelId: string,
     destination: string,
-    reason = 'handshake_failed'
+    reason = "handshake_failed"
   ): Promise<void> {
-    logger.debug('channel_handshake_failed', { channel_id: channelId, destination, reason });
+    logger.debug("channel_handshake_failed", { channel_id: channelId, destination, reason });
 
     if (this.encryptionManager?.notifyChannelFailed) {
       await this.encryptionManager.notifyChannelFailed(channelId, reason);
-      logger.debug('notified_encryption_manager_channel_failed', { channel_id: channelId, reason });
+      logger.debug("notified_encryption_manager_channel_failed", { channel_id: channelId, reason });
       return;
     }
 
@@ -273,7 +281,7 @@ export class EnvelopeSecurityHandler {
     options?: EncryptionOptions
   ): Promise<FameEnvelope> {
     if (!this.encryptionManager) {
-      throw new Error('No encryption manager available for decryption');
+      throw new Error("No encryption manager available for decryption");
     }
 
     return await this.encryptionManager.decryptEnvelope(envelope, options);
@@ -284,28 +292,30 @@ export class EnvelopeSecurityHandler {
     context: FameDeliveryContext
   ): Promise<boolean> {
     if (!context.originType) {
-      throw new Error('Context origin type must be provided');
+      throw new Error("Context origin type must be provided");
     }
 
     if (!envelope.sec?.sig) {
-      throw new Error('Signed envelope missing signature header');
+      throw new Error("Signed envelope missing signature header");
     }
 
     if (!this.envelopeVerifier) {
-      throw new Error('EnvelopeVerifier is not configured');
+      throw new Error("EnvelopeVerifier is not configured");
     }
 
-    const fromSystemId = context.fromSystemId ?? 'pending-attachment';
+    const fromSystemId = context.fromSystemId ?? "pending-attachment";
     const kid = envelope.sec.sig.kid;
 
     if (!kid) {
-      throw new Error('Signature header missing key identifier');
+      throw new Error("Signature header missing key identifier");
     }
 
     if (await this.keyManagementHandler.hasKey(kid)) {
-      const verified = await this.envelopeVerifier.verifyEnvelope(envelope, { checkPayload: false });
+      const verified = await this.envelopeVerifier.verifyEnvelope(envelope, {
+        checkPayload: false,
+      });
       if (verified) {
-        logger.debug('envelope_verified', {
+        logger.debug("envelope_verified", {
           envp_id: envelope.id,
           sid: envelope.sid,
           kid,
@@ -319,7 +329,7 @@ export class EnvelopeSecurityHandler {
     this.keyManagementHandler.queuePendingSignedEnvelope(kid, envelope, context);
     await this.keyManagementHandler.maybeRequestSigningKey(kid, context.originType, fromSystemId);
 
-    logger.debug('queued_envelope_missing_signing_key', { kid, envp_id: envelope.id });
+    logger.debug("queued_envelope_missing_signing_key", { kid, envp_id: envelope.id });
     return false;
   }
 
@@ -328,7 +338,7 @@ export class EnvelopeSecurityHandler {
     context: FameDeliveryContext
   ): Promise<boolean> {
     if (!envelope.to) {
-      logger.warning('sealed_encryption_requested_but_no_destination', { envp_id: envelope.id });
+      logger.warning("sealed_encryption_requested_but_no_destination", { envp_id: envelope.id });
       return true;
     }
 
@@ -336,23 +346,23 @@ export class EnvelopeSecurityHandler {
       const options = await this.securityPolicy.getEncryptionOptions(envelope, context, this.node);
 
       if (options) {
-        if (options.encryptionType === 'channel') {
-          logger.warning('policy_returned_channel_for_sealed_request', { envp_id: envelope.id });
+        if (options.encryptionType === "channel") {
+          logger.warning("policy_returned_channel_for_sealed_request", { envp_id: envelope.id });
           return await this.handleToBeEncryptedEnvelopeWithOptions(envelope, context, {
             requestAddress: envelope.to,
           });
         }
 
-        logger.debug('using_sealed_encryption_options', { envp_id: envelope.id, options });
+        logger.debug("using_sealed_encryption_options", { envp_id: envelope.id, options });
         return await this.handleToBeEncryptedEnvelopeWithOptions(envelope, context, options);
       }
 
-      logger.debug('no_encryption_options_requesting_key', { envp_id: envelope.id });
+      logger.debug("no_encryption_options_requesting_key", { envp_id: envelope.id });
       return await this.handleToBeEncryptedEnvelopeWithOptions(envelope, context, {
         requestAddress: envelope.to,
       });
     } catch (error) {
-      logger.debug('sealed_key_lookup_failed_requesting', {
+      logger.debug("sealed_key_lookup_failed_requesting", {
         envp_id: envelope.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -368,12 +378,12 @@ export class EnvelopeSecurityHandler {
     context: FameDeliveryContext
   ): Promise<boolean> {
     if (!envelope.to) {
-      logger.warning('channel_encryption_requested_but_no_destination', { envp_id: envelope.id });
+      logger.warning("channel_encryption_requested_but_no_destination", { envp_id: envelope.id });
       return true;
     }
 
     return await this.handleToBeEncryptedEnvelopeWithOptions(envelope, context, {
-      encryptionType: 'channel',
+      encryptionType: "channel",
       destination: envelope.to,
     });
   }
@@ -387,14 +397,14 @@ export class EnvelopeSecurityHandler {
     }
 
     if (context.originType !== DeliveryOriginType.LOCAL) {
-      logger.warning('envelope_encryption_rejected_non_local', {
+      logger.warning("envelope_encryption_rejected_non_local", {
         origin: context.originType,
       });
       return true;
     }
 
     if (!isDataFrame(envelope.frame)) {
-      logger.trace('skipping_encryption_non_dataframe', {
+      logger.trace("skipping_encryption_non_dataframe", {
         envp_id: envelope.id,
         frame_type: envelope.frame.type,
       });
@@ -403,7 +413,7 @@ export class EnvelopeSecurityHandler {
 
     const options = await this.securityPolicy.getEncryptionOptions(envelope, context, this.node);
     if (!options) {
-      logger.warning('no_encryption_options_provided', { envp_id: envelope.id });
+      logger.warning("no_encryption_options_provided", { envp_id: envelope.id });
       return true;
     }
 
@@ -420,14 +430,14 @@ export class EnvelopeSecurityHandler {
     }
 
     if (context.originType !== DeliveryOriginType.LOCAL) {
-      logger.warning('envelope_encryption_rejected_non_local', {
+      logger.warning("envelope_encryption_rejected_non_local", {
         origin: context.originType,
       });
       return true;
     }
 
     if (!isDataFrame(envelope.frame)) {
-      logger.trace('skipping_encryption_non_dataframe', {
+      logger.trace("skipping_encryption_non_dataframe", {
         envp_id: envelope.id,
         frame_type: envelope.frame.type,
       });
@@ -450,13 +460,13 @@ export class EnvelopeSecurityHandler {
       const result = await this.encryptionManager.encryptEnvelope(envelope, encryptionOptions);
 
       if (result.status === EncryptionStatus.QUEUED) {
-        logger.debug('envelope_queued_for_encryption', { envp_id: envelope.id });
+        logger.debug("envelope_queued_for_encryption", { envp_id: envelope.id });
         await this.handleEncryptionQueueing(envelope, context, encryptionOptions);
         return false;
       }
 
       if (result.status === EncryptionStatus.OK) {
-        logger.debug('envelope_encrypted', { envp_id: envelope.id });
+        logger.debug("envelope_encrypted", { envp_id: envelope.id });
         if (result.envelope) {
           envelope.frame = result.envelope.frame;
           envelope.sec = result.envelope.sec;
@@ -465,17 +475,17 @@ export class EnvelopeSecurityHandler {
       }
 
       if (result.status === EncryptionStatus.SKIPPED) {
-        logger.debug('envelope_encryption_skipped', { envp_id: envelope.id });
+        logger.debug("envelope_encryption_skipped", { envp_id: envelope.id });
         return true;
       }
 
-      logger.warning('unknown_encryption_status', {
+      logger.warning("unknown_encryption_status", {
         envp_id: envelope.id,
         status: result.status,
       });
       return true;
     } catch (error) {
-      logger.error('encryption_failed', {
+      logger.error("encryption_failed", {
         envp_id: envelope.id,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -489,19 +499,25 @@ export class EnvelopeSecurityHandler {
     options: EncryptionOptions
   ): Promise<void> {
     if (!context.originType) {
-      throw new Error('Delivery context must include origin type for encryption queueing');
+      throw new Error("Delivery context must include origin type for encryption queueing");
     }
 
     if (!this.keyManagementHandler) {
       return;
     }
 
-    const fromSystemId = context.fromSystemId ?? 'unknown';
+    const fromSystemId = context.fromSystemId ?? "unknown";
 
     if (options.recipKid || options.recip_kid || options.recipientKeyId) {
-      const kid = (options.recipKid ?? options.recip_kid ?? options.recipientKeyId) as EncryptionTarget;
+      const kid = (options.recipKid ??
+        options.recip_kid ??
+        options.recipientKeyId) as EncryptionTarget;
       this.keyManagementHandler.queuePendingEncryptionEnvelope(kid, envelope, context);
-      await this.keyManagementHandler.maybeRequestEncryptionKey(kid, context.originType, fromSystemId);
+      await this.keyManagementHandler.maybeRequestEncryptionKey(
+        kid,
+        context.originType,
+        fromSystemId
+      );
       return;
     }
 
@@ -516,25 +532,28 @@ export class EnvelopeSecurityHandler {
       return;
     }
 
-    if (options.encryptionType === 'channel') {
-      logger.debug('channel_encryption_queueing_handled_internally', {
+    if (options.encryptionType === "channel") {
+      logger.debug("channel_encryption_queueing_handled_internally", {
         envp_id: envelope.id,
         destination: options.destination ? String(options.destination) : undefined,
       });
       return;
     }
 
-    logger.warning('unknown_encryption_queueing_options', {
+    logger.warning("unknown_encryption_queueing_options", {
       envp_id: envelope.id,
       options,
     });
   }
 
-  private async handleFailedChannelEnvelopeCleanup(destination: string, reason: string): Promise<void> {
-    logger.debug('channel_handshake_failure_cleanup_attempted', {
+  private async handleFailedChannelEnvelopeCleanup(
+    destination: string,
+    reason: string
+  ): Promise<void> {
+    logger.debug("channel_handshake_failure_cleanup_attempted", {
       destination,
       reason,
-      note: 'envelope_cleanup_handled_by_encryption_manager',
+      note: "envelope_cleanup_handled_by_encryption_manager",
     });
   }
 

@@ -1,8 +1,8 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
-import type { TokenProvider } from './token-provider.js';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { TokenProvider } from "./token-provider.js";
 
-export const TOKEN_PROVIDER_FACTORY_BASE_TYPE = 'TokenProviderFactory';
+export const TOKEN_PROVIDER_FACTORY_BASE_TYPE = "TokenProviderFactory";
 
 export interface TokenProviderConfig extends ResourceConfig {
   type: string;
@@ -10,7 +10,7 @@ export interface TokenProviderConfig extends ResourceConfig {
 }
 
 export abstract class TokenProviderFactory<
-  C extends TokenProviderConfig = TokenProviderConfig
+  C extends TokenProviderConfig = TokenProviderConfig,
 > extends AbstractResourceFactory<TokenProvider, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -29,7 +29,7 @@ export abstract class TokenProviderFactory<
       );
 
       if (!provider) {
-        throw new Error('Failed to create token provider from configuration');
+        throw new Error("Failed to create token provider from configuration");
       }
 
       return provider;
@@ -44,13 +44,13 @@ export abstract class TokenProviderFactory<
       );
     } catch (error) {
       const message =
-        'Failed to create default token provider' +
-        (error instanceof Error && error.message ? `: ${error.message}` : '');
+        "Failed to create default token provider" +
+        (error instanceof Error && error.message ? `: ${error.message}` : "");
       throw new Error(message);
     }
 
     if (!provider) {
-      throw new Error('Failed to create default token provider');
+      throw new Error("Failed to create default token provider");
     }
 
     return provider;

@@ -1,8 +1,8 @@
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
-import type { FameEnvelope } from 'naylence-core';
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
+import type { FameEnvelope } from "naylence-core";
 
-import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 
 type HashFunction = (value: string) => bigint;
 
@@ -27,7 +27,11 @@ export class HRWLoadBalancingStrategy implements LoadBalancingStrategy {
     this.stickyAttribute = options.stickyAttribute ?? null;
   }
 
-  public choose(_poolKey: unknown, segments: readonly string[], envelope: FameEnvelope): string | null {
+  public choose(
+    _poolKey: unknown,
+    segments: readonly string[],
+    envelope: FameEnvelope
+  ): string | null {
     if (!segments.length) {
       return null;
     }
@@ -51,15 +55,15 @@ export class HRWLoadBalancingStrategy implements LoadBalancingStrategy {
   private resolveSalt(envelope: FameEnvelope): string {
     if (this.stickyAttribute) {
       const candidate = (envelope as Record<string, unknown>)[this.stickyAttribute];
-      if (typeof candidate === 'string' && candidate.length > 0) {
+      if (typeof candidate === "string" && candidate.length > 0) {
         return candidate;
       }
     }
 
-    if (typeof envelope.id === 'string' && envelope.id.length > 0) {
+    if (typeof envelope.id === "string" && envelope.id.length > 0) {
       return envelope.id;
     }
 
-    return '';
+    return "";
   }
 }

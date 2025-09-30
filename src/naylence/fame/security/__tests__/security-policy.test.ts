@@ -609,10 +609,10 @@ describe('Policy factories', () => {
 		});
 		*/
 
-		import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from "@jest/globals";
 
-		describe('legacy security policy tests', () => {
-			it('are superseded by root-level coverage', () => {
-				expect(true).toBe(true);
-			});
-		});
+describe("legacy security policy tests", () => {
+  it("are superseded by root-level coverage", () => {
+    expect(true).toBe(true);
+  });
+});

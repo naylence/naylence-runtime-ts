@@ -1,18 +1,18 @@
-import { registerFactory } from 'naylence-factory';
-import type { EnvelopeSigner } from './envelope-signer.js';
+import { registerFactory } from "naylence-factory";
+import type { EnvelopeSigner } from "./envelope-signer.js";
 import {
   ENVELOPE_SIGNER_FACTORY_BASE_TYPE,
   EnvelopeSignerFactory,
   type EnvelopeSignerConfig,
-} from './envelope-signer.js';
-import { EdDSAEnvelopeSigner, type EdDSAEnvelopeSignerOptions } from './eddsa-envelope-signer.js';
+} from "./envelope-signer.js";
+import { EdDSAEnvelopeSigner, type EdDSAEnvelopeSignerOptions } from "./eddsa-envelope-signer.js";
 
 export interface EdDSAEnvelopeSignerConfig extends EnvelopeSignerConfig {
-  type: 'EdDSAEnvelopeSigner';
+  type: "EdDSAEnvelopeSigner";
 }
 
 export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvelopeSignerConfig> {
-  public readonly type = 'EdDSAEnvelopeSigner';
+  public readonly type = "EdDSAEnvelopeSigner";
   public readonly isDefault = true;
 
   public async create(
@@ -38,7 +38,7 @@ export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvel
 
 registerFactory(
   ENVELOPE_SIGNER_FACTORY_BASE_TYPE,
-  'EdDSAEnvelopeSigner',
+  "EdDSAEnvelopeSigner",
   EdDSAEnvelopeSignerFactory,
   { isDefault: true }
 );

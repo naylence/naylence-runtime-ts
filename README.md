@@ -201,7 +201,7 @@ This implementation provides a complete Fame runtime that closely mirrors the Py
 - **Addressing** - Fame address parsing and validation
 
 ### Storage Providers
-- **Configurable factories** – `InMemoryStorageProviderFactory`, `SQLiteStorageProviderFactory`, and `StorageProfileFactory` mirror the Python runtime profiles (`memory`, `sqlite`, `encrypted-sqlite`).
+- **Configurable factories** – `InMemoryStorageProviderFactory`, `IndexedDBStorageProviderFactory`, `SQLiteStorageProviderFactory`, and `StorageProfileFactory` mirror the Python runtime profiles while adding a browser-first default backend.
 - **Schema validation** – Storage factory inputs are validated with Zod before instantiation, ensuring early feedback on misconfiguration.
 - **Parity note** – The encrypted key-value store in this port exposes an explicit `update` method while the Python implementation still delegates updates via `set`. We retain the method here for backwards compatibility and will upstream an equivalent helper to Python in a follow-up release.
 - **Security** - Encryption, signing, and authentication headers

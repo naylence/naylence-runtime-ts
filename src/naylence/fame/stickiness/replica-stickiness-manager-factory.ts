@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
 
-import type { ReplicaStickinessManager } from './replica-stickiness-manager.js';
+import type { ReplicaStickinessManager } from "./replica-stickiness-manager.js";
 
-export const REPLICA_STICKINESS_MANAGER_FACTORY_BASE_TYPE = 'ReplicaStickinessManagerFactory';
+export const REPLICA_STICKINESS_MANAGER_FACTORY_BASE_TYPE = "ReplicaStickinessManagerFactory";
 
 export interface ReplicaStickinessManagerConfig extends ResourceConfig {
   type: string;
@@ -11,7 +11,7 @@ export interface ReplicaStickinessManagerConfig extends ResourceConfig {
 }
 
 export abstract class ReplicaStickinessManagerFactory<
-  C extends ReplicaStickinessManagerConfig = ReplicaStickinessManagerConfig
+  C extends ReplicaStickinessManagerConfig = ReplicaStickinessManagerConfig,
 > extends AbstractResourceFactory<ReplicaStickinessManager, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,
@@ -19,7 +19,7 @@ export abstract class ReplicaStickinessManagerFactory<
   ): Promise<ReplicaStickinessManager>;
 
   public static async createReplicaStickinessManager<
-    C extends ReplicaStickinessManagerConfig = ReplicaStickinessManagerConfig
+    C extends ReplicaStickinessManagerConfig = ReplicaStickinessManagerConfig,
   >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}

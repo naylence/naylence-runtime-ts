@@ -1,18 +1,18 @@
-import type { CreateResourceOptions } from 'naylence-factory';
+import type { CreateResourceOptions } from "naylence-factory";
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
   registerFactory,
-} from 'naylence-factory';
+} from "naylence-factory";
 
-import type { DeliveryPolicy } from './delivery-policy.js';
-import type { DeliveryPolicyConfig } from './delivery-policy-config.js';
+import type { DeliveryPolicy } from "./delivery-policy.js";
+import type { DeliveryPolicyConfig } from "./delivery-policy-config.js";
 
-export const DELIVERY_POLICY_FACTORY_BASE_TYPE = 'DeliveryPolicyFactory';
+export const DELIVERY_POLICY_FACTORY_BASE_TYPE = "DeliveryPolicyFactory";
 
 export abstract class DeliveryPolicyFactory<
-  C extends DeliveryPolicyConfig = DeliveryPolicyConfig
+  C extends DeliveryPolicyConfig = DeliveryPolicyConfig,
 > extends AbstractResourceFactory<DeliveryPolicy, C> {
   public abstract create(
     config?: C | Record<string, unknown> | null,

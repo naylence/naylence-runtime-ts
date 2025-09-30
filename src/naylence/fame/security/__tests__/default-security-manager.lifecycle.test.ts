@@ -1,21 +1,21 @@
-import { jest } from '@jest/globals';
-import type { FameEnvelope } from 'naylence-core';
+import { jest } from "@jest/globals";
+import type { FameEnvelope } from "naylence-core";
 
 import {
   CryptoLevel,
   SecurityAction,
   SecurityRequirements,
   type SecurityPolicy,
-} from '../policy/security-policy.js';
-import type { KeyManager } from '../keys/key-manager.js';
-import type { KeyManagementHandler } from '../keys/key-management-handler.js';
-import type { NodeLike } from '../../node/node-like.js';
-import type { EncryptionManager } from '../encryption/encryption-manager.js';
-import type { Authorizer } from '../auth/authorizer.js';
-import type { CertificateManager } from '../cert/certificate-manager.js';
+} from "../policy/security-policy.js";
+import type { KeyManager } from "../keys/key-manager.js";
+import type { KeyManagementHandler } from "../keys/key-management-handler.js";
+import type { NodeLike } from "../../node/node-like.js";
+import type { EncryptionManager } from "../encryption/encryption-manager.js";
+import type { Authorizer } from "../auth/authorizer.js";
+import type { CertificateManager } from "../cert/certificate-manager.js";
 
-type DefaultSecurityManagerModule = typeof import('../default-security-manager.js');
-type DefaultSecurityManagerConstructor = DefaultSecurityManagerModule['DefaultSecurityManager'];
+type DefaultSecurityManagerModule = typeof import("../default-security-manager.js");
+type DefaultSecurityManagerConstructor = DefaultSecurityManagerModule["DefaultSecurityManager"];
 type DefaultSecurityManagerInstance = InstanceType<DefaultSecurityManagerConstructor>;
 
 let DefaultSecurityManager!: DefaultSecurityManagerConstructor;
@@ -93,35 +93,37 @@ function createPolicy(overrides: Partial<SecurityPolicy> = {}): SecurityPolicy {
 
 function createNode(overrides: Record<string, unknown> = {}): NodeLike {
   return {
-    id: 'node-1',
+    id: "node-1",
     deliver: jest.fn(async () => undefined),
     envelopeFactory: {
       createEnvelope: jest.fn(() => ({
-        id: 'generated',
-        version: '1',
+        id: "generated",
+        version: "1",
         ts: new Date(),
-        frame: { type: 'DeliveryAck' },
+        frame: { type: "DeliveryAck" },
       })),
     },
     ...overrides,
   } as unknown as NodeLike;
 }
 
-function createManager(options: {
-  envelopeSigner?: unknown;
-  envelopeVerifier?: unknown;
-  encryption?: EncryptionManager | null;
-  keyManager?: KeyManager | null;
-  authorizer?: Authorizer | null;
-  certificateManager?: CertificateManager | null;
-  secureChannelManager?: unknown;
-  keyValidator?: unknown;
-  policy?: SecurityPolicy;
-  cryptoProvider?: unknown;
-  nodeOverrides?: Record<string, unknown>;
-} = {}): DefaultSecurityManagerInstance {
+function createManager(
+  options: {
+    envelopeSigner?: unknown;
+    envelopeVerifier?: unknown;
+    encryption?: EncryptionManager | null;
+    keyManager?: KeyManager | null;
+    authorizer?: Authorizer | null;
+    certificateManager?: CertificateManager | null;
+    secureChannelManager?: unknown;
+    keyValidator?: unknown;
+    policy?: SecurityPolicy;
+    cryptoProvider?: unknown;
+    nodeOverrides?: Record<string, unknown>;
+  } = {}
+): DefaultSecurityManagerInstance {
   if (!DefaultSecurityManager) {
-    throw new Error('DefaultSecurityManager module not loaded');
+    throw new Error("DefaultSecurityManager module not loaded");
   }
   const policy = options.policy ?? createPolicy();
   const manager = new DefaultSecurityManager(
@@ -147,8 +149,7 @@ function createManager(options: {
   return manager;
 }
 
-
-describe('DefaultSecurityManager lifecycle', () => {
+describe("DefaultSecurityManager lifecycle", () => {
   beforeEach(async () => {
     jest.resetModules();
 
@@ -157,17 +158,16 @@ describe('DefaultSecurityManager lifecycle', () => {
     secureChannelFrameHandlerInstances = [];
     keyFrameHandlerInstances = [];
 
-    const keyManagementModule = await import('../keys/key-management-handler.js');
+    const keyManagementModule = await import("../keys/key-management-handler.js");
     KeyManagementHandlerMock = jest
-      .spyOn(keyManagementModule, 'KeyManagementHandler')
+      .spyOn(keyManagementModule, "KeyManagementHandler")
       .mockImplementation(() => {
         const instance = createKeyManagementInstance();
         keyManagementHandlerInstances.push(instance);
         return instance as unknown as KeyManagementHandler;
       }) as unknown as jest.Mock;
 
-
-    await jest.unstable_mockModule('../../node/envelope-security-handler.js', () => ({
+    await jest.unstable_mockModule("../../node/envelope-security-handler.js", () => ({
       __esModule: true,
       EnvelopeSecurityHandler: jest.fn(() => {
         const instance = createEnvelopeSecurityInstance();
@@ -177,7 +177,7 @@ describe('DefaultSecurityManager lifecycle', () => {
       __mockInstances: envelopeSecurityHandlerInstances,
     }));
 
-    await jest.unstable_mockModule('../../node/secure-channel-frame-handler.js', () => ({
+    await jest.unstable_mockModule("../../node/secure-channel-frame-handler.js", () => ({
       __esModule: true,
       SecureChannelFrameHandler: jest.fn(() => {
         const instance = createSecureChannelInstance();
@@ -187,7 +187,7 @@ describe('DefaultSecurityManager lifecycle', () => {
       __mockInstances: secureChannelFrameHandlerInstances,
     }));
 
-    await jest.unstable_mockModule('../../sentinel/key-frame-handler.js', () => ({
+    await jest.unstable_mockModule("../../sentinel/key-frame-handler.js", () => ({
       __esModule: true,
       KeyFrameHandler: jest.fn(() => {
         const instance = createKeyFrameInstance();
@@ -197,7 +197,7 @@ describe('DefaultSecurityManager lifecycle', () => {
       __mockInstances: keyFrameHandlerInstances,
     }));
 
-  ({ DefaultSecurityManager } = await import('../default-security-manager.js'));
+    ({ DefaultSecurityManager } = await import("../default-security-manager.js"));
     jest.clearAllMocks();
   });
 
@@ -205,7 +205,7 @@ describe('DefaultSecurityManager lifecycle', () => {
     jest.restoreAllMocks();
   });
 
-  it('throws when overlay security is enabled without key validator', async () => {
+  it("throws when overlay security is enabled without key validator", async () => {
     const keyManagerStub = { onNodeStarted: jest.fn() };
     const manager = createManager({
       envelopeSigner: {},
@@ -214,11 +214,11 @@ describe('DefaultSecurityManager lifecycle', () => {
     });
 
     await expect(manager.onNodeStarted(createNode())).rejects.toThrow(
-      'Key validator must be set when overlay security is enabled'
+      "Key validator must be set when overlay security is enabled"
     );
   });
 
-  it('initializes security handlers when overlay security is available', async () => {
+  it("initializes security handlers when overlay security is available", async () => {
     const keyManagerStub = { onNodeStarted: jest.fn(async () => undefined) };
     const encryptionStub = { onNodeStarted: jest.fn(async () => undefined) };
     const handlerInstance = createKeyManagementInstance();
@@ -242,7 +242,7 @@ describe('DefaultSecurityManager lifecycle', () => {
     expect(manager.secureChannelFrameHandler).not.toBeNull();
   });
 
-  it('propagates lifecycle events to dependencies', async () => {
+  it("propagates lifecycle events to dependencies", async () => {
     const keyManagerStub = {
       onNodeStarted: jest.fn(async () => undefined),
       onNodeInitialized: jest.fn(async () => undefined),
@@ -284,7 +284,7 @@ describe('DefaultSecurityManager lifecycle', () => {
     expect(encryptionStub.onNodeStopped).toHaveBeenCalledTimes(1);
   });
 
-  it('stops handlers during node shutdown', async () => {
+  it("stops handlers during node shutdown", async () => {
     const keyManagerStub = {
       onNodeStarted: jest.fn(async () => undefined),
       onNodeStopped: jest.fn(async () => undefined),
@@ -302,7 +302,7 @@ describe('DefaultSecurityManager lifecycle', () => {
       | ReturnType<typeof createKeyManagementInstance>
       | undefined;
     if (!handlerInstance) {
-      throw new Error('KeyManagementHandler was not instantiated');
+      throw new Error("KeyManagementHandler was not instantiated");
     }
 
     await manager.onNodeStopped(createNode());
@@ -310,62 +310,62 @@ describe('DefaultSecurityManager lifecycle', () => {
     expect(handlerInstance.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('shares keys when signer is configured', () => {
+  it("shares keys when signer is configured", () => {
     const manager = createManager({
       envelopeSigner: {},
       cryptoProvider: {
-        encryptionKeyId: 'enc-key',
-        signatureKeyId: 'sig-key',
-        nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
+        encryptionKeyId: "enc-key",
+        signatureKeyId: "sig-key",
+        nodeJwk: () => ({ kid: "sig-key", use: "sig", kty: "OKP", crv: "Ed25519" }),
         getJwks: () => ({
           keys: [
-            { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
-            { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
+            { kid: "sig-key", use: "sig", kty: "OKP", crv: "Ed25519" },
+            { kid: "enc-key", use: "enc", kty: "OKP", crv: "X25519" },
           ],
         }),
       },
     });
     const keys = manager.getShareableKeys();
     expect(keys).toEqual([
-      { kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' },
-      { kid: 'enc-key', use: 'enc', kty: 'OKP', crv: 'X25519' },
+      { kid: "sig-key", use: "sig", kty: "OKP", crv: "Ed25519" },
+      { kid: "enc-key", use: "enc", kty: "OKP", crv: "X25519" },
     ]);
   });
 
-  it('returns undefined shareable keys when signer is missing', () => {
+  it("returns undefined shareable keys when signer is missing", () => {
     const manager = createManager();
     expect(manager.getShareableKeys()).toBeUndefined();
   });
 
-  it('skips upstream key announcement when key manager is missing', async () => {
+  it("skips upstream key announcement when key manager is missing", async () => {
     const policy = createPolicy();
     const manager = createManager({ policy });
-    await expect(manager.onEpochChange(createNode(), 'epoch-1')).resolves.toBeUndefined();
+    await expect(manager.onEpochChange(createNode(), "epoch-1")).resolves.toBeUndefined();
   });
 
-  it('requests upstream key announcement when key manager supports it', async () => {
+  it("requests upstream key announcement when key manager supports it", async () => {
     const announceKeysToUpstream = jest.fn(async () => undefined);
     const manager = createManager({
       keyManager: { announceKeysToUpstream } as unknown as KeyManager,
     });
-    await manager.onEpochChange(createNode(), 'epoch-2');
+    await manager.onEpochChange(createNode(), "epoch-2");
     expect(announceKeysToUpstream).toHaveBeenCalledTimes(1);
   });
 
-  it('returns encryption key id when crypto provider exposes it', () => {
+  it("returns encryption key id when crypto provider exposes it", () => {
     const manager = createManager({
       envelopeSigner: {},
       cryptoProvider: {
-        encryptionKeyId: 'enc-key',
-        signatureKeyId: 'sig-key',
-        nodeJwk: () => ({ kid: 'sig-key', use: 'sig', kty: 'OKP', crv: 'Ed25519' }),
+        encryptionKeyId: "enc-key",
+        signatureKeyId: "sig-key",
+        nodeJwk: () => ({ kid: "sig-key", use: "sig", kty: "OKP", crv: "Ed25519" }),
         getJwks: () => ({ keys: [] }),
       },
     });
-    expect(manager.getEncryptionKeyId()).toBe('enc-key');
+    expect(manager.getEncryptionKeyId()).toBe("enc-key");
   });
 
-  it('reports overlay security support correctly', () => {
+  it("reports overlay security support correctly", () => {
     const withoutOverlay = createManager();
     const withOverlay = createManager({ envelopeSigner: {} });
 
@@ -373,4 +373,3 @@ describe('DefaultSecurityManager lifecycle', () => {
     expect(withOverlay.supportsOverlaySecurity).toBe(true);
   });
 });
-

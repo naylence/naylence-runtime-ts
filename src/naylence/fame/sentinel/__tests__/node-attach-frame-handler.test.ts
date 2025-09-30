@@ -5,18 +5,18 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type NodeAttachFrame,
-} from 'naylence-core';
+} from "naylence-core";
 
-import { NodeAttachFrameHandler } from '../node-attach-frame-handler.js';
-import { RouteManager } from '../route-manager.js';
+import { NodeAttachFrameHandler } from "../node-attach-frame-handler.js";
+import { RouteManager } from "../route-manager.js";
 import {
   AttachmentKeyValidator,
   KeyInfo,
   KeyValidationError,
-} from '../../security/keys/attachment-key-validator.js';
-import type { LoadBalancerStickinessManager } from '../../stickiness/load-balancer-stickiness-manager.js';
-import type { RoutingNodeLike } from '../../node/routing-node-like.js';
-import type { ConnectorConfig } from '../../connector/connector-config.js';
+} from "../../security/keys/attachment-key-validator.js";
+import type { LoadBalancerStickinessManager } from "../../stickiness/load-balancer-stickiness-manager.js";
+import type { RoutingNodeLike } from "../../node/routing-node-like.js";
+import type { ConnectorConfig } from "../../connector/connector-config.js";
 
 function createConnector(): FameConnector {
   return {
@@ -26,33 +26,42 @@ function createConnector(): FameConnector {
   } as unknown as FameConnector;
 }
 
-function createRoutingNode(overrides: Partial<RoutingNodeLike & {
-  routingEpoch?: string | null;
-  securityManager?: { getShareableKeys(): unknown } | null;
-}> = {}) {
+function createRoutingNode(
+  overrides: Partial<
+    RoutingNodeLike & {
+      routingEpoch?: string | null;
+      securityManager?: { getShareableKeys(): unknown } | null;
+    }
+  > = {}
+) {
   const envelopeFactory = {
-    createEnvelope: jest.fn((options: { frame: FameEnvelope['frame']; corrId?: string; traceId?: string }) => ({
-      id: `ack-${Math.random().toString(16).slice(2)}`,
-      frame: options.frame,
-      ...(options.corrId ? { corrId: options.corrId } : {}),
-      ...(options.traceId ? { traceId: options.traceId } : {}),
-    } as FameEnvelope)),
+    createEnvelope: jest.fn(
+      (options: { frame: FameEnvelope["frame"]; corrId?: string; traceId?: string }) =>
+        ({
+          id: `ack-${Math.random().toString(16).slice(2)}`,
+          frame: options.frame,
+          ...(options.corrId ? { corrId: options.corrId } : {}),
+          ...(options.traceId ? { traceId: options.traceId } : {}),
+        }) as FameEnvelope
+    ),
   };
 
   return {
-    id: 'parent-node',
-    physicalPath: '/parent',
-    routingEpoch: 'epoch-1',
+    id: "parent-node",
+    physicalPath: "/parent",
+    routingEpoch: "epoch-1",
     envelopeFactory,
     dispatchEvent: jest.fn(async () => undefined),
-    dispatchEnvelopeEvent: jest.fn(async (eventName: string, _node: RoutingNodeLike, _route: string, envelope: FameEnvelope) => {
-      if (eventName === 'onForwardToRoute') {
+    dispatchEnvelopeEvent: jest.fn(
+      async (eventName: string, _node: RoutingNodeLike, _route: string, envelope: FameEnvelope) => {
+        if (eventName === "onForwardToRoute") {
+          return envelope;
+        }
         return envelope;
       }
-      return envelope;
-    }),
+    ),
     deliver: jest.fn(async () => undefined),
-    securityManager: { getShareableKeys: jest.fn(() => [{ kid: 'parent-key' }]) },
+    securityManager: { getShareableKeys: jest.fn(() => [{ kid: "parent-key" }]) },
     ...overrides,
   } as unknown as RoutingNodeLike & {
     routingEpoch?: string | null;
@@ -67,36 +76,36 @@ function createRoutingNode(overrides: Partial<RoutingNodeLike & {
 function createContext(connector: FameConnector): FameDeliveryContext {
   return {
     originType: DeliveryOriginType.DOWNSTREAM,
-    fromSystemId: 'child-node',
+    fromSystemId: "child-node",
     fromConnector: connector,
     expectedResponseType: FameResponseType.NONE,
     security: undefined,
   } as FameDeliveryContext;
 }
 
-describe('NodeAttachFrameHandler', () => {
+describe("NodeAttachFrameHandler", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('validates keys, registers routes, and sends acknowledgement on success', async () => {
+  it("validates keys, registers routes, and sends acknowledgement on success", async () => {
     const connector = createConnector();
     const routingNode = createRoutingNode();
     const routeManager = new RouteManager({
       deliver: jest.fn(async () => undefined),
-      getId: () => 'parent-node',
+      getId: () => "parent-node",
     });
 
-  const bufferEnvelope = { id: 'buffer-1', frame: { type: 'Ping' } } as unknown as FameEnvelope;
+    const bufferEnvelope = { id: "buffer-1", frame: { type: "Ping" } } as unknown as FameEnvelope;
     const pendingRoute = {
       connector,
       attached: { set: jest.fn(), wait: jest.fn() },
       buffer: [bufferEnvelope],
     };
-    routeManager._pending_routes.set('child-node', pendingRoute);
+    routeManager._pending_routes.set("child-node", pendingRoute);
 
-    const connectorConfig: ConnectorConfig = { type: 'websocket', durable: true };
-    routeManager._pending_route_metadata.set('child-node', connectorConfig);
+    const connectorConfig: ConnectorConfig = { type: "websocket", durable: true };
+    routeManager._pending_route_metadata.set("child-node", connectorConfig);
 
     const validator = {
       validateKeys: jest.fn(async () => [new KeyInfo({ expiresAt: Date.now() + 60_000 })]),
@@ -116,19 +125,19 @@ describe('NodeAttachFrameHandler', () => {
     });
 
     const frame: NodeAttachFrame = {
-      type: 'NodeAttach',
+      type: "NodeAttach",
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'child-node',
-      instanceId: 'child-instance',
-      assignedPath: '/custom/path',
-      keys: [{ kid: 'child-key' }],
-      callbackGrants: [{ type: 'webhook' }],
+      systemId: "child-node",
+      instanceId: "child-instance",
+      assignedPath: "/custom/path",
+      keys: [{ kid: "child-key" }],
+      callbackGrants: [{ type: "webhook" }],
     } as NodeAttachFrame;
 
     const envelope = {
-      id: 'env-attach',
-      corrId: 'corr-123',
-      traceId: 'trace-456',
+      id: "env-attach",
+      corrId: "corr-123",
+      traceId: "trace-456",
       frame,
     } as unknown as FameEnvelope;
 
@@ -142,61 +151,61 @@ describe('NodeAttachFrameHandler', () => {
 
     expect(routingNode.deliver).toHaveBeenCalledWith(bufferEnvelope, {
       fromConnector: connector,
-      fromSystemId: 'child-node',
+      fromSystemId: "child-node",
       originType: DeliveryOriginType.DOWNSTREAM,
       expectedResponseType: FameResponseType.NONE,
       security: context.security,
     });
 
     expect(connector.send).toHaveBeenCalledTimes(1);
-  const ackEnvelope = (connector.send as jest.Mock).mock.calls[0][0] as FameEnvelope;
+    const ackEnvelope = (connector.send as jest.Mock).mock.calls[0][0] as FameEnvelope;
     expect(ackEnvelope.frame).toMatchObject({
-      type: 'NodeAttachAck',
+      type: "NodeAttachAck",
       ok: true,
-      assignedPath: '/custom/path',
-      refId: 'env-attach',
+      assignedPath: "/custom/path",
+      refId: "env-attach",
       targetSystemId: routingNode.id,
       stickiness: { enabled: true, version: 1 },
     });
-    expect(ackEnvelope.corrId).toBe('corr-123');
+    expect(ackEnvelope.corrId).toBe("corr-123");
 
     expect(routingNode.envelopeFactory.createEnvelope).toHaveBeenCalled();
 
-    expect(routeManager.downstreamRoutes.get('child-node')).toBe(connector);
+    expect(routeManager.downstreamRoutes.get("child-node")).toBe(connector);
 
     const storedRoutes = await routeManager._downstream_route_store.list();
-    expect(storedRoutes['child-node']).toMatchObject({
-      systemId: 'child-node',
-      instanceId: 'child-instance',
-      assignedPath: '/custom/path',
+    expect(storedRoutes["child-node"]).toMatchObject({
+      systemId: "child-node",
+      instanceId: "child-instance",
+      assignedPath: "/custom/path",
       connectorConfig,
-      callbackGrants: [{ type: 'webhook' }],
+      callbackGrants: [{ type: "webhook" }],
     });
 
-    expect(routeManager._pending_routes.has('child-node')).toBe(false);
-    expect(routeManager._pending_route_metadata.has('child-node')).toBe(false);
+    expect(routeManager._pending_routes.has("child-node")).toBe(false);
+    expect(routeManager._pending_route_metadata.has("child-node")).toBe(false);
   });
 
-  it('rejects attachment and schedules connector close when key validation fails', async () => {
+  it("rejects attachment and schedules connector close when key validation fails", async () => {
     jest.useFakeTimers();
 
     const connector = createConnector();
     const routingNode = createRoutingNode();
     const routeManager = new RouteManager({
       deliver: jest.fn(async () => undefined),
-      getId: () => 'parent-node',
+      getId: () => "parent-node",
     });
 
-    routeManager._pending_routes.set('child-node', {
+    routeManager._pending_routes.set("child-node", {
       connector,
       attached: { set: jest.fn(), wait: jest.fn() },
       buffer: [],
     });
-    routeManager._pending_route_metadata.set('child-node', { type: 'websocket', durable: false });
+    routeManager._pending_route_metadata.set("child-node", { type: "websocket", durable: false });
 
     const validator = {
       validateKeys: jest.fn(async () => {
-        throw new KeyValidationError('invalid', 'certificate error');
+        throw new KeyValidationError("invalid", "certificate error");
       }),
     } as unknown as AttachmentKeyValidator;
 
@@ -213,15 +222,15 @@ describe('NodeAttachFrameHandler', () => {
     });
 
     const frame: NodeAttachFrame = {
-      type: 'NodeAttach',
+      type: "NodeAttach",
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'child-node',
-      instanceId: 'child-instance',
+      systemId: "child-node",
+      instanceId: "child-instance",
     } as NodeAttachFrame;
 
     const envelope = {
-      id: 'env-attach',
-      corrId: 'corr-123',
+      id: "env-attach",
+      corrId: "corr-123",
       frame,
     } as unknown as FameEnvelope;
 
@@ -232,18 +241,18 @@ describe('NodeAttachFrameHandler', () => {
     expect(connector.send).toHaveBeenCalledTimes(1);
     const rejectionAck = (connector.send as jest.Mock).mock.calls[0][0] as FameEnvelope;
     expect(rejectionAck.frame).toMatchObject({
-      type: 'NodeAttachAck',
+      type: "NodeAttachAck",
       ok: false,
-      reason: expect.stringContaining('Certificate validation failed'),
+      reason: expect.stringContaining("Certificate validation failed"),
     });
 
-    expect(routeManager.downstreamRoutes.has('child-node')).toBe(false);
+    expect(routeManager.downstreamRoutes.has("child-node")).toBe(false);
 
     await Promise.resolve();
     jest.advanceTimersByTime(100_000);
     await handler.shutdownTasks({ gracePeriod: 0, cancelHanging: true, joinTimeout: 0 });
 
-    expect(connector.close).toHaveBeenCalledWith(1008, 'attach-unauthorized');
+    expect(connector.close).toHaveBeenCalledWith(1008, "attach-unauthorized");
 
     jest.useRealTimers();
   });

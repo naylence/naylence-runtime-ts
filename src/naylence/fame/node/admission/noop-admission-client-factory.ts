@@ -1,16 +1,20 @@
-import { registerFactory } from 'naylence-factory';
-import { ADMISSION_CLIENT_FACTORY_BASE_TYPE, AdmissionClientFactory, type AdmissionConfig } from './admission-client-factory.js';
-import { NoopAdmissionClient, type NoopAdmissionClientOptions } from './noop-admission-client.js';
-import type { AdmissionClient } from './admission-client.js';
+import { registerFactory } from "naylence-factory";
+import {
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  AdmissionClientFactory,
+  type AdmissionConfig,
+} from "./admission-client-factory.js";
+import { NoopAdmissionClient, type NoopAdmissionClientOptions } from "./noop-admission-client.js";
+import type { AdmissionClient } from "./admission-client.js";
 
 export interface NoopAdmissionClientConfig extends AdmissionConfig {
-  type: 'NoopAdmissionClient';
+  type: "NoopAdmissionClient";
   systemId?: string;
   autoAcceptLogicals?: boolean;
 }
 
 export class NoopAdmissionClientFactory extends AdmissionClientFactory<NoopAdmissionClientConfig> {
-  public readonly type = 'NoopAdmissionClient';
+  public readonly type = "NoopAdmissionClient";
 
   public async create(
     config?: NoopAdmissionClientConfig | Record<string, unknown> | null,
@@ -25,33 +29,36 @@ function normalizeConfig(
   config: NoopAdmissionClientConfig | Record<string, unknown> | null | undefined,
   factoryArgs: unknown[]
 ): NoopAdmissionClientOptions {
-  const fromArgs = factoryArgs[0] && typeof factoryArgs[0] === 'object' ? factoryArgs[0] as Record<string, unknown> : {};
+  const fromArgs =
+    factoryArgs[0] && typeof factoryArgs[0] === "object"
+      ? (factoryArgs[0] as Record<string, unknown>)
+      : {};
   const candidate = (config ?? {}) as Record<string, unknown>;
 
   const systemId =
-    typeof candidate.systemId === 'string'
+    typeof candidate.systemId === "string"
       ? candidate.systemId
-      : typeof fromArgs.systemId === 'string'
+      : typeof fromArgs.systemId === "string"
         ? fromArgs.systemId
         : undefined;
 
   const autoAcceptLogicals =
-    typeof candidate.autoAcceptLogicals === 'boolean'
+    typeof candidate.autoAcceptLogicals === "boolean"
       ? candidate.autoAcceptLogicals
-      : typeof candidate.auto_accept_logicals === 'boolean'
+      : typeof candidate.auto_accept_logicals === "boolean"
         ? candidate.auto_accept_logicals
-        : typeof fromArgs.autoAcceptLogicals === 'boolean'
+        : typeof fromArgs.autoAcceptLogicals === "boolean"
           ? fromArgs.autoAcceptLogicals
           : true;
 
   return {
     autoAcceptLogicals,
-    ...(typeof systemId === 'string' && systemId.length > 0 ? { systemId } : {}),
+    ...(typeof systemId === "string" && systemId.length > 0 ? { systemId } : {}),
   } satisfies NoopAdmissionClientOptions;
 }
 
 registerFactory<AdmissionClient, NoopAdmissionClientConfig>(
   ADMISSION_CLIENT_FACTORY_BASE_TYPE,
-  'NoopAdmissionClient',
+  "NoopAdmissionClient",
   NoopAdmissionClientFactory
 );

@@ -1,10 +1,10 @@
-import type { FameAddress, FameEnvelope } from 'naylence-core';
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
-import { AbstractResourceFactory, createDefaultResource, createResource } from 'naylence-factory';
+import type { FameAddress, FameEnvelope } from "naylence-core";
+import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
 
-import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
-import type { KeyProvider } from '../keys/key-provider.js';
-import type { SecureChannelManager } from './secure-channel-manager.js';
+import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
+import type { KeyProvider } from "../keys/key-provider.js";
+import type { SecureChannelManager } from "./secure-channel-manager.js";
 
 export const FIXED_PREFIX_LEN = 44; // 32-byte ephemeral public key + 12-byte nonce prefix
 
@@ -22,15 +22,15 @@ export interface EncryptionOptions {
   readonly recip_kid?: string;
   readonly recipientKeyId?: string;
   readonly requestAddress?: FameAddress;
-  readonly encryptionType?: 'standard' | 'channel' | string;
+  readonly encryptionType?: "standard" | "channel" | string;
   readonly destination?: FameAddress;
   readonly [key: string]: unknown;
 }
 
 export enum EncryptionStatus {
-  OK = 'OK',
-  SKIPPED = 'SKIPPED',
-  QUEUED = 'QUEUED',
+  OK = "OK",
+  SKIPPED = "SKIPPED",
+  QUEUED = "QUEUED",
 }
 
 export class EncryptionResult {
@@ -46,7 +46,10 @@ export class EncryptionResult {
     return new EncryptionResult(EncryptionStatus.QUEUED, undefined);
   }
 
-  constructor(public readonly status: EncryptionStatus, public readonly envelope?: FameEnvelope) {}
+  constructor(
+    public readonly status: EncryptionStatus,
+    public readonly envelope?: FameEnvelope
+  ) {}
 }
 
 export interface EncryptionFactoryDependencies {
@@ -64,13 +67,12 @@ export interface EncryptionManagerConfig extends ResourceConfig {
   [key: string]: unknown;
 }
 
-export interface CreateEncryptionManagerOptions
-  extends Omit<CreateResourceOptions, 'factoryArgs'> {
+export interface CreateEncryptionManagerOptions extends Omit<CreateResourceOptions, "factoryArgs"> {
   factoryArgs?: unknown[];
   dependencies?: EncryptionFactoryDependencies;
 }
 
-export const ENCRYPTION_MANAGER_FACTORY_BASE_TYPE = 'EncryptionManagerFactory';
+export const ENCRYPTION_MANAGER_FACTORY_BASE_TYPE = "EncryptionManagerFactory";
 
 export interface EncryptionManager {
   readonly nodeStaticPublicKey?: Uint8Array;
@@ -85,7 +87,7 @@ export interface EncryptionManager {
 }
 
 export abstract class EncryptionManagerFactory<
-  C extends EncryptionManagerConfig = EncryptionManagerConfig
+  C extends EncryptionManagerConfig = EncryptionManagerConfig,
 > extends AbstractResourceFactory<EncryptionManager, C> {
   public abstract getSupportedAlgorithms(): readonly string[];
 
@@ -103,16 +105,13 @@ export abstract class EncryptionManagerFactory<
   ): Promise<EncryptionManager>;
 
   public static async createEncryptionManager<
-    C extends EncryptionManagerConfig = EncryptionManagerConfig
+    C extends EncryptionManagerConfig = EncryptionManagerConfig,
   >(
     config?: C | Record<string, unknown> | null,
     options: CreateEncryptionManagerOptions = {}
   ): Promise<EncryptionManager | null> {
     const { dependencies, factoryArgs, ...restOptions } = options;
-    const mergedFactoryArgs = [
-      ...(dependencies ? [dependencies] : []),
-      ...(factoryArgs ?? []),
-    ];
+    const mergedFactoryArgs = [...(dependencies ? [dependencies] : []), ...(factoryArgs ?? [])];
 
     const creationOptions: CreateResourceOptions = {
       ...restOptions,

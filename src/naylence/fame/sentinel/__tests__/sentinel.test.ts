@@ -1,4 +1,4 @@
-import * as core from 'naylence-core';
+import * as core from "naylence-core";
 import {
   DeliveryOriginType,
   FameAddress,
@@ -8,35 +8,35 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type FameFabric,
-} from 'naylence-core';
+} from "naylence-core";
 
-import { Sentinel, type SentinelOptions } from '../sentinel.js';
-import type { UpstreamSessionManager } from '../../node/upstream-session-manager.js';
-import type { SecurityManager } from '../../security/security-manager.js';
-import type { RouteManager } from '../route-manager.js';
-import { createResource } from '../../connector/connector-factory.js';
-import type { AddressRouteInfo } from '../key-frame-handler.js';
-import { Peer } from '../peer.js';
-import * as envelopeContext from '../../util/envelope-context.js';
-import * as taskUtils from '../../util/task-utils.js';
-import * as logging from '../../util/logging.js';
+import { Sentinel, type SentinelOptions } from "../sentinel.js";
+import type { UpstreamSessionManager } from "../../node/upstream-session-manager.js";
+import type { SecurityManager } from "../../security/security-manager.js";
+import type { RouteManager } from "../route-manager.js";
+import { createResource } from "../../connector/connector-factory.js";
+import type { AddressRouteInfo } from "../key-frame-handler.js";
+import { Peer } from "../peer.js";
+import * as envelopeContext from "../../util/envelope-context.js";
+import * as taskUtils from "../../util/task-utils.js";
+import * as logging from "../../util/logging.js";
 
-jest.mock('../../connector/connector-factory.js', () => ({
+jest.mock("../../connector/connector-factory.js", () => ({
   createResource: jest.fn(),
 }));
 
-jest.mock('../../node/upstream-session-manager.js', () => {
+jest.mock("../../node/upstream-session-manager.js", () => {
   const mockClass = jest.fn().mockImplementation((options) => ({
     start: jest.fn(async () => undefined),
     stop: jest.fn(async () => undefined),
-    systemId: 'peer-system',
+    systemId: "peer-system",
     send: jest.fn(async () => undefined),
     options,
   }));
   return { UpstreamSessionManager: mockClass };
 });
 
-describe('Sentinel', () => {
+describe("Sentinel", () => {
   const createdSentinels: Sentinel[] = [];
 
   afterEach(async () => {
@@ -71,7 +71,7 @@ describe('Sentinel', () => {
         const routeManager = sentinelAny.routeManager;
         if (routeManager) {
           try {
-            if (typeof routeManager.shutdownTasks === 'function') {
+            if (typeof routeManager.shutdownTasks === "function") {
               await routeManager.shutdownTasks(fastShutdown).catch(() => undefined);
             }
             await routeManager.stop();
@@ -85,7 +85,7 @@ describe('Sentinel', () => {
 
   function createMockConnector(): FameConnector {
     return {
-      id: 'mock-connector',
+      id: "mock-connector",
       start: jest.fn(async () => undefined),
       stop: jest.fn(async () => undefined),
       send: jest.fn().mockResolvedValue(undefined),
@@ -99,15 +99,16 @@ describe('Sentinel', () => {
     const manager = {
       send: jest.fn().mockResolvedValue(undefined),
     } as unknown as UpstreamSessionManager;
-    (sentinel as unknown as { _sessionManager: UpstreamSessionManager | null })._sessionManager = manager;
+    (sentinel as unknown as { _sessionManager: UpstreamSessionManager | null })._sessionManager =
+      manager;
     return manager;
   }
 
   function createMockSecurityManager(): SecurityManager {
-    const authorizer = { authorize: jest.fn() } as unknown as SecurityManager['authorizer'];
+    const authorizer = { authorize: jest.fn() } as unknown as SecurityManager["authorizer"];
     return {
       priority: 1000,
-      policy: {} as SecurityManager['policy'],
+      policy: {} as SecurityManager["policy"],
       envelopeSigner: null,
       envelopeVerifier: null,
       encryption: null,
@@ -143,86 +144,86 @@ describe('Sentinel', () => {
     let frame: Record<string, unknown>;
 
     switch (frameType) {
-      case 'NodeAttach':
+      case "NodeAttach":
         frame = {
-          type: 'NodeAttach',
-          systemId: 'child-system',
-          instanceId: 'instance-1',
+          type: "NodeAttach",
+          systemId: "child-system",
+          instanceId: "instance-1",
         };
         break;
-      case 'AddressBind':
+      case "AddressBind":
         frame = {
-          type: 'AddressBind',
-          address: 'svc@/child',
+          type: "AddressBind",
+          address: "svc@/child",
         };
         break;
-      case 'AddressUnbind':
+      case "AddressUnbind":
         frame = {
-          type: 'AddressUnbind',
-          address: 'svc@/child',
+          type: "AddressUnbind",
+          address: "svc@/child",
         };
         break;
-      case 'AddressBindAck':
+      case "AddressBindAck":
         frame = {
-          type: 'AddressBindAck',
-          address: 'svc@/child',
+          type: "AddressBindAck",
+          address: "svc@/child",
           ok: true,
         };
         break;
-      case 'AddressUnbindAck':
+      case "AddressUnbindAck":
         frame = {
-          type: 'AddressUnbindAck',
-          address: 'svc@/child',
+          type: "AddressUnbindAck",
+          address: "svc@/child",
           ok: true,
         };
         break;
-      case 'CapabilityAdvertise':
+      case "CapabilityAdvertise":
         frame = {
-          type: 'CapabilityAdvertise',
-          capabilities: ['svc.capability'],
-          address: 'svc@/child',
+          type: "CapabilityAdvertise",
+          capabilities: ["svc.capability"],
+          address: "svc@/child",
         };
         break;
-      case 'CapabilityWithdraw':
+      case "CapabilityWithdraw":
         frame = {
-          type: 'CapabilityWithdraw',
-          capabilities: ['svc.capability'],
-          address: 'svc@/child',
+          type: "CapabilityWithdraw",
+          capabilities: ["svc.capability"],
+          address: "svc@/child",
         };
         break;
-      case 'CapabilityAdvertiseAck':
+      case "CapabilityAdvertiseAck":
         frame = {
-          type: 'CapabilityAdvertiseAck',
-          capabilities: ['svc.capability'],
-          address: 'svc@/child',
+          type: "CapabilityAdvertiseAck",
+          capabilities: ["svc.capability"],
+          address: "svc@/child",
           ok: true,
         };
         break;
-      case 'CapabilityWithdrawAck':
+      case "CapabilityWithdrawAck":
         frame = {
-          type: 'CapabilityWithdrawAck',
-          capabilities: ['svc.capability'],
-          address: 'svc@/child',
+          type: "CapabilityWithdrawAck",
+          capabilities: ["svc.capability"],
+          address: "svc@/child",
           ok: true,
         };
         break;
-      case 'CreditUpdate':
+      case "CreditUpdate":
         frame = {
-          type: 'CreditUpdate',
-          flowId: 'flow-credits',
+          type: "CreditUpdate",
+          flowId: "flow-credits",
           credits: 1,
         };
         break;
-      case 'NodeHeartbeat':
+      case "NodeHeartbeat":
         frame = {
-          type: 'NodeHeartbeat',
-          systemId: 'node-heartbeat',
+          type: "NodeHeartbeat",
+          systemId: "node-heartbeat",
         };
         break;
-      case 'Data':
+      case "Data":
         frame = {
-          type: 'Data',
-          payload: { message: 'test' },
+          type: "Data",
+          payload: { message: "test" },
         };
         break;
       default:
@@ -247,14 +248,16 @@ describe('Sentinel', () => {
     return envelope;
   }
 
-  it('buffers non-handshake frames until attach completes', async () => {
+  it("buffers non-handshake frames until attach completes", async () => {
     const sentinel = createSentinel();
-    const deliverSpy = jest.spyOn(sentinel, 'deliver').mockResolvedValue(undefined);
+    const deliverSpy = jest.spyOn(sentinel, "deliver").mockResolvedValue(undefined);
 
-    let storedHandler: ((env: FameEnvelope, context?: FameDeliveryContext | null) => Promise<unknown> | null) | null = null;
+    let storedHandler:
+      | ((env: FameEnvelope, context?: FameDeliveryContext | null) => Promise<unknown> | null)
+      | null = null;
 
     const fakeConnector: FameConnector = {
-      id: 'fake',
+      id: "fake",
       start: jest.fn(async (handler) => {
         storedHandler = handler;
       }),
@@ -273,8 +276,8 @@ describe('Sentinel', () => {
 
     await sentinel.createOriginConnector({
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'child-1',
-      connectorConfig: { type: 'websocket', url: 'ws://test' } as any,
+      systemId: "child-1",
+      connectorConfig: { type: "websocket", url: "ws://test" } as any,
       websocket,
     });
 
@@ -283,29 +286,29 @@ describe('Sentinel', () => {
     const handler = storedHandler!;
 
     const context = { expectedResponseType: FameResponseType.NONE } as FameDeliveryContext;
-    const bufferedEnvelope = createEnvelope(sentinel, 'Data');
+    const bufferedEnvelope = createEnvelope(sentinel, "Data");
     await handler(bufferedEnvelope, context);
     expect(deliverSpy).not.toHaveBeenCalled();
 
-    const attachEnvelope = createEnvelope(sentinel, 'NodeAttach');
+    const attachEnvelope = createEnvelope(sentinel, "NodeAttach");
     await handler(attachEnvelope, context);
     expect(deliverSpy).toHaveBeenCalledTimes(1);
-    expect(deliverSpy.mock.calls[0][0].frame?.type).toBe('NodeAttach');
+    expect(deliverSpy.mock.calls[0][0].frame?.type).toBe("NodeAttach");
 
     const routeManager = (sentinel as any).routeManager as RouteManager;
-    const pendingEntry = routeManager._pending_routes.get('child-1');
+    const pendingEntry = routeManager._pending_routes.get("child-1");
     pendingEntry?.attached.set();
 
-    const secondEnvelope = createEnvelope(sentinel, 'Data');
+    const secondEnvelope = createEnvelope(sentinel, "Data");
     await handler(secondEnvelope, context);
 
     expect(deliverSpy).toHaveBeenCalledTimes(3);
-    expect(deliverSpy.mock.calls[1][0].frame?.type).toBe('Data');
-    expect(deliverSpy.mock.calls[2][0].frame?.type).toBe('Data');
+    expect(deliverSpy.mock.calls[1][0].frame?.type).toBe("Data");
+    expect(deliverSpy.mock.calls[2][0].frame?.type).toBe("Data");
     expect(pendingEntry?.buffer).toHaveLength(0);
   });
 
-  it('forwards transport options to the origin connector factory', async () => {
+  it("forwards transport options to the origin connector factory", async () => {
     const sentinel = createSentinel();
     const createResourceMock = createResource as jest.Mock;
     createResourceMock.mockReset();
@@ -319,31 +322,33 @@ describe('Sentinel', () => {
       close: jest.fn(),
     };
 
-    const extraOption = { handshake: 'open-profile' };
+    const extraOption = { handshake: "open-profile" };
 
     await sentinel.createOriginConnector({
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'child-options',
-      connectorConfig: { type: 'websocket', url: 'ws://options' } as any,
+      systemId: "child-options",
+      connectorConfig: { type: "websocket", url: "ws://options" } as any,
       websocket,
       extraOption,
-      authorization: { roles: ['internal'] } as any,
+      authorization: { roles: ["internal"] } as any,
     });
 
     expect(createResourceMock).toHaveBeenCalledTimes(1);
     const [configArg, factoryArgs] = createResourceMock.mock.calls[0];
-    expect(configArg).toEqual({ type: 'websocket', url: 'ws://options' });
+    expect(configArg).toEqual({ type: "websocket", url: "ws://options" });
     expect(factoryArgs).toMatchObject({ websocket, extraOption });
     expect(factoryArgs.authorization).toBeUndefined();
   });
 
-  it('validates origin connector context invariants before delivery', async () => {
+  it("validates origin connector context invariants before delivery", async () => {
     const sentinel = createSentinel();
 
-    let storedHandler: ((env: FameEnvelope, context?: FameDeliveryContext | null) => Promise<unknown> | null) | null = null;
+    let storedHandler:
+      | ((env: FameEnvelope, context?: FameDeliveryContext | null) => Promise<unknown> | null)
+      | null = null;
 
     const fakeConnector: FameConnector = {
-      id: 'fake',
+      id: "fake",
       start: jest.fn(async (handler) => {
         storedHandler = handler;
       }),
@@ -356,16 +361,16 @@ describe('Sentinel', () => {
 
     await sentinel.createOriginConnector({
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'child-ctx',
-      connectorConfig: { type: 'websocket', url: 'ws://test' } as any,
+      systemId: "child-ctx",
+      connectorConfig: { type: "websocket", url: "ws://test" } as any,
       websocket: { readyState: 1, send: jest.fn(), close: jest.fn() },
     });
 
     const handler = storedHandler!;
-    const envelope = createEnvelope(sentinel, 'Data');
+    const envelope = createEnvelope(sentinel, "Data");
 
     const wrongConnector: FameConnector = {
-      id: 'wrong',
+      id: "wrong",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn(),
@@ -377,27 +382,27 @@ describe('Sentinel', () => {
         fromConnector: wrongConnector,
         expectedResponseType: FameResponseType.NONE,
       } as FameDeliveryContext)
-    ).rejects.toThrow('Context connector mismatch for origin connector');
+    ).rejects.toThrow("Context connector mismatch for origin connector");
 
     await expect(
       handler(envelope, {
         fromConnector: fakeConnector,
-        fromSystemId: 'different',
+        fromSystemId: "different",
         expectedResponseType: FameResponseType.NONE,
       } as FameDeliveryContext)
-    ).rejects.toThrow('Context system id mismatch for origin connector');
+    ).rejects.toThrow("Context system id mismatch for origin connector");
 
     await expect(
       handler(envelope, {
         fromConnector: fakeConnector,
-        fromSystemId: 'child-ctx',
+        fromSystemId: "child-ctx",
         originType: DeliveryOriginType.PEER,
         expectedResponseType: FameResponseType.NONE,
       } as FameDeliveryContext)
-    ).rejects.toThrow('Context origin type mismatch for origin connector');
+    ).rejects.toThrow("Context origin type mismatch for origin connector");
   });
 
-  it('enforces attach timeout for pending origin connectors', async () => {
+  it("enforces attach timeout for pending origin connectors", async () => {
     jest.useFakeTimers();
     const sentinel = createSentinel({ attachTimeoutSec: 0.05 });
     let routeManager: RouteManager | null = null;
@@ -407,20 +412,20 @@ describe('Sentinel', () => {
 
       await sentinel.createOriginConnector({
         originType: DeliveryOriginType.DOWNSTREAM,
-        systemId: 'timeout-child',
-        connectorConfig: { type: 'websocket', url: 'ws://timeout' } as any,
+        systemId: "timeout-child",
+        connectorConfig: { type: "websocket", url: "ws://timeout" } as any,
         websocket: { readyState: 1, send: jest.fn(), close: jest.fn() },
       });
 
       routeManager = (sentinel as any).routeManager as RouteManager;
-      expect(routeManager._pending_routes.has('timeout-child')).toBe(true);
+      expect(routeManager._pending_routes.has("timeout-child")).toBe(true);
 
       await jest.advanceTimersByTimeAsync(60);
       await Promise.resolve();
       await Promise.resolve();
 
       expect(connector.stop).toHaveBeenCalledTimes(1);
-      expect(routeManager._pending_routes.has('timeout-child')).toBe(false);
+      expect(routeManager._pending_routes.has("timeout-child")).toBe(false);
     } finally {
       jest.useRealTimers();
       if (routeManager) {
@@ -433,14 +438,16 @@ describe('Sentinel', () => {
     }
   });
 
-  it('merges authorization into security context for origin connectors', async () => {
+  it("merges authorization into security context for origin connectors", async () => {
     const sentinel = createSentinel();
-    const deliverSpy = jest.spyOn(sentinel, 'deliver').mockResolvedValue(undefined);
+    const deliverSpy = jest.spyOn(sentinel, "deliver").mockResolvedValue(undefined);
 
-    let storedHandler: ((env: FameEnvelope, context?: FameDeliveryContext | null) => Promise<unknown> | null) | null = null;
+    let storedHandler:
+      | ((env: FameEnvelope, context?: FameDeliveryContext | null) => Promise<unknown> | null)
+      | null = null;
 
     const fakeConnector: FameConnector = {
-      id: 'secure',
+      id: "secure",
       start: jest.fn(async (handler) => {
         storedHandler = handler;
       }),
@@ -453,166 +460,168 @@ describe('Sentinel', () => {
 
     await sentinel.createOriginConnector({
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: 'secure-child',
-      connectorConfig: { type: 'websocket', url: 'ws://secure' } as any,
+      systemId: "secure-child",
+      connectorConfig: { type: "websocket", url: "ws://secure" } as any,
       websocket: { readyState: 1, send: jest.fn(), close: jest.fn() },
-      authorization: { roles: ['agent'] } as any,
+      authorization: { roles: ["agent"] } as any,
     });
 
     const handler = storedHandler!;
     const routeManager = (sentinel as any).routeManager as RouteManager;
-    const pendingEntry = routeManager._pending_routes.get('secure-child');
+    const pendingEntry = routeManager._pending_routes.get("secure-child");
     pendingEntry?.attached.set();
 
-    await handler(createEnvelope(sentinel, 'Data'), {
-      security: { token: 'abc' } as any,
+    await handler(createEnvelope(sentinel, "Data"), {
+      security: { token: "abc" } as any,
     } as FameDeliveryContext);
 
     const callArgs = deliverSpy.mock.calls[deliverSpy.mock.calls.length - 1];
     const [, ctx] = callArgs;
-    expect(ctx?.security).toEqual({ token: 'abc', authorization: { roles: ['agent'] } });
+    expect(ctx?.security).toEqual({ token: "abc", authorization: { roles: ["agent"] } });
   });
 
-  it('resolves pending binds when receiving acknowledgements', async () => {
+  it("resolves pending binds when receiving acknowledgements", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
 
-    jest.spyOn(sentinelAny.deliveryTracker, 'onEnvelopeDelivered').mockResolvedValue(undefined);
+    jest.spyOn(sentinelAny.deliveryTracker, "onEnvelopeDelivered").mockResolvedValue(undefined);
 
     const pendingResolve = jest.fn();
     const pendingReject = jest.fn();
 
-    sentinelAny.pendingBinds.set('corr-ok', {
+    sentinelAny.pendingBinds.set("corr-ok", {
       promise: Promise.resolve(true),
       resolve: pendingResolve,
       reject: pendingReject,
     });
 
-    const okAck = createEnvelope(sentinel, 'AddressBindAck', { corrId: 'corr-ok' });
+    const okAck = createEnvelope(sentinel, "AddressBindAck", { corrId: "corr-ok" });
     await sentinel.deliver(okAck);
     expect(pendingResolve).toHaveBeenCalledWith(true);
-    expect(sentinelAny.pendingBinds.has('corr-ok')).toBe(false);
+    expect(sentinelAny.pendingBinds.has("corr-ok")).toBe(false);
 
     const pendingRejectOnly = jest.fn();
-    sentinelAny.pendingBinds.set('corr-fail', {
+    sentinelAny.pendingBinds.set("corr-fail", {
       promise: Promise.resolve(false),
       resolve: jest.fn(),
       reject: pendingRejectOnly,
     });
 
-    const failAck = createEnvelope(sentinel, 'AddressBindAck', {
-      corrId: 'corr-fail',
-      frameOverrides: { ok: false, reason: 'denied' },
+    const failAck = createEnvelope(sentinel, "AddressBindAck", {
+      corrId: "corr-fail",
+      frameOverrides: { ok: false, reason: "denied" },
     });
     await sentinel.deliver(failAck);
     expect(pendingRejectOnly).toHaveBeenCalled();
-    expect(sentinelAny.pendingBinds.has('corr-fail')).toBe(false);
+    expect(sentinelAny.pendingBinds.has("corr-fail")).toBe(false);
   });
 
-  it('handles delivery acknowledgements from upstream', async () => {
+  it("handles delivery acknowledgements from upstream", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
 
     const deliverySpy = jest
-      .spyOn(sentinelAny.deliveryTracker, 'onEnvelopeDelivered')
+      .spyOn(sentinelAny.deliveryTracker, "onEnvelopeDelivered")
       .mockResolvedValue(undefined);
     const rejectSpy = jest.fn();
 
-    sentinelAny.pendingBinds.set('corr-delivery', {
+    sentinelAny.pendingBinds.set("corr-delivery", {
       promise: Promise.resolve(false),
       resolve: jest.fn(),
       reject: rejectSpy,
     });
 
-    const ack = createEnvelope(sentinel, 'DeliveryAck', {
-      corrId: 'corr-delivery',
+    const ack = createEnvelope(sentinel, "DeliveryAck", {
+      corrId: "corr-delivery",
       frameOverrides: { ok: false },
     });
 
-    await sentinel.deliver(ack);
+    await sentinelAny.handleSystemFrame(ack, undefined);
 
-    expect(deliverySpy).toHaveBeenCalledWith('__sys__', ack, undefined);
+    expect(deliverySpy).toHaveBeenCalledWith("__sys__", ack, undefined);
     expect(rejectSpy).toHaveBeenCalledWith(expect.any(Error));
   });
 
-  it('handles additional acknowledgement frames and missing pending entries', async () => {
+  it("handles additional acknowledgement frames and missing pending entries", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
 
-    jest.spyOn(sentinelAny.deliveryTracker, 'onEnvelopeDelivered').mockResolvedValue(undefined);
+    jest.spyOn(sentinelAny.deliveryTracker, "onEnvelopeDelivered").mockResolvedValue(undefined);
 
     const ackResolve = jest.fn();
-    sentinelAny.pendingBinds.set('corr-unbind', {
+    sentinelAny.pendingBinds.set("corr-unbind", {
       promise: Promise.resolve(true),
       resolve: ackResolve,
       reject: jest.fn(),
     });
 
-    const unbindAck = createEnvelope(sentinel, 'AddressUnbindAck', { corrId: 'corr-unbind' });
+    const unbindAck = createEnvelope(sentinel, "AddressUnbindAck", { corrId: "corr-unbind" });
     await sentinel.deliver(unbindAck);
     expect(sentinelAny.deliveryTracker.onEnvelopeDelivered).toHaveBeenCalledWith(
-      '__sys__',
+      "__sys__",
       unbindAck,
       undefined
     );
     expect(ackResolve).not.toHaveBeenCalled();
 
     await expect(
-      sentinel.deliver(createEnvelope(sentinel, 'CapabilityAdvertiseAck', { corrId: 'unknown-ack' }))
+      sentinel.deliver(
+        createEnvelope(sentinel, "CapabilityAdvertiseAck", { corrId: "unknown-ack" })
+      )
     ).resolves.toBeUndefined();
   });
 
-  it('ignores bind acknowledgements for unknown correlation ids', async () => {
+  it("ignores bind acknowledgements for unknown correlation ids", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
 
     const deliverySpy = jest
-      .spyOn(sentinelAny.deliveryTracker, 'onEnvelopeDelivered')
+      .spyOn(sentinelAny.deliveryTracker, "onEnvelopeDelivered")
       .mockResolvedValue(undefined);
 
     await expect(
-      sentinel.deliver(createEnvelope(sentinel, 'AddressBindAck', { corrId: 'missing' }))
+      sentinel.deliver(createEnvelope(sentinel, "AddressBindAck", { corrId: "missing" }))
     ).resolves.toBeUndefined();
 
     expect(deliverySpy).toHaveBeenCalled();
     expect(sentinelAny.pendingBinds.size).toBe(0);
   });
 
-  it('swallows errors from completion dispatch handlers during forwarding', async () => {
+  it("swallows errors from completion dispatch handlers during forwarding", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
 
-    const envelope = createEnvelope(sentinel, 'Data');
+    const envelope = createEnvelope(sentinel, "Data");
     const peerConnector = createMockConnector();
 
-    sentinelAny.routeManager._peer_routes.set('peer-a', peerConnector);
-    jest.spyOn(sentinelAny, 'trackFlowRoute').mockImplementation(() => undefined);
-    jest.spyOn(sentinelAny, 'maybeForgetFlow').mockImplementation(() => undefined);
+    sentinelAny.routeManager._peer_routes.set("peer-a", peerConnector);
+    jest.spyOn(sentinelAny, "trackFlowRoute").mockImplementation(() => undefined);
+    jest.spyOn(sentinelAny, "maybeForgetFlow").mockImplementation(() => undefined);
 
     attachMockUpstreamManager(sentinel);
     sentinel.setUpstreamConnector(createMockConnector());
 
     const dispatchMock = jest
-      .spyOn(sentinelAny, 'dispatchEnvelopeEvent')
+      .spyOn(sentinelAny, "dispatchEnvelopeEvent")
       .mockImplementation(async (...args: any[]) => {
         const [eventName, ...rest] = args;
-        if (typeof eventName === 'string' && eventName.endsWith('Complete')) {
+        if (typeof eventName === "string" && eventName.endsWith("Complete")) {
           throw new Error(`boom-${eventName}`);
         }
-        if (eventName === 'onForwardToPeer') {
+        if (eventName === "onForwardToPeer") {
           return rest[2];
         }
-        if (eventName === 'onForwardToPeers') {
+        if (eventName === "onForwardToPeers") {
           return rest[1];
         }
-        if (eventName === 'onForwardUpstream') {
+        if (eventName === "onForwardUpstream") {
           return rest[1];
         }
         return rest[1] ?? null;
       });
 
-    await expect(sentinel.forwardToPeer('peer-a', envelope)).resolves.toBeUndefined();
-    await expect(sentinel.forwardToPeers(envelope, ['peer-a'])).resolves.toBeUndefined();
+    await expect(sentinel.forwardToPeer("peer-a", envelope)).resolves.toBeUndefined();
+    await expect(sentinel.forwardToPeers(envelope, ["peer-a"])).resolves.toBeUndefined();
     await expect(
       sentinel.forwardUpstream(envelope, {
         originType: DeliveryOriginType.DOWNSTREAM,
@@ -620,84 +629,98 @@ describe('Sentinel', () => {
     ).resolves.toBeUndefined();
 
     expect((peerConnector.send as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(2);
-    const manager = (sentinel as unknown as { _sessionManager: UpstreamSessionManager })._sessionManager;
+    const manager = (sentinel as unknown as { _sessionManager: UpstreamSessionManager })
+      ._sessionManager;
     expect((manager.send as jest.Mock).mock.calls.length).toBe(1);
-    expect(dispatchMock).toHaveBeenCalledWith('onForwardUpstreamComplete', sentinel, envelope, undefined, undefined, {
-      originType: DeliveryOriginType.DOWNSTREAM,
-    });
+    expect(dispatchMock).toHaveBeenCalledWith(
+      "onForwardUpstreamComplete",
+      sentinel,
+      envelope,
+      undefined,
+      undefined,
+      {
+        originType: DeliveryOriginType.DOWNSTREAM,
+      }
+    );
     dispatchMock.mockRestore();
   });
 
-  it('skips forwarding to a peer when dispatch vetoes forwarding', async () => {
+  it("skips forwarding to a peer when dispatch vetoes forwarding", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
-    const envelope = createEnvelope(sentinel, 'Data');
+    const envelope = createEnvelope(sentinel, "Data");
     const connector = createMockConnector();
 
-    sentinelAny.routeManager._peer_routes.set('peer-a', connector);
+    sentinelAny.routeManager._peer_routes.set("peer-a", connector);
 
     const dispatchMock = jest
-      .spyOn(sentinelAny, 'dispatchEnvelopeEvent')
+      .spyOn(sentinelAny, "dispatchEnvelopeEvent")
       .mockImplementation(async (...args: unknown[]) => {
         const [eventName, ...rest] = args as [string, ...unknown[]];
-        if (eventName === 'onForwardToPeer') {
+        if (eventName === "onForwardToPeer") {
           return null;
         }
         return rest[0] ?? null;
       });
 
-    await sentinel.forwardToPeer('peer-a', envelope);
-
-    expect(connector.send).not.toHaveBeenCalled();
-    expect(dispatchMock).toHaveBeenCalledWith('onForwardToPeer', sentinel, 'peer-a', envelope, undefined);
-    dispatchMock.mockRestore();
-  });
-
-  it('skips forwarding to peers when dispatch vetoes the request', async () => {
-    const sentinel = createSentinel();
-    const sentinelAny = sentinel as any;
-    const envelope = createEnvelope(sentinel, 'Data');
-    const connector = createMockConnector();
-
-    sentinelAny.routeManager._peer_routes.set('peer-a', connector);
-
-    const dispatchMock = jest
-      .spyOn(sentinelAny, 'dispatchEnvelopeEvent')
-      .mockImplementation(async (...args: unknown[]) => {
-        const [eventName, ...rest] = args as [string, ...unknown[]];
-        if (eventName === 'onForwardToPeers') {
-          return null;
-        }
-        return rest[0] ?? null;
-      });
-
-    await sentinel.forwardToPeers(envelope, ['peer-a']);
+    await sentinel.forwardToPeer("peer-a", envelope);
 
     expect(connector.send).not.toHaveBeenCalled();
     expect(dispatchMock).toHaveBeenCalledWith(
-      'onForwardToPeers',
+      "onForwardToPeer",
+      sentinel,
+      "peer-a",
+      envelope,
+      undefined
+    );
+    dispatchMock.mockRestore();
+  });
+
+  it("skips forwarding to peers when dispatch vetoes the request", async () => {
+    const sentinel = createSentinel();
+    const sentinelAny = sentinel as any;
+    const envelope = createEnvelope(sentinel, "Data");
+    const connector = createMockConnector();
+
+    sentinelAny.routeManager._peer_routes.set("peer-a", connector);
+
+    const dispatchMock = jest
+      .spyOn(sentinelAny, "dispatchEnvelopeEvent")
+      .mockImplementation(async (...args: unknown[]) => {
+        const [eventName, ...rest] = args as [string, ...unknown[]];
+        if (eventName === "onForwardToPeers") {
+          return null;
+        }
+        return rest[0] ?? null;
+      });
+
+    await sentinel.forwardToPeers(envelope, ["peer-a"]);
+
+    expect(connector.send).not.toHaveBeenCalled();
+    expect(dispatchMock).toHaveBeenCalledWith(
+      "onForwardToPeers",
       sentinel,
       envelope,
-      ['peer-a'],
+      ["peer-a"],
       undefined,
       undefined
     );
     dispatchMock.mockRestore();
   });
 
-  it('skips forwarding upstream when dispatch vetoes the request', async () => {
+  it("skips forwarding upstream when dispatch vetoes the request", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
-    const envelope = createEnvelope(sentinel, 'Data');
+    const envelope = createEnvelope(sentinel, "Data");
 
     const manager = attachMockUpstreamManager(sentinel);
     sentinel.setUpstreamConnector(createMockConnector());
 
     const dispatchMock = jest
-      .spyOn(sentinelAny, 'dispatchEnvelopeEvent')
+      .spyOn(sentinelAny, "dispatchEnvelopeEvent")
       .mockImplementation(async (...args: unknown[]) => {
         const [eventName, ...rest] = args as [string, ...unknown[]];
-        if (eventName === 'onForwardUpstream') {
+        if (eventName === "onForwardUpstream") {
           return null;
         }
         return rest[0] ?? null;
@@ -709,14 +732,14 @@ describe('Sentinel', () => {
 
     await sentinel.forwardUpstream(envelope, context);
 
-    expect((manager.send as jest.Mock)).not.toHaveBeenCalled();
-    expect(dispatchMock).toHaveBeenCalledWith('onForwardUpstream', sentinel, envelope, context);
+    expect(manager.send as jest.Mock).not.toHaveBeenCalled();
+    expect(dispatchMock).toHaveBeenCalledWith("onForwardUpstream", sentinel, envelope, context);
     dispatchMock.mockRestore();
   });
 
-  it('skips forwarding upstream when origin already upstream', async () => {
+  it("skips forwarding upstream when origin already upstream", async () => {
     const sentinel = createSentinel();
-    const envelope = createEnvelope(sentinel, 'Data');
+    const envelope = createEnvelope(sentinel, "Data");
     const context = {
       originType: DeliveryOriginType.UPSTREAM,
     } as FameDeliveryContext;
@@ -731,39 +754,39 @@ describe('Sentinel', () => {
     expect(sendSpy).not.toHaveBeenCalled();
   });
 
-  it('allows forwarding when origin matches peer segment', async () => {
+  it("allows forwarding when origin matches peer segment", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
-    const envelope = createEnvelope(sentinel, 'Data');
+    const envelope = createEnvelope(sentinel, "Data");
     const connector = createMockConnector();
 
-    sentinelAny.routeManager._peer_routes.set('peer-a', connector);
+    sentinelAny.routeManager._peer_routes.set("peer-a", connector);
 
-    await sentinel.forwardToPeer('peer-a', envelope, {
+    await sentinel.forwardToPeer("peer-a", envelope, {
       originType: DeliveryOriginType.PEER,
-      fromSystemId: 'peer-a',
+      fromSystemId: "peer-a",
     } as FameDeliveryContext);
 
     expect(connector.send).toHaveBeenCalled();
   });
 
-  it('completes upstream forwarding without connector', async () => {
+  it("completes upstream forwarding without connector", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
     const dispatchMock = jest
-      .spyOn(sentinelAny, 'dispatchEnvelopeEvent')
+      .spyOn(sentinelAny, "dispatchEnvelopeEvent")
       .mockImplementation(async (...args: unknown[]) => {
         const [eventName, ...rest] = args as [string, ...unknown[]];
-        if (eventName.endsWith('Complete')) {
+        if (eventName.endsWith("Complete")) {
           return rest[0];
         }
         return rest[0] ?? null;
       });
 
-    await sentinel.forwardUpstream(createEnvelope(sentinel, 'Data'));
+    await sentinel.forwardUpstream(createEnvelope(sentinel, "Data"));
 
     expect(dispatchMock).toHaveBeenCalledWith(
-      'onForwardUpstreamComplete',
+      "onForwardUpstreamComplete",
       sentinel,
       expect.any(Object),
       undefined,
@@ -773,66 +796,69 @@ describe('Sentinel', () => {
     dispatchMock.mockRestore();
   });
 
-  it('routes non-local frames to the appropriate handlers', async () => {
+  it("routes non-local frames to the appropriate handlers", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
 
     const nodeAttachSpy = jest
-      .spyOn(sentinelAny.nodeAttachFrameHandler, 'acceptNodeAttach')
+      .spyOn(sentinelAny.nodeAttachFrameHandler, "acceptNodeAttach")
       .mockResolvedValue(undefined);
     const addressBindSpy = jest
-      .spyOn(sentinelAny.addressBindFrameHandler, 'acceptAddressBind')
+      .spyOn(sentinelAny.addressBindFrameHandler, "acceptAddressBind")
       .mockResolvedValue(undefined);
     const addressUnbindSpy = jest
-      .spyOn(sentinelAny.addressBindFrameHandler, 'acceptAddressUnbind')
+      .spyOn(sentinelAny.addressBindFrameHandler, "acceptAddressUnbind")
       .mockResolvedValue(undefined);
     const capabilityAdvertiseSpy = jest
-      .spyOn(sentinelAny.capabilityFrameHandler, 'acceptCapabilityAdvertise')
+      .spyOn(sentinelAny.capabilityFrameHandler, "acceptCapabilityAdvertise")
       .mockResolvedValue(undefined);
     const capabilityWithdrawSpy = jest
-      .spyOn(sentinelAny.capabilityFrameHandler, 'acceptCapabilityWithdraw')
+      .spyOn(sentinelAny.capabilityFrameHandler, "acceptCapabilityWithdraw")
       .mockResolvedValue(undefined);
     const creditUpdateSpy = jest
-      .spyOn(sentinelAny.creditUpdateFrameHandler, 'acceptCreditUpdate')
+      .spyOn(sentinelAny.creditUpdateFrameHandler, "acceptCreditUpdate")
       .mockResolvedValue(undefined);
     const nodeHeartbeatSpy = jest
-      .spyOn(sentinelAny.nodeHeartbeatFrameHandler, 'acceptNodeHeartbeat')
+      .spyOn(sentinelAny.nodeHeartbeatFrameHandler, "acceptNodeHeartbeat")
       .mockResolvedValue(undefined);
 
-    const context = { originType: DeliveryOriginType.DOWNSTREAM, expectedResponseType: FameResponseType.NONE } as FameDeliveryContext;
+    const context = {
+      originType: DeliveryOriginType.DOWNSTREAM,
+      expectedResponseType: FameResponseType.NONE,
+    } as FameDeliveryContext;
 
-    await sentinel.deliver(createEnvelope(sentinel, 'NodeAttach'), context);
+    await sentinel.deliver(createEnvelope(sentinel, "NodeAttach"), context);
     expect(nodeAttachSpy).toHaveBeenCalled();
 
-    await sentinel.deliver(createEnvelope(sentinel, 'AddressBind'), context);
+    await sentinel.deliver(createEnvelope(sentinel, "AddressBind"), context);
     expect(addressBindSpy).toHaveBeenCalled();
 
-    await sentinel.deliver(createEnvelope(sentinel, 'AddressUnbind'), context);
+    await sentinel.deliver(createEnvelope(sentinel, "AddressUnbind"), context);
     expect(addressUnbindSpy).toHaveBeenCalled();
 
-  const advertiseEnvelope = createEnvelope(sentinel, 'CapabilityAdvertise');
+    const advertiseEnvelope = createEnvelope(sentinel, "CapabilityAdvertise");
     await sentinel.deliver(advertiseEnvelope, context);
     expect(capabilityAdvertiseSpy).toHaveBeenCalled();
 
-  const withdrawEnvelope = createEnvelope(sentinel, 'CapabilityWithdraw');
+    const withdrawEnvelope = createEnvelope(sentinel, "CapabilityWithdraw");
     await sentinel.deliver(withdrawEnvelope, context);
     expect(capabilityWithdrawSpy).toHaveBeenCalled();
 
-    await sentinel.deliver(createEnvelope(sentinel, 'CreditUpdate'), context);
+    await sentinel.deliver(createEnvelope(sentinel, "CreditUpdate"), context);
     expect(creditUpdateSpy).toHaveBeenCalled();
 
-    await sentinel.deliver(createEnvelope(sentinel, 'NodeHeartbeat'), context);
+    await sentinel.deliver(createEnvelope(sentinel, "NodeHeartbeat"), context);
     expect(nodeHeartbeatSpy).toHaveBeenCalled();
   });
 
-  it('skips remote handlers for local deliveries', async () => {
+  it("skips remote handlers for local deliveries", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
     const addressBindSpy = jest
-      .spyOn(sentinelAny.addressBindFrameHandler, 'acceptAddressBind')
+      .spyOn(sentinelAny.addressBindFrameHandler, "acceptAddressBind")
       .mockResolvedValue(undefined);
 
-    await sentinel.deliver(createEnvelope(sentinel, 'AddressBind'), {
+    await sentinel.deliver(createEnvelope(sentinel, "AddressBind"), {
       originType: DeliveryOriginType.LOCAL,
       expectedResponseType: FameResponseType.NONE,
     } as FameDeliveryContext);
@@ -840,133 +866,145 @@ describe('Sentinel', () => {
     expect(addressBindSpy).not.toHaveBeenCalled();
   });
 
-  it('forwards traffic to downstream routes and clears reset flows', async () => {
+  it("forwards traffic to downstream routes and clears reset flows", async () => {
     const sentinel = createSentinel();
     const routeManager = (sentinel as any).routeManager as RouteManager;
 
     const connector: FameConnector = {
-      id: 'downstream',
+      id: "downstream",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn().mockResolvedValue(undefined),
       isClosed: () => false,
     } as unknown as FameConnector;
 
-    await routeManager.registerDownstreamRoute('child', connector);
+    await routeManager.registerDownstreamRoute("child", connector);
 
-    const first = createEnvelope(sentinel, 'Data', { flowId: 'flow-1' });
-    await sentinel.forwardToRoute('child', first);
+    const first = createEnvelope(sentinel, "Data", { flowId: "flow-1" });
+    await sentinel.forwardToRoute("child", first);
     expect(connector.send).toHaveBeenCalledWith(first);
-    expect(routeManager.getFlowRoute('flow-1')).toBe(connector);
+    expect(routeManager.getFlowRoute("flow-1")).toBe(connector);
 
-    const reset = createEnvelope(sentinel, 'Data', { flowId: 'flow-1', flowFlags: FlowFlags.RESET });
-    await sentinel.forwardToRoute('child', reset);
-    expect(routeManager.getFlowRoute('flow-1')).toBeUndefined();
+    const reset = createEnvelope(sentinel, "Data", {
+      flowId: "flow-1",
+      flowFlags: FlowFlags.RESET,
+    });
+    await sentinel.forwardToRoute("child", reset);
+    expect(routeManager.getFlowRoute("flow-1")).toBeUndefined();
   });
 
-  it('avoids re-tracking flows when route already known', async () => {
+  it("avoids re-tracking flows when route already known", async () => {
     const sentinel = createSentinel();
     const routeManager = (sentinel as any).routeManager as RouteManager;
 
     const connector: FameConnector = {
-      id: 'downstream',
+      id: "downstream",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn().mockResolvedValue(undefined),
       isClosed: () => false,
     } as unknown as FameConnector;
 
-    await routeManager.registerDownstreamRoute('child', connector);
+    await routeManager.registerDownstreamRoute("child", connector);
 
-    const trackSpy = jest.spyOn(routeManager, 'trackFlowRoute');
+    const trackSpy = jest.spyOn(routeManager, "trackFlowRoute");
 
     await sentinel.forwardToRoute(
-      'child',
-      createEnvelope(sentinel, 'Data', { flowId: 'dup-flow' }),
+      "child",
+      createEnvelope(sentinel, "Data", { flowId: "dup-flow" }),
       {
         originType: DeliveryOriginType.DOWNSTREAM,
-        fromSystemId: 'child',
+        fromSystemId: "child",
         expectedResponseType: FameResponseType.NONE,
       } as FameDeliveryContext
     );
 
-    await sentinel.forwardToRoute('child', createEnvelope(sentinel, 'Data', { flowId: 'dup-flow' }));
+    await sentinel.forwardToRoute(
+      "child",
+      createEnvelope(sentinel, "Data", { flowId: "dup-flow" })
+    );
 
     expect(trackSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('emits delivery NACK when downstream route is missing', async () => {
+  it("emits delivery NACK when downstream route is missing", async () => {
     const sentinel = createSentinel();
-    const nackSpy = jest.spyOn(sentinel, 'emitDeliveryNack').mockResolvedValue(undefined);
-    const envelope = createEnvelope(sentinel, 'Data');
-    await sentinel.forwardToRoute('missing', envelope);
-    expect(nackSpy).toHaveBeenCalledWith(envelope, expect.objectContaining({ code: 'CHILD_UNREACHABLE' }));
+    const nackSpy = jest.spyOn(sentinel, "emitDeliveryNack").mockResolvedValue(undefined);
+    const envelope = createEnvelope(sentinel, "Data");
+    await sentinel.forwardToRoute("missing", envelope);
+    expect(nackSpy).toHaveBeenCalledWith(
+      envelope,
+      expect.objectContaining({ code: "CHILD_UNREACHABLE" })
+    );
   });
 
-  it('routes peer traffic and handles missing peer connectors', async () => {
+  it("routes peer traffic and handles missing peer connectors", async () => {
     const sentinel = createSentinel();
     const routeManager = (sentinel as any).routeManager as RouteManager;
 
     const peerConnector: FameConnector = {
-      id: 'peer',
+      id: "peer",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn().mockResolvedValue(undefined),
       isClosed: () => false,
     } as unknown as FameConnector;
 
-    await routeManager.registerPeerRoute('peer-1', peerConnector);
+    await routeManager.registerPeerRoute("peer-1", peerConnector);
 
-    const envelope = createEnvelope(sentinel, 'Data');
-    await sentinel.forwardToPeer('peer-1', envelope);
+    const envelope = createEnvelope(sentinel, "Data");
+    await sentinel.forwardToPeer("peer-1", envelope);
     expect(peerConnector.send).toHaveBeenCalledWith(envelope);
 
-    const nackSpy = jest.spyOn(sentinel, 'emitDeliveryNack').mockResolvedValue(undefined);
-    await sentinel.forwardToPeer('peer-missing', envelope);
-    expect(nackSpy).toHaveBeenCalledWith(envelope, expect.objectContaining({ code: 'PEER_UNREACHABLE' }));
-  });
-
-  it('throws when broadcasting to a peer without a connector', async () => {
-    const sentinel = createSentinel();
-    await expect(sentinel.forwardToPeers(createEnvelope(sentinel, 'Data'), ['unknown'])).rejects.toThrow(
-      "No route for peer segment 'unknown'"
+    const nackSpy = jest.spyOn(sentinel, "emitDeliveryNack").mockResolvedValue(undefined);
+    await sentinel.forwardToPeer("peer-missing", envelope);
+    expect(nackSpy).toHaveBeenCalledWith(
+      envelope,
+      expect.objectContaining({ code: "PEER_UNREACHABLE" })
     );
   });
 
-  it('broadcasts to peers respecting exclusions', async () => {
+  it("throws when broadcasting to a peer without a connector", async () => {
+    const sentinel = createSentinel();
+    await expect(
+      sentinel.forwardToPeers(createEnvelope(sentinel, "Data"), ["unknown"])
+    ).rejects.toThrow("No route for peer segment 'unknown'");
+  });
+
+  it("broadcasts to peers respecting exclusions", async () => {
     const sentinel = createSentinel();
     const routeManager = (sentinel as any).routeManager as RouteManager;
 
     const peerOne: FameConnector = {
-      id: 'peer-1',
+      id: "peer-1",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn().mockResolvedValue(undefined),
       isClosed: () => false,
     } as unknown as FameConnector;
     const peerTwo: FameConnector = {
-      id: 'peer-2',
+      id: "peer-2",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn().mockResolvedValue(undefined),
       isClosed: () => false,
     } as unknown as FameConnector;
 
-    await routeManager.registerPeerRoute('peer-1', peerOne);
-    await routeManager.registerPeerRoute('peer-2', peerTwo);
+    await routeManager.registerPeerRoute("peer-1", peerOne);
+    await routeManager.registerPeerRoute("peer-2", peerTwo);
 
-    const envelope = createEnvelope(sentinel, 'Data', { flowId: 'broadcast-flow' });
+    const envelope = createEnvelope(sentinel, "Data", { flowId: "broadcast-flow" });
 
-    await sentinel.forwardToPeers(envelope, null, ['peer-2']);
+    await sentinel.forwardToPeers(envelope, null, ["peer-2"]);
 
     expect(peerOne.send).toHaveBeenCalledWith(envelope);
     expect(peerTwo.send).not.toHaveBeenCalled();
   });
 
-  it('forwards upstream only when not already originating upstream', async () => {
+  it("forwards upstream only when not already originating upstream", async () => {
     const sentinel = createSentinel();
     const upstreamConnector: FameConnector = {
-      id: 'upstream',
+      id: "upstream",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn().mockResolvedValue(undefined),
@@ -976,137 +1014,143 @@ describe('Sentinel', () => {
     sentinel.setUpstreamConnector(upstreamConnector);
     const manager = attachMockUpstreamManager(sentinel);
 
-    const envelope = createEnvelope(sentinel, 'Data');
+    const envelope = createEnvelope(sentinel, "Data");
 
-    await sentinel.forwardUpstream(envelope, { originType: DeliveryOriginType.UPSTREAM, expectedResponseType: FameResponseType.NONE });
-    expect((manager.send as jest.Mock)).not.toHaveBeenCalled();
+    await sentinel.forwardUpstream(envelope, {
+      originType: DeliveryOriginType.UPSTREAM,
+      expectedResponseType: FameResponseType.NONE,
+    });
+    expect(manager.send as jest.Mock).not.toHaveBeenCalled();
 
-    await sentinel.forwardUpstream(envelope, { originType: DeliveryOriginType.DOWNSTREAM, expectedResponseType: FameResponseType.NONE });
-    expect((manager.send as jest.Mock)).toHaveBeenCalledWith(envelope);
+    await sentinel.forwardUpstream(envelope, {
+      originType: DeliveryOriginType.DOWNSTREAM,
+      expectedResponseType: FameResponseType.NONE,
+    });
+    expect(manager.send as jest.Mock).toHaveBeenCalledWith(envelope);
   });
 
-  it('builds router state and resolves capabilities', async () => {
-  const sentinel = createSentinel({ hasParent: true, bindingAckTimeoutMs: 10 });
+  it("builds router state and resolves capabilities", async () => {
+    const sentinel = createSentinel({ hasParent: true, bindingAckTimeoutMs: 10 });
     const sentinelAny = sentinel as any;
     const routeManager = sentinelAny.routeManager as RouteManager;
 
     const downstreamConnector: FameConnector = {
-      id: 'child',
+      id: "child",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn(),
       isClosed: () => false,
     } as unknown as FameConnector;
 
-    await routeManager.registerDownstreamRoute('child', downstreamConnector);
-    routeManager._downstream_addresses_routes.set('svc@/child', {
-      segment: 'child',
-      physicalPath: '/child',
+    await routeManager.registerDownstreamRoute("child", downstreamConnector);
+    routeManager._downstream_addresses_routes.set("svc@/child", {
+      segment: "child",
+      physicalPath: "/child",
     });
 
     const peerConnector: FameConnector = {
-      id: 'peer',
+      id: "peer",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn(),
       isClosed: () => false,
     } as unknown as FameConnector;
-    await routeManager.registerPeerRoute('peer', peerConnector);
-    routeManager._peer_addresses_routes.set('svc@/peer', 'peer');
+    await routeManager.registerPeerRoute("peer", peerConnector);
+    routeManager._peer_addresses_routes.set("svc@/peer", "peer");
 
     const bindingManager = sentinelAny.bindingManager;
-    jest.spyOn(bindingManager, 'getAddresses').mockReturnValue([new FameAddress('svc@/local')]);
+    jest.spyOn(bindingManager, "getAddresses").mockReturnValue([new FameAddress("svc@/local")]);
 
     const capabilityHandler = sentinelAny.capabilityFrameHandler;
     (capabilityHandler as any).capabilityRoutes.set(
-      'capability/service',
+      "capability/service",
       new Map([
-        ['not-an-address', { address: new FameAddress('svc@/child'), segment: 'child' }],
-        ['svc@/child', { address: new FameAddress('svc@/child'), segment: 'child' }],
+        ["not-an-address", { address: new FameAddress("svc@/child"), segment: "child" }],
+        ["svc@/child", { address: new FameAddress("svc@/child"), segment: "child" }],
       ])
     );
 
     const addressBindHandler = sentinelAny.addressBindFrameHandler;
-    addressBindHandler.pools.set({ name: 'pool', pattern: '/svc' }, new Set(['child']));
+    addressBindHandler.pools.set({ name: "pool", pattern: "/svc" }, new Set(["child"]));
 
     const state = sentinel.buildRouterState();
-    expect(state.local.has('svc@/local')).toBe(true);
-    expect(state.downstreamAddressRoutes.get('svc@/child')).toBe('child');
-    expect(Array.from(state.pools.keys())).toContainEqual(['pool', '/svc']);
+    expect(state.local.has("svc@/local")).toBe(true);
+    expect(state.downstreamAddressRoutes.get("svc@/child")).toBe("child");
+    expect(Array.from(state.pools.keys())).toContainEqual(["pool", "/svc"]);
 
-    const resolved = await state.resolveAddressByCapability?.(['capability/service']);
-    expect(resolved?.toString()).toBe('svc@/child');
+    const resolved = await state.resolveAddressByCapability?.(["capability/service"]);
+    expect(resolved?.toString()).toBe("svc@/child");
   });
 
-  it('continues capability resolution when encountering invalid addresses', async () => {
+  it("continues capability resolution when encountering invalid addresses", async () => {
     const sentinel = createSentinel({ hasParent: true });
     const sentinelAny = sentinel as any;
     const capabilityHandler = sentinelAny.capabilityFrameHandler;
     const routes = new Map<string, Map<string, { address: FameAddress; segment: string }>>();
     routes.set(
-      'capability/chain',
+      "capability/chain",
       new Map([
-        ['invalid-address', { address: new FameAddress('svc@/child'), segment: 'child' }],
-        ['svc@/child', { address: new FameAddress('svc@/child'), segment: 'child' }],
+        ["invalid-address", { address: new FameAddress("svc@/child"), segment: "child" }],
+        ["svc@/child", { address: new FameAddress("svc@/child"), segment: "child" }],
       ])
     );
 
     (capabilityHandler as any).capabilityRoutes = routes;
 
-    const found = await sentinelAny.resolveAddressByCapability(['capability/chain']);
-    expect(found?.toString()).toBe('svc@/child');
+    const found = await sentinelAny.resolveAddressByCapability(["capability/chain"]);
+    expect(found?.toString()).toBe("svc@/child");
   });
 
-  it('propagates downstream bindings upstream when parent exists', async () => {
+  it("propagates downstream bindings upstream when parent exists", async () => {
     const sentinel = createSentinel({ hasParent: true });
     const sentinelAny = sentinel as any;
     const routeManager = sentinelAny.routeManager as RouteManager;
 
-    routeManager._downstream_addresses_routes.set('svc@/child', { segment: 'child' });
-    routeManager._downstream_addresses_routes.set('svc@/other', null as any);
+    routeManager._downstream_addresses_routes.set("svc@/child", { segment: "child" });
+    routeManager._downstream_addresses_routes.set("svc@/other", null as any);
 
-    const bindSpy = jest.spyOn(sentinelAny, 'bindAddressUpstream').mockResolvedValue(undefined);
+    const bindSpy = jest.spyOn(sentinelAny, "bindAddressUpstream").mockResolvedValue(undefined);
     await sentinelAny.propagateAddressBindingsUpstream();
-    expect(bindSpy).toHaveBeenCalledWith(new FameAddress('svc@/child'), { segment: 'child' });
+    expect(bindSpy).toHaveBeenCalledWith(new FameAddress("svc@/child"), { segment: "child" });
   });
 
-  it('does not propagate bindings when parent is absent', async () => {
+  it("does not propagate bindings when parent is absent", async () => {
     const sentinel = createSentinel({ hasParent: false });
     const sentinelAny = sentinel as any;
-    const bindSpy = jest.spyOn(sentinelAny, 'bindAddressUpstream');
+    const bindSpy = jest.spyOn(sentinelAny, "bindAddressUpstream");
     await sentinelAny.propagateAddressBindingsUpstream();
     expect(bindSpy).not.toHaveBeenCalled();
   });
 
-  it('removes downstream routes without stopping connectors when requested', async () => {
+  it("removes downstream routes without stopping connectors when requested", async () => {
     const sentinel = createSentinel();
     const routeManager = (sentinel as any).routeManager as RouteManager;
     const connector: FameConnector = {
-      id: 'downstream',
+      id: "downstream",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn(),
       isClosed: () => false,
     } as unknown as FameConnector;
 
-    await routeManager.registerDownstreamRoute('child', connector);
-    const unregisterSpy = jest.spyOn(routeManager, 'unregisterDownstreamRoute');
+    await routeManager.registerDownstreamRoute("child", connector);
+    const unregisterSpy = jest.spyOn(routeManager, "unregisterDownstreamRoute");
 
-    await sentinel.removeDownstreamRoute('child', { stop: false });
+    await sentinel.removeDownstreamRoute("child", { stop: false });
 
     expect(unregisterSpy).not.toHaveBeenCalled();
-    expect(routeManager.downstreamRoutes.has('child')).toBe(false);
+    expect(routeManager.downstreamRoutes.has("child")).toBe(false);
   });
 
-  it('delays connector cleanup before stopping downstream routes', async () => {
+  it("delays connector cleanup before stopping downstream routes", async () => {
     jest.useFakeTimers();
     const sentinel = createSentinel({ cleanupDelayMs: 50 });
     const routeManager = (sentinel as any).routeManager as RouteManager;
     const connector = createMockConnector();
     try {
-      await routeManager.registerDownstreamRoute('child-delay', connector);
+      await routeManager.registerDownstreamRoute("child-delay", connector);
 
-      await sentinel.removeDownstreamRoute('child-delay');
+      await sentinel.removeDownstreamRoute("child-delay");
       expect(connector.stop).not.toHaveBeenCalled();
 
       await jest.advanceTimersByTimeAsync(60);
@@ -1120,62 +1164,64 @@ describe('Sentinel', () => {
     }
   });
 
-  it('cancels pending connector cleanup when route re-registers quickly', async () => {
+  it("cancels pending connector cleanup when route re-registers quickly", async () => {
     jest.useFakeTimers();
     const sentinel = createSentinel({ cleanupDelayMs: 100 });
     const routeManager = (sentinel as any).routeManager as RouteManager;
     const firstConnector = createMockConnector();
     const secondConnector = createMockConnector();
     try {
-      await routeManager.registerDownstreamRoute('child-cancel', firstConnector);
-      await sentinel.removeDownstreamRoute('child-cancel');
+      await routeManager.registerDownstreamRoute("child-cancel", firstConnector);
+      await sentinel.removeDownstreamRoute("child-cancel");
 
-      await routeManager.registerDownstreamRoute('child-cancel', secondConnector);
+      await routeManager.registerDownstreamRoute("child-cancel", secondConnector);
 
       await jest.advanceTimersByTimeAsync(200);
       await Promise.resolve();
 
       expect(firstConnector.stop).not.toHaveBeenCalled();
 
-      await sentinel.removeDownstreamRoute('child-cancel', { stop: false });
+      await sentinel.removeDownstreamRoute("child-cancel", { stop: false });
     } finally {
       jest.useRealTimers();
       await routeManager.shutdownTasks({ cancelHanging: true }).catch(() => undefined);
     }
   });
 
-  it('removes peer routes without stopping connectors when requested', async () => {
+  it("removes peer routes without stopping connectors when requested", async () => {
     const sentinel = createSentinel();
     const routeManager = (sentinel as any).routeManager as RouteManager;
     const connector: FameConnector = {
-      id: 'peer',
+      id: "peer",
       start: jest.fn(),
       stop: jest.fn(),
       send: jest.fn(),
       isClosed: () => false,
     } as unknown as FameConnector;
 
-    await routeManager.registerPeerRoute('peer', connector);
-    const unregisterSpy = jest.spyOn(routeManager, 'unregisterPeerRoute');
+    await routeManager.registerPeerRoute("peer", connector);
+    const unregisterSpy = jest.spyOn(routeManager, "unregisterPeerRoute");
 
-    await sentinel.removePeerRoute('peer', { stop: false });
+    await sentinel.removePeerRoute("peer", { stop: false });
 
     expect(unregisterSpy).not.toHaveBeenCalled();
-    expect(routeManager._peer_routes.has('peer')).toBe(false);
+    expect(routeManager._peer_routes.has("peer")).toBe(false);
   });
 
-  it('connects configured peers through the upstream session manager', async () => {
+  it("connects configured peers through the upstream session manager", async () => {
     const sentinel = createSentinel({
       attachClient: {} as any,
       peers: [new Peer({ admissionClient: {} as any })],
     });
     const sentinelAny = sentinel as any;
     const routeManager = sentinelAny.routeManager as RouteManager;
-    const registerSpy = jest.spyOn(routeManager, 'registerPeerRoute').mockResolvedValue(undefined);
+    const registerSpy = jest.spyOn(routeManager, "registerPeerRoute").mockResolvedValue(undefined);
 
     await sentinelAny.connectToPeers();
 
-    const { UpstreamSessionManager } = jest.requireMock('../../node/upstream-session-manager.js') as {
+    const { UpstreamSessionManager } = jest.requireMock(
+      "../../node/upstream-session-manager.js"
+    ) as {
       UpstreamSessionManager: jest.Mock;
     };
     const sessionInstance = UpstreamSessionManager.mock.results[0]?.value;
@@ -1189,38 +1235,41 @@ describe('Sentinel', () => {
     );
     expect(sessionInstance).toBeDefined();
     expect(sessionInstance?.start).toHaveBeenCalledTimes(1);
-    expect(registerSpy).toHaveBeenCalledWith('peer-system', sessionInstance);
-    expect(sentinelAny.peerSessionManagers.get('peer-system')).toBe(sessionInstance);
+    expect(registerSpy).toHaveBeenCalledWith("peer-system", sessionInstance);
+    expect(sentinelAny.peerSessionManagers.get("peer-system")).toBe(sessionInstance);
 
     registerSpy.mockRestore();
   });
 
-  it('requires an attach client before connecting to peers', async () => {
+  it("requires an attach client before connecting to peers", async () => {
     const sentinel = createSentinel({ attachClient: null });
     const peer = { admissionClient: {} as any } as Peer;
 
-    await expect((sentinel as any).connectToPeer(peer)).rejects.toThrow('Missing attach client');
+    await expect((sentinel as any).connectToPeer(peer)).rejects.toThrow("Missing attach client");
   });
 
-  it('requires an admission client before connecting to peers', async () => {
+  it("requires an admission client before connecting to peers", async () => {
     const sentinel = createSentinel({ attachClient: {} as any });
     const peer = { admissionClient: undefined } as unknown as Peer;
 
-    await expect((sentinel as any).connectToPeer(peer)).rejects.toThrow('Missing admission client');
+    await expect((sentinel as any).connectToPeer(peer)).rejects.toThrow("Missing admission client");
   });
 
-  it('handles inbound peer envelopes with normalized context', async () => {
+  it("handles inbound peer envelopes with normalized context", async () => {
     const sentinel = createSentinel();
-    const deliverSpy = jest.spyOn(sentinel, 'deliver').mockResolvedValue(undefined);
+    const deliverSpy = jest.spyOn(sentinel, "deliver").mockResolvedValue(undefined);
 
-    const response = await (sentinel as any).handleInboundFromPeer(createEnvelope(sentinel, 'Data'), {
-      originType: DeliveryOriginType.DOWNSTREAM,
-      fromSystemId: 'peer-1',
-      expectedResponseType: FameResponseType.ACK,
-      security: { token: 'abc' },
-      stickinessRequired: true,
-      stickySid: 'sticky',
-    } as FameDeliveryContext);
+    const response = await (sentinel as any).handleInboundFromPeer(
+      createEnvelope(sentinel, "Data"),
+      {
+        originType: DeliveryOriginType.DOWNSTREAM,
+        fromSystemId: "peer-1",
+        expectedResponseType: FameResponseType.ACK,
+        security: { token: "abc" },
+        stickinessRequired: true,
+        stickySid: "sticky",
+      } as FameDeliveryContext
+    );
 
     expect(response).toBeNull();
     expect(deliverSpy).toHaveBeenCalledWith(
@@ -1229,36 +1278,36 @@ describe('Sentinel', () => {
         originType: DeliveryOriginType.PEER,
         expectedResponseType: FameResponseType.ACK,
         stickinessRequired: true,
-        stickySid: 'sticky',
+        stickySid: "sticky",
       })
     );
   });
 
-  it('stops delivery when dispatch vetoes the envelope', async () => {
+  it("stops delivery when dispatch vetoes the envelope", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
     const dispatchMock = jest
-      .spyOn(sentinelAny, 'dispatchEnvelopeEvent')
+      .spyOn(sentinelAny, "dispatchEnvelopeEvent")
       .mockImplementation(async (...args: unknown[]) => {
         const [eventName] = args as [string, ...unknown[]];
-        if (eventName === 'onDeliver') {
+        if (eventName === "onDeliver") {
           return null;
         }
         return args[3] ?? null;
       });
-    const routeDecisionSpy = jest.spyOn(sentinelAny.routingPolicy, 'decide');
+    const routeDecisionSpy = jest.spyOn(sentinelAny.routingPolicy, "decide");
 
-    await sentinel.deliver(createEnvelope(sentinel, 'Data'));
+    await sentinel.deliver(createEnvelope(sentinel, "Data"));
 
     expect(routeDecisionSpy).not.toHaveBeenCalled();
     dispatchMock.mockRestore();
     routeDecisionSpy.mockRestore();
   });
 
-  it('skips propagating downstream bindings when no parent is configured', async () => {
+  it("skips propagating downstream bindings when no parent is configured", async () => {
     const sentinel = createSentinel({ hasParent: false });
     const sentinelAny = sentinel as any;
-    const bindSpy = jest.spyOn(sentinelAny, 'bindAddressUpstream');
+    const bindSpy = jest.spyOn(sentinelAny, "bindAddressUpstream");
 
     await sentinelAny.propagateAddressBindingsUpstream();
 
@@ -1266,12 +1315,12 @@ describe('Sentinel', () => {
     bindSpy.mockRestore();
   });
 
-  it('ignores downstream address entries without routing info during propagation', async () => {
+  it("ignores downstream address entries without routing info during propagation", async () => {
     const sentinel = createSentinel({ hasParent: true });
     const sentinelAny = sentinel as any;
-    const bindSpy = jest.spyOn(sentinelAny, 'bindAddressUpstream').mockResolvedValue(undefined);
+    const bindSpy = jest.spyOn(sentinelAny, "bindAddressUpstream").mockResolvedValue(undefined);
 
-    sentinelAny.routeManager._downstream_addresses_routes.set('svc@/child', undefined);
+    sentinelAny.routeManager._downstream_addresses_routes.set("svc@/child", undefined);
 
     await sentinelAny.propagateAddressBindingsUpstream();
 
@@ -1279,15 +1328,15 @@ describe('Sentinel', () => {
     bindSpy.mockRestore();
   });
 
-  it('continues propagation when individual upstream binding fails', async () => {
+  it("continues propagation when individual upstream binding fails", async () => {
     const sentinel = createSentinel({ hasParent: true });
     const sentinelAny = sentinel as any;
     const bindSpy = jest
-      .spyOn(sentinelAny, 'bindAddressUpstream')
-      .mockRejectedValue(new Error('upstream-failure'));
+      .spyOn(sentinelAny, "bindAddressUpstream")
+      .mockRejectedValue(new Error("upstream-failure"));
 
-    sentinelAny.routeManager._downstream_addresses_routes.set('svc@/child', {
-      segment: 'child',
+    sentinelAny.routeManager._downstream_addresses_routes.set("svc@/child", {
+      segment: "child",
     });
 
     await expect(sentinelAny.propagateAddressBindingsUpstream()).resolves.toBeUndefined();
@@ -1296,13 +1345,15 @@ describe('Sentinel', () => {
     bindSpy.mockRestore();
   });
 
-  it('does not attempt to bind addresses upstream when parent is absent', async () => {
+  it("does not attempt to bind addresses upstream when parent is absent", async () => {
     const sentinel = createSentinel({ hasParent: false });
     const sentinelAny = sentinel as any;
-    const forwardSpy = jest.spyOn(sentinel, 'forwardUpstream');
-    const idSpy = jest.spyOn(core, 'generateId');
+    const forwardSpy = jest.spyOn(sentinel, "forwardUpstream");
+    const idSpy = jest.spyOn(core, "generateId");
 
-    await sentinelAny.bindAddressUpstream(new FameAddress('svc@/child'), { segment: 'child' } as AddressRouteInfo);
+    await sentinelAny.bindAddressUpstream(new FameAddress("svc@/child"), {
+      segment: "child",
+    } as AddressRouteInfo);
 
     expect(forwardSpy).not.toHaveBeenCalled();
     expect(idSpy).not.toHaveBeenCalled();
@@ -1310,29 +1361,28 @@ describe('Sentinel', () => {
     idSpy.mockRestore();
   });
 
-  it('times out when bind acknowledgement never arrives', async () => {
+  it("times out when bind acknowledgement never arrives", async () => {
     jest.useFakeTimers();
     const sentinel = createSentinel({ hasParent: true, bindingAckTimeoutMs: 10 });
     const sentinelAny = sentinel as any;
-    const idSpy = jest.spyOn(core, 'generateId').mockReturnValueOnce('corr-timeout');
-    const delaySpy = jest.spyOn(taskUtils, 'delay').mockResolvedValue(undefined);
-    const forwardSpy = jest.spyOn(sentinel, 'forwardUpstream').mockResolvedValue(undefined);
+    const idSpy = jest.spyOn(core, "generateId").mockReturnValueOnce("corr-timeout");
+    const delaySpy = jest.spyOn(taskUtils, "delay").mockResolvedValue(undefined);
+    const forwardSpy = jest.spyOn(sentinel, "forwardUpstream").mockResolvedValue(undefined);
 
     try {
-      const bindPromise = sentinelAny.bindAddressUpstream(
-        new FameAddress('svc@/child'),
-        { segment: 'child' } as AddressRouteInfo
-      );
+      const bindPromise = sentinelAny.bindAddressUpstream(new FameAddress("svc@/child"), {
+        segment: "child",
+      } as AddressRouteInfo);
       const caughtPromise = bindPromise.catch((error: unknown) => error);
 
       await jest.advanceTimersByTimeAsync(10);
 
       const error = await caughtPromise;
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe('Timeout waiting for bind ack for svc@/child');
+      expect((error as Error).message).toBe("Timeout waiting for bind ack for svc@/child");
 
       expect(forwardSpy).toHaveBeenCalledTimes(1);
-      expect(sentinelAny.pendingBinds.has('corr-timeout')).toBe(false);
+      expect(sentinelAny.pendingBinds.has("corr-timeout")).toBe(false);
     } finally {
       idSpy.mockRestore();
       delaySpy.mockRestore();
@@ -1341,113 +1391,121 @@ describe('Sentinel', () => {
     }
   });
 
-  it('skips forwarding to a route when dispatch vetoes forwarding', async () => {
+  it("skips forwarding to a route when dispatch vetoes forwarding", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
     const connector = createMockConnector();
-    await sentinelAny.routeManager.registerDownstreamRoute('child', connector);
+    await sentinelAny.routeManager.registerDownstreamRoute("child", connector);
 
     const dispatchMock = jest
-      .spyOn(sentinelAny, 'dispatchEnvelopeEvent')
+      .spyOn(sentinelAny, "dispatchEnvelopeEvent")
       .mockImplementation(async (...args: unknown[]) => {
         const [eventName] = args as [string, ...unknown[]];
-        if (eventName === 'onForwardToRoute') {
+        if (eventName === "onForwardToRoute") {
           return null;
         }
         return args[3] ?? null;
       });
 
-    await sentinel.forwardToRoute('child', createEnvelope(sentinel, 'Data'));
+    await sentinel.forwardToRoute("child", createEnvelope(sentinel, "Data"));
 
     expect(connector.send).not.toHaveBeenCalled();
     dispatchMock.mockRestore();
   });
 
-  it('returns child segment when downstream route exists', async () => {
+  it("returns child segment when downstream route exists", async () => {
     const sentinel = createSentinel();
     const sentinelAny = sentinel as any;
-    sentinelAny.routeManager._downstream_addresses_routes.set('svc@/child', { segment: 'child-seg' });
+    sentinelAny.routeManager._downstream_addresses_routes.set("svc@/child", {
+      segment: "child-seg",
+    });
 
-    const segment = sentinel.childFor(new FameAddress('svc@/child'));
+    const segment = sentinel.childFor(new FameAddress("svc@/child"));
 
-    expect(segment).toBe('child-seg');
+    expect(segment).toBe("child-seg");
   });
 
-  it('returns null for unknown child address', () => {
+  it("returns null for unknown child address", () => {
     const sentinel = createSentinel();
 
-    expect(sentinel.childFor(new FameAddress('svc@/missing'))).toBeNull();
+    expect(sentinel.childFor(new FameAddress("svc@/missing"))).toBeNull();
   });
 
-  it('binds addresses upstream and clears pending entries when acked', async () => {
+  it("binds addresses upstream and clears pending entries when acked", async () => {
     const sentinel = createSentinel({ hasParent: true });
     const sentinelAny = sentinel as any;
 
-    const forwardSpy = jest.spyOn(sentinel, 'forwardUpstream').mockImplementation(async (env) => {
+    const forwardSpy = jest.spyOn(sentinel, "forwardUpstream").mockImplementation(async (env) => {
       setImmediate(() => {
         void sentinelAny.resolvePendingBind(env, true);
       });
     });
 
     const delaySpy = jest
-      .spyOn(taskUtils, 'delay')
+      .spyOn(taskUtils, "delay")
       .mockImplementation(() => new Promise(() => undefined));
-    const idSpy = jest.spyOn(core, 'generateId').mockReturnValueOnce('corr-bind');
-    const traceSpy = jest.spyOn(envelopeContext, 'currentTraceId').mockReturnValueOnce('trace-test');
+    const idSpy = jest.spyOn(core, "generateId").mockReturnValueOnce("corr-bind");
+    const traceSpy = jest
+      .spyOn(envelopeContext, "currentTraceId")
+      .mockReturnValueOnce("trace-test");
 
     const info: AddressRouteInfo = {
-      segment: 'child',
-      physicalPath: '/child',
-      encryptionKeyId: 'enc-key',
+      segment: "child",
+      physicalPath: "/child",
+      encryptionKeyId: "enc-key",
     } as AddressRouteInfo;
 
-    await sentinelAny.bindAddressUpstream(new FameAddress('svc@/child'), info);
+    await sentinelAny.bindAddressUpstream(new FameAddress("svc@/child"), info);
 
     expect(forwardSpy).toHaveBeenCalledTimes(1);
     const [forwardedEnvelope, forwardedContext] = forwardSpy.mock.calls[0];
     const frame = forwardedEnvelope.frame as any;
 
-    expect(forwardedEnvelope.corrId).toBe('corr-bind');
-    expect(forwardedEnvelope.traceId).toBe('trace-test');
-    expect(frame?.type).toBe('AddressBind');
-    expect(frame?.physicalPath).toBe('/child');
-    expect(frame?.encryptionKeyId).toBe('enc-key');
-    expect(forwardedContext).toEqual(expect.objectContaining({ originType: DeliveryOriginType.LOCAL }));
-    expect(sentinelAny.pendingBinds.has('corr-bind')).toBe(false);
+    expect(forwardedEnvelope.corrId).toBe("corr-bind");
+    expect(forwardedEnvelope.traceId).toBe("trace-test");
+    expect(frame?.type).toBe("AddressBind");
+    expect(frame?.physicalPath).toBe("/child");
+    expect(frame?.encryptionKeyId).toBe("enc-key");
+    expect(forwardedContext).toEqual(
+      expect.objectContaining({ originType: DeliveryOriginType.LOCAL })
+    );
+    expect(sentinelAny.pendingBinds.has("corr-bind")).toBe(false);
 
-  forwardSpy.mockRestore();
-  delaySpy.mockRestore();
-  idSpy.mockRestore();
-  traceSpy.mockRestore();
+    forwardSpy.mockRestore();
+    delaySpy.mockRestore();
+    idSpy.mockRestore();
+    traceSpy.mockRestore();
   });
 
-  it('throws when bind acknowledgements reject upstream', async () => {
+  it("throws when bind acknowledgements reject upstream", async () => {
     const sentinel = createSentinel({ hasParent: true });
     const sentinelAny = sentinel as any;
 
-  const idSpy = jest.spyOn(core, 'generateId').mockReturnValueOnce('corr-fail-bind');
-    const forwardSpy = jest.spyOn(sentinel, 'forwardUpstream').mockImplementation(async (env) => {
+    const idSpy = jest.spyOn(core, "generateId").mockReturnValueOnce("corr-fail-bind");
+    const forwardSpy = jest.spyOn(sentinel, "forwardUpstream").mockImplementation(async (env) => {
       setImmediate(() => {
-        void sentinelAny.resolvePendingBind(env, false, 'denied');
+        void sentinelAny.resolvePendingBind(env, false, "denied");
       });
     });
 
     const delaySpy = jest
-      .spyOn(taskUtils, 'delay')
+      .spyOn(taskUtils, "delay")
       .mockImplementation(() => new Promise(() => undefined));
 
     await expect(
-      sentinelAny.bindAddressUpstream(new FameAddress('svc@/child'), { segment: 'child' } as AddressRouteInfo)
-    ).rejects.toThrow('denied');
+      sentinelAny.bindAddressUpstream(new FameAddress("svc@/child"), {
+        segment: "child",
+      } as AddressRouteInfo)
+    ).rejects.toThrow("denied");
 
-    expect(sentinelAny.pendingBinds.has('corr-fail-bind')).toBe(false);
+    expect(sentinelAny.pendingBinds.has("corr-fail-bind")).toBe(false);
 
-  forwardSpy.mockRestore();
-  delaySpy.mockRestore();
-  idSpy.mockRestore();
+    forwardSpy.mockRestore();
+    delaySpy.mockRestore();
+    idSpy.mockRestore();
   });
 
-  describe('aserve', () => {
+  describe("aserve", () => {
     function createFabricStub(): { enter: jest.Mock; exit: jest.Mock } & Record<string, unknown> {
       const stub: Record<string, unknown> = {};
       stub.enter = jest.fn().mockResolvedValue(stub as unknown as FameFabric);
@@ -1455,7 +1513,7 @@ describe('Sentinel', () => {
       return stub as { enter: jest.Mock; exit: jest.Mock } & Record<string, unknown>;
     }
 
-    it('configures logging and resolves on abort signal', async () => {
+    it("configures logging and resolves on abort signal", async () => {
       const fabric = createFabricStub();
       const controller = new AbortController();
 
@@ -1464,9 +1522,7 @@ describe('Sentinel', () => {
         return fabric as unknown as FameFabric;
       });
 
-      const basicConfigSpy = jest
-        .spyOn(logging, 'basicConfig')
-        .mockImplementation(() => undefined);
+      const basicConfigSpy = jest.spyOn(logging, "basicConfig").mockImplementation(() => undefined);
 
       await Sentinel.aserve({
         fabric: fabric as unknown as FameFabric,
@@ -1479,7 +1535,7 @@ describe('Sentinel', () => {
       expect(fabric.exit).toHaveBeenCalledTimes(1);
     });
 
-    it('accepts string log level values', async () => {
+    it("accepts string log level values", async () => {
       const fabric = createFabricStub();
       const controller = new AbortController();
 
@@ -1488,15 +1544,13 @@ describe('Sentinel', () => {
         return fabric as unknown as FameFabric;
       });
 
-      const basicConfigSpy = jest
-        .spyOn(logging, 'basicConfig')
-        .mockImplementation(() => undefined);
+      const basicConfigSpy = jest.spyOn(logging, "basicConfig").mockImplementation(() => undefined);
 
       await Sentinel.aserve({
         fabric: fabric as unknown as FameFabric,
         signal: controller.signal,
         signals: [],
-        logLevel: 'debug',
+        logLevel: "debug",
       });
 
       expect(basicConfigSpy).toHaveBeenCalledWith({ level: logging.LogLevel.DEBUG });
@@ -1504,18 +1558,18 @@ describe('Sentinel', () => {
       expect(fabric.exit).toHaveBeenCalledTimes(1);
     });
 
-    it('waits for configured process signals and cleans up listeners', async () => {
+    it("waits for configured process signals and cleans up listeners", async () => {
       const fabric = createFabricStub();
       const handlers = new Map<string, (...args: unknown[]) => void>();
 
-      jest.spyOn(logging, 'basicConfig').mockImplementation(() => undefined);
+      jest.spyOn(logging, "basicConfig").mockImplementation(() => undefined);
 
-      const onceSpy = jest.spyOn(process, 'once').mockImplementation((event: any, handler: any) => {
+      const onceSpy = jest.spyOn(process, "once").mockImplementation((event: any, handler: any) => {
         handlers.set(event, handler);
         return process;
       });
       const removeSpy = jest
-        .spyOn(process, 'removeListener')
+        .spyOn(process, "removeListener")
         .mockImplementation((event: any, handler: any) => {
           if (handlers.get(event) === handler) {
             handlers.delete(event);
@@ -1525,12 +1579,12 @@ describe('Sentinel', () => {
 
       const servePromise = Sentinel.aserve({
         fabric: fabric as unknown as FameFabric,
-        signals: ['SIGUSR2'],
+        signals: ["SIGUSR2"],
       });
 
       await new Promise<void>((resolve) => process.nextTick(resolve));
 
-      const registered = handlers.get('SIGUSR2');
+      const registered = handlers.get("SIGUSR2");
       expect(registered).toBeDefined();
       registered?.();
 
@@ -1538,19 +1592,19 @@ describe('Sentinel', () => {
 
       expect(fabric.enter).toHaveBeenCalledTimes(1);
       expect(fabric.exit).toHaveBeenCalledTimes(1);
-      expect(removeSpy).toHaveBeenCalledWith('SIGUSR2', expect.any(Function));
+      expect(removeSpy).toHaveBeenCalledWith("SIGUSR2", expect.any(Function));
       expect(handlers.size).toBe(0);
 
       onceSpy.mockRestore();
       removeSpy.mockRestore();
     });
 
-    it('returns early when abort signal is already triggered', async () => {
+    it("returns early when abort signal is already triggered", async () => {
       const fabric = createFabricStub();
       const controller = new AbortController();
       controller.abort();
 
-      jest.spyOn(logging, 'basicConfig').mockImplementation(() => undefined);
+      jest.spyOn(logging, "basicConfig").mockImplementation(() => undefined);
 
       await Sentinel.aserve({
         fabric: fabric as unknown as FameFabric,

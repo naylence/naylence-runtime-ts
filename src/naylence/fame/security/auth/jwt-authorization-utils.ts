@@ -1,15 +1,18 @@
-import type { JWTPayload } from 'jose';
-import type { AuthorizationContext } from 'naylence-core';
+import type { JWTPayload } from "jose";
+import type { AuthorizationContext } from "naylence-core";
 
 export function extractScopesFromPayload(payload: JWTPayload): Set<string> {
   const scopes = new Set<string>();
 
   const add = (value: unknown): void => {
-    if (typeof value === 'string') {
-      value.split(/[\s,]+/).filter(Boolean).forEach((item) => scopes.add(item));
+    if (typeof value === "string") {
+      value
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .forEach((item) => scopes.add(item));
     } else if (Array.isArray(value)) {
       value
-        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
         .filter(Boolean)
         .forEach((item) => scopes.add(item));
     }
@@ -30,10 +33,10 @@ export function buildAuthorizationContext(
   const claims: Record<string, unknown> = { ...payload };
   const grantedScopes = Array.from(extractScopesFromPayload(payload));
 
-  if (typeof payload.jti === 'string') {
+  if (typeof payload.jti === "string") {
     claims.jti = payload.jti;
   }
-  if (typeof kid === 'string' && kid.length > 0) {
+  if (typeof kid === "string" && kid.length > 0) {
     claims.kid = kid;
   }
 
@@ -43,7 +46,7 @@ export function buildAuthorizationContext(
     claims,
     grantedScopes,
     restrictions: {},
-    ...(typeof payload.sub === 'string' ? { principal: payload.sub } : {}),
+    ...(typeof payload.sub === "string" ? { principal: payload.sub } : {}),
     ...overrides,
   } satisfies AuthorizationContext;
 }

@@ -1,22 +1,14 @@
-import type {
-  FameDeliveryContext,
-  FameEnvelope,
-  FameMessageResponse,
-} from 'naylence-core';
-import {
-  FameResponseType,
-  extractEnvelopeAndContext,
-  isFameMessageResponse,
-} from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope, FameMessageResponse } from "naylence-core";
+import { FameResponseType, extractEnvelopeAndContext, isFameMessageResponse } from "naylence-core";
 
-import { ChannelPollingManager } from '../channel-polling-manager.js';
-import { FameTransportClose } from '../../errors/errors.js';
-import { TaskTimeoutError } from '../../util/task-types.js';
-import type { ReadWriteChannel } from 'naylence-core';
-import type { ResponseContextManager } from '../response-context-manager.js';
-import type { StreamingResponseHandler } from '../streaming-response-handler.js';
+import { ChannelPollingManager } from "../channel-polling-manager.js";
+import { FameTransportClose } from "../../errors/errors.js";
+import { TaskTimeoutError } from "../../util/task-types.js";
+import type { ReadWriteChannel } from "naylence-core";
+import type { ResponseContextManager } from "../response-context-manager.js";
+import type { StreamingResponseHandler } from "../streaming-response-handler.js";
 
-jest.mock('../../util/logging.js', () => ({
+jest.mock("../../util/logging.js", () => ({
   __esModule: true,
   getLogger: () => ({
     debug: jest.fn(),
@@ -24,13 +16,13 @@ jest.mock('../../util/logging.js', () => ({
   }),
 }));
 
-jest.mock('../../util/envelope-context.js', () => ({
+jest.mock("../../util/envelope-context.js", () => ({
   __esModule: true,
   withEnvelopeContextAsync: jest.fn(async (_envelope: FameEnvelope, fn: () => unknown) => fn()),
 }));
 
-jest.mock('naylence-core', () => {
-  const actual = jest.requireActual('naylence-core');
+jest.mock("naylence-core", () => {
+  const actual = jest.requireActual("naylence-core");
   return {
     __esModule: true,
     ...actual,
@@ -39,10 +31,10 @@ jest.mock('naylence-core', () => {
   };
 });
 
-const withEnvelopeContextAsync =
-  require('../../util/envelope-context.js').withEnvelopeContextAsync as jest.MockedFunction<
-    typeof import('../../util/envelope-context.js').withEnvelopeContextAsync
-  >;
+const withEnvelopeContextAsync = require("../../util/envelope-context.js")
+  .withEnvelopeContextAsync as jest.MockedFunction<
+  typeof import("../../util/envelope-context.js").withEnvelopeContextAsync
+>;
 
 const extractEnvelopeAndContextMock = extractEnvelopeAndContext as jest.MockedFunction<
   typeof extractEnvelopeAndContext
@@ -67,10 +59,13 @@ function createDeps(): ManagerDeps {
   const deliverFn = jest.fn().mockResolvedValue(undefined);
   const deliverWrapper = jest.fn(() => deliverFn);
   const responseContextManager: ResponseContextManager = {
-    createResponseContext: jest.fn(() => ({
-      expectedResponseType: FameResponseType.ACK,
-      created: true,
-    } as unknown as FameDeliveryContext)),
+    createResponseContext: jest.fn(
+      () =>
+        ({
+          expectedResponseType: FameResponseType.ACK,
+          created: true,
+        }) as unknown as FameDeliveryContext
+    ),
     ensureResponseMetadata: jest.fn(),
   } as unknown as ResponseContextManager;
 
@@ -80,10 +75,10 @@ function createDeps(): ManagerDeps {
   };
 
   const streamingResponseHandler = {
-    isStreamingFameMessageResponse: streamingResponseHandlerMocks
-      .isStreamingFameMessageResponse as unknown as StreamingResponseHandler['isStreamingFameMessageResponse'],
-    handleStreamingFameMessageResponses: streamingResponseHandlerMocks
-      .handleStreamingFameMessageResponses as unknown as StreamingResponseHandler['handleStreamingFameMessageResponses'],
+    isStreamingFameMessageResponse:
+      streamingResponseHandlerMocks.isStreamingFameMessageResponse as unknown as StreamingResponseHandler["isStreamingFameMessageResponse"],
+    handleStreamingFameMessageResponses:
+      streamingResponseHandlerMocks.handleStreamingFameMessageResponses as unknown as StreamingResponseHandler["handleStreamingFameMessageResponses"],
   } as StreamingResponseHandler;
 
   return {
@@ -103,19 +98,15 @@ function createChannel(...implementations: Array<() => Promise<unknown>>): ReadW
   } as unknown as ReadWriteChannel;
 }
 
-describe('ChannelPollingManager', () => {
+describe("ChannelPollingManager", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     withEnvelopeContextAsync.mockImplementation(async (_envelope, fn) => fn());
   });
 
-  it('delivers message responses using created response context', async () => {
-    const {
-      deliverWrapper,
-      deliverFn,
-      responseContextManager,
-      streamingResponseHandler,
-    } = createDeps();
+  it("delivers message responses using created response context", async () => {
+    const { deliverWrapper, deliverFn, responseContextManager, streamingResponseHandler } =
+      createDeps();
 
     const manager = new ChannelPollingManager(
       deliverWrapper,
@@ -123,12 +114,12 @@ describe('ChannelPollingManager', () => {
       streamingResponseHandler
     );
 
-    const requestEnvelope = { id: 'req-1' } as FameEnvelope;
+    const requestEnvelope = { id: "req-1" } as FameEnvelope;
     const requestContext = {
       expectedResponseType: FameResponseType.ACK,
-      ctx: 'request',
+      ctx: "request",
     } as unknown as FameDeliveryContext;
-    const responseEnvelope = { id: 'resp-1' } as FameEnvelope;
+    const responseEnvelope = { id: "resp-1" } as FameEnvelope;
     const response: FameMessageResponse = {
       envelope: responseEnvelope,
     } as FameMessageResponse;
@@ -141,14 +132,14 @@ describe('ChannelPollingManager', () => {
     const stopState = { stopped: false };
 
     const channel = createChannel(
-      async () => ({ envelope: 'message' }),
+      async () => ({ envelope: "message" }),
       async () => {
         stopState.stopped = true;
         return undefined;
       }
     );
 
-    await manager.startPollingLoop('service-A', channel, handler, stopState, 5);
+    await manager.startPollingLoop("service-A", channel, handler, stopState, 5);
 
     expect(responseContextManager.createResponseContext).toHaveBeenCalledWith(
       requestEnvelope,
@@ -166,13 +157,9 @@ describe('ChannelPollingManager', () => {
     );
   });
 
-  it('reuses provided response context when delivering', async () => {
-    const {
-      deliverWrapper,
-      deliverFn,
-      responseContextManager,
-      streamingResponseHandler,
-    } = createDeps();
+  it("reuses provided response context when delivering", async () => {
+    const { deliverWrapper, deliverFn, responseContextManager, streamingResponseHandler } =
+      createDeps();
 
     const manager = new ChannelPollingManager(
       deliverWrapper,
@@ -180,12 +167,12 @@ describe('ChannelPollingManager', () => {
       streamingResponseHandler
     );
 
-    const requestEnvelope = { id: 'req-2' } as FameEnvelope;
+    const requestEnvelope = { id: "req-2" } as FameEnvelope;
     const providedContext = {
       expectedResponseType: FameResponseType.ACK,
-      ctx: 'existing',
+      ctx: "existing",
     } as unknown as FameDeliveryContext;
-    const responseEnvelope = { id: 'resp-2' } as FameEnvelope;
+    const responseEnvelope = { id: "resp-2" } as FameEnvelope;
     const response: FameMessageResponse = {
       envelope: responseEnvelope,
       context: providedContext,
@@ -198,14 +185,14 @@ describe('ChannelPollingManager', () => {
     const stopState = { stopped: false };
 
     const channel = createChannel(
-      async () => ({ envelope: 'message' }),
+      async () => ({ envelope: "message" }),
       async () => {
         stopState.stopped = true;
         return undefined;
       }
     );
 
-    await manager.startPollingLoop('service-B', channel, handler, stopState);
+    await manager.startPollingLoop("service-B", channel, handler, stopState);
 
     expect(responseContextManager.createResponseContext).not.toHaveBeenCalled();
     expect(responseContextManager.ensureResponseMetadata).toHaveBeenCalledWith(
@@ -216,7 +203,7 @@ describe('ChannelPollingManager', () => {
     expect(deliverFn).toHaveBeenCalledWith(responseEnvelope, providedContext);
   });
 
-  it('delegates streaming responses to the streaming handler', async () => {
+  it("delegates streaming responses to the streaming handler", async () => {
     const {
       deliverFn,
       deliverWrapper,
@@ -232,16 +219,16 @@ describe('ChannelPollingManager', () => {
     );
 
     const result = { stream: true };
-    const envelope = { id: 'stream-req' } as FameEnvelope;
+    const envelope = { id: "stream-req" } as FameEnvelope;
 
     isFameMessageResponseMock.mockReturnValue(false);
-  streamingResponseHandlerMocks.isStreamingFameMessageResponse.mockReturnValue(true);
+    streamingResponseHandlerMocks.isStreamingFameMessageResponse.mockReturnValue(true);
 
     await (manager as unknown as { processHandlerResult: Function }).processHandlerResult(
       result,
       envelope,
       undefined,
-      'stream-service'
+      "stream-service"
     );
 
     expect(streamingResponseHandlerMocks.handleStreamingFameMessageResponses).toHaveBeenCalledWith(
@@ -253,7 +240,7 @@ describe('ChannelPollingManager', () => {
     expect(deliverFn).not.toHaveBeenCalled();
   });
 
-  it('ignores handler results that are not responses', async () => {
+  it("ignores handler results that are not responses", async () => {
     const {
       deliverWrapper,
       deliverFn,
@@ -269,21 +256,23 @@ describe('ChannelPollingManager', () => {
     );
 
     isFameMessageResponseMock.mockReturnValue(false);
-  streamingResponseHandlerMocks.isStreamingFameMessageResponse.mockReturnValue(false);
+    streamingResponseHandlerMocks.isStreamingFameMessageResponse.mockReturnValue(false);
 
     await (manager as unknown as { processHandlerResult: Function }).processHandlerResult(
-      { other: 'value' },
-      { id: 'req-ignore' } as FameEnvelope,
+      { other: "value" },
+      { id: "req-ignore" } as FameEnvelope,
       undefined,
-      'ignore-service'
+      "ignore-service"
     );
 
     expect(deliverWrapper).not.toHaveBeenCalled();
     expect(deliverFn).not.toHaveBeenCalled();
-  expect(streamingResponseHandlerMocks.handleStreamingFameMessageResponses).not.toHaveBeenCalled();
+    expect(
+      streamingResponseHandlerMocks.handleStreamingFameMessageResponses
+    ).not.toHaveBeenCalled();
   });
 
-  it('propagates handler failures', async () => {
+  it("propagates handler failures", async () => {
     const { deliverWrapper, responseContextManager, streamingResponseHandler } = createDeps();
 
     const manager = new ChannelPollingManager(
@@ -292,16 +281,16 @@ describe('ChannelPollingManager', () => {
       streamingResponseHandler
     );
 
-    const channel = createChannel(async () => ({ payload: 'message' }));
+    const channel = createChannel(async () => ({ payload: "message" }));
 
-    const expectedError = new Error('handler failed');
+    const expectedError = new Error("handler failed");
 
-    extractEnvelopeAndContextMock.mockReturnValue([{ id: 'req' } as FameEnvelope, undefined]);
+    extractEnvelopeAndContextMock.mockReturnValue([{ id: "req" } as FameEnvelope, undefined]);
     isFameMessageResponseMock.mockReturnValue(true);
 
     await expect(
       manager.startPollingLoop(
-        'failure-service',
+        "failure-service",
         channel,
         async () => {
           throw expectedError;
@@ -322,13 +311,11 @@ describe('ChannelPollingManager', () => {
 
     const stopState = { stopped: false };
 
-    const channel = createChannel(
-      async () => {
-        throw error;
-      }
-    );
+    const channel = createChannel(async () => {
+      throw error;
+    });
 
-    await manager.startPollingLoop('svc', channel, jest.fn(), stopState);
+    await manager.startPollingLoop("svc", channel, jest.fn(), stopState);
   }
 
   async function expectLoopToContinueForError(error: unknown): Promise<void> {
@@ -352,7 +339,7 @@ describe('ChannelPollingManager', () => {
       }
     );
 
-    await manager.startPollingLoop('svc', channel, jest.fn(), stopState);
+    await manager.startPollingLoop("svc", channel, jest.fn(), stopState);
   }
 
   async function expectLoopToRejectForError(error: unknown): Promise<void> {
@@ -369,52 +356,52 @@ describe('ChannelPollingManager', () => {
     });
 
     await expect(
-      manager.startPollingLoop('svc', channel, jest.fn(), { stopped: false })
+      manager.startPollingLoop("svc", channel, jest.fn(), { stopped: false })
     ).rejects.toThrow(error as Error);
   }
 
-  it('stops polling when the transport is closed', async () => {
-    await expectLoopToResolveForError(new FameTransportClose('closed'));
+  it("stops polling when the transport is closed", async () => {
+    await expectLoopToResolveForError(new FameTransportClose("closed"));
   });
 
-  it('continues polling when TaskTimeoutError is thrown', async () => {
-    await expectLoopToContinueForError(new TaskTimeoutError('timed out'));
+  it("continues polling when TaskTimeoutError is thrown", async () => {
+    await expectLoopToContinueForError(new TaskTimeoutError("timed out"));
   });
 
-  it('throws when AbortError is encountered', async () => {
-    const abortError = new Error('aborted');
-    abortError.name = 'AbortError';
+  it("throws when AbortError is encountered", async () => {
+    const abortError = new Error("aborted");
+    abortError.name = "AbortError";
 
     await expectLoopToRejectForError(abortError);
   });
 
-  it('continues polling when TimeoutError is encountered by name', async () => {
-    const timeoutError = new Error('timeout');
-    timeoutError.name = 'TimeoutError';
+  it("continues polling when TimeoutError is encountered by name", async () => {
+    const timeoutError = new Error("timeout");
+    timeoutError.name = "TimeoutError";
 
     await expectLoopToContinueForError(timeoutError);
   });
 
-  it('stops polling when channel reports it is closed', async () => {
-    await expectLoopToResolveForError(new Error('Channel is closed'));
+  it("stops polling when channel reports it is closed", async () => {
+    await expectLoopToResolveForError(new Error("Channel is closed"));
   });
 
-  it('throws when TaskCancelledError is encountered', async () => {
-    const cancelledError = new Error('cancelled');
-    cancelledError.name = 'TaskCancelledError';
+  it("throws when TaskCancelledError is encountered", async () => {
+    const cancelledError = new Error("cancelled");
+    cancelledError.name = "TaskCancelledError";
 
     await expectLoopToRejectForError(cancelledError);
   });
 
-  it('continues polling when a timeout message is received', async () => {
-    await expectLoopToContinueForError(new Error('operation Timeout reached'));
+  it("continues polling when a timeout message is received", async () => {
+    await expectLoopToContinueForError(new Error("operation Timeout reached"));
   });
 
-  it('stops polling when an error message indicates closure', async () => {
-    await expectLoopToResolveForError(new Error('connection closed unexpectedly'));
+  it("stops polling when an error message indicates closure", async () => {
+    await expectLoopToResolveForError(new Error("connection closed unexpectedly"));
   });
 
-  it('logs and stops polling when an unknown error occurs', async () => {
-    await expectLoopToResolveForError(new Error('unexpected failure'));
+  it("logs and stops polling when an unknown error occurs", async () => {
+    await expectLoopToResolveForError(new Error("unexpected failure"));
   });
 });

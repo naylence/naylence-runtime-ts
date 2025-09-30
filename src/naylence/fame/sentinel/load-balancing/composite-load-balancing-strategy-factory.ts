@@ -1,20 +1,20 @@
-import { createResource, registerFactory } from 'naylence-factory';
+import { createResource, registerFactory } from "naylence-factory";
 
-import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
   LoadBalancingStrategyFactory,
   type LoadBalancingStrategyConfig,
-} from './load-balancing-strategy-factory.js';
-import { CompositeLoadBalancingStrategy } from './composite-load-balancing-strategy.js';
+} from "./load-balancing-strategy-factory.js";
+import { CompositeLoadBalancingStrategy } from "./composite-load-balancing-strategy.js";
 
 export interface CompositeLoadBalancingStrategyConfig extends LoadBalancingStrategyConfig {
-  type: 'CompositeLoadBalancingStrategy';
+  type: "CompositeLoadBalancingStrategy";
   strategies: LoadBalancingStrategyConfig[];
 }
 
 export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
-  public readonly type = 'CompositeLoadBalancingStrategy';
+  public readonly type = "CompositeLoadBalancingStrategy";
 
   public async create(
     config?: CompositeLoadBalancingStrategyConfig | Record<string, unknown> | null,
@@ -30,7 +30,7 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
         );
 
         if (!strategy) {
-          throw new Error('Failed to create composite load balancing strategy component');
+          throw new Error("Failed to create composite load balancing strategy component");
         }
 
         return strategy;
@@ -44,16 +44,18 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
     config?: CompositeLoadBalancingStrategyConfig | Record<string, unknown> | null
   ): CompositeLoadBalancingStrategyConfig {
     if (!config) {
-      throw new Error('CompositeLoadBalancingStrategy requires strategy configuration');
+      throw new Error("CompositeLoadBalancingStrategy requires strategy configuration");
     }
 
     if ((config as { type?: unknown }).type && (config as { type?: unknown }).type !== this.type) {
-      throw new Error('CompositeLoadBalancingStrategyFactory only supports composite configurations');
+      throw new Error(
+        "CompositeLoadBalancingStrategyFactory only supports composite configurations"
+      );
     }
 
     const rawStrategies = (config as Record<string, unknown>).strategies;
     if (!Array.isArray(rawStrategies) || rawStrategies.length === 0) {
-      throw new Error('CompositeLoadBalancingStrategy requires at least one nested strategy');
+      throw new Error("CompositeLoadBalancingStrategy requires at least one nested strategy");
     }
 
     return {
@@ -65,6 +67,6 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
 
 registerFactory<LoadBalancingStrategy, CompositeLoadBalancingStrategyConfig>(
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  'CompositeLoadBalancingStrategy',
+  "CompositeLoadBalancingStrategy",
   CompositeLoadBalancingStrategyFactory
 );

@@ -1,1 +1,1 @@
-export { InProcessFameFabric } from './in-process-fame-fabric.js';
+export { InProcessFameFabric } from "./in-process-fame-fabric.js";

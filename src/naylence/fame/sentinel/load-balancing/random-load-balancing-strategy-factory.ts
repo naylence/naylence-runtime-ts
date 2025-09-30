@@ -1,19 +1,19 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
   LoadBalancingStrategyFactory,
   type LoadBalancingStrategyConfig,
-} from './load-balancing-strategy-factory.js';
-import { RandomLoadBalancingStrategy } from './random-load-balancing-strategy.js';
+} from "./load-balancing-strategy-factory.js";
+import { RandomLoadBalancingStrategy } from "./random-load-balancing-strategy.js";
 
 export interface RandomLoadBalancingStrategyConfig extends LoadBalancingStrategyConfig {
-  type: 'RandomLoadBalancingStrategy';
+  type: "RandomLoadBalancingStrategy";
 }
 
 export class RandomLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
-  public readonly type = 'RandomLoadBalancingStrategy';
+  public readonly type = "RandomLoadBalancingStrategy";
 
   public async create(
     _config?: RandomLoadBalancingStrategyConfig | Record<string, unknown> | null,
@@ -25,6 +25,6 @@ export class RandomLoadBalancingStrategyFactory extends LoadBalancingStrategyFac
 
 registerFactory<LoadBalancingStrategy, RandomLoadBalancingStrategyConfig>(
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  'RandomLoadBalancingStrategy',
+  "RandomLoadBalancingStrategy",
   RandomLoadBalancingStrategyFactory
 );

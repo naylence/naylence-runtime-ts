@@ -1,45 +1,32 @@
 /**
  * Base factory for creating FameConnector instances from either ConnectorConfig or ConnectionGrant.
- * 
+ *
  * Concrete implementations must define supported grant types and provide grant-to-connector
  * conversion logic.
  */
 
-import { ConnectorConfig, ResourceConfig } from './connector-config.js';
-import { FameConnector } from 'naylence-core';
-import { getLogger } from '../util/logging.js';
-import type { ConnectionGrant } from '../grants/index.js';
-export type { ConnectionGrant } from '../grants/index.js';
+import type { ResourceConfig, ResourceFactory as BaseResourceFactory } from "naylence-factory";
+import { ConnectorConfig } from "./connector-config.js";
+import { FameConnector } from "naylence-core";
+import { getLogger } from "../util/logging.js";
+import type { ConnectionGrant } from "../grants/index.js";
+export type { ConnectionGrant } from "../grants/index.js";
 
-const logger = getLogger('connector-factory');
+const logger = getLogger("connector-factory");
 
 /**
  * Expression evaluation policy enum
  */
 export enum ExpressionEvaluationPolicy {
-  ERROR = 'error',
-  EVALUATE = 'evaluate',
-  SKIP = 'skip',
+  ERROR = "error",
+  EVALUATE = "evaluate",
+  SKIP = "skip",
 }
 
 /**
  * Base interface for resource factories
  */
-export interface ResourceFactory<T, C extends ResourceConfig> {
-  /** The type identifier for this factory */
-  readonly type: string;
-  
-  /** Whether this factory should be considered a default implementation */
-  readonly isDefault?: boolean;
-  
-  /** Priority for default selection (higher values win) */
-  readonly priority?: number;
-  
-  /**
-   * Create a resource instance from the provided configuration.
-   */
-  create(config: C, ...kwargs: unknown[]): Promise<T>;
-}
+export type ResourceFactory<T, C extends ResourceConfig> = BaseResourceFactory<T, C>;
 
 /**
  * Information about a registered factory
@@ -47,13 +34,13 @@ export interface ResourceFactory<T, C extends ResourceConfig> {
 export interface FactoryInfo {
   /** The factory type identifier */
   type: string;
-  
+
   /** The factory constructor */
   constructor: new () => ConnectorFactory;
-  
+
   /** The factory instance (cached) */
   instance?: ConnectorFactory;
-  
+
   /** Factory metadata */
   metadata?: {
     isDefault?: boolean;
@@ -72,9 +59,7 @@ export class ExtensionManager {
   /**
    * Register a factory class
    */
-  public static register(
-    factoryClass: new () => ConnectorFactory
-  ): void {
+  public static register(factoryClass: new () => ConnectorFactory): void {
     const instance = new factoryClass();
     this.factories.set(instance.type, {
       type: instance.type,
@@ -96,9 +81,9 @@ export class ExtensionManager {
  */
 export abstract class ConnectorFactory<
   T extends FameConnector = FameConnector,
-  C extends ConnectorConfig = ConnectorConfig
-> implements ResourceFactory<T, C> {
-  
+  C extends ConnectorConfig = ConnectorConfig,
+> implements ResourceFactory<T, C>
+{
   public abstract readonly type: string;
   public readonly isDefault?: boolean = false;
   public readonly priority?: number = 0;
@@ -132,25 +117,28 @@ export abstract class ConnectorFactory<
   /**
    * Create a connector instance from the provided configuration.
    */
-  public abstract create(config: C, ...kwargs: unknown[]): Promise<T>;
+  public abstract create(
+    config?: C | Record<string, unknown> | null,
+    ...kwargs: unknown[]
+  ): Promise<T>;
 
   /**
    * Evaluate a grant dictionary and return a typed ConnectionGrant instance.
    */
   public static evaluateGrant(grant: Record<string, unknown>): ConnectionGrant {
     const grantType = grant.type;
-    if (!grantType || typeof grantType !== 'string') {
+    if (!grantType || typeof grantType !== "string") {
       throw new Error("Missing 'type' field in grant");
     }
 
     const factories = ExtensionManager.getExtensionsByType();
-    
+
     for (const [, factoryInfo] of factories) {
       try {
         const factory = factoryInfo.instance || new factoryInfo.constructor();
         const supportedGrants = factory.supportedGrants();
         const grantClass = supportedGrants[grantType];
-        
+
         if (grantClass) {
           const grantPurpose = grant.purpose;
           const evaluatedConfig = factory.configFromGrant(
@@ -162,7 +150,9 @@ export abstract class ConnectorFactory<
           return evaluatedGrant;
         }
       } catch (error) {
-        logger.warning(`Failed to evaluate grant with factory ${factoryInfo.constructor.name}: ${error}`);
+        logger.warning(
+          `Failed to evaluate grant with factory ${factoryInfo.constructor.name}: ${error}`
+        );
         continue;
       }
     }
@@ -172,7 +162,7 @@ export abstract class ConnectorFactory<
 
   /**
    * Create a connector from either a ConnectorConfig or ConnectionGrant.
-   * 
+   *
    * This method uses the extension discovery mechanism to find an appropriate
    * factory that supports the given grant type.
    */
@@ -198,7 +188,7 @@ export abstract class ConnectorFactory<
     }
 
     const factories = ExtensionManager.getExtensionsByType();
-    
+
     for (const [, factoryInfo] of factories) {
       try {
         const factory = factoryInfo.instance || new factoryInfo.constructor();
@@ -231,10 +221,10 @@ export abstract class ConnectorFactory<
 
     const requestedType = config.type;
     const candidateTypes = new Set<string>([requestedType]);
-    if (requestedType === 'websocket') {
-      candidateTypes.add('WebSocketConnector');
-    } else if (requestedType === 'WebSocketConnector') {
-      candidateTypes.add('websocket');
+    if (requestedType === "websocket") {
+      candidateTypes.add("WebSocketConnector");
+    } else if (requestedType === "WebSocketConnector") {
+      candidateTypes.add("websocket");
     }
 
     for (const candidateType of candidateTypes) {
@@ -259,9 +249,9 @@ export abstract class ConnectorFactory<
   private static isConnectorConfig(obj: unknown): obj is ConnectorConfig {
     return (
       obj !== null &&
-      typeof obj === 'object' &&
-      'type' in obj &&
-      typeof (obj as any).type === 'string'
+      typeof obj === "object" &&
+      "type" in obj &&
+      typeof (obj as any).type === "string"
     );
   }
 
@@ -271,11 +261,11 @@ export abstract class ConnectorFactory<
   private static isConnectionGrant(obj: unknown): obj is ConnectionGrant {
     return (
       obj !== null &&
-      typeof obj === 'object' &&
-      'type' in obj &&
-      'purpose' in obj &&
-      typeof (obj as any).type === 'string' &&
-      typeof (obj as any).purpose === 'string'
+      typeof obj === "object" &&
+      "type" in obj &&
+      "purpose" in obj &&
+      typeof (obj as any).type === "string" &&
+      typeof (obj as any).purpose === "string"
     );
   }
 
@@ -283,7 +273,7 @@ export abstract class ConnectorFactory<
    * Type guard for Record<string, unknown>
    */
   private static isRecord(obj: unknown): obj is Record<string, unknown> {
-    return obj !== null && typeof obj === 'object' && !Array.isArray(obj);
+    return obj !== null && typeof obj === "object" && !Array.isArray(obj);
   }
 }
 
@@ -298,10 +288,10 @@ export async function createResource<T extends FameConnector>(
 
   const requestedType = config.type;
   const candidateTypes = new Set<string>([requestedType]);
-  if (requestedType === 'websocket') {
-    candidateTypes.add('WebSocketConnector');
-  } else if (requestedType === 'WebSocketConnector') {
-    candidateTypes.add('websocket');
+  if (requestedType === "websocket") {
+    candidateTypes.add("WebSocketConnector");
+  } else if (requestedType === "WebSocketConnector") {
+    candidateTypes.add("websocket");
   }
 
   for (const candidateType of candidateTypes) {

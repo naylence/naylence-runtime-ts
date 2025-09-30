@@ -1,19 +1,19 @@
-import { registerFactory } from 'naylence-factory';
+import { registerFactory } from "naylence-factory";
 
-import type { Authorizer } from './authorizer.js';
+import type { Authorizer } from "./authorizer.js";
 import {
   AUTHORIZER_FACTORY_BASE_TYPE,
   AuthorizerFactory,
   type AuthorizerConfig,
-} from './authorizer-factory.js';
-import { NoopAuthorizer } from './noop-authorizer.js';
+} from "./authorizer-factory.js";
+import { NoopAuthorizer } from "./noop-authorizer.js";
 
 export interface NoopAuthorizerConfig extends AuthorizerConfig {
-  type: 'NoopAuthorizer';
+  type: "NoopAuthorizer";
 }
 
 export class NoopAuthorizerFactory extends AuthorizerFactory<NoopAuthorizerConfig> {
-  public readonly type = 'NoopAuthorizer';
+  public readonly type = "NoopAuthorizer";
 
   public async create(
     _config?: NoopAuthorizerConfig | Record<string, unknown> | null
@@ -24,6 +24,6 @@ export class NoopAuthorizerFactory extends AuthorizerFactory<NoopAuthorizerConfi
 
 registerFactory<Authorizer, NoopAuthorizerConfig>(
   AUTHORIZER_FACTORY_BASE_TYPE,
-  'NoopAuthorizer',
+  "NoopAuthorizer",
   NoopAuthorizerFactory
 );

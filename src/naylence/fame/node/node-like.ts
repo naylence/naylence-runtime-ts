@@ -1,6 +1,6 @@
 /**
  * NodeLike protocol interface for Fame node implementations.
- * 
+ *
  * This interface defines the contract that all Fame nodes must implement,
  * providing a comprehensive API for node lifecycle, messaging, and routing.
  */
@@ -15,18 +15,18 @@ import type {
   FameEnvelopeHandler,
   FameRPCHandler,
   Binding,
-} from 'naylence-core';
+} from "naylence-core";
 
-import type { AdmissionClient } from './admission/admission-client.js';
-import type { NodeEventListener } from './node-event-listener.js';
-import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
-import type { SecurityManager } from '../security/security-manager.js';
-import type { StorageProvider } from '../storage/storage-provider.js';
-import { CryptoProvider } from '../security/index.js';
+import type { AdmissionClient } from "./admission/admission-client.js";
+import type { NodeEventListener } from "./node-event-listener.js";
+import type { DeliveryPolicy } from "../delivery/delivery-policy.js";
+import type { SecurityManager } from "../security/security-manager.js";
+import type { StorageProvider } from "../storage/storage-provider.js";
+import { CryptoProvider } from "../security/index.js";
 
 /**
  * The main NodeLike protocol interface.
- * 
+ *
  * This protocol is implemented by all Fame node types and provides
  * a comprehensive API for node lifecycle management, messaging,
  * routing, and service invocation.
@@ -78,14 +78,14 @@ export interface NodeLike {
 
   /**
    * Add an event listener to this node.
-   * 
+   *
    * @param listener The event listener to add
    */
   addEventListener(listener: NodeEventListener): void;
 
   /**
    * Remove an event listener from this node.
-   * 
+   *
    * @param listener The event listener to remove
    */
   removeEventListener(listener: NodeEventListener): void;
@@ -102,7 +102,7 @@ export interface NodeLike {
 
   /**
    * Bind a participant address for message handling.
-   * 
+   *
    * @param participant The participant identifier to bind
    * @returns A binding object for the participant
    */
@@ -110,14 +110,14 @@ export interface NodeLike {
 
   /**
    * Unbind a participant address.
-   * 
+   *
    * @param participant The participant identifier to unbind
    */
   unbind(participant: string): Promise<void>;
 
   /**
    * Send an envelope with optional delivery guarantees.
-   * 
+   *
    * @param envelope The envelope to send
    * @param context Optional delivery context
    * @param deliveryPolicy Optional delivery policy override
@@ -135,7 +135,7 @@ export interface NodeLike {
 
   /**
    * Listen for messages on a specific recipient address.
-   * 
+   *
    * @param recipient The recipient identifier
    * @param handler The message handler function
    * @param pollTimeoutMs Optional polling timeout
@@ -149,7 +149,7 @@ export interface NodeLike {
 
   /**
    * Listen for RPC calls on a specific service.
-   * 
+   *
    * @param serviceName The service name
    * @param handler The RPC handler function
    * @param pollTimeoutMs Polling timeout in milliseconds
@@ -163,7 +163,7 @@ export interface NodeLike {
 
   /**
    * Invoke an RPC method on a target address.
-   * 
+   *
    * @param targetAddr The target service address
    * @param method The method name to invoke
    * @param params The method parameters
@@ -179,7 +179,7 @@ export interface NodeLike {
 
   /**
    * Invoke an RPC method by capability discovery.
-   * 
+   *
    * @param capabilities List of required capabilities
    * @param method The method name to invoke
    * @param params The method parameters
@@ -195,7 +195,7 @@ export interface NodeLike {
 
   /**
    * Invoke a streaming RPC method on a target address.
-   * 
+   *
    * @param targetAddr The target service address
    * @param method The method name to invoke
    * @param params The method parameters
@@ -211,7 +211,7 @@ export interface NodeLike {
 
   /**
    * Invoke a streaming RPC method by capability discovery.
-   * 
+   *
    * @param capabilities List of required capabilities
    * @param method The method name to invoke
    * @param params The method parameters
@@ -227,7 +227,7 @@ export interface NodeLike {
 
   /**
    * Deliver an envelope through the node's routing system.
-   * 
+   *
    * @param envelope The envelope to deliver
    * @param context Optional delivery context
    */
@@ -235,7 +235,7 @@ export interface NodeLike {
 
   /**
    * Deliver an envelope to a local address.
-   * 
+   *
    * @param address The local address to deliver to
    * @param envelope The envelope to deliver
    * @param context Optional delivery context
@@ -248,7 +248,7 @@ export interface NodeLike {
 
   /**
    * Forward an envelope to the upstream parent.
-   * 
+   *
    * @param envelope The envelope to forward
    * @param context Optional delivery context
    */
@@ -256,7 +256,7 @@ export interface NodeLike {
 
   /**
    * Check if an address is handled locally by this node.
-   * 
+   *
    * @param address The address to check
    * @returns True if the address is local
    */
@@ -264,14 +264,14 @@ export interface NodeLike {
 
   /**
    * Gather supported callback grants from transport listeners.
-   * 
+   *
    * @returns List of callback grant configurations
    */
   gatherSupportedCallbackGrants(): Record<string, any>[];
 
   /**
    * Dispatch a generic event to all event listeners.
-   * 
+   *
    * @param eventName The name of the event
    * @param args Event arguments
    * @param kwargs Event keyword arguments
@@ -280,7 +280,7 @@ export interface NodeLike {
 
   /**
    * Dispatch an envelope-related event to all event listeners.
-   * 
+   *
    * @param eventName The name of the event
    * @param args Event arguments
    * @param kwargs Event keyword arguments
@@ -291,31 +291,33 @@ export interface NodeLike {
 
 /**
  * Utility function to check if an object implements the NodeLike interface.
- * 
+ *
  * @param obj The object to check
  * @returns True if the object implements NodeLike
  */
 export function isNodeLike(obj: any): obj is NodeLike {
-  return obj &&
-    typeof obj.id === 'string' &&
-    typeof obj.physicalPath === 'string' &&
+  return (
+    obj &&
+    typeof obj.id === "string" &&
+    typeof obj.physicalPath === "string" &&
     obj.acceptedLogicals instanceof Set &&
-    typeof obj.hasParent === 'boolean' &&
+    typeof obj.hasParent === "boolean" &&
     Array.isArray(obj.eventListeners) &&
-    typeof obj.addEventListener === 'function' &&
-    typeof obj.removeEventListener === 'function' &&
-    typeof obj.start === 'function' &&
-    typeof obj.stop === 'function' &&
-    typeof obj.bind === 'function' &&
-    typeof obj.unbind === 'function' &&
-    typeof obj.send === 'function' &&
-    typeof obj.listen === 'function' &&
-    typeof obj.listenRpc === 'function' &&
-    typeof obj.invoke === 'function' &&
-    typeof obj.invokeByCapability === 'function' &&
-    typeof obj.deliver === 'function' &&
-    typeof obj.deliverLocal === 'function' &&
-    typeof obj.forwardUpstream === 'function' &&
-    typeof obj.hasLocal === 'function' &&
-    typeof obj.gatherSupportedCallbackGrants === 'function';
+    typeof obj.addEventListener === "function" &&
+    typeof obj.removeEventListener === "function" &&
+    typeof obj.start === "function" &&
+    typeof obj.stop === "function" &&
+    typeof obj.bind === "function" &&
+    typeof obj.unbind === "function" &&
+    typeof obj.send === "function" &&
+    typeof obj.listen === "function" &&
+    typeof obj.listenRpc === "function" &&
+    typeof obj.invoke === "function" &&
+    typeof obj.invokeByCapability === "function" &&
+    typeof obj.deliver === "function" &&
+    typeof obj.deliverLocal === "function" &&
+    typeof obj.forwardUpstream === "function" &&
+    typeof obj.hasLocal === "function" &&
+    typeof obj.gatherSupportedCallbackGrants === "function"
+  );
 }

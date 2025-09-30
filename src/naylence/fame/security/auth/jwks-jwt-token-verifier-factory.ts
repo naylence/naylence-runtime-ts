@@ -1,16 +1,16 @@
-import { registerFactory } from 'naylence-factory';
-import { DEFAULT_JWKS_CACHE_TTL_SEC } from '../../constants/ttl-constants.js';
-import { validateCacheTtlSec } from '../../util/ttl-validation.js';
-import type { TokenVerifier } from './token-verifier.js';
+import { registerFactory } from "naylence-factory";
+import { DEFAULT_JWKS_CACHE_TTL_SEC } from "../../constants/ttl-constants.js";
+import { validateCacheTtlSec } from "../../util/ttl-validation.js";
+import type { TokenVerifier } from "./token-verifier.js";
 import {
   TOKEN_VERIFIER_FACTORY_BASE_TYPE,
   TokenVerifierFactory,
   type TokenVerifierConfig,
-} from './token-verifier-factory.js';
-import { JWKSJWTTokenVerifier } from './jwks-jwt-token-verifier.js';
+} from "./token-verifier-factory.js";
+import { JWKSJWTTokenVerifier } from "./jwks-jwt-token-verifier.js";
 
 export interface JWKSJWTTokenVerifierConfig extends TokenVerifierConfig {
-  type: 'JWKSJWTTokenVerifier';
+  type: "JWKSJWTTokenVerifier";
   issuer: string;
   jwksUrl?: string;
   jwks_url?: string;
@@ -27,19 +27,20 @@ interface NormalizedJWKSVerifierConfig {
 }
 
 export class JWKSTokenVerifierFactory extends TokenVerifierFactory<JWKSJWTTokenVerifierConfig> {
-  public readonly type = 'JWKSJWTTokenVerifier';
+  public readonly type = "JWKSJWTTokenVerifier";
 
   public async create(
     config?: JWKSJWTTokenVerifierConfig | Record<string, unknown> | null
   ): Promise<TokenVerifier> {
     if (!config) {
-      throw new Error('JWKSJWTTokenVerifier requires configuration');
+      throw new Error("JWKSJWTTokenVerifier requires configuration");
     }
 
     const normalized = normalizeConfig(config);
 
     const cacheTtlCandidate = validateCacheTtlSec(normalized.cacheTtlSec);
-    const cacheTtlSec = typeof cacheTtlCandidate === 'number' ? cacheTtlCandidate : normalized.cacheTtlSec;
+    const cacheTtlSec =
+      typeof cacheTtlCandidate === "number" ? cacheTtlCandidate : normalized.cacheTtlSec;
 
     return new JWKSJWTTokenVerifier({
       issuer: normalized.issuer,
@@ -55,44 +56,46 @@ function normalizeConfig(
 ): NormalizedJWKSVerifierConfig {
   const source = config as JWKSJWTTokenVerifierConfig & Record<string, unknown>;
 
-  const issuer = typeof source.issuer === 'string' && source.issuer.trim().length > 0 ? source.issuer : undefined;
+  const issuer =
+    typeof source.issuer === "string" && source.issuer.trim().length > 0
+      ? source.issuer
+      : undefined;
   if (!issuer) {
     throw new Error('JWKSJWTTokenVerifier configuration requires "issuer"');
   }
 
   const jwksUrlRaw = source.jwksUrl ?? source.jwks_url;
   let jwksUrl: string | undefined;
-  if (typeof jwksUrlRaw === 'string' && jwksUrlRaw.trim().length > 0) {
+  if (typeof jwksUrlRaw === "string" && jwksUrlRaw.trim().length > 0) {
     jwksUrl = jwksUrlRaw.trim();
   }
 
   if (!jwksUrl) {
-    const trimmedIssuer = issuer.replace(/\/+$/, '');
+    const trimmedIssuer = issuer.replace(/\/+$/, "");
     jwksUrl = `${trimmedIssuer}/.well-known/jwks.json`;
   }
 
-  const cacheTtlSec = typeof source.cacheTtlSec === 'number'
-    ? source.cacheTtlSec
-    : typeof source.cache_ttl_sec === 'number'
-      ? source.cache_ttl_sec
-      : DEFAULT_JWKS_CACHE_TTL_SEC;
+  const cacheTtlSec =
+    typeof source.cacheTtlSec === "number"
+      ? source.cacheTtlSec
+      : typeof source.cache_ttl_sec === "number"
+        ? source.cache_ttl_sec
+        : DEFAULT_JWKS_CACHE_TTL_SEC;
 
-  const algorithms = Array.isArray(source.algorithms)
-    ? source.algorithms
-    : [];
+  const algorithms = Array.isArray(source.algorithms) ? source.algorithms : [];
 
   return {
     issuer,
     jwksUrl,
     cacheTtlSec,
     algorithms: algorithms
-      .map((alg) => (typeof alg === 'string' ? alg.trim() : ''))
+      .map((alg) => (typeof alg === "string" ? alg.trim() : ""))
       .filter((alg) => alg.length > 0),
   };
 }
 
 registerFactory<TokenVerifier, JWKSJWTTokenVerifierConfig>(
   TOKEN_VERIFIER_FACTORY_BASE_TYPE,
-  'JWKSJWTTokenVerifier',
+  "JWKSJWTTokenVerifier",
   JWKSTokenVerifierFactory
 );
