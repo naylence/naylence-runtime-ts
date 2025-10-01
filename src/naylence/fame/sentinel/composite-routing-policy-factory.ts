@@ -25,6 +25,8 @@ interface NormalizedCompositeRoutingPolicyConfig {
 
 export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
   public readonly type = "CompositeRoutingPolicy";
+  public readonly isDefault = true;
+  public readonly priority = 100;
 
   public async create(
     config?: CompositeRoutingPolicyConfig | Record<string, unknown> | null,
@@ -130,5 +132,6 @@ export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
 registerFactory<RoutingPolicy, CompositeRoutingPolicyConfig>(
   ROUTING_POLICY_FACTORY_BASE,
   "CompositeRoutingPolicy",
-  CompositeRoutingPolicyFactory
+  CompositeRoutingPolicyFactory,
+  { isDefault: true, priority: 100 }
 );

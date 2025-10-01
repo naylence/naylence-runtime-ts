@@ -27,7 +27,9 @@ export default {
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   extensionsToTreatAsEsm: ['.ts'],
     transformIgnorePatterns: [
-      'node_modules/(?!(jose|@noble/ciphers|@noble/curves|@noble/ed25519|@noble/hashes)/)'
+      'node_modules/(?!(jose|@noble/ciphers|@noble/curves|@noble/ed25519|@noble/hashes)/)',
+      '<rootDir>/../naylence-core-ts/dist/',
+      '<rootDir>/../naylence-factory-ts/dist/'
     ],
   setupFiles: ['<rootDir>/test/setup-crypto.ts', '<rootDir>/test/setup-idb.ts'],
   moduleNameMapper: {

@@ -135,7 +135,9 @@ export class DefaultHttpServer implements HttpServer {
   }
 
   async includeRouter(router: HttpRouter, options?: { prefix?: string }): Promise<void> {
-    const wasStarted = this._started;
+    if (this._started) {
+      throw new Error("Cannot include router after HTTP server has started");
+    }
 
     await this._ensureCorePlugins();
 
@@ -144,19 +146,15 @@ export class DefaultHttpServer implements HttpServer {
     } else {
       await this._app.register(router as FastifyPluginAsync);
     }
-
-    if (!wasStarted) {
-      await this.start();
-    } else {
-      await this._app.ready();
-    }
   }
 
   async includeFastifyPlugin(
     plugin: FastifyPluginAsync,
     options?: Record<string, unknown>
   ): Promise<void> {
-    const wasStarted = this._started;
+    if (this._started) {
+      throw new Error("Cannot include plugin after HTTP server has started");
+    }
 
     await this._ensureCorePlugins();
 
@@ -164,12 +162,6 @@ export class DefaultHttpServer implements HttpServer {
       await this._app.register(plugin, options);
     } else {
       await this._app.register(plugin);
-    }
-
-    if (!wasStarted) {
-      await this.start();
-    } else {
-      await this._app.ready();
     }
   }
 

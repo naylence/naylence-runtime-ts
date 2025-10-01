@@ -19,6 +19,7 @@ import type { NodeLike } from "../node/node-like.js";
 import { NodeLikeFactory } from "../node/node-like-factory.js";
 import { getLogger } from "../util/logging.js";
 import { decodeFameDataPayload } from "../util/util.js";
+import { resolveRuntimeVersion } from "../util/runtime-version.js";
 import type { ServiceManager } from "../service/service-manager.js";
 import { SinkService, isSinkService } from "../service/sink-service.js";
 import {
@@ -27,32 +28,6 @@ import {
 } from "../config/extended-fame-config.js";
 
 const logger = getLogger("naylence.fame.fabric.in_process");
-
-function resolveRuntimeVersion(): string | null {
-  try {
-    const processRef = (globalThis as any)?.process;
-    const env = processRef?.env;
-    if (!env) {
-      return null;
-    }
-
-    if (typeof env.NAYLENCE_RUNTIME_VERSION === "string" && env.NAYLENCE_RUNTIME_VERSION.trim()) {
-      return env.NAYLENCE_RUNTIME_VERSION.trim();
-    }
-
-    if (
-      typeof env.npm_package_name === "string" &&
-      env.npm_package_name === "naylence-runtime" &&
-      typeof env.npm_package_version === "string"
-    ) {
-      return env.npm_package_version;
-    }
-  } catch {
-    // Ignore lookup failures and fall back to warning
-  }
-
-  return null;
-}
 
 function normalizeNodeConfig(config: unknown): Record<string, unknown> | null {
   if (config && typeof config === "object" && !Array.isArray(config)) {
@@ -81,13 +56,13 @@ export class InProcessFameFabric extends FameFabric {
     this._config = config ? normalizeExtendedFameConfig(config) : null;
   }
 
-  private logStartupVersion(): void {
+  private async logStartupVersion(): Promise<void> {
     if (this._versionLogged) {
       return;
     }
     this._versionLogged = true;
 
-    const version = resolveRuntimeVersion();
+    const version = await resolveRuntimeVersion();
     if (version) {
       logger.info("naylence_runtime_startup", {
         version,
@@ -125,7 +100,7 @@ export class InProcessFameFabric extends FameFabric {
       return;
     }
 
-    this.logStartupVersion();
+  await this.logStartupVersion();
     logger.debug("starting_fabric", { type: "in_process" });
 
     if (!this._currentNode) {

@@ -74,6 +74,29 @@ describe("HttpListener", () => {
       }));
   });
 
+  describe("onNodeStarted", () => {
+    it("starts the shared HTTP server", async () => {
+      const server = createStubServer("http://listener");
+      const listener = new HttpListener({ httpServer: server });
+      const node: RoutingNodeLike & { createOriginConnector: jest.Mock } = {
+        publicUrl: "http://listener",
+        createOriginConnector: jest.fn().mockResolvedValue({
+          connector: { pushToReceive: jest.fn() },
+          pushToReceive: jest.fn(),
+        }),
+        securityManager: null,
+      } as unknown as RoutingNodeLike & { createOriginConnector: jest.Mock };
+
+      await listener.onNodeInitialized(node);
+      const startMock = server.start as jest.Mock;
+      startMock.mockClear();
+
+      await listener.onNodeStarted(node);
+
+      expect(startMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   afterEach(() => {
     selectCallbackGrant.mockRestore();
   });

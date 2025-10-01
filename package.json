@@ -61,7 +61,12 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "dev": "tsc --watch --outDir dist/esm",
-    "prepublishOnly": "npm run build && npm test"
+    "generate:factory-manifest": "node ./scripts/generate-factory-manifest.mjs",
+    "prebuild": "npm run generate:factory-manifest",
+    "predev": "npm run generate:factory-manifest",
+    "prepublishOnly": "npm run build && npm test",
+    "example:docker-rpc": "make -C examples/docker-rpc up",
+    "example:docker-rpc:down": "make -C examples/docker-rpc clean"
   },
   "dependencies": {
     "@fastify/websocket": "^11.2.0",
@@ -72,8 +77,7 @@
     "fastify": "^5.6.1",
     "jose": "^6.1.0",
     "naylence-core": "file:../naylence-core-ts",
-    "naylence-factory": "file:../naylence-factory-ts",
-    "yaml": "^2.6.0",
+  "naylence-factory": "file:../naylence-factory-ts",
     "zod": "^4.1.11"
   },
   "peerDependencies": {

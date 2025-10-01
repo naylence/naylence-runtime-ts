@@ -166,6 +166,20 @@ describe("WebSocketListener grants and lifecycle", () => {
     expect(includeRouter).toHaveBeenCalledTimes(1);
   });
 
+  test("onNodeStarted starts the shared HTTP server", async () => {
+    const start = jest.fn(async () => {});
+    const httpServer = createHttpServerStub({ start });
+    const listener = new WebSocketListener({ httpServer });
+    const node = { createOriginConnector: jest.fn(), publicUrl: "https://public.example" };
+
+    await listener.onNodeInitialized(node as any);
+    start.mockClear();
+
+    await listener.onNodeStarted(node as any);
+
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
   test("onNodeInitialized requires routing node implementation", async () => {
     const listener = new WebSocketListener({ httpServer: createHttpServerStub() });
 

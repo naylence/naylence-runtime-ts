@@ -21,7 +21,6 @@ export interface CapabilityAwareRoutingPolicyConfig extends RoutingPolicyConfig 
 
 export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
   public readonly type = "CapabilityAwareRoutingPolicy";
-  public readonly isDefault = true;
   public readonly priority = 50;
 
   public async create(
@@ -110,5 +109,5 @@ registerFactory<RoutingPolicy, CapabilityAwareRoutingPolicyConfig>(
   ROUTING_POLICY_FACTORY_BASE,
   "CapabilityAwareRoutingPolicy",
   CapabilityAwareRoutingPolicyFactory,
-  { isDefault: true, priority: 50 }
+  { priority: 50 }
 );

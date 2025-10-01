@@ -602,6 +602,14 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
       this._releaseNodeContext = release;
       this._isStarted = true;
+
+      logger.info(
+          "node_started", {
+          node_id: this.id,
+          sid: this.sid,
+          path: this.physicalPath,
+          logicals: this.acceptedLogicals,
+      });
     } catch (error) {
       release();
       try {
@@ -633,7 +641,10 @@ export class FameNode extends TaskSpawner implements NodeLike {
       this._releaseNodeContext();
       this._releaseNodeContext = null;
     }
-    console.log(`Node ${this._id} stopped`);
+    logger.debug(
+          "node_stopped", {
+          node_id: this.id
+      });
   }
 
   async bind(participant: string) {

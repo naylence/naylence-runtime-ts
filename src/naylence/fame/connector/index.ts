@@ -1,9 +1,6 @@
-import { ExtensionManager as ConnectorExtensionManager } from "./connector-factory.js";
-import { WebSocketConnectorFactory } from "./websocket-connector-factory.js";
 import "./http-listener-factory.js";
 import "./websocket-listener-factory.js";
-
-ConnectorExtensionManager.register(WebSocketConnectorFactory);
+import "./websocket-connector-factory.js";
 
 /**
  * Fame Connector Exports
@@ -15,19 +12,15 @@ export { BaseAsyncConnector, BaseAsyncConnectorConfig } from "./base-async-conne
 // Connector infrastructure
 export {
   ConnectorConfig,
-  ResourceConfig,
   ConnectorConfigDefaults,
   isConnectorConfig,
   createConnectorConfig,
 } from "./connector-config.js";
 export {
-  ConnectorFactory as RuntimeConnectorFactory,
-  ResourceFactory as RuntimeResourceFactory,
+  ConnectorFactory,
   ConnectionGrant,
-  ExpressionEvaluationPolicy,
   createResource,
 } from "./connector-factory.js";
-export { ConnectorExtensionManager as ExtensionManager };
 
 // WebSocket connector
 export {

@@ -18,7 +18,8 @@ export default defineConfig({
       'pino-pretty': 'null',
       'fastify': 'null',
       '@fastify/websocket': 'null',
-      'fs': 'null'
+      'fs': 'null',
+      'node:module': 'null'
     }
   },
   plugins: [
@@ -36,5 +37,5 @@ export default defineConfig({
       sourceMap: true,
     }),
   ],
-  external: ['async_hooks', 'pino', 'pino-pretty', 'fastify', '@fastify/websocket', 'fs'], // Mark Node.js modules as external
+  external: ['async_hooks', 'pino', 'pino-pretty', 'fastify', '@fastify/websocket', 'fs', 'node:module'], // Mark Node.js modules as external
 });

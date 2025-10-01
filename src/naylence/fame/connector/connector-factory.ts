@@ -5,7 +5,8 @@
  * conversion logic.
  */
 
-import type { ResourceConfig, ResourceFactory as BaseResourceFactory } from "naylence-factory";
+import type { FactoryInfo, ResourceFactory } from "naylence-factory";
+import { ExtensionManager, ExpressionEvaluationPolicy } from "naylence-factory";
 import { ConnectorConfig } from "./connector-config.js";
 import { FameConnector } from "naylence-core";
 import { getLogger } from "../util/logging.js";
@@ -14,67 +15,8 @@ export type { ConnectionGrant } from "../grants/index.js";
 
 const logger = getLogger("connector-factory");
 
-/**
- * Expression evaluation policy enum
- */
-export enum ExpressionEvaluationPolicy {
-  ERROR = "error",
-  EVALUATE = "evaluate",
-  SKIP = "skip",
-}
 
-/**
- * Base interface for resource factories
- */
-export type ResourceFactory<T, C extends ResourceConfig> = BaseResourceFactory<T, C>;
-
-/**
- * Information about a registered factory
- */
-export interface FactoryInfo {
-  /** The factory type identifier */
-  type: string;
-
-  /** The factory constructor */
-  constructor: new () => ConnectorFactory;
-
-  /** The factory instance (cached) */
-  instance?: ConnectorFactory;
-
-  /** Factory metadata */
-  metadata?: {
-    isDefault?: boolean;
-    priority?: number;
-    description?: string;
-    [key: string]: unknown;
-  };
-}
-
-/**
- * Extension manager for dynamic factory discovery
- */
-export class ExtensionManager {
-  private static factories = new Map<string, FactoryInfo>();
-
-  /**
-   * Register a factory class
-   */
-  public static register(factoryClass: new () => ConnectorFactory): void {
-    const instance = new factoryClass();
-    this.factories.set(instance.type, {
-      type: instance.type,
-      constructor: factoryClass,
-      instance,
-    });
-  }
-
-  /**
-   * Get extensions by base type
-   */
-  public static getExtensionsByType(): Map<string, FactoryInfo> {
-    return new Map(this.factories);
-  }
-}
+export const CONNECTOR_FACTORY_BASE_TYPE = "ConnectorFactory";
 
 /**
  * Abstract base class for connector factories
@@ -131,11 +73,17 @@ export abstract class ConnectorFactory<
       throw new Error("Missing 'type' field in grant");
     }
 
-    const factories = ExtensionManager.getExtensionsByType();
+    const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
+      CONNECTOR_FACTORY_BASE_TYPE
+    );
 
     for (const [, factoryInfo] of factories) {
       try {
-        const factory = factoryInfo.instance || new factoryInfo.constructor();
+        const factory = this.getGrantAwareFactory(factoryInfo);
+        if (!factory) {
+          continue;
+        }
+
         const supportedGrants = factory.supportedGrants();
         const grantClass = supportedGrants[grantType];
 
@@ -187,11 +135,17 @@ export abstract class ConnectorFactory<
       throw new Error("Missing 'type' field in configuration");
     }
 
-    const factories = ExtensionManager.getExtensionsByType();
+    const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
+      CONNECTOR_FACTORY_BASE_TYPE
+    );
 
     for (const [, factoryInfo] of factories) {
       try {
-        const factory = factoryInfo.instance || new factoryInfo.constructor();
+        const factory = this.getGrantAwareFactory(factoryInfo);
+        if (!factory) {
+          continue;
+        }
+
         if (factory.supportedGrantTypes().includes(grantType)) {
           // We found a factory that supports this grant type
           connectorConfig = factory.configFromGrant(configOrGrant);
@@ -217,7 +171,9 @@ export abstract class ConnectorFactory<
     config: ConnectorConfig,
     ...kwargs: unknown[]
   ): Promise<FameConnector> {
-    const factories = ExtensionManager.getExtensionsByType();
+    const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
+      CONNECTOR_FACTORY_BASE_TYPE
+    );
 
     const requestedType = config.type;
     const candidateTypes = new Set<string>([requestedType]);
@@ -275,6 +231,57 @@ export abstract class ConnectorFactory<
   private static isRecord(obj: unknown): obj is Record<string, unknown> {
     return obj !== null && typeof obj === "object" && !Array.isArray(obj);
   }
+
+  private static getGrantAwareFactory(
+    factoryInfo: FactoryInfo<FameConnector, ConnectorConfig>
+  ): ConnectorFactory | null {
+    const existing = factoryInfo.instance;
+    if (existing && this.isGrantAware(existing)) {
+      return existing as ConnectorFactory;
+    }
+
+    if (existing && !this.isGrantAware(existing)) {
+      logger.warning(
+        `Factory ${factoryInfo.constructor.name} is registered under ${CONNECTOR_FACTORY_BASE_TYPE} but is missing grant conversion APIs; skipping.`
+      );
+      return null;
+    }
+
+    try {
+      const instance = new factoryInfo.constructor();
+
+      if (!this.isGrantAware(instance)) {
+        logger.warning(
+          `Factory ${factoryInfo.constructor.name} does not implement grant conversion APIs required by ${CONNECTOR_FACTORY_BASE_TYPE}; skipping.`
+        );
+        return null;
+      }
+
+      factoryInfo.instance = instance;
+      return instance as ConnectorFactory;
+    } catch (error) {
+      logger.warning(
+        `Failed to instantiate factory ${factoryInfo.constructor.name} while resolving grant conversion APIs: ${error}`
+      );
+      return null;
+    }
+  }
+
+  private static isGrantAware(
+    candidate: ResourceFactory<FameConnector, ConnectorConfig>
+  ): candidate is ConnectorFactory {
+    if (candidate instanceof ConnectorFactory) {
+      return true;
+    }
+
+    const maybe = candidate as Partial<ConnectorFactory>;
+    return (
+      typeof maybe.supportedGrantTypes === "function" &&
+      typeof maybe.supportedGrants === "function" &&
+      typeof maybe.configFromGrant === "function" &&
+      typeof maybe.grantFromConfig === "function"
+    );
+  }
 }
 
 /**
@@ -284,7 +291,9 @@ export async function createResource<T extends FameConnector>(
   config: ConnectorConfig,
   ...kwargs: unknown[]
 ): Promise<T> {
-  const factories = ExtensionManager.getExtensionsByType();
+  const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
+    CONNECTOR_FACTORY_BASE_TYPE
+  );
 
   const requestedType = config.type;
   const candidateTypes = new Set<string>([requestedType]);

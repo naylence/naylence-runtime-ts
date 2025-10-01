@@ -41,7 +41,14 @@ export class Drop implements RoutingAction {
     context?: FameDeliveryContext | null
   ): Promise<void> {
     await emitDeliveryNack(envelope, router, state, "NO_ROUTE", context ?? undefined);
-    logger.debug("dropped_envelope", summarizeEnvelope(envelope, ""));
+    logger.debug(
+      "dropped_envelope",
+      Object.assign(summarizeEnvelope(envelope, ""), {
+        localAddresses: Array.from(state.local.values()),
+        downstreamRoutes: Array.from(state.downstreamAddressRoutes.entries()),
+        peerRoutes: Array.from(state.peerAddressRoutes.entries()),
+      })
+    );
   }
 }
 

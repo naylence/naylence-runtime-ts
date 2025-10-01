@@ -203,7 +203,7 @@ describe("DefaultHttpServer", () => {
     expect(server.actualBaseUrl).toBeNull();
   });
 
-  it("includes routers with options and starts automatically", async () => {
+  it("includes routers with options without starting automatically", async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
@@ -213,14 +213,18 @@ describe("DefaultHttpServer", () => {
 
     await server.includeRouter(router, { prefix: "/api" });
 
-    expect(instance.listen).toHaveBeenCalledTimes(1);
+    expect(instance.listen).not.toHaveBeenCalled();
     expect(instance.register).toHaveBeenCalledTimes(2);
     expect(getRegistrationPlugins(instance)[0]).toBe(websocketPluginMock);
     expect(instance.register).toHaveBeenNthCalledWith(2, router, { prefix: "/api" });
+    expect(server.isRunning).toBe(false);
+
+    await server.start();
+    expect(instance.listen).toHaveBeenCalledTimes(1);
     expect(server.isRunning).toBe(true);
   });
 
-  it("includes routers without restarting and skips duplicate core plugin load", async () => {
+  it("throws when including routers after start", async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
@@ -228,20 +232,18 @@ describe("DefaultHttpServer", () => {
     await server.start();
 
     instance.register.mockClear();
-    instance.ready.mockClear();
     websocketPluginMock.mockClear();
 
     const router: FastifyPluginAsync = jest.fn(async () => {});
 
-    await server.includeRouter(router);
-
+    await expect(server.includeRouter(router)).rejects.toThrow(
+      "Cannot include router after HTTP server has started"
+    );
     expect(websocketPluginMock).not.toHaveBeenCalled();
-    expect(instance.register).toHaveBeenCalledTimes(1);
-    expect(instance.register).toHaveBeenCalledWith(router);
-    expect(instance.ready).toHaveBeenCalledTimes(1);
+    expect(instance.register).not.toHaveBeenCalled();
   });
 
-  it("supports including Fastify plugins with and without options", async () => {
+  it("supports including Fastify plugins before start", async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
@@ -253,16 +255,35 @@ describe("DefaultHttpServer", () => {
     await server.includeFastifyPlugin(pluginWithOptions, { feature: true });
 
     expect(instance.register).toHaveBeenNthCalledWith(2, pluginWithOptions, { feature: true });
-    expect(instance.listen).toHaveBeenCalledTimes(1);
+    expect(instance.listen).not.toHaveBeenCalled();
 
     instance.register.mockClear();
-    instance.ready.mockClear();
 
     await server.includeFastifyPlugin(pluginWithoutOptions);
 
     expect(instance.register).toHaveBeenCalledTimes(1);
     expect(instance.register).toHaveBeenCalledWith(pluginWithoutOptions);
-    expect(instance.ready).toHaveBeenCalledTimes(1);
+
+    await server.start();
+    expect(instance.listen).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws when including Fastify plugins after start", async () => {
+    const instance = createFastifyInstance();
+    fastifyMock.prepare(instance);
+
+    const server = await DefaultHttpServer.getOrCreate({ host: "12.0.0.1", port: 7250 });
+    await server.start();
+
+    instance.register.mockClear();
+    websocketPluginMock.mockClear();
+
+    const plugin: FastifyPluginAsync = jest.fn(async () => {});
+
+    await expect(server.includeFastifyPlugin(plugin)).rejects.toThrow(
+      "Cannot include plugin after HTTP server has started"
+    );
+    expect(instance.register).not.toHaveBeenCalled();
   });
 
   it("returns the same server instance for identical host and port", async () => {

@@ -133,7 +133,7 @@ export class WebSocketListener extends TransportListener implements NodeEventLis
   }
 
   async onNodeStarted(_node: NodeLike): Promise<void> {
-    // Listener leverages shared HTTP server lifecycle
+    await this._httpServer.start();
   }
 
   async onNodeStopped(_node: NodeLike): Promise<void> {

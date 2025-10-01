@@ -6,6 +6,8 @@ import {
   registerFactory,
 } from "naylence-factory";
 
+import { getFameConfig } from "../config/extended-fame-config.js";
+
 import type { NodeLike } from "./node-like.js";
 
 export const NODE_LIKE_FACTORY_BASE_TYPE = "NodeLikeFactory";
@@ -27,7 +29,14 @@ export abstract class NodeLikeFactory<
     config?: NodeLikeConfig | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<NodeLike> {
-    const configRecord = (config ?? null) as Record<string, unknown> | null;
+    let resolvedConfig = config ?? null;
+
+    if (!resolvedConfig) {
+      const fameConfig = getFameConfig();
+      resolvedConfig = (fameConfig?.node ?? null) as Record<string, unknown> | null;
+    }
+
+    const configRecord = (resolvedConfig ?? null) as Record<string, unknown> | null;
 
     if (!configRecord) {
       const node = await createDefaultResource<NodeLike>(

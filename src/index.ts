@@ -64,15 +64,10 @@ export {
 
   // Connector infrastructure (with aliases)
   ConnectorConfig,
-  ResourceConfig as RuntimeResourceConfig,
   ConnectorConfigDefaults,
   isConnectorConfig,
   createConnectorConfig,
-  RuntimeConnectorFactory,
-  RuntimeResourceFactory,
   ConnectionGrant,
-  ExtensionManager,
-  ExpressionEvaluationPolicy,
   createResource,
 
   // WebSocket connector
@@ -93,7 +88,11 @@ export {
   _NoopFlowController,
 } from "./naylence/fame/connector/index.js";
 
-export { InProcessFameFabric } from "./naylence/fame/fabric/index.js";
+export {
+  InProcessFameFabric,
+  InProcessFameFabricFactory,
+  FAME_FABRIC_FACTORY_BASE_TYPE,
+} from "./naylence/fame/fabric/index.js";
 export {
   normalizeExtendedFameConfig,
   type ExtendedFameConfig,

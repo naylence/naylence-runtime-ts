@@ -4,7 +4,7 @@ import {
   type WebSocketConnectorConfig,
   type AuthorizationContext,
 } from "./websocket-connector.js";
-import { ConnectorFactory, ExpressionEvaluationPolicy } from "./connector-factory.js";
+import { CONNECTOR_FACTORY_BASE_TYPE, ConnectorFactory } from "./connector-factory.js";
 import type { ConnectorConfig } from "./connector-config.js";
 import { FameConnectError } from "../errors/errors.js";
 import { getLogger } from "../util/logging.js";
@@ -22,6 +22,8 @@ import {
   type AuthInjectionStrategyConfig,
 } from "../security/auth/auth-injection-strategy-factory.js";
 import type { AuthInjectionStrategy } from "../security/auth/auth-injection-strategy.js";
+import { FameConnector } from "naylence-core";
+import { registerFactory, ExpressionEvaluationPolicy } from "naylence-factory";
 
 const logger = getLogger("websocket-connector-factory");
 
@@ -500,3 +502,14 @@ export class WebSocketConnectorFactory extends ConnectorFactory<
     }
   }
 }
+
+
+registerFactory<FameConnector, WebSocketConnectorFactoryConfig>(
+  CONNECTOR_FACTORY_BASE_TYPE,
+  "WebSocketConnector",
+  WebSocketConnectorFactory as unknown as new (...args: unknown[]) => ConnectorFactory<
+    WebSocketConnector,
+    WebSocketConnectorFactoryConfig
+  >,
+  { isDefault: true }
+);

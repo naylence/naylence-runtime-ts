@@ -124,7 +124,7 @@ export class HttpListener extends TransportListener {
   }
 
   async onNodeStarted(_node: NodeLike): Promise<void> {
-    // HTTP server lifecycle shared externally
+    await this._httpServer.start();
   }
 
   async onNodeStopped(_node: NodeLike): Promise<void> {
