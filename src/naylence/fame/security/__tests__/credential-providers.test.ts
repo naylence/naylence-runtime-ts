@@ -1,14 +1,20 @@
+import { CredentialProviderFactory } from "../credential/credential-provider-factory.js";
 import {
-  CredentialProviderFactory,
-  EnvCredentialProviderConfig,
-  PromptCredentialProviderConfig,
-  SecretStoreCredentialProviderConfig,
-  StaticCredentialProviderConfig,
+  type EnvCredentialProviderConfig,
   normalizeEnvConfig,
+} from "../credential/env-credential-provider-factory.js";
+import {
+  type PromptCredentialProviderConfig,
   normalizePromptConfig,
+} from "../credential/prompt-credential-provider-factory.js";
+import {
+  type SecretStoreCredentialProviderConfig,
   normalizeSecretStoreConfig,
+} from "../credential/secret-store-credential-provider-factory.js";
+import {
+  type StaticCredentialProviderConfig,
   normalizeStaticConfig,
-} from "../credential/credential-provider-factory.js";
+} from "../credential/static-credential-provider-factory.js";
 import { EnvCredentialProvider } from "../credential/env-credential-provider.js";
 import { NoneCredentialProvider } from "../credential/none-credential-provider.js";
 import { PromptCredentialProvider } from "../credential/prompt-credential-provider.js";

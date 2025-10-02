@@ -2,10 +2,8 @@ import { jest } from "@jest/globals";
 
 import type { NodeHelloFrame } from "naylence-core";
 
-import {
-  NodePlacementStrategyFactory,
-  type PlacementDecision,
-} from "../node-placement-strategy.js";
+import type { PlacementDecision } from "../node-placement-strategy.js";
+import { NodePlacementStrategyFactory } from "../node-placement-strategy-factory.js";
 import { StaticNodePlacementStrategy } from "../static-node-placement-strategy.js";
 import { StaticNodePlacementStrategyFactory } from "../static-node-placement-strategy-factory.js";
 import { WebSocketPlacementStrategyFactory } from "../websocket-node-placement-strategy-factory.js";

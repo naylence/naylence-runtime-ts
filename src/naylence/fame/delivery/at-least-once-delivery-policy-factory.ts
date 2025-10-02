@@ -1,6 +1,10 @@
 import type { DeliveryPolicy } from "./delivery-policy.js";
 import type { DeliveryPolicyConfig } from "./delivery-policy-config.js";
-import { DeliveryPolicyFactory, registerDeliveryPolicyFactory } from "./delivery-policy-factory.js";
+import {
+  DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  DeliveryPolicyFactory,
+  registerDeliveryPolicyFactory,
+} from "./delivery-policy-factory.js";
 import { AtLeastOnceDeliveryPolicy } from "./at-least-once-delivery-policy.js";
 import { RetryPolicy, type RetryPolicyOptions } from "./retry-policy.js";
 
@@ -121,3 +125,10 @@ function withOption(
 registerDeliveryPolicyFactory("AtLeastOnceDeliveryPolicy", AtLeastOnceDeliveryPolicyFactory);
 
 registerDeliveryPolicyFactory("AtLeastOnceMessageDeliveryPolicy", AtLeastOnceDeliveryPolicyFactory);
+
+export const FACTORY_META = {
+  base: DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  key: "AtLeastOnceDeliveryPolicy",
+} as const;
+
+export default AtLeastOnceDeliveryPolicyFactory;

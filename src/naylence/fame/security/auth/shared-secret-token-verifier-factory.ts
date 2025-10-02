@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import { safeImport } from "../../util/lazy-import.js";
 import type { CredentialProvider } from "../credential/credential-provider.js";
 import {
@@ -58,6 +56,11 @@ function normalizeConfig(
   return normalized;
 }
 
+export const FACTORY_META = {
+  base: TOKEN_VERIFIER_FACTORY_BASE_TYPE,
+  key: "SharedSecretTokenVerifier",
+} as const;
+
 export class SharedSecretTokenVerifierFactory extends TokenVerifierFactory<SharedSecretTokenVerifierConfig> {
   public readonly type = "SharedSecretTokenVerifier";
 
@@ -83,8 +86,4 @@ export class SharedSecretTokenVerifierFactory extends TokenVerifierFactory<Share
   }
 }
 
-registerFactory<TokenVerifier, SharedSecretTokenVerifierConfig>(
-  TOKEN_VERIFIER_FACTORY_BASE_TYPE,
-  "SharedSecretTokenVerifier",
-  SharedSecretTokenVerifierFactory
-);
+export default SharedSecretTokenVerifierFactory;

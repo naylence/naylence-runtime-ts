@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { TransportListener } from "./transport-listener.js";
 import {
   TransportListenerFactory,
@@ -84,6 +82,11 @@ function normalizeConfig(
   };
 }
 
+export const FACTORY_META = {
+  base: TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
+  key: "WebSocketListener",
+} as const;
+
 export class WebSocketListenerFactory extends TransportListenerFactory<WebSocketListenerFactoryConfig> {
   public readonly type = "WebSocketListener";
   public readonly isDefault = true;
@@ -119,9 +122,4 @@ export class WebSocketListenerFactory extends TransportListenerFactory<WebSocket
   }
 }
 
-registerFactory<TransportListener, WebSocketListenerFactoryConfig>(
-  TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
-  "WebSocketListener",
-  WebSocketListenerFactory,
-  { isDefault: true, priority: 900 }
-);
+export default WebSocketListenerFactory;

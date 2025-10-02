@@ -1,5 +1,4 @@
-import { createResource, registerFactory } from "naylence-factory";
-import { getLogger } from "../../util/logging.js";
+import { createResource } from "naylence-factory";import { getLogger } from "../../util/logging.js";
 
 import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
@@ -33,6 +32,11 @@ export interface LoadBalancingProfileConfig extends LoadBalancingStrategyConfig 
   type: "LoadBalancingProfile";
   profile?: string | null;
 }
+
+export const FACTORY_META = {
+  base: LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  key: "LoadBalancingProfile",
+} as const;
 
 export class LoadBalancingProfileFactory extends LoadBalancingStrategyFactory {
   public readonly type = "LoadBalancingProfile";
@@ -101,8 +105,4 @@ export class LoadBalancingProfileFactory extends LoadBalancingStrategyFactory {
   }
 }
 
-registerFactory<LoadBalancingStrategy, LoadBalancingProfileConfig>(
-  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  "LoadBalancingProfile",
-  LoadBalancingProfileFactory
-);
+export default LoadBalancingProfileFactory;

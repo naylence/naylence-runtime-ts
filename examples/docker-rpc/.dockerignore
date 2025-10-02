@@ -1,0 +1,11 @@
+node_modules
+.git
+.gitignore
+coverage
+htmlcov
+**/dist
+**/tmp
+**/.venv
+**/node_modules
+**/*-python
+*-python

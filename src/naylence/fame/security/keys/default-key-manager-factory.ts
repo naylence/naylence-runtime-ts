@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import { DefaultKeyManager } from "./default-key-manager.js";
 import type { KeyStore } from "./key-store.js";
 import { getKeyStore } from "./key-store.js";
@@ -16,6 +14,11 @@ export interface DefaultKeyManagerConfig extends KeyManagerConfig {
   nodeId?: string;
   keyStore?: KeyStoreConfig | null;
 }
+
+export const FACTORY_META = {
+  base: KEY_MANAGER_FACTORY_BASE_TYPE,
+  key: "DefaultKeyManager",
+} as const;
 
 export class DefaultKeyManagerFactory extends KeyManagerFactory<DefaultKeyManagerConfig> {
   public readonly type = "DefaultKeyManager";
@@ -45,7 +48,4 @@ export class DefaultKeyManagerFactory extends KeyManagerFactory<DefaultKeyManage
   }
 }
 
-registerFactory(KEY_MANAGER_FACTORY_BASE_TYPE, "DefaultKeyManager", DefaultKeyManagerFactory, {
-  isDefault: true,
-  priority: 100,
-});
+export default DefaultKeyManagerFactory;

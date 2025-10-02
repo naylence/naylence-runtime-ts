@@ -7,7 +7,4 @@ export {
   DefaultWelcomeService,
   type DefaultWelcomeServiceOptions,
 } from "./default-welcome-service.js";
-export type {
-  DefaultWelcomeServiceFactory,
-  DefaultWelcomeServiceConfig,
-} from "./default-welcome-service-factory.js";
+

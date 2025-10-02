@@ -78,11 +78,11 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
       }
 
       this._waitingReaders.push(waiter);
-      this.logger.debug("receive_waiting_for_message", {
-        queue_length: this._queue.length,
-        waiting_readers: this._waitingReaders.length,
-        timeout_ms: timeoutMs,
-      });
+      // this.logger.debug("receive_waiting_for_message", {
+      //   queue_length: this._queue.length,
+      //   waiting_readers: this._waitingReaders.length,
+      //   timeout_ms: timeoutMs,
+      // });
     });
   }
 

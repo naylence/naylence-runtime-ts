@@ -1,4 +1,9 @@
-import type { EnvelopeFactory, FameDeliveryContext, FameEnvelope } from "naylence-core";
+import type {
+  CreateFameEnvelopeOptions,
+  EnvelopeFactory,
+  FameDeliveryContext,
+  FameEnvelope,
+} from "naylence-core";
 import { DeliveryOriginType, FameResponseType } from "naylence-core";
 import type { SecureAcceptFrame, SecureCloseFrame, SecureOpenFrame } from "naylence-core";
 
@@ -83,7 +88,7 @@ export class SecureChannelFrameHandler {
 
     const acceptFrame = await this.secureChannelManager.handleOpenFrame(frame);
 
-    const responseOptions: Parameters<EnvelopeFactory["createEnvelope"]>[0] = {
+    const responseOptions: CreateFameEnvelopeOptions = {
       frame: acceptFrame,
     };
 

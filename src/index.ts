@@ -48,13 +48,17 @@
  * ```
  */
 
+// Register Node-specific extensions before re-exporting modules
+import "./naylence/fame/connector/websocket-connector-node-ssl.js";
+
 // Re-export everything from naylence-core
 export * from "naylence-core";
-
+ 
 // Export naylence runtime modules selectively to avoid conflicts
 export * from "./naylence/fame/errors/index.js";
 export * from "./naylence/fame/util/index.js";
 export * from "./naylence/fame/storage/index.js";
+export * from "./naylence/fame/storage/node-index.js";
 
 // Export connector modules with aliases to avoid conflicts with naylence-core
 export {
@@ -77,13 +81,6 @@ export {
   WebSocketAuthorizationContext,
   WebSocketState,
 
-  // WebSocket connector factory
-  WebSocketConnectorFactory,
-  WebSocketConnectorFactoryConfig,
-  CreateWebSocketConnectorOptions,
-  WebSocketListener,
-  getWebsocketListenerInstance,
-
   // Flow controller
   _NoopFlowController,
 } from "./naylence/fame/connector/index.js";
@@ -100,3 +97,18 @@ export {
 
 // Export channel implementations
 export * from "./naylence/fame/channel/index.js";
+
+// Export RPC service utilities
+export {
+  RpcProxy,
+  createRpcProxy,
+  RpcMixin,
+  operation,
+} from "./naylence/fame/service/rpc.js";
+
+// Export factory registration helpers
+export { registerDefaultFactories } from "./naylence/runtime/register-runtime-factories.js";
+export {
+  registerRuntimeFactories,
+  type RuntimeFactoryRegistry,
+} from "./naylence/runtime/register-runtime-factories.js";

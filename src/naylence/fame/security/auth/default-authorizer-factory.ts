@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import { safeImport } from "../../util/lazy-import.js";
 import type { Authorizer } from "./authorizer.js";
 import {
@@ -57,6 +55,11 @@ function isTokenVerifier(candidate: unknown): candidate is TokenVerifier {
   return Boolean(candidate && typeof (candidate as TokenVerifier).verify === "function");
 }
 
+export const FACTORY_META = {
+  base: AUTHORIZER_FACTORY_BASE_TYPE,
+  key: "DefaultAuthorizer",
+} as const;
+
 export class DefaultAuthorizerFactory extends AuthorizerFactory<DefaultAuthorizerConfig> {
   public readonly type = "DefaultAuthorizer";
   public readonly isDefault = true;
@@ -87,9 +90,4 @@ export class DefaultAuthorizerFactory extends AuthorizerFactory<DefaultAuthorize
   }
 }
 
-registerFactory<Authorizer, DefaultAuthorizerConfig>(
-  AUTHORIZER_FACTORY_BASE_TYPE,
-  "DefaultAuthorizer",
-  DefaultAuthorizerFactory,
-  { isDefault: true }
-);
+export default DefaultAuthorizerFactory;

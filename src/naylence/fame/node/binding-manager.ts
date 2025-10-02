@@ -4,6 +4,7 @@ import {
   Binding,
   CapabilityAdvertiseFrame,
   CapabilityWithdrawFrame,
+  type CreateFameEnvelopeOptions,
   FameAddress,
   FameDeliveryContext,
   FameEnvelope,
@@ -522,7 +523,7 @@ export class BindingManager {
     const replyTo = formatAddress(SYSTEM_INBOX, this.getPhysicalPath());
 
     const traceId = currentTraceId();
-    const envelopeOptions: Parameters<EnvelopeFactory["createEnvelope"]>[0] = {
+    const envelopeOptions: CreateFameEnvelopeOptions = {
       frame,
       corrId,
       replyTo,

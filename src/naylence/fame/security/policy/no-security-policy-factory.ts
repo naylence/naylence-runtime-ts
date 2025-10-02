@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import { NoSecurityPolicy } from "./no-security-policy.js";
 import type { SecurityPolicy } from "./security-policy.js";
 import type { SecurityPolicyConfig } from "./security-policy.js";
@@ -12,6 +10,11 @@ export interface NoSecurityPolicyConfig extends SecurityPolicyConfig {
   type: "NoSecurityPolicy";
 }
 
+export const FACTORY_META = {
+  base: SECURITY_POLICY_FACTORY_BASE_TYPE,
+  key: "NoSecurityPolicy",
+} as const;
+
 export class NoSecurityPolicyFactory extends SecurityPolicyFactory<NoSecurityPolicyConfig> {
   public readonly type = "NoSecurityPolicy";
 
@@ -22,6 +25,8 @@ export class NoSecurityPolicyFactory extends SecurityPolicyFactory<NoSecurityPol
     return new NoSecurityPolicy();
   }
 }
+
+export default NoSecurityPolicyFactory;
 
 function normalizeConfig(
   config?: NoSecurityPolicyConfig | Record<string, unknown> | null
@@ -42,8 +47,3 @@ function normalizeConfig(
   return { type: "NoSecurityPolicy" };
 }
 
-registerFactory<SecurityPolicy, NoSecurityPolicyConfig>(
-  SECURITY_POLICY_FACTORY_BASE_TYPE,
-  "NoSecurityPolicy",
-  NoSecurityPolicyFactory
-);

@@ -3,7 +3,6 @@ import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-  registerFactory,
 } from "naylence-factory";
 
 import { getFameConfig } from "../config/extended-fame-config.js";
@@ -65,9 +64,9 @@ export abstract class NodeLikeFactory<
   }
 }
 
-export function registerNodeLikeFactory(
-  type: string,
-  factory: new (...args: unknown[]) => NodeLikeFactory
-): void {
-  registerFactory(NODE_LIKE_FACTORY_BASE_TYPE, type, factory);
-}
+// export function registerNodeLikeFactory(
+//   type: string,
+//   factory: new (...args: unknown[]) => NodeLikeFactory
+// ): void {
+//   registerFactory(NODE_LIKE_FACTORY_BASE_TYPE, type, factory);
+// }

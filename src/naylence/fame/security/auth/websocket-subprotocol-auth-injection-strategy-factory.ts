@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
 import {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
@@ -22,6 +21,11 @@ interface NormalizedWebSocketConfig {
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   subprotocolPrefix: string;
 }
+
+export const FACTORY_META = {
+  base: AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
+  key: "WebSocketSubprotocolAuth",
+} as const;
 
 export class WebSocketSubprotocolAuthInjectionStrategyFactory extends AuthInjectionStrategyFactory<WebSocketSubprotocolAuthInjectionConfig> {
   public readonly type = "WebSocketSubprotocolAuth";
@@ -70,8 +74,4 @@ function normalizeConfig(
   };
 }
 
-registerFactory<AuthInjectionStrategy, WebSocketSubprotocolAuthInjectionConfig>(
-  AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
-  "WebSocketSubprotocolAuth",
-  WebSocketSubprotocolAuthInjectionStrategyFactory
-);
+export default WebSocketSubprotocolAuthInjectionStrategyFactory;

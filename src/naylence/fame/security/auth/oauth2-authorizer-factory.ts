@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import {
   DEFAULT_JWKS_CACHE_TTL_SEC,
   DEFAULT_OAUTH2_TTL_SEC,
@@ -72,6 +71,11 @@ interface NormalizedOAuth2AuthorizerConfig {
   tokenIssuerConfig?: TokenIssuerConfig;
   reverseAuthTtlSec: number;
 }
+
+export const FACTORY_META = {
+  base: AUTHORIZER_FACTORY_BASE_TYPE,
+  key: "OAuth2Authorizer",
+} as const;
 
 export class OAuth2AuthorizerFactory extends AuthorizerFactory<OAuth2AuthorizerConfig> {
   public readonly type = "OAuth2Authorizer";
@@ -253,8 +257,4 @@ function normalizeTokenVerifierConfig({
   return defaultConfig;
 }
 
-registerFactory<Authorizer, OAuth2AuthorizerConfig>(
-  AUTHORIZER_FACTORY_BASE_TYPE,
-  "OAuth2Authorizer",
-  OAuth2AuthorizerFactory
-);
+export default OAuth2AuthorizerFactory;

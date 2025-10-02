@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import {
   ADMISSION_CLIENT_FACTORY_BASE_TYPE,
   AdmissionClientFactory,
@@ -12,6 +11,11 @@ export interface NoopAdmissionClientConfig extends AdmissionConfig {
   systemId?: string;
   autoAcceptLogicals?: boolean;
 }
+
+export const FACTORY_META = {
+  base: ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  key: "NoopAdmissionClient",
+} as const;
 
 export class NoopAdmissionClientFactory extends AdmissionClientFactory<NoopAdmissionClientConfig> {
   public readonly type = "NoopAdmissionClient";
@@ -57,8 +61,4 @@ function normalizeConfig(
   } satisfies NoopAdmissionClientOptions;
 }
 
-registerFactory<AdmissionClient, NoopAdmissionClientConfig>(
-  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
-  "NoopAdmissionClient",
-  NoopAdmissionClientFactory
-);
+export default NoopAdmissionClientFactory;

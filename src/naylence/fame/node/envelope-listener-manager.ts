@@ -133,7 +133,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
     this.envelopeFactory = options.envelopeFactory;
     this.deliveryTracker = options.deliveryTracker;
 
-    this.deliver = async (envelope, context) => {
+  this.deliver = async (envelope: FameEnvelope, context?: FameDeliveryContext) => {
       if (!envelope.replyTo) {
         try {
           envelope.replyTo = formatAddress(SYSTEM_INBOX, this.nodeLike.physicalPath);
@@ -275,8 +275,8 @@ export class EnvelopeListenerManager extends TaskSpawner {
     const channel = binding.channel;
 
     const trackingHandler: FameEnvelopeHandler = async (
-      envelope,
-      context
+      envelope: FameEnvelope,
+      context: FameDeliveryContext | undefined
     ): Promise<FameMessageResponse | null | undefined> => {
       const tracked = await this.deliveryTracker.onEnvelopeDelivered(
         serviceName,
@@ -387,7 +387,10 @@ export class EnvelopeListenerManager extends TaskSpawner {
   ): Promise<FameAddress> {
     logger.debug("rpc_listen_start", { service_name: serviceName });
 
-    const rpcHandler: FameEnvelopeHandler = async (envelope, context) => {
+    const rpcHandler: FameEnvelopeHandler = async (
+      envelope: FameEnvelope,
+      context: FameDeliveryContext | undefined
+    ) => {
       const result = await this.rpcServerHandler.handleRpcRequest(
         envelope,
         context,

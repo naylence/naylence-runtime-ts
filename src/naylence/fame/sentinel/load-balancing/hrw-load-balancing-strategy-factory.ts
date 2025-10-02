@@ -1,5 +1,4 @@
-import { createResource, registerFactory } from "naylence-factory";
-
+import { createResource } from "naylence-factory";
 import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
@@ -12,6 +11,11 @@ export interface HRWLoadBalancingStrategyConfig extends LoadBalancingStrategyCon
   type: "HRWLoadBalancingStrategy";
   stickyAttribute?: string | null;
 }
+
+export const FACTORY_META = {
+  base: LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  key: "HRWLoadBalancingStrategy",
+} as const;
 
 export class HRWLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
   public readonly type = "HRWLoadBalancingStrategy";
@@ -67,13 +71,6 @@ export class HRWLoadBalancingStrategyFactory extends LoadBalancingStrategyFactor
   }
 }
 
-registerFactory<LoadBalancingStrategy, HRWLoadBalancingStrategyConfig>(
-  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  "HRWLoadBalancingStrategy",
-  HRWLoadBalancingStrategyFactory,
-  { isDefault: true, priority: 100 }
-);
-
 export async function createDefaultHRWStrategy(
   config?: HRWLoadBalancingStrategyConfig | Record<string, unknown> | null
 ): Promise<LoadBalancingStrategy> {
@@ -88,3 +85,5 @@ export async function createDefaultHRWStrategy(
 
   return strategy;
 }
+
+export default HRWLoadBalancingStrategyFactory;

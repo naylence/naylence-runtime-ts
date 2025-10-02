@@ -1,5 +1,4 @@
-import { createResource, registerFactory } from "naylence-factory";
-
+import { createResource } from "naylence-factory";
 import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
@@ -18,6 +17,11 @@ export interface CapabilityAwareRoutingPolicyConfig extends RoutingPolicyConfig 
   type: "CapabilityAwareRoutingPolicy";
   loadBalancingStrategy?: LoadBalancingStrategyConfig | Record<string, unknown> | null;
 }
+
+export const FACTORY_META = {
+  base: ROUTING_POLICY_FACTORY_BASE,
+  key: "CapabilityAwareRoutingPolicy",
+} as const;
 
 export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
   public readonly type = "CapabilityAwareRoutingPolicy";
@@ -105,9 +109,4 @@ export class CapabilityAwareRoutingPolicyFactory extends RoutingPolicyFactory {
   }
 }
 
-registerFactory<RoutingPolicy, CapabilityAwareRoutingPolicyConfig>(
-  ROUTING_POLICY_FACTORY_BASE,
-  "CapabilityAwareRoutingPolicy",
-  CapabilityAwareRoutingPolicyFactory,
-  { priority: 50 }
-);
+export default CapabilityAwareRoutingPolicyFactory;

@@ -1,11 +1,12 @@
 import { z } from "zod";
 
+import type { NodePlacementStrategy } from "./node-placement-strategy.js";
 import {
+  NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
   NodePlacementStrategyFactory,
   registerNodePlacementStrategyFactory,
-  type NodePlacementStrategy,
   type NodePlacementConfig,
-} from "./node-placement-strategy.js";
+} from "./node-placement-strategy-factory.js";
 import { StaticNodePlacementStrategy } from "./static-node-placement-strategy.js";
 
 export interface StaticNodePlacementConfig extends NodePlacementConfig {
@@ -93,6 +94,11 @@ export class StaticNodePlacementStrategyFactory extends NodePlacementStrategyFac
   }
 }
 
+export const FACTORY_META = {
+  base: NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
+  key: "StaticNodePlacementStrategy",
+} as const;
+
 registerNodePlacementStrategyFactory(
   "StaticNodePlacementStrategy",
   StaticNodePlacementStrategyFactory,
@@ -104,3 +110,5 @@ registerNodePlacementStrategyFactory(
   "WebSocketNodePlacementStrategy",
   StaticNodePlacementStrategyFactory
 );
+
+export default StaticNodePlacementStrategyFactory;

@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
@@ -12,6 +10,11 @@ export interface RoundRobinLoadBalancingStrategyConfig extends LoadBalancingStra
   type: "RoundRobinLoadBalancingStrategy";
 }
 
+export const FACTORY_META = {
+  base: LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  key: "RoundRobinLoadBalancingStrategy",
+} as const;
+
 export class RoundRobinLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
   public readonly type = "RoundRobinLoadBalancingStrategy";
 
@@ -23,8 +26,4 @@ export class RoundRobinLoadBalancingStrategyFactory extends LoadBalancingStrateg
   }
 }
 
-registerFactory<LoadBalancingStrategy, RoundRobinLoadBalancingStrategyConfig>(
-  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  "RoundRobinLoadBalancingStrategy",
-  RoundRobinLoadBalancingStrategyFactory
-);
+export default RoundRobinLoadBalancingStrategyFactory;

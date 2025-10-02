@@ -58,7 +58,10 @@ export class DefaultNodeAttachClient implements NodeAttachClient {
   ): Promise<AttachInfo> {
     this.inHandshake = true;
 
-    const interimHandler: FameEnvelopeHandler = async (envelope, context) => {
+    const interimHandler: FameEnvelopeHandler = async (
+      envelope: FameEnvelope,
+      context?: FameDeliveryContext
+    ) => {
       if (this.inHandshake) {
         this.buffer.push(envelope);
         return null;

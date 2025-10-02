@@ -1,0 +1,26 @@
+plugins: 
+  - naylence-runtime
+
+node:
+  type: Node
+  id: ts-fabric-client
+  hasParent: true
+  requestedLogicals:
+    - calculator
+  security:
+    type: DefaultSecurityManager
+    authorizer:
+      type: NoopAuthorizer
+    security_policy:
+      type: NoSecurityPolicy
+  delivery:
+    type: AtMostOnceDeliveryPolicy
+  admission:
+    type: DirectAdmissionClient
+    connectionGrants:
+      - type: WebSocketConnectionGrant
+        purpose: node.attach
+        url: ws://127.0.0.1:28000/fame/v1/attach/ws/downstream
+        auth:
+          type: NoAuth
+    ttlSec: 60

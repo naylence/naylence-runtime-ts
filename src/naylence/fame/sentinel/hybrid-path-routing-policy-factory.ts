@@ -1,5 +1,4 @@
-import { createResource, registerFactory } from "naylence-factory";
-
+import { createResource } from "naylence-factory";
 import { HybridPathRoutingPolicy } from "./hybrid-path-routing-policy.js";
 import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
 import {
@@ -23,6 +22,11 @@ interface NormalizedHybridRoutingConfig {
   type: "HybridPathRoutingPolicy";
   loadBalancingStrategy: LoadBalancingStrategyConfig | Record<string, unknown> | null;
 }
+
+export const FACTORY_META = {
+  base: ROUTING_POLICY_FACTORY_BASE,
+  key: "HybridPathRoutingPolicy",
+} as const;
 
 export class HybridPathRoutingPolicyFactory extends RoutingPolicyFactory {
   public readonly type = "HybridPathRoutingPolicy";
@@ -107,8 +111,4 @@ export class HybridPathRoutingPolicyFactory extends RoutingPolicyFactory {
   }
 }
 
-registerFactory<RoutingPolicy, HybridPathRoutingPolicyConfig>(
-  ROUTING_POLICY_FACTORY_BASE,
-  "HybridPathRoutingPolicy",
-  HybridPathRoutingPolicyFactory
-);
+export default HybridPathRoutingPolicyFactory;

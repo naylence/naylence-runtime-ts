@@ -2,11 +2,15 @@ import type { TraceEmitter } from "./trace-emitter.js";
 import type { TraceEmitterConfig } from "./trace-emitter-config.js";
 import { TRACE_EMITTER_FACTORY_BASE_TYPE, TraceEmitterFactory } from "./trace-emitter-factory.js";
 import { NoopTraceEmitter } from "./noop-trace-emitter.js";
-import { registerFactory } from "naylence-factory";
 
 export interface NoopTraceEmitterConfig extends TraceEmitterConfig {
   type: "NoopTraceEmitter";
 }
+
+export const FACTORY_META = {
+  base: TRACE_EMITTER_FACTORY_BASE_TYPE,
+  key: "NoopTraceEmitter",
+} as const;
 
 export class NoopTraceEmitterFactory extends TraceEmitterFactory<NoopTraceEmitterConfig> {
   public readonly type = "NoopTraceEmitter";
@@ -18,7 +22,4 @@ export class NoopTraceEmitterFactory extends TraceEmitterFactory<NoopTraceEmitte
   }
 }
 
-registerFactory(TRACE_EMITTER_FACTORY_BASE_TYPE, "NoopTraceEmitter", NoopTraceEmitterFactory, {
-  isDefault: true,
-  priority: 100,
-});
+export default NoopTraceEmitterFactory;

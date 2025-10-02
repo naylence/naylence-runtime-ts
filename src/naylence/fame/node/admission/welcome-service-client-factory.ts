@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import type { AuthInjectionStrategy } from "../../security/auth/auth-injection-strategy.js";
 import {
   AuthInjectionStrategyFactory,
@@ -34,6 +33,11 @@ interface NormalizedWelcomeServiceClientConfig {
   isRoot: boolean;
   fetchImpl?: FetchLike;
 }
+
+export const FACTORY_META = {
+  base: ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  key: "WelcomeServiceClient",
+} as const;
 
 export class WelcomeServiceClientFactory extends AdmissionClientFactory<WelcomeServiceClientConfig> {
   public readonly type = "WelcomeServiceClient";
@@ -120,8 +124,4 @@ async function createAuthStrategy(
   return AuthInjectionStrategyFactory.createAuthInjectionStrategy(config);
 }
 
-registerFactory<AdmissionClient, WelcomeServiceClientConfig>(
-  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
-  "WelcomeServiceClient",
-  WelcomeServiceClientFactory
-);
+export default WelcomeServiceClientFactory;

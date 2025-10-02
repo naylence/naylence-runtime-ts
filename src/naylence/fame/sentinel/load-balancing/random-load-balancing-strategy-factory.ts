@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
@@ -12,6 +10,11 @@ export interface RandomLoadBalancingStrategyConfig extends LoadBalancingStrategy
   type: "RandomLoadBalancingStrategy";
 }
 
+export const FACTORY_META = {
+  base: LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  key: "RandomLoadBalancingStrategy",
+} as const;
+
 export class RandomLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
   public readonly type = "RandomLoadBalancingStrategy";
 
@@ -23,8 +26,4 @@ export class RandomLoadBalancingStrategyFactory extends LoadBalancingStrategyFac
   }
 }
 
-registerFactory<LoadBalancingStrategy, RandomLoadBalancingStrategyConfig>(
-  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  "RandomLoadBalancingStrategy",
-  RandomLoadBalancingStrategyFactory
-);
+export default RandomLoadBalancingStrategyFactory;

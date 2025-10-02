@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import type { Authorizer } from "./auth/authorizer.js";
 import { AuthorizerFactory } from "./auth/authorizer-factory.js";
 import { NoopTokenVerifier } from "./auth/noop-token-verifier.js";
@@ -79,6 +78,11 @@ interface ResolvedComponents {
 interface BuildSecurityManagerOptions extends ResolvedComponents {
   config: Record<string, unknown>;
 }
+
+export const FACTORY_META = {
+  base: SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  key: "DefaultSecurityManager",
+} as const;
 
 export class DefaultSecurityManagerFactory extends SecurityManagerFactory<DefaultSecurityManagerConfig> {
   public readonly type = "DefaultSecurityManager";
@@ -631,9 +635,4 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
   }
 }
 
-registerFactory(
-  SECURITY_MANAGER_FACTORY_BASE_TYPE,
-  "DefaultSecurityManager",
-  DefaultSecurityManagerFactory,
-  { isDefault: true }
-);
+export default DefaultSecurityManagerFactory;

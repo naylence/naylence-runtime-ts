@@ -1,6 +1,7 @@
 import {
   DeliveryOriginType,
   FameResponseType,
+  type CreateFameEnvelopeOptions,
   type FameConnector,
   type FameDeliveryContext,
   type FameEnvelope,
@@ -142,7 +143,9 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       if (hasExistingRoute) {
         isRebind = true;
         oldAssignedPath = buildAssignedPath(this.routingNode.physicalPath, attachedSystemId);
-        await this.routeManager.unregisterDownstreamRoute(attachedSystemId).catch((error) => {
+        await this.routeManager
+          .unregisterDownstreamRoute(attachedSystemId)
+          .catch((error: unknown) => {
           logger.warning("failed_to_unregister_downstream_route_before_rebind", {
             system_id: attachedSystemId,
             error: error instanceof Error ? error.message : String(error),
@@ -156,7 +159,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       if (hasExistingRoute) {
         isRebind = true;
         oldAssignedPath = frame.assignedPath ?? `/${attachedSystemId}`;
-        await this.routeManager.unregisterPeerRoute(attachedSystemId).catch((error) => {
+        await this.routeManager.unregisterPeerRoute(attachedSystemId).catch((error: unknown) => {
           logger.warning("failed_to_unregister_peer_route_before_rebind", {
             system_id: attachedSystemId,
             error: error instanceof Error ? error.message : String(error),
@@ -334,11 +337,13 @@ export class NodeAttachFrameHandler extends TaskSpawner {
           reason: `Certificate validation failed: ${error.message}`,
         });
 
-        await this.sendAndNotify(connector, rejectionAck, systemId, context).catch((sendError) => {
+        await this.sendAndNotify(connector, rejectionAck, systemId, context).catch(
+          (sendError: unknown) => {
           logger.error("failed_sending_negative_attach_ack", {
             error: sendError instanceof Error ? sendError.message : String(sendError),
           });
-        });
+          }
+        );
 
         logger.error("node_attach_key_validation_failed", {
           system_id: systemId,
@@ -405,7 +410,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       }
     }
 
-    const envelopeOptions: Parameters<RoutingNodeLike["envelopeFactory"]["createEnvelope"]>[0] = {
+    const envelopeOptions: CreateFameEnvelopeOptions = {
       frame,
     };
 

@@ -1,5 +1,4 @@
-import { createResource, registerFactory } from "naylence-factory";
-
+import { createResource } from "naylence-factory";
 import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
@@ -12,6 +11,11 @@ export interface CompositeLoadBalancingStrategyConfig extends LoadBalancingStrat
   type: "CompositeLoadBalancingStrategy";
   strategies: LoadBalancingStrategyConfig[];
 }
+
+export const FACTORY_META = {
+  base: LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  key: "CompositeLoadBalancingStrategy",
+} as const;
 
 export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
   public readonly type = "CompositeLoadBalancingStrategy";
@@ -65,8 +69,4 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
   }
 }
 
-registerFactory<LoadBalancingStrategy, CompositeLoadBalancingStrategyConfig>(
-  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  "CompositeLoadBalancingStrategy",
-  CompositeLoadBalancingStrategyFactory
-);
+export default CompositeLoadBalancingStrategyFactory;

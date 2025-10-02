@@ -1,6 +1,5 @@
 import "./in-memory-storage-provider-factory.js";
 import "./indexeddb-storage-provider-factory.js";
-import "./sqlite-storage-provider-factory.js";
 import "./storage-profile-factory.js";
 
 export * from "./key-value-store.js";
@@ -10,8 +9,7 @@ export type * from "./storage-provider-factory.js";
 export * from "./in-memory-storage.js";
 export type * from "./in-memory-storage-provider-factory.js";
 export * from "./encrypted-storage-provider-base.js";
-export * from "./sqlite-storage-provider.js";
-export type * from "./sqlite-storage-provider-factory.js";
+// SQLite provider exports are Node.js specific and re-exported from node-index.ts
 export type * from "./storage-profile-factory.js";
 export * from "./indexeddb-key-value-store.js";
 export * from "./indexeddb-storage-provider.js";

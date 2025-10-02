@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import { InMemoryKeyStore } from "./in-memory-key-store.js";
 import {
   KEY_STORE_FACTORY_BASE_TYPE,
@@ -12,6 +11,11 @@ export interface InMemoryKeyStoreConfig extends KeyStoreConfig {
   initialKeys?: Record<string, KeyRecord> | Map<string, KeyRecord> | null;
   initial_keys?: Record<string, KeyRecord> | null;
 }
+
+export const FACTORY_META = {
+  base: KEY_STORE_FACTORY_BASE_TYPE,
+  key: "InMemoryKeyStore",
+} as const;
 
 export class InMemoryKeyStoreFactory extends KeyStoreFactory<InMemoryKeyStoreConfig> {
   public readonly type = "InMemoryKeyStore";
@@ -50,7 +54,4 @@ export class InMemoryKeyStoreFactory extends KeyStoreFactory<InMemoryKeyStoreCon
   }
 }
 
-registerFactory(KEY_STORE_FACTORY_BASE_TYPE, "InMemoryKeyStore", InMemoryKeyStoreFactory, {
-  isDefault: true,
-  priority: 100,
-});
+export default InMemoryKeyStoreFactory;

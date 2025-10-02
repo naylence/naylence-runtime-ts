@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { TokenProvider } from "./token-provider.js";
 import {
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
@@ -57,6 +55,11 @@ function normalizeConfig(
   return options;
 }
 
+export const FACTORY_META = {
+  base: TOKEN_PROVIDER_FACTORY_BASE_TYPE,
+  key: "StaticTokenProvider",
+} as const;
+
 export class StaticTokenProviderFactory extends TokenProviderFactory<StaticTokenProviderConfig> {
   public readonly type = "StaticTokenProvider";
 
@@ -68,8 +71,4 @@ export class StaticTokenProviderFactory extends TokenProviderFactory<StaticToken
   }
 }
 
-registerFactory<TokenProvider, StaticTokenProviderConfig>(
-  TOKEN_PROVIDER_FACTORY_BASE_TYPE,
-  "StaticTokenProvider",
-  StaticTokenProviderFactory
-);
+export default StaticTokenProviderFactory;

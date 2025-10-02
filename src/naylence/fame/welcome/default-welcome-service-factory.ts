@@ -1,11 +1,9 @@
-import { registerFactory } from "naylence-factory";
-
 import type { AuthorizerConfig } from "../security/auth/authorizer-factory.js";
 import { AuthorizerFactory } from "../security/auth/authorizer-factory.js";
 import type { TokenIssuerConfig } from "../security/auth/token-issuer-factory.js";
 import { TokenIssuerFactory } from "../security/auth/token-issuer-factory.js";
-import type { NodePlacementConfig } from "../placement/node-placement-strategy.js";
-import { NodePlacementStrategyFactory } from "../placement/node-placement-strategy.js";
+import type { NodePlacementConfig } from "../placement/node-placement-strategy-factory.js";
+import { NodePlacementStrategyFactory } from "../placement/node-placement-strategy-factory.js";
 import type { TransportProvisionerConfig } from "../transport/transport-provisioner.js";
 import { TransportProvisionerFactory } from "../transport/transport-provisioner.js";
 import {
@@ -37,6 +35,11 @@ interface NormalizedDefaultWelcomeServiceConfig {
   authorizerConfig?: AuthorizerConfig | Record<string, unknown> | null;
   ttlSec?: number;
 }
+
+export const FACTORY_META = {
+  base: WELCOME_SERVICE_FACTORY_BASE_TYPE,
+  key: "DefaultWelcomeService",
+} as const;
 
 export class DefaultWelcomeServiceFactory extends WelcomeServiceFactory<DefaultWelcomeServiceConfig> {
   public readonly type = "DefaultWelcomeService";
@@ -133,11 +136,4 @@ function normalizeConfig(
   return normalized;
 }
 
-registerFactory<WelcomeService, DefaultWelcomeServiceConfig>(
-  WELCOME_SERVICE_FACTORY_BASE_TYPE,
-  "DefaultWelcomeService",
-  DefaultWelcomeServiceFactory,
-  {
-    isDefault: true,
-  }
-);
+export default DefaultWelcomeServiceFactory;

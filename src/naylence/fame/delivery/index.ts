@@ -13,10 +13,19 @@ export { DELIVERY_TRACKER_FACTORY_BASE_TYPE } from "./delivery-tracker-factory.j
 export type * from "./delivery-tracker-factory.js";
 export type * from "./default-delivery-tracker-factory.js";
 export * from "./at-least-once-delivery-policy.js";
-export type * from "./at-least-once-delivery-policy-factory.js";
+export {
+  AtLeastOnceDeliveryPolicyFactory,
+  type AtLeastOnceDeliveryPolicyConfig,
+} from "./at-least-once-delivery-policy-factory.js";
 export * from "./at-most-once-delivery-policy.js";
-export type * from "./at-most-once-delivery-policy-factory.js";
-export type * from "./delivery-profile-factory.js";
+export {
+  AtMostOnceDeliveryPolicyFactory,
+  type AtMostOnceDeliveryPolicyConfig,
+} from "./at-most-once-delivery-policy-factory.js";
+export {
+  DeliveryProfileFactory,
+  type DeliveryProfileConfig,
+} from "./delivery-profile-factory.js";
 export type { DefaultDeliveryTracker } from "./default-delivery-tracker.js";
 export type {
   DeliveryTrackerEventHandler as DefaultDeliveryTrackerEventHandler,

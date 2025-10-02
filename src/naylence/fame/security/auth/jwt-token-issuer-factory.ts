@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import { DEFAULT_JWT_TOKEN_TTL_SEC } from "../../constants/ttl-constants.js";
 import { validateJwtTokenTtlSec } from "../../util/ttl-validation.js";
 import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
@@ -71,6 +70,11 @@ interface NormalizedJWTTokenIssuerConfig {
   ttlSec: number;
   audience?: string;
 }
+
+export const FACTORY_META = {
+  base: TOKEN_ISSUER_FACTORY_BASE_TYPE,
+  key: "JWTTokenIssuer",
+} as const;
 
 export class JWTTokenIssuerFactory extends TokenIssuerFactory<JWTTokenIssuerConfig> {
   public readonly type = "JWTTokenIssuer";
@@ -307,9 +311,4 @@ function getProviderKeyId(provider: CryptoProvider | null): string | undefined {
   return typeof legacy === "string" && legacy.length > 0 ? legacy : undefined;
 }
 
-registerFactory<TokenIssuer, JWTTokenIssuerConfig>(
-  TOKEN_ISSUER_FACTORY_BASE_TYPE,
-  "JWTTokenIssuer",
-  JWTTokenIssuerFactory,
-  { isDefault: true }
-);
+export default JWTTokenIssuerFactory;

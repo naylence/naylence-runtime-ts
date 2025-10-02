@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import { safeImport } from "../../util/lazy-import.js";
 import type { EnvelopeSigner } from "./envelope-signer.js";
 import {
@@ -30,6 +29,11 @@ export interface EdDSAEnvelopeSignerConfig extends EnvelopeSignerConfig {
   type: "EdDSAEnvelopeSigner";
 }
 
+export const FACTORY_META = {
+  base: ENVELOPE_SIGNER_FACTORY_BASE_TYPE,
+  key: "EdDSAEnvelopeSigner",
+} as const;
+
 export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvelopeSignerConfig> {
   public readonly type = "EdDSAEnvelopeSigner";
   public readonly isDefault = true;
@@ -57,9 +61,5 @@ export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvel
   }
 }
 
-registerFactory(
-  ENVELOPE_SIGNER_FACTORY_BASE_TYPE,
-  "EdDSAEnvelopeSigner",
-  EdDSAEnvelopeSignerFactory,
-  { isDefault: true }
-);
+export default EdDSAEnvelopeSignerFactory;
+

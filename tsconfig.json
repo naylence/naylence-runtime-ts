@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ES2020",
+    "module": "Node16",
     "lib": ["ES2020", "DOM"],
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
@@ -27,7 +27,18 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "naylence-core": [
+        "../naylence-core-ts/dist/types/naylence-core-ts/src/index",
+        "../naylence-core-ts/src/index"
+      ],
+      "naylence-core/*": [
+        "../naylence-core-ts/dist/types/naylence-core-ts/src/naylence/*",
+        "../naylence-core-ts/src/naylence/*"
+      ]
+    }
   },
   "include": [
     "src/**/*"

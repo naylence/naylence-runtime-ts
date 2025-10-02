@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
 import {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
@@ -22,6 +21,11 @@ interface NormalizedQueryParamConfig {
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   paramName: string;
 }
+
+export const FACTORY_META = {
+  base: AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
+  key: "QueryParamAuth",
+} as const;
 
 export class QueryParamAuthInjectionStrategyFactory extends AuthInjectionStrategyFactory<QueryParamAuthInjectionStrategyConfig> {
   public readonly type = "QueryParamAuth";
@@ -67,8 +71,4 @@ function normalizeConfig(
   };
 }
 
-registerFactory<AuthInjectionStrategy, QueryParamAuthInjectionStrategyConfig>(
-  AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
-  "QueryParamAuth",
-  QueryParamAuthInjectionStrategyFactory
-);
+export default QueryParamAuthInjectionStrategyFactory;

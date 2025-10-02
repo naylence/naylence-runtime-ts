@@ -1,6 +1,10 @@
 import type { DeliveryPolicy } from "./delivery-policy.js";
 import type { DeliveryPolicyConfig } from "./delivery-policy-config.js";
-import { DeliveryPolicyFactory, registerDeliveryPolicyFactory } from "./delivery-policy-factory.js";
+import {
+  DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  DeliveryPolicyFactory,
+  registerDeliveryPolicyFactory,
+} from "./delivery-policy-factory.js";
 import { AtMostOnceDeliveryPolicy } from "./at-most-once-delivery-policy.js";
 
 export interface AtMostOnceDeliveryPolicyConfig extends DeliveryPolicyConfig {
@@ -19,3 +23,10 @@ export class AtMostOnceDeliveryPolicyFactory extends DeliveryPolicyFactory<AtMos
 
 registerDeliveryPolicyFactory("AtMostOnceDeliveryPolicy", AtMostOnceDeliveryPolicyFactory);
 registerDeliveryPolicyFactory("AtMostOnceMessageDeliveryPolicy", AtMostOnceDeliveryPolicyFactory);
+
+export const FACTORY_META = {
+  base: DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  key: "AtMostOnceDeliveryPolicy",
+} as const;
+
+export default AtMostOnceDeliveryPolicyFactory;

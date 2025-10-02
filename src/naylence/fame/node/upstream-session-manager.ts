@@ -155,7 +155,7 @@ export class UpstreamSessionManager extends TaskSpawner implements SessionManage
     }
 
     if (this.connector) {
-      await this.connector.stop().catch((error) => {
+      await this.connector.stop().catch((error: unknown) => {
         logger.debug("connector_stop_error", { error: (error as Error).message });
       });
       this.connector = null;

@@ -21,6 +21,10 @@ import { getLogger } from "../util/logging.js";
 
 const logger = getLogger("grant-selection-policy");
 
+function isSerializedGrant(value: unknown): value is SerializedGrant {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 export enum ConnectorType {
   HTTP_STATELESS = "HttpStatelessConnector",
   WEBSOCKET_STATELESS = "WebSocketStatelessConnector",
@@ -52,19 +56,19 @@ export class GrantSelectionContext {
   }
 
   get clientSupportedCallbackGrants(): SerializedGrant[] {
-    const callbackGrants = this.attachFrame.callbackGrants;
+  const callbackGrants = this.attachFrame.callbackGrants as unknown[] | undefined;
     if (!callbackGrants || callbackGrants.length === 0) {
       return [];
     }
 
     return callbackGrants
-      .map((grant) => {
-        if (grant && typeof grant === "object" && !Array.isArray(grant)) {
-          return { ...(grant as Record<string, unknown>) };
+      .map((grant): SerializedGrant => {
+        if (isSerializedGrant(grant)) {
+          return { ...grant };
         }
         return {} as SerializedGrant;
       })
-      .filter((grant) => Object.keys(grant).length > 0);
+      .filter((grant): grant is SerializedGrant => Object.keys(grant).length > 0);
   }
 }
 

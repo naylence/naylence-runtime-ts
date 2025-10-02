@@ -1,5 +1,4 @@
 import type { Tracer } from "@opentelemetry/api";
-import { registerFactory } from "naylence-factory";
 
 import {
   AuthInjectionStrategyFactory,
@@ -52,6 +51,11 @@ function getOpenTelemetryTraceEmitterModule(): Promise<OpenTelemetryTraceEmitter
   }
   return openTelemetryTraceEmitterModulePromise;
 }
+
+export const FACTORY_META = {
+  base: TRACE_EMITTER_FACTORY_BASE_TYPE,
+  key: "OpenTelemetryTraceEmitter",
+} as const;
 
 export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTelemetryTraceEmitterConfig> {
   public readonly type = "OpenTelemetryTraceEmitter";
@@ -149,8 +153,4 @@ function extractHeaders(value: unknown): Record<string, string> | null {
   return Object.keys(headers).length > 0 ? headers : null;
 }
 
-registerFactory(
-  TRACE_EMITTER_FACTORY_BASE_TYPE,
-  "OpenTelemetryTraceEmitter",
-  OpenTelemetryTraceEmitterFactory
-);
+export default OpenTelemetryTraceEmitterFactory;

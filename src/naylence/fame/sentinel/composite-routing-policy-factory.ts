@@ -1,5 +1,4 @@
-import { createResource, registerFactory } from "naylence-factory";
-
+import { createResource } from "naylence-factory";
 import { getLogger } from "../util/logging.js";
 import { CapabilityAwareRoutingPolicy } from "./capability-aware-routing-policy.js";
 import { CompositeRoutingPolicy } from "./composite-routing-policy.js";
@@ -22,6 +21,11 @@ export interface CompositeRoutingPolicyConfig extends RoutingPolicyConfig {
 interface NormalizedCompositeRoutingPolicyConfig {
   policies: (RoutingPolicyConfig | Record<string, unknown>)[];
 }
+
+export const FACTORY_META = {
+  base: ROUTING_POLICY_FACTORY_BASE,
+  key: "CompositeRoutingPolicy",
+} as const;
 
 export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
   public readonly type = "CompositeRoutingPolicy";
@@ -129,9 +133,4 @@ export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
   }
 }
 
-registerFactory<RoutingPolicy, CompositeRoutingPolicyConfig>(
-  ROUTING_POLICY_FACTORY_BASE,
-  "CompositeRoutingPolicy",
-  CompositeRoutingPolicyFactory,
-  { isDefault: true, priority: 100 }
-);
+export default CompositeRoutingPolicyFactory;

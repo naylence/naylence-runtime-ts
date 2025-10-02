@@ -1,5 +1,4 @@
-import { Expressions, registerFactory } from "naylence-factory";
-
+import { Expressions } from "naylence-factory";
 import { getLogger } from "../util/logging.js";
 import type { TraceEmitter } from "./trace-emitter.js";
 import type { TraceEmitterConfig } from "./trace-emitter-config.js";
@@ -33,6 +32,11 @@ const PROFILE_MAP: Record<string, TraceEmitterConfig> = {
   [PROFILE_NAME_NOOP]: NOOP_PROFILE,
   [PROFILE_NAME_OPEN_TELEMETRY]: OPEN_TELEMETRY_PROFILE,
 };
+
+export const FACTORY_META = {
+  base: TRACE_EMITTER_FACTORY_BASE_TYPE,
+  key: "TraceEmitterProfile",
+} as const;
 
 export class TraceEmitterProfileFactory extends TraceEmitterFactory<TraceEmitterProfileConfig> {
   public readonly type = "TraceEmitterProfile";
@@ -91,4 +95,4 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-registerFactory(TRACE_EMITTER_FACTORY_BASE_TYPE, "TraceEmitterProfile", TraceEmitterProfileFactory);
+export default TraceEmitterProfileFactory;

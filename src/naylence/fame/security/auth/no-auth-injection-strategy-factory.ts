@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
 import {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
@@ -10,6 +9,11 @@ import { NoAuthInjectionStrategy } from "./no-auth-injection-strategy.js";
 export interface NoAuthInjectionStrategyConfig extends AuthInjectionStrategyConfig {
   type: "NoAuth";
 }
+
+export const FACTORY_META = {
+  base: AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
+  key: "NoAuth",
+} as const;
 
 export class NoAuthInjectionStrategyFactory extends AuthInjectionStrategyFactory<NoAuthInjectionStrategyConfig> {
   public readonly type = "NoAuth";
@@ -41,8 +45,4 @@ function normalizeConfig(
   return defaultConfig;
 }
 
-registerFactory<AuthInjectionStrategy, NoAuthInjectionStrategyConfig>(
-  AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
-  "NoAuth",
-  NoAuthInjectionStrategyFactory
-);
+export default NoAuthInjectionStrategyFactory;

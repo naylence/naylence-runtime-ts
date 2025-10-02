@@ -8,6 +8,7 @@ import { CONNECTOR_FACTORY_BASE_TYPE, ConnectorFactory } from "./connector-facto
 import type { ConnectorConfig } from "./connector-config.js";
 import { FameConnectError } from "../errors/errors.js";
 import { getLogger } from "../util/logging.js";
+import type { Logger } from "../util/logging-types.js";
 import type { ConnectionGrant } from "../grants/connection-grant.js";
 import {
   normalizeWebSocketConnectionGrant,
@@ -22,10 +23,16 @@ import {
   type AuthInjectionStrategyConfig,
 } from "../security/auth/auth-injection-strategy-factory.js";
 import type { AuthInjectionStrategy } from "../security/auth/auth-injection-strategy.js";
-import { FameConnector } from "naylence-core";
-import { registerFactory, ExpressionEvaluationPolicy } from "naylence-factory";
-
+import { ExpressionEvaluationPolicy } from "naylence-factory";
 const logger = getLogger("websocket-connector-factory");
+
+type WebSocketSslLoader = (logger: Logger) => Promise<Buffer | undefined>;
+
+let sslLoader: WebSocketSslLoader | null = null;
+
+export function setWebSocketConnectorSslLoader(loader: WebSocketSslLoader | null): void {
+  sslLoader = loader;
+}
 
 export interface WebSocketConnectorFactoryConfig extends ConnectorConfig {
   type: "WebSocketConnector";
@@ -59,6 +66,11 @@ type SubprotocolCapableStrategy = AuthInjectionStrategy & {
 type UrlMutatingStrategy = AuthInjectionStrategy & {
   modifyUrl?: (url: string) => Promise<string> | string;
 };
+
+export const FACTORY_META = {
+  base: CONNECTOR_FACTORY_BASE_TYPE,
+  key: "WebSocketConnector",
+} as const;
 
 export class WebSocketConnectorFactory extends ConnectorFactory<
   WebSocketConnector,
@@ -481,35 +493,12 @@ export class WebSocketConnectorFactory extends ConnectorFactory<
   }
 
   private async _loadSslCertificate(): Promise<Buffer | undefined> {
-    if (typeof process === "undefined") {
+    if (!sslLoader) {
       return undefined;
     }
 
-    const certFile = process.env.SSL_CERT_FILE;
-    if (!certFile) {
-      return undefined;
-    }
-
-    try {
-      const fs = await import("fs");
-      return fs.readFileSync(certFile);
-    } catch (error) {
-      logger.warning("ssl_certificate_load_failed", {
-        cert_file: certFile,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return undefined;
-    }
+    return await sslLoader(logger);
   }
 }
 
-
-registerFactory<FameConnector, WebSocketConnectorFactoryConfig>(
-  CONNECTOR_FACTORY_BASE_TYPE,
-  "WebSocketConnector",
-  WebSocketConnectorFactory as unknown as new (...args: unknown[]) => ConnectorFactory<
-    WebSocketConnector,
-    WebSocketConnectorFactoryConfig
-  >,
-  { isDefault: true }
-);
+export default WebSocketConnectorFactory;

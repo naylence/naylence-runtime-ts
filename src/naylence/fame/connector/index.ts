@@ -31,18 +31,6 @@ export {
   WebSocketState,
 } from "./websocket-connector.js";
 
-// WebSocket connector factory
-export type {
-  WebSocketConnectorFactory,
-  WebSocketConnectorFactoryConfig,
-  CreateWebSocketConnectorOptions,
-} from "./websocket-connector-factory.js";
-
-export type {
-  WebSocketListenerFactory,
-  WebSocketListenerFactoryConfig,
-} from "./websocket-listener-factory.js";
-
 // Flow controller
 export { _NoopFlowController } from "./noop-flow-controller.js";
 
@@ -55,8 +43,3 @@ export type { HttpServer, HttpRouter } from "./http-server.js";
 export { DefaultHttpServer } from "./default-http-server.js";
 export { WebSocketListener, getWebsocketListenerInstance } from "./websocket-listener.js";
 export { HttpListener, getHttpListenerInstance } from "./http-listener.js";
-export type {
-  HttpListenerFactory,
-  HttpListenerFactoryConfig,
-  CreateHttpListenerOptions,
-} from "./http-listener-factory.js";

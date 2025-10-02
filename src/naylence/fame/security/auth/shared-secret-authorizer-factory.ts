@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import { safeImport } from "../../util/lazy-import.js";
 import type { Authorizer } from "./authorizer.js";
 import {
@@ -52,6 +50,11 @@ function normalizeConfig(
   };
 }
 
+export const FACTORY_META = {
+  base: AUTHORIZER_FACTORY_BASE_TYPE,
+  key: "SharedSecretAuthorizer",
+} as const;
+
 export class SharedSecretAuthorizerFactory extends AuthorizerFactory<SharedSecretAuthorizerConfig> {
   public readonly type = "SharedSecretAuthorizer";
 
@@ -70,8 +73,4 @@ export class SharedSecretAuthorizerFactory extends AuthorizerFactory<SharedSecre
   }
 }
 
-registerFactory<Authorizer, SharedSecretAuthorizerConfig>(
-  AUTHORIZER_FACTORY_BASE_TYPE,
-  "SharedSecretAuthorizer",
-  SharedSecretAuthorizerFactory
-);
+export default SharedSecretAuthorizerFactory;

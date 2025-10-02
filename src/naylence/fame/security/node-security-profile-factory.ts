@@ -1,5 +1,4 @@
-import { Expressions, createResource, registerFactory } from "naylence-factory";
-
+import { Expressions, createResource } from "naylence-factory";
 import type { SecurityManager } from "./security-manager.js";
 import type { SecurityProfileConfig } from "./security-manager-config.js";
 import {
@@ -352,6 +351,11 @@ const PROFILE_MAP: Record<string, DefaultSecurityManagerConfig> = {
   [PROFILE_NAME_OPEN]: OPEN_PROFILE,
 };
 
+export const FACTORY_META = {
+  base: SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  key: "SecurityProfile",
+} as const;
+
 export class NodeSecurityProfileFactory extends SecurityManagerFactory<SecurityProfileConfig> {
   public readonly type = "SecurityProfile";
 
@@ -416,8 +420,4 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-registerFactory<SecurityManager, SecurityProfileConfig>(
-  SECURITY_MANAGER_FACTORY_BASE_TYPE,
-  "SecurityProfile",
-  NodeSecurityProfileFactory
-);
+export default NodeSecurityProfileFactory;

@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import { safeImport } from "../../util/lazy-import.js";
 import type { EnvelopeVerifier } from "./envelope-verifier.js";
 import {
@@ -32,6 +31,11 @@ export interface EdDSAEnvelopeVerifierConfig extends EnvelopeVerifierConfig {
   type: "EdDSAEnvelopeVerifier";
 }
 
+export const FACTORY_META = {
+  base: ENVELOPE_VERIFIER_FACTORY_BASE_TYPE,
+  key: "EdDSAEnvelopeVerifier",
+} as const;
+
 export class EdDSAEnvelopeVerifierFactory extends EnvelopeVerifierFactory<EdDSAEnvelopeVerifierConfig> {
   public readonly type = "EdDSAEnvelopeVerifier";
   public readonly isDefault = true;
@@ -57,9 +61,5 @@ export class EdDSAEnvelopeVerifierFactory extends EnvelopeVerifierFactory<EdDSAE
   }
 }
 
-registerFactory(
-  ENVELOPE_VERIFIER_FACTORY_BASE_TYPE,
-  "EdDSAEnvelopeVerifier",
-  EdDSAEnvelopeVerifierFactory,
-  { isDefault: true }
-);
+export default EdDSAEnvelopeVerifierFactory;
+

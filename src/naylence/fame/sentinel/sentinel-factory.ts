@@ -7,7 +7,11 @@ import type { AdmissionClient } from "../node/admission/admission-client.js";
 import { AdmissionClientFactory } from "../node/admission/admission-client-factory.js";
 import { makeCommonOptions } from "../node/factory-commons.js";
 import type { NodeEventListener } from "../node/node-event-listener.js";
-import { NodeLikeFactory, registerNodeLikeFactory } from "../node/node-like-factory.js";
+import {
+  NODE_LIKE_FACTORY_BASE_TYPE,
+  NodeLikeFactory,
+  // registerNodeLikeFactory,
+} from "../node/node-like-factory.js";
 import { normalizeFameNodeConfig } from "../node/node-config.js";
 import type { TransportListener } from "../connector/transport-listener.js";
 import { TransportListenerFactory } from "../connector/transport-listener-factory.js";
@@ -37,6 +41,11 @@ interface LoadBalancingOptions {
   strategyConfig: LoadBalancingStrategyConfig | Record<string, unknown> | null;
   stickinessManager: LoadBalancerStickinessManager | null;
 }
+
+export const FACTORY_META = {
+  base: NODE_LIKE_FACTORY_BASE_TYPE,
+  key: "Sentinel",
+} as const;
 
 export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
   public readonly type = "Sentinel";
@@ -288,4 +297,6 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
   }
 }
 
-registerNodeLikeFactory("Sentinel", SentinelFactory as unknown as new () => SentinelFactory);
+// registerNodeLikeFactory("Sentinel", SentinelFactory as unknown as new () => SentinelFactory);
+
+export default SentinelFactory;

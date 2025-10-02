@@ -4,11 +4,12 @@ import { getNode } from "../node/node-context-stack.js";
 import type { NodeLike } from "../node/node-like.js";
 
 import {
+  NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
   NodePlacementStrategyFactory,
   registerNodePlacementStrategyFactory,
-  type NodePlacementStrategy,
   type NodePlacementConfig,
-} from "./node-placement-strategy.js";
+} from "./node-placement-strategy-factory.js";
+import type { NodePlacementStrategy } from "./node-placement-strategy.js";
 import { WebSocketPlacementStrategy } from "./websocket-node-placement-strategy.js";
 
 export interface WebSocketPlacementConfig extends NodePlacementConfig {
@@ -80,7 +81,14 @@ export class WebSocketPlacementStrategyFactory extends NodePlacementStrategyFact
   }
 }
 
+export const FACTORY_META = {
+  base: NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
+  key: "WebSocketNodePlacementStrategy",
+} as const;
+
 registerNodePlacementStrategyFactory(
   "WebSocketNodePlacementStrategy",
   WebSocketPlacementStrategyFactory
 );
+
+export default WebSocketPlacementStrategyFactory;

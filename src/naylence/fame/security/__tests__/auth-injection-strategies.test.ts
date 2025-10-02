@@ -1,4 +1,4 @@
-import { ResourceFactoryRegistry, registerFactory } from "naylence-factory";
+import { ResourceFactoryRegistry, registerFactory, unregisterFactory } from "naylence-factory";
 import { NoAuthInjectionStrategyFactory } from "../auth/no-auth-injection-strategy-factory.js";
 import { QueryParamAuthInjectionStrategyFactory } from "../auth/query-param-auth-injection-strategy-factory.js";
 import { QueryParamAuthInjectionStrategy } from "../auth/query-param-auth-injection-strategy.js";
@@ -13,6 +13,7 @@ import type { TokenProviderConfig } from "../auth/token-provider-factory.js";
 import type { TokenProvider } from "../auth/token-provider.js";
 import type { Token } from "../auth/token.js";
 import { isTokenExpired, isTokenValid } from "../auth/token.js";
+import { registerRuntimeFactories } from "../../../runtime/register-runtime-factories.js";
 
 describe("auth injection strategies", () => {
   beforeAll(() => {
@@ -334,9 +335,21 @@ describe("auth injection strategies", () => {
   });
 
   it("fails to create default token provider when none are registered", async () => {
-    await expect(TokenProviderFactory.createTokenProvider(null)).rejects.toThrow(
-      "Failed to create default token provider"
-    );
+    unregisterFactory(TOKEN_PROVIDER_FACTORY_BASE_TYPE);
+    ResourceFactoryRegistry.clearCache(TOKEN_PROVIDER_FACTORY_BASE_TYPE);
+
+    try {
+      await expect(TokenProviderFactory.createTokenProvider(null)).rejects.toThrow(
+        "Failed to create default token provider"
+      );
+    } finally {
+      await registerRuntimeFactories();
+      registerFactory<TokenProvider, StaticTokenProviderConfig>(
+        TOKEN_PROVIDER_FACTORY_BASE_TYPE,
+        "StaticTokenProvider",
+        StaticTokenProviderFactory
+      );
+    }
   });
 
   it("evaluates token helpers", () => {

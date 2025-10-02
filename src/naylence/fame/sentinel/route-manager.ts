@@ -183,8 +183,9 @@ export class RouteManager extends TaskSpawner {
     const entries = await this._downstream_route_store.list();
     const now = new Date();
 
+    const entryTuples = Object.entries(entries) as Array<[string, RouteEntry]>;
     await Promise.all(
-      Object.entries(entries).map(async ([segment, entry]) => {
+      entryTuples.map(async ([segment, entry]) => {
         const normalized = this.normalizeEntry(entry);
         if (!normalized.connectorConfig) {
           logger.warning("route_restore_missing_config", { segment });
@@ -209,9 +210,9 @@ export class RouteManager extends TaskSpawner {
               authorization,
             });
 
-            await connector.start(async (envelope) => {
+            await connector.start(async (envelope: FameEnvelope): Promise<FameMessageResponse | null> => {
               await this.deliver(envelope, deliveryContext);
-              return null as FameMessageResponse | null;
+              return null;
             });
 
             await this._routesLock.runExclusive(async () => {
@@ -269,7 +270,7 @@ export class RouteManager extends TaskSpawner {
       await this.safeStop(connector);
     }
 
-    await this._downstream_route_store.delete(segment).catch((error) => {
+    await this._downstream_route_store.delete(segment).catch((error: unknown) => {
       logger.warning("route_expiration_delete_failed", {
         segment,
         error: error instanceof Error ? error.message : String(error),
@@ -315,7 +316,7 @@ export class RouteManager extends TaskSpawner {
 
     this.purgeRouteReferences(segment);
 
-    await store.delete(segment).catch((error) => {
+    await store.delete(segment).catch((error: unknown) => {
       logger.warning("route_delete_failed", {
         segment,
         error: error instanceof Error ? error.message : String(error),
@@ -460,8 +461,9 @@ export class RouteManager extends TaskSpawner {
   ): Promise<void> {
     const entries = await store.list();
 
+    const entryTuples = Object.entries(entries) as Array<[string, RouteEntry]>;
     await Promise.all(
-      Object.entries(entries).map(async ([segment, entry]) => {
+      entryTuples.map(async ([segment, entry]) => {
         const normalized = this.normalizeEntry(entry);
         if (!normalized.attachExpiresAt || normalized.attachExpiresAt >= now) {
           return;
@@ -476,7 +478,7 @@ export class RouteManager extends TaskSpawner {
           }
         });
 
-        await store.delete(segment).catch((error) => {
+        await store.delete(segment).catch((error: unknown) => {
           logger.warning("route_auto_expire_delete_failed", {
             segment,
             error: error instanceof Error ? error.message : String(error),

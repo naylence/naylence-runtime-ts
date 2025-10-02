@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import {
   SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE,
   SecureChannelManagerFactory,
@@ -12,6 +10,11 @@ export interface NoopSecureChannelManagerConfig extends SecureChannelManagerConf
   type: "NoopSecureChannelManager";
 }
 
+export const FACTORY_META = {
+  base: SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE,
+  key: "NoopSecureChannelManager",
+} as const;
+
 export class NoopSecureChannelManagerFactory extends SecureChannelManagerFactory<NoopSecureChannelManagerConfig> {
   public readonly type = "NoopSecureChannelManager";
   public readonly isDefault = true;
@@ -21,9 +24,4 @@ export class NoopSecureChannelManagerFactory extends SecureChannelManagerFactory
   }
 }
 
-registerFactory(
-  SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE,
-  "NoopSecureChannelManager",
-  NoopSecureChannelManagerFactory,
-  { isDefault: true }
-);
+export default NoopSecureChannelManagerFactory;

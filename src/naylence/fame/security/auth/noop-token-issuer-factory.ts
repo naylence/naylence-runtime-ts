@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { TokenIssuer } from "./token-issuer.js";
 import {
   TOKEN_ISSUER_FACTORY_BASE_TYPE,
@@ -12,6 +10,11 @@ export interface NoopTokenIssuerConfig extends TokenIssuerConfig {
   type: "NoopTokenIssuer";
 }
 
+export const FACTORY_META = {
+  base: TOKEN_ISSUER_FACTORY_BASE_TYPE,
+  key: "NoopTokenIssuer",
+} as const;
+
 export class NoopTokenIssuerFactory extends TokenIssuerFactory<NoopTokenIssuerConfig> {
   public readonly type = "NoopTokenIssuer";
 
@@ -22,8 +25,4 @@ export class NoopTokenIssuerFactory extends TokenIssuerFactory<NoopTokenIssuerCo
   }
 }
 
-registerFactory<TokenIssuer, NoopTokenIssuerConfig>(
-  TOKEN_ISSUER_FACTORY_BASE_TYPE,
-  "NoopTokenIssuer",
-  NoopTokenIssuerFactory
-);
+export default NoopTokenIssuerFactory;

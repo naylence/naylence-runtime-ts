@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import {
   CredentialProviderFactory,
   type CredentialProviderConfig,
@@ -80,6 +78,11 @@ function normalizeConfig(
   return normalized;
 }
 
+export const FACTORY_META = {
+  base: TOKEN_PROVIDER_FACTORY_BASE_TYPE,
+  key: "OAuth2ClientCredentialsTokenProvider",
+} as const;
+
 export class OAuth2ClientCredentialsTokenProviderFactory extends TokenProviderFactory<OAuth2ClientCredentialsTokenProviderConfig> {
   public readonly type = "OAuth2ClientCredentialsTokenProvider";
 
@@ -111,8 +114,4 @@ export class OAuth2ClientCredentialsTokenProviderFactory extends TokenProviderFa
   }
 }
 
-registerFactory<TokenProvider, OAuth2ClientCredentialsTokenProviderConfig>(
-  TOKEN_PROVIDER_FACTORY_BASE_TYPE,
-  "OAuth2ClientCredentialsTokenProvider",
-  OAuth2ClientCredentialsTokenProviderFactory
-);
+export default OAuth2ClientCredentialsTokenProviderFactory;

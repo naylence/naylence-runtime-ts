@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { TokenProvider } from "./token-provider.js";
 import {
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
@@ -12,6 +10,11 @@ export interface NoneTokenProviderConfig extends TokenProviderConfig {
   type: "NoneTokenProvider";
 }
 
+export const FACTORY_META = {
+  base: TOKEN_PROVIDER_FACTORY_BASE_TYPE,
+  key: "NoneTokenProvider",
+} as const;
+
 export class NoneTokenProviderFactory extends TokenProviderFactory<NoneTokenProviderConfig> {
   public readonly type = "NoneTokenProvider";
   public readonly isDefault = true;
@@ -21,9 +24,4 @@ export class NoneTokenProviderFactory extends TokenProviderFactory<NoneTokenProv
   }
 }
 
-registerFactory<TokenProvider, NoneTokenProviderConfig>(
-  TOKEN_PROVIDER_FACTORY_BASE_TYPE,
-  "NoneTokenProvider",
-  NoneTokenProviderFactory,
-  { isDefault: true }
-);
+export default NoneTokenProviderFactory;

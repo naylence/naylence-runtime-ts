@@ -181,7 +181,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         : null;
 
     this.routeManager = new RouteManager({
-      deliver: (envelope, context) => this.deliver(envelope, context),
+          deliver: (envelope: FameEnvelope, context: FameAuthorizedDeliveryContext) =>
+            this.deliver(envelope, context),
       routeStore,
       getId: () => this.id,
       cleanupDelayMs: this.cleanupDelayMs,
@@ -629,7 +630,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       };
     };
 
-    const gatedHandler: FameEnvelopeHandler = async (env, ctx) => {
+    const gatedHandler: FameEnvelopeHandler = async (
+      env: FameEnvelope,
+      ctx?: FameDeliveryContext
+    ) => {
       if (ctx?.fromConnector && ctx.fromConnector !== connector) {
         throw new Error("Context connector mismatch for origin connector");
       }
@@ -682,7 +686,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       pendingEntry.cancelAttachTimeout = () => timeoutController.abort();
 
       this.spawn(
-        async (taskSignal) => {
+        async (taskSignal?: AbortSignal) => {
           const combined = new AbortController();
           const abortHandler = () => combined.abort();
 
@@ -937,9 +941,11 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       admissionClient: peer.admissionClient as AdmissionClient,
       attachClient: this.attachClient,
       requestedLogicals: this.requestedLogicals,
-      inboundHandler: (env, ctx) => this.handleInboundFromPeer(env, ctx),
-      onAttach: (info, connector) => this.onNodeAttachToPeer(info, connector),
-      onEpochChange: (epoch) => this.onEpochChange(epoch),
+          inboundHandler: (env: FameEnvelope, ctx?: FameDeliveryContext) =>
+            this.handleInboundFromPeer(env, ctx),
+          onAttach: (info: AttachInfo, connector: FameConnector) =>
+            this.onNodeAttachToPeer(info, connector),
+          onEpochChange: (epoch: string) => this.onEpochChange(epoch),
       onWelcome: async () => undefined,
     });
 

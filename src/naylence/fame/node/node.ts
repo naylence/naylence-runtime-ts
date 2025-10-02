@@ -225,7 +225,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
       getId: () => this._id,
       getPhysicalPath: () => this._physicalPath,
       getAcceptedLogicals: () => this._acceptedLogicals,
-      forwardUpstream: (envelope, context) => this.forwardUpstream(envelope, context),
+      forwardUpstream: (envelope: FameEnvelope, context?: FameDeliveryContext) =>
+        this.forwardUpstream(envelope, context),
       envelopeFactory: this._envelopeFactory,
       deliveryTracker: this._deliveryTracker,
       getEncryptionKeyId: () => this._securityManager?.getEncryptionKeyId() ?? null,
@@ -249,12 +250,22 @@ export class FameNode extends TaskSpawner implements NodeLike {
     const serviceManager = options.serviceManager
       ? options.serviceManager
       : new DefaultServiceManager({
-          invoke: (targetAddr, method, params, timeoutMs) =>
-            this.invoke(targetAddr, method, params, timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS),
-          serve: (serviceName, handler, serveOptions) =>
-            this._envelopeListenerManager.listen(serviceName, handler, serveOptions ?? {}),
-          serveRpc: (serviceName, handler, serveOptions) =>
-            this._envelopeListenerManager.listenRpc(serviceName, handler, serveOptions ?? {}),
+          invoke: (
+            targetAddr: FameAddress,
+            method: string,
+            params: Record<string, unknown>,
+            timeoutMs?: number | null
+          ) => this.invoke(targetAddr, method, params, timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS),
+          serve: (
+            serviceName: string,
+            handler: FameEnvelopeHandler,
+            serveOptions?: Parameters<EnvelopeListenerManager["listen"]>[2]
+          ) => this._envelopeListenerManager.listen(serviceName, handler, serveOptions ?? {}),
+          serveRpc: (
+            serviceName: string,
+            handler: FameRPCHandler,
+            serveOptions?: Parameters<EnvelopeListenerManager["listenRpc"]>[2]
+          ) => this._envelopeListenerManager.listenRpc(serviceName, handler, serveOptions ?? {}),
           capabilityMap: options.serviceCapabilityMap ?? undefined,
           pollTimeoutMs: options.servicePollTimeoutMs ?? null,
           defaultServiceConfigs: options.defaultServiceConfigs ?? [],
@@ -315,7 +326,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
       requestedLogicals: [...this._requestedLogicals],
       outboundOriginType: DeliveryOriginType.DOWNSTREAM,
       inboundOriginType: DeliveryOriginType.UPSTREAM,
-      inboundHandler: (envelope, context) => this.handleInboundFromUpstream(envelope, context),
+      inboundHandler: (envelope: FameEnvelope, context?: FameDeliveryContext) =>
+        this.handleInboundFromUpstream(envelope, context),
       onWelcome: (frame) => this.handleWelcome(frame),
       onAttach: (info, connector) => this.handleAttach(info, connector),
       onEpochChange: (epoch) => this.handleEpochChange(epoch),
@@ -588,7 +600,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
       await this.persistNodeMeta();
 
-      await this.listen(SYSTEM_INBOX, async (env, ctx) => {
+      await this.listen(SYSTEM_INBOX, async (env: FameEnvelope, ctx?: FameDeliveryContext) => {
         await this.handleSystemFrame(env, ctx);
         return null;
       });

@@ -1,5 +1,4 @@
-import { Expressions, registerFactory } from "naylence-factory";
-import { GRANT_PURPOSE_NODE_ATTACH } from "../../grants/grant.js";
+import { Expressions } from "naylence-factory";import { GRANT_PURPOSE_NODE_ATTACH } from "../../grants/grant.js";
 import { getLogger } from "../../util/logging.js";
 import {
   ADMISSION_CLIENT_FACTORY_BASE_TYPE,
@@ -126,6 +125,11 @@ const PROFILE_MAP: Record<string, AdmissionConfig> = {
   [PROFILE_NAME_NONE]: NOOP_PROFILE,
 };
 
+export const FACTORY_META = {
+  base: ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  key: "AdmissionProfile",
+} as const;
+
 export class AdmissionProfileFactory extends AdmissionClientFactory<AdmissionProfileConfig> {
   public readonly type = "AdmissionProfile";
 
@@ -178,8 +182,4 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-registerFactory<AdmissionClient, AdmissionProfileConfig>(
-  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
-  "AdmissionProfile",
-  AdmissionProfileFactory
-);
+export default AdmissionProfileFactory;

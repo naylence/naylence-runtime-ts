@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import { DEFAULT_JWKS_CACHE_TTL_SEC } from "../../constants/ttl-constants.js";
 import { safeImport } from "../../util/lazy-import.js";
 import { validateCacheTtlSec } from "../../util/ttl-validation.js";
@@ -38,6 +37,11 @@ interface NormalizedJWKSVerifierConfig {
   cacheTtlSec: number;
   algorithms: string[];
 }
+
+export const FACTORY_META = {
+  base: TOKEN_VERIFIER_FACTORY_BASE_TYPE,
+  key: "JWKSJWTTokenVerifier",
+} as const;
 
 export class JWKSTokenVerifierFactory extends TokenVerifierFactory<JWKSJWTTokenVerifierConfig> {
   public readonly type = "JWKSJWTTokenVerifier";
@@ -109,8 +113,4 @@ function normalizeConfig(
   };
 }
 
-registerFactory<TokenVerifier, JWKSJWTTokenVerifierConfig>(
-  TOKEN_VERIFIER_FACTORY_BASE_TYPE,
-  "JWKSJWTTokenVerifier",
-  JWKSTokenVerifierFactory
-);
+export default JWKSTokenVerifierFactory;

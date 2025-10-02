@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import { ConnectorFactory } from "../../connector/connector-factory.js";
 import { DirectAdmissionClient } from "./direct-admission-client.js";
 import {
@@ -18,6 +17,11 @@ interface NormalizedDirectAdmissionClientConfig {
   connectionGrants: Array<Record<string, unknown>>;
   ttlSec?: number | null;
 }
+
+export const FACTORY_META = {
+  base: ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  key: "DirectAdmissionClient",
+} as const;
 
 export class DirectAdmissionClientFactory extends AdmissionClientFactory<DirectAdmissionClientConfig> {
   public readonly type = "DirectAdmissionClient";
@@ -75,8 +79,4 @@ function normalizeConfig(
   };
 }
 
-registerFactory<AdmissionClient, DirectAdmissionClientConfig>(
-  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
-  "DirectAdmissionClient",
-  DirectAdmissionClientFactory
-);
+export default DirectAdmissionClientFactory;

@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import {
   TransportListenerFactory,
   TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
@@ -75,6 +73,11 @@ function normalizeConfig(
   };
 }
 
+export const FACTORY_META = {
+  base: TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
+  key: "HttpListener",
+} as const;
+
 export class HttpListenerFactory extends TransportListenerFactory<HttpListenerFactoryConfig> {
   public readonly type = "HttpListener";
   public readonly isDefault = true;
@@ -117,9 +120,4 @@ export class HttpListenerFactory extends TransportListenerFactory<HttpListenerFa
   }
 }
 
-registerFactory<TransportListener, HttpListenerFactoryConfig>(
-  TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
-  "HttpListener",
-  HttpListenerFactory,
-  { isDefault: true, priority: 1000 }
-);
+export default HttpListenerFactory;

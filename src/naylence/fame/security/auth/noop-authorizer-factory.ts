@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { Authorizer } from "./authorizer.js";
 import {
   AUTHORIZER_FACTORY_BASE_TYPE,
@@ -12,6 +10,11 @@ export interface NoopAuthorizerConfig extends AuthorizerConfig {
   type: "NoopAuthorizer";
 }
 
+export const FACTORY_META = {
+  base: AUTHORIZER_FACTORY_BASE_TYPE,
+  key: "NoopAuthorizer",
+} as const;
+
 export class NoopAuthorizerFactory extends AuthorizerFactory<NoopAuthorizerConfig> {
   public readonly type = "NoopAuthorizer";
 
@@ -22,8 +25,4 @@ export class NoopAuthorizerFactory extends AuthorizerFactory<NoopAuthorizerConfi
   }
 }
 
-registerFactory<Authorizer, NoopAuthorizerConfig>(
-  AUTHORIZER_FACTORY_BASE_TYPE,
-  "NoopAuthorizer",
-  NoopAuthorizerFactory
-);
+export default NoopAuthorizerFactory;

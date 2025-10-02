@@ -1,5 +1,4 @@
-import { createResource, registerFactory } from "naylence-factory";
-
+import { createResource } from "naylence-factory";
 import { getLogger } from "../util/logging.js";
 import {
   ROUTING_POLICY_FACTORY_BASE,
@@ -65,6 +64,11 @@ interface NormalizedRoutingProfileConfig {
   profile: string;
 }
 
+export const FACTORY_META = {
+  base: ROUTING_POLICY_FACTORY_BASE,
+  key: "RoutingProfile",
+} as const;
+
 export class RoutingProfileFactory extends RoutingPolicyFactory {
   public readonly type = "RoutingProfile";
 
@@ -129,8 +133,4 @@ export class RoutingProfileFactory extends RoutingPolicyFactory {
   }
 }
 
-registerFactory<RoutingPolicy, RoutingProfileConfig>(
-  ROUTING_POLICY_FACTORY_BASE,
-  "RoutingProfile",
-  RoutingProfileFactory
-);
+export default RoutingProfileFactory;

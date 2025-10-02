@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { TokenVerifier } from "./token-verifier.js";
 import {
   TOKEN_VERIFIER_FACTORY_BASE_TYPE,
@@ -12,6 +10,11 @@ export interface NoopTokenVerifierConfig extends TokenVerifierConfig {
   type: "NoopTokenVerifier";
 }
 
+export const FACTORY_META = {
+  base: TOKEN_VERIFIER_FACTORY_BASE_TYPE,
+  key: "NoopTokenVerifier",
+} as const;
+
 export class NoopTokenVerifierFactory extends TokenVerifierFactory<NoopTokenVerifierConfig> {
   public readonly type = "NoopTokenVerifier";
 
@@ -22,8 +25,4 @@ export class NoopTokenVerifierFactory extends TokenVerifierFactory<NoopTokenVeri
   }
 }
 
-registerFactory<TokenVerifier, NoopTokenVerifierConfig>(
-  TOKEN_VERIFIER_FACTORY_BASE_TYPE,
-  "NoopTokenVerifier",
-  NoopTokenVerifierFactory
-);
+export default NoopTokenVerifierFactory;

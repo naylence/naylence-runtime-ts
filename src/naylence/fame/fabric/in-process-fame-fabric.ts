@@ -25,7 +25,7 @@ import { SinkService, isSinkService } from "../service/sink-service.js";
 import {
   normalizeExtendedFameConfig,
   type ExtendedFameConfig,
-} from "../config/extended-fame-config.js";
+} from "../config/extended-fame-config-base.js";
 
 const logger = getLogger("naylence.fame.fabric.in_process");
 
@@ -95,12 +95,12 @@ export class InProcessFameFabric extends FameFabric {
     return manager;
   }
 
-  override async start(): Promise<void> {
+  async start(): Promise<void> {
     if (this._fabricStarted) {
       return;
     }
 
-  await this.logStartupVersion();
+    await this.logStartupVersion();
     logger.debug("starting_fabric", { type: "in_process" });
 
     if (!this._currentNode) {
@@ -117,7 +117,7 @@ export class InProcessFameFabric extends FameFabric {
     this._fabricStarted = true;
   }
 
-  override async stop(): Promise<void> {
+  async stop(): Promise<void> {
     if (!this._fabricStarted) {
       return;
     }
@@ -134,7 +134,7 @@ export class InProcessFameFabric extends FameFabric {
     return this.getRequiredNode();
   }
 
-  override async send(
+  async send(
     envelope: FameEnvelope,
     timeoutMs?: number | null
   ): Promise<DeliveryAckFrame | null> {
@@ -147,7 +147,7 @@ export class InProcessFameFabric extends FameFabric {
     );
   }
 
-  override async invoke(
+  async invoke(
     address: FameAddress,
     method: string,
     params: Record<string, any>,
@@ -156,7 +156,7 @@ export class InProcessFameFabric extends FameFabric {
     return this.getRequiredNode().invoke(address, method, params, timeoutMs);
   }
 
-  override async invokeByCapability(
+  async invokeByCapability(
     capabilities: string[],
     method: string,
     params: Record<string, any>,
@@ -165,7 +165,7 @@ export class InProcessFameFabric extends FameFabric {
     return this.getRequiredNode().invokeByCapability(capabilities, method, params, timeoutMs);
   }
 
-  override async invokeStream(
+  async invokeStream(
     address: FameAddress,
     method: string,
     params: Record<string, any>,
@@ -174,7 +174,7 @@ export class InProcessFameFabric extends FameFabric {
     return this.getRequiredNode().invokeStream(address, method, params, timeoutMs);
   }
 
-  override async invokeByCapabilityStream(
+  async invokeByCapabilityStream(
     capabilities: string[],
     method: string,
     params: Record<string, any>,
@@ -183,7 +183,7 @@ export class InProcessFameFabric extends FameFabric {
     return this.getRequiredNode().invokeByCapabilityStream(capabilities, method, params, timeoutMs);
   }
 
-  override async serve(service: FameService, serviceName?: string | null): Promise<FameAddress> {
+  async serve(service: FameService, serviceName?: string | null): Promise<FameAddress> {
     const resolvedName = serviceName ?? (service as { name?: string }).name ?? null;
     if (!resolvedName) {
       throw new Error("service_name parameter not set and service doesn't define 'name' property");
@@ -195,7 +195,7 @@ export class InProcessFameFabric extends FameFabric {
     return this.serviceManager.getLocalServices();
   }
 
-  override resolveServiceByCapability(capability: string): FameService {
+  resolveServiceByCapability(capability: string): FameService {
     return this.serviceManager.resolveByCapability(capability);
   }
 
@@ -216,7 +216,7 @@ export class InProcessFameFabric extends FameFabric {
     return this.sinkService.createSink({ name: sinkName });
   }
 
-  override async subscribe(
+  async subscribe(
     sinkAddress: FameAddress,
     handler: FameMessageHandler,
     name?: string | null

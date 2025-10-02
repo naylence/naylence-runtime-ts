@@ -5,8 +5,6 @@ export type * from "./trace-emitter-factory.js";
 export type * from "./trace-emitter-profile-factory.js";
 export * from "./base-trace-emitter.js";
 export * from "./noop-trace-emitter.js";
-export type * from "./noop-trace-emitter-factory.js";
 export * from "./open-telemetry-trace-emitter.js";
-export type * from "./open-telemetry-trace-emitter-factory.js";
 export * from "./otel-context.js";
 export * from "./otel-setup.js";

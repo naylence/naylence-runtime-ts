@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
@@ -16,6 +14,11 @@ export interface StickyLoadBalancingStrategyConfig extends LoadBalancingStrategy
 interface StickyStrategyDependencies {
   stickinessManager?: LoadBalancerStickinessManager | null;
 }
+
+export const FACTORY_META = {
+  base: LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  key: "StickyLoadBalancingStrategy",
+} as const;
 
 export class StickyLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
   public readonly type = "StickyLoadBalancingStrategy";
@@ -63,8 +66,4 @@ export class StickyLoadBalancingStrategyFactory extends LoadBalancingStrategyFac
   }
 }
 
-registerFactory<LoadBalancingStrategy, StickyLoadBalancingStrategyConfig>(
-  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  "StickyLoadBalancingStrategy",
-  StickyLoadBalancingStrategyFactory
-);
+export default StickyLoadBalancingStrategyFactory;

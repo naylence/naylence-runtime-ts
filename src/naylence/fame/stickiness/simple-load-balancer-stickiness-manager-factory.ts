@@ -1,5 +1,3 @@
-import { registerFactory } from "naylence-factory";
-
 import type { LoadBalancerStickinessManager } from "./load-balancer-stickiness-manager.js";
 import {
   LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE,
@@ -12,6 +10,11 @@ export interface SimpleLoadBalancerStickinessManagerConfig
   extends LoadBalancerStickinessManagerConfig {
   type: "SimpleLoadBalancerStickinessManager";
 }
+
+export const FACTORY_META = {
+  base: LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE,
+  key: "SimpleLoadBalancerStickinessManager",
+} as const;
 
 export class SimpleLoadBalancerStickinessManagerFactory extends LoadBalancerStickinessManagerFactory<SimpleLoadBalancerStickinessManagerConfig> {
   public readonly type = "SimpleLoadBalancerStickinessManager";
@@ -33,9 +36,4 @@ export class SimpleLoadBalancerStickinessManagerFactory extends LoadBalancerStic
   }
 }
 
-registerFactory(
-  LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE,
-  "SimpleLoadBalancerStickinessManager",
-  SimpleLoadBalancerStickinessManagerFactory,
-  { isDefault: true }
-);
+export default SimpleLoadBalancerStickinessManagerFactory;

@@ -5,7 +5,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 
 export default defineConfig({
-  input: 'src/index.ts',
+  input: 'src/browser.ts',
   output: {
     file: 'dist/browser/index.js',
     format: 'umd',
@@ -19,7 +19,14 @@ export default defineConfig({
       'fastify': 'null',
       '@fastify/websocket': 'null',
       'fs': 'null',
-      'node:module': 'null'
+      'path': 'null',
+      'util': 'null',
+      'readline': 'null',
+      'node:module': 'null',
+      'node:fs': 'null',
+      'node:fs/promises': 'null',
+      'node:path': 'null',
+      'node:crypto': 'null'
     }
   },
   plugins: [
@@ -31,11 +38,26 @@ export default defineConfig({
     commonjs(),
     typescript({
       target: 'es2020',
-      module: 'es2020',
+      module: 'node16',
       declaration: false,
       declarationMap: false,
       sourceMap: true,
     }),
   ],
-  external: ['async_hooks', 'pino', 'pino-pretty', 'fastify', '@fastify/websocket', 'fs', 'node:module'], // Mark Node.js modules as external
+  external: [
+    'async_hooks',
+    'pino',
+    'pino-pretty',
+    'fastify',
+    '@fastify/websocket',
+    'fs',
+    'path',
+    'util',
+    'readline',
+    'node:module',
+    'node:fs',
+    'node:fs/promises',
+    'node:path',
+    'node:crypto'
+  ], // Mark Node.js modules as external
 });

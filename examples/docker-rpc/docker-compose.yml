@@ -1,0 +1,29 @@
+services:
+  sentinel:
+    build:
+      context: ../../..
+      dockerfile: naylence-runtime-ts/examples/docker-rpc/Dockerfile
+    ports:
+      - "28000:8000"
+    env_file:
+      - ./config/.env
+    environment:
+      SENTINEL_LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-DEBUG}
+    volumes:
+      - ../../dist:/opt/naylence-runtime-ts/dist:ro
+      - ./config/sentinel-config.yml:/etc/fame/fame-config.yml:ro
+      - ./docker-sentinel-calculator.mjs:/opt/naylence-runtime-ts/local-sentinel/docker-sentinel-calculator.mjs:ro
+    command:
+      - node
+      - --enable-source-maps
+      - local-sentinel/docker-sentinel-calculator.mjs
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http=require('http');const req=http.request({host:'127.0.0.1',port:8000,path:'/'},res=>res.resume());req.on('error',()=>process.exit(1));req.end();"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 15s
+
+networks:
+  rpc-test:
+    driver: bridge

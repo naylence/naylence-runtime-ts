@@ -1,11 +1,7 @@
 import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import {
-  AbstractResourceFactory,
+import { AbstractResourceFactory,
   createDefaultResource,
-  createResource,
-  registerFactory,
-} from "naylence-factory";
-
+  createResource } from "naylence-factory";
 import { InMemoryKeyValueStore } from "../../storage/in-memory-storage.js";
 import type { RouteEntry, RouteStore } from "./route-store.js";
 
@@ -38,6 +34,11 @@ export abstract class RouteStoreFactory<
   }
 }
 
+export const FACTORY_META = {
+  base: ROUTE_STORE_FACTORY_BASE_TYPE,
+  key: "InMemoryRouteStore",
+} as const;
+
 export class InMemoryRouteStoreFactory extends RouteStoreFactory {
   public readonly type = "InMemoryRouteStore";
   public readonly isDefault = true;
@@ -51,9 +52,4 @@ export class InMemoryRouteStoreFactory extends RouteStoreFactory {
   }
 }
 
-registerFactory<RouteStore, RouteStoreConfig>(
-  ROUTE_STORE_FACTORY_BASE_TYPE,
-  "InMemoryRouteStore",
-  InMemoryRouteStoreFactory,
-  { isDefault: true, priority: 100 }
-);
+export default InMemoryRouteStoreFactory;

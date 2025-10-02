@@ -3,7 +3,16 @@ import { FameNode } from "./node.js";
 import type { FameNodeConfig } from "./node-config.js";
 import { normalizeFameNodeConfig } from "./node-config.js";
 import { makeCommonOptions } from "./factory-commons.js";
-import { NodeLikeFactory, registerNodeLikeFactory } from "./node-like-factory.js";
+import {
+  NODE_LIKE_FACTORY_BASE_TYPE,
+  NodeLikeFactory,
+//   registerNodeLikeFactory,
+} from "./node-like-factory.js";
+
+export const FACTORY_META = {
+  base: NODE_LIKE_FACTORY_BASE_TYPE,
+  key: "Node",
+} as const;
 
 export class NodeFactory extends NodeLikeFactory<FameNodeConfig> {
   public readonly type = "Node";
@@ -44,4 +53,6 @@ export class NodeFactory extends NodeLikeFactory<FameNodeConfig> {
   }
 }
 
-registerNodeLikeFactory("Node", NodeFactory);
+// registerNodeLikeFactory("Node", NodeFactory);
+
+export default NodeFactory;

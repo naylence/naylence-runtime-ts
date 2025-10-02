@@ -1,0 +1,28 @@
+plugins: 
+  - naylence-runtime
+
+node:
+  type: Sentinel
+  id: ${env:SENTINEL_ID:-test-sentinel}
+  publicUrl: ${env:SENTINEL_PUBLIC_URL:http://localhost:28000}
+  listeners:
+    - type: HttpListener
+      host: 0.0.0.0
+      port: ${env:SENTINEL_HTTP_PORT:8000}
+    - type: WebSocketListener
+      host: 0.0.0.0
+      port: ${env:SENTINEL_WS_PORT:8000}
+  requestedLogicals:
+    - fame.fabric
+  security:
+    type: SecurityProfile
+    profile: open
+  admission:
+    type: AdmissionProfile
+    profile: none
+  storage:
+    type: StorageProfile
+    profile: memory
+  delivery:
+    type: DeliveryProfile
+    profile: at-most-once

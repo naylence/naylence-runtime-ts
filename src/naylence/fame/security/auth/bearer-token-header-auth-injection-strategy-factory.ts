@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
 import {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
@@ -22,6 +21,11 @@ interface NormalizedBearerConfig {
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   headerName: string;
 }
+
+export const FACTORY_META = {
+  base: AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
+  key: "BearerTokenHeaderAuth",
+} as const;
 
 export class BearerTokenHeaderAuthInjectionStrategyFactory extends AuthInjectionStrategyFactory<BearerTokenHeaderAuthInjectionStrategyConfig> {
   public readonly type = "BearerTokenHeaderAuth";
@@ -70,8 +74,4 @@ function normalizeConfig(
   };
 }
 
-registerFactory<AuthInjectionStrategy, BearerTokenHeaderAuthInjectionStrategyConfig>(
-  AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
-  "BearerTokenHeaderAuth",
-  BearerTokenHeaderAuthInjectionStrategyFactory
-);
+export default BearerTokenHeaderAuthInjectionStrategyFactory;

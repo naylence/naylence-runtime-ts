@@ -4,10 +4,12 @@ import {
   FameServiceProxy,
   isFameMessageService,
   isFameRPCService,
+  type FameDeliveryContext,
+  type FameEnvelope,
   type FameMessageService,
+  type InvokeProtocol,
   type ServeProtocol,
   type ServeRPCProtocol,
-  type InvokeProtocol,
 } from "naylence-core";
 import { createResource, ExtensionManager } from "naylence-factory";
 
@@ -223,7 +225,10 @@ export class DefaultServiceManager implements ServiceManager {
   }
 
   private wrapMessageHandler(service: FameMessageService): Parameters<ServeProtocol>[1] {
-    return async (envelope, context) => {
+    return async (
+      envelope: FameEnvelope,
+      context: FameDeliveryContext | undefined
+    ): Promise<null> => {
       await service.handleMessage(envelope, context);
       return null;
     };

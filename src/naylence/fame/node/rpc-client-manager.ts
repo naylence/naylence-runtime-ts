@@ -309,7 +309,10 @@ export class RPCClientManager {
     const recipient = "__rpc__";
     this.rpcReplyAddress = formatAddress(recipient, this.getPhysicalPath());
 
-    const handler: FameEnvelopeHandler = async (envelope) => {
+    const handler: FameEnvelopeHandler = async (
+      envelope: FameEnvelope,
+      _context?: FameDeliveryContext
+    ) => {
       await this.handleReplyEnvelope(envelope);
       return null;
     };

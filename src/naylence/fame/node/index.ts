@@ -15,7 +15,7 @@ export * from "./envelope-security-handler.js";
 export * from "./secure-channel-frame-handler.js";
 export * from "./envelope-listener-manager.js";
 export * from "./node.js";
-export type * from "./node-factory.js";
+export { type NodeFactory } from "./node-factory.js";
 export * from "./node-context.js";
 export * from "./node-context-stack.js";
 export * from "./fame-environment-context.js";

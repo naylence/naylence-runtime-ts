@@ -1,4 +1,3 @@
-import { registerFactory } from "naylence-factory";
 import { DEFAULT_JWT_TOKEN_TTL_SEC } from "../../constants/ttl-constants.js";
 import { validateJwtTokenTtlSec } from "../../util/ttl-validation.js";
 import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
@@ -73,6 +72,11 @@ interface NormalizedJWTTokenVerifierConfig {
   requiredScopes: string[];
   algorithms: string[];
 }
+
+export const FACTORY_META = {
+  base: TOKEN_VERIFIER_FACTORY_BASE_TYPE,
+  key: "JWTTokenVerifier",
+} as const;
 
 export class JWTTokenVerifierFactory extends TokenVerifierFactory<JWTTokenVerifierConfig> {
   public readonly type = "JWTTokenVerifier";
@@ -279,9 +283,4 @@ function getProviderVerificationKey(provider: CryptoProvider | null): string | u
   return typeof legacy === "string" && legacy.length > 0 ? legacy : undefined;
 }
 
-registerFactory<TokenVerifier, JWTTokenVerifierConfig>(
-  TOKEN_VERIFIER_FACTORY_BASE_TYPE,
-  "JWTTokenVerifier",
-  JWTTokenVerifierFactory,
-  { isDefault: true }
-);
+export default JWTTokenVerifierFactory;

@@ -32,6 +32,7 @@ export default {
       '<rootDir>/../naylence-factory-ts/dist/'
     ],
   setupFiles: ['<rootDir>/test/setup-crypto.ts', '<rootDir>/test/setup-idb.ts'],
+  setupFilesAfterEnv: ['<rootDir>/test/setup-runtime.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },
