@@ -2,17 +2,26 @@
  * General utility functions for JSON handling, string manipulation,
  * path normalization, base64 encoding, hashing, and more.
  */
+import { sha256 } from "@noble/hashes/sha2.js";
+import { color, AnsiColor, formatTimestamp } from "./formatter.js";
 
-/**
- * Get crypto module in a cross-platform way
- */
-function getCrypto() {
+export const ENV_VAR_SHOW_ENVELOPES = "FAME_SHOW_ENVELOPES";
+
+export function isEnvelopeLoggingEnabled(): boolean {
+  return typeof process !== "undefined" && process.env?.[ENV_VAR_SHOW_ENVELOPES] === "true";
+}
+
+export const showEnvelopes = isEnvelopeLoggingEnabled();
+
+export function formatTimestampForConsole(): string {
+  return color(formatTimestamp(), AnsiColor.GRAY);
+}
+
+export function prettyModel(value: unknown): string {
   try {
-    // Node.js environment
-    return require("crypto");
-  } catch {
-    // Browser environment
-    return null;
+    return jsonDumps(value);
+  } catch (error) {
+    return String(error);
   }
 }
 
@@ -137,20 +146,22 @@ export function compiledPathPattern(pattern: string): RegExp {
 
 // Base62 characters: 0–9, a–z, A–Z
 const BASE62_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const BASE62_BASE = BigInt(BASE62_CHARS.length);
 
 /**
  * Convert a number to base62 string.
  */
-function toBase62(num: number): string {
-  if (num === 0) {
+function toBase62(num: bigint): string {
+  if (num === 0n) {
     return BASE62_CHARS[0];
   }
 
   const result: string[] = [];
-  while (num > 0) {
-    const remainder = num % 62;
-    result.push(BASE62_CHARS[remainder]);
-    num = Math.floor(num / 62);
+  let value = num;
+  while (value > 0n) {
+    const remainder = value % BASE62_BASE;
+    result.push(BASE62_CHARS[Number(remainder)]);
+    value = value / BASE62_BASE;
   }
 
   return result.reverse().join("");
@@ -163,36 +174,25 @@ function toBase62(num: number): string {
  * @returns Base62-encoded digest
  */
 export function secureDigest(s: string, bits: number = 128): string {
-  const crypto = getCrypto();
+  try {
+    const digest = sha256(new TextEncoder().encode(s));
+    const desiredBytes = Math.min(digest.length, Math.max(1, Math.ceil(bits / 8)));
+    let value = 0n;
+    for (let i = 0; i < desiredBytes; i += 1) {
+      value = (value << 8n) | BigInt(digest[i]);
+    }
 
-  if (!crypto) {
-    // Fallback for browser environment - use simple hash
+    return toBase62(value);
+  } catch {
+    // Fallback for environments without TextEncoder support
     let hash = 0;
-    for (let i = 0; i < s.length; i++) {
+    for (let i = 0; i < s.length; i += 1) {
       const char = s.charCodeAt(i);
       hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32bit integer
     }
-    return toBase62(Math.abs(hash));
+    return toBase62(BigInt(Math.abs(hash)));
   }
-
-  // 1. Full SHA256 digest
-  const hasher = crypto.createHash("sha256");
-  hasher.update(s, "utf8");
-  const fullDigest = hasher.digest();
-
-  // 2. Truncate to desired bits
-  const nBytes = Math.floor(bits / 8);
-  const truncated = fullDigest.subarray(0, nBytes);
-
-  // 3. Convert to big-endian integer
-  let val = 0;
-  for (let i = 0; i < truncated.length; i++) {
-    val = val * 256 + truncated[i];
-  }
-
-  // 4. Base-62 encode
-  return toBase62(val);
 }
 
 /**

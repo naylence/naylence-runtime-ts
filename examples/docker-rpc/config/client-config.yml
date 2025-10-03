@@ -6,15 +6,13 @@ node:
   id: ts-fabric-client
   hasParent: true
   requestedLogicals:
-    - calculator
+    - fame.fabric
   security:
-    type: DefaultSecurityManager
-    authorizer:
-      type: NoopAuthorizer
-    security_policy:
-      type: NoSecurityPolicy
+    type: SecurityProfile
+    profile: open
   delivery:
-    type: AtMostOnceDeliveryPolicy
+    type: DeliveryProfile
+    profile: at-most-once
   admission:
     type: DirectAdmissionClient
     connectionGrants:

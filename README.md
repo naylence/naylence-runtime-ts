@@ -184,6 +184,50 @@ const userLogger = logger.child({ user_id: 'user123', session_id: 'sess456' });
 userLogger.info('Profile updated'); // Automatically includes user_id and session_id
 ```
 
+## Examples
+
+### Docker RPC sentinel example
+
+The repository now ships a manual Docker Compose harness under
+`examples/docker-rpc`. It builds the runtime and mounts a calculator sentinel
+script so you can experiment with RPC endpoints end-to-end. To try it out:
+
+```bash
+make -C examples/docker-rpc up
+```
+
+See the example's README for more background and cleanup instructions. This
+scenario replaced the old Jest-driven Docker integration test and is designed
+for manual exploration.
+
+## Plugin usage
+
+The runtime now ships with a `naylence:runtime` plugin that automatically
+registers every generated factory when used inside the `naylence-factory`
+ecosystem.
+
+### Load via resolver
+
+```ts
+import { ConventionPluginResolver, loadPlugins } from 'naylence-factory';
+
+const resolver = new ConventionPluginResolver({
+  'naylence:runtime': 'naylence-runtime/plugin',
+});
+
+await loadPlugins('naylence:runtime', resolver);
+```
+
+### Load directly from specs
+
+```ts
+import { loadPluginsFromSpecs } from 'naylence-factory';
+
+await loadPluginsFromSpecs([
+  { name: 'naylence-runtime/plugin' },
+]);
+```
+
 ## Architecture
 
 This implementation provides a complete Fame runtime that closely mirrors the Python version:

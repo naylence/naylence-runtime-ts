@@ -17,8 +17,20 @@ setWebSocketConnectorSslLoader(async (logger) => {
   }
 
   try {
-    const fs = await import("node:fs");
-    return fs.readFileSync(certFile);
+    const fsModule = await import("fs").catch(async () => await import("node:fs"));
+    const readFileSync: unknown =
+      (fsModule as { readFileSync?: unknown }).readFileSync ??
+      (fsModule as { default?: { readFileSync?: unknown } }).default?.readFileSync;
+
+    if (typeof readFileSync !== "function") {
+      logger.warning("ssl_certificate_loader_unavailable", {
+        cert_file: certFile,
+        reason: "readFileSync_not_available",
+      });
+      return undefined;
+    }
+
+    return (readFileSync as (path: string) => Buffer)(certFile);
   } catch (error) {
     logger.warning("ssl_certificate_load_failed", {
       cert_file: certFile,

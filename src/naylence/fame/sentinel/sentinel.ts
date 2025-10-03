@@ -48,6 +48,7 @@ import {
 // import { TaskSpawner } from "../util/task-spawner.js";
 import { delay } from "../util/task-utils.js";
 import { AsyncEvent } from "../util/async-event.js";
+import { AsyncLock } from "../util/lock.js";
 import type { ConnectorConfig } from "../connector/connector-config.js";
 import { createResource } from "../connector/connector-factory.js";
 import type { Peer } from "./peer.js";
@@ -70,31 +71,6 @@ const SYSTEM_INBOX = "__sys__";
 const DEFAULT_BINDING_ACK_TIMEOUT_MS = 20_000;
 const DEFAULT_ATTACH_TIMEOUT_SEC = 5;
 const DEFAULT_CONNECTOR_CLEANUP_DELAY_MS = 200;
-
-class AsyncLock {
-  private tail: Promise<void> = Promise.resolve();
-
-  async runExclusive<T>(operation: () => Promise<T> | T): Promise<T> {
-    let release: (() => void) | undefined;
-    const next = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    const previous = this.tail;
-    this.tail = previous.then(
-      () => next,
-      () => next
-    );
-
-    await previous;
-
-    try {
-      return await operation();
-    } finally {
-      release?.();
-    }
-  }
-}
 
 interface Deferred<T> {
   promise: Promise<T>;

@@ -12,11 +12,11 @@ services:
     volumes:
       - ../../dist:/opt/naylence-runtime-ts/dist:ro
       - ./config/sentinel-config.yml:/etc/fame/fame-config.yml:ro
-      - ./docker-sentinel-calculator.mjs:/opt/naylence-runtime-ts/local-sentinel/docker-sentinel-calculator.mjs:ro
+      - ./sentinel-calculator.mjs:/opt/naylence-runtime-ts/local-sentinel/sentinel-calculator.mjs:ro
     command:
       - node
       - --enable-source-maps
-      - local-sentinel/docker-sentinel-calculator.mjs
+      - local-sentinel/sentinel-calculator.mjs
     healthcheck:
       test: ["CMD", "node", "-e", "const http=require('http');const req=http.request({host:'127.0.0.1',port:8000,path:'/'},res=>res.resume());req.on('error',()=>process.exit(1));req.end();"]
       interval: 5s

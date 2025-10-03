@@ -246,7 +246,7 @@ describe("BindingManager", () => {
   });
 
   it("rolls back binding when upstream rejects", async () => {
-    const manager = createManager({ hasUpstream: true });
+    const manager = createManager({ hasUpstream: true, acceptedLogicals: ["api.service"] });
 
     const rejectSpy = jest
       .spyOn<any, any>(manager, "sendAndWaitForAck")
@@ -254,8 +254,8 @@ describe("BindingManager", () => {
         throw new Error("nack");
       });
 
-    await expect(manager.bind("svc@/node-1")).rejects.toThrow("nack");
-    expect(manager.hasBinding("svc@/node-1")).toBe(false);
+    await expect(manager.bind("svc@api.service")).rejects.toThrow("nack");
+    expect(manager.hasBinding("svc@api.service")).toBe(false);
     rejectSpy.mockRestore();
   });
 

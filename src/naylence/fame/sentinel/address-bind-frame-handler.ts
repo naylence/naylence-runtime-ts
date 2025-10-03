@@ -263,7 +263,12 @@ export class AddressBindFrameHandler {
       poolKey = createPoolKey(name, root);
     }
 
-    let ack: AddressBindAckFrame;
+  let ack: AddressBindAckFrame;
+
+    const upstreamConnector = this.upstreamConnector();
+    const shouldForwardUpstream =
+      Boolean(upstreamConnector) &&
+      (context.originType !== DeliveryOriginType.DOWNSTREAM || isHostBased || isPoolBind);
 
     if (isPoolBind && poolKey) {
       const existingKey = findPoolEntryKey(this.poolsMap, poolKey) ?? poolKey;
@@ -342,7 +347,7 @@ export class AddressBindFrameHandler {
       await this.routingNode.forwardToRoute(sourceSystemId, ackEnvelope, ackContext);
     }
 
-    if (this.upstreamConnector()) {
+    if (shouldForwardUpstream) {
       await this.routingNode.forwardUpstream(envelope, context);
     }
 
@@ -396,6 +401,11 @@ export class AddressBindFrameHandler {
       poolKey = createPoolKey(name, root);
     }
 
+    const upstreamConnector = this.upstreamConnector();
+    const shouldForwardUpstream =
+      Boolean(upstreamConnector) &&
+      (context?.originType !== DeliveryOriginType.DOWNSTREAM || isHostBased || isPoolUnbind);
+
     if (isPoolUnbind && poolKey) {
       const existingKey = findPoolEntryKey(this.poolsMap, poolKey);
       if (existingKey) {
@@ -405,7 +415,7 @@ export class AddressBindFrameHandler {
           if (!segments.size) {
             this.poolsMap.delete(existingKey);
           }
-          if (this.upstreamConnector()) {
+          if (shouldForwardUpstream) {
             await this.routingNode.forwardUpstream(envelope, context);
           }
         }
@@ -415,7 +425,7 @@ export class AddressBindFrameHandler {
       if (routeInfo?.segment === sourceSystemId) {
         deleteAddressRoute(this.routeManager._downstream_addresses_routes, addressStr);
         deleteLegacyRoute(this.routeManager._downstream_addresses_legacy, addressStr);
-        if (this.upstreamConnector()) {
+        if (shouldForwardUpstream) {
           await this.routingNode.forwardUpstream(envelope, context);
         }
       }

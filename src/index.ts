@@ -107,8 +107,8 @@ export {
 } from "./naylence/fame/service/rpc.js";
 
 // Export factory registration helpers
-export { registerDefaultFactories } from "./naylence/runtime/register-runtime-factories.js";
+export { registerDefaultFactories } from "./naylence/fame/util/register-runtime-factories.js";
 export {
   registerRuntimeFactories,
   type RuntimeFactoryRegistry,
-} from "./naylence/runtime/register-runtime-factories.js";
+} from "./naylence/fame/util/register-runtime-factories.js";

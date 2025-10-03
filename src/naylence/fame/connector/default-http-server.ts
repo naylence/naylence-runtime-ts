@@ -3,6 +3,7 @@ import websocketPlugin from "@fastify/websocket";
 import type { AddressInfo } from "node:net";
 
 import { getLogger } from "../util/logging.js";
+import { AsyncLock, withLock } from "../util/lock.js";
 import type { HttpRouter, HttpServer } from "./http-server.js";
 
 const logger = getLogger("default-http-server");
@@ -11,28 +12,6 @@ type ServerKey = string;
 
 function makeKey(host: string, port: number): ServerKey {
   return `${host}:${port}`;
-}
-
-async function withLock<T>(lock: AsyncLock, fn: () => Promise<T>): Promise<T> {
-  return await lock.run(fn);
-}
-
-class AsyncLock {
-  private _promise: Promise<void> = Promise.resolve();
-
-  async run<T>(fn: () => Promise<T>): Promise<T> {
-    let release: (() => void) | undefined;
-    const previous = this._promise;
-    this._promise = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await previous;
-    try {
-      return await fn();
-    } finally {
-      release?.();
-    }
-  }
 }
 
 /**

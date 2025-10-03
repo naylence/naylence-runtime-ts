@@ -46,9 +46,9 @@
       "types": "./dist/types/naylence/fame/factory-manifest.d.ts"
     },
     "./register-runtime-factories": {
-      "import": "./dist/esm/naylence/runtime/register-runtime-factories.js",
-      "require": "./dist/cjs/naylence/runtime/register-runtime-factories.js",
-      "types": "./dist/types/naylence/runtime/register-runtime-factories.d.ts"
+      "import": "./dist/esm/naylence/fame/util/register-runtime-factories.js",
+      "require": "./dist/cjs/naylence/fame/util/register-runtime-factories.js",
+      "types": "./dist/types/naylence/fame/util/register-runtime-factories.d.ts"
     },
     "./plugin": {
       "import": "./dist/esm/plugin.js",

@@ -8,6 +8,7 @@
 export {
   getLogger,
   basicConfig,
+  enableLogging,
   LogLevel,
   LogLevelNames,
   // Processors
@@ -32,6 +33,9 @@ export {
 
 // Export task management
 export { TaskSpawner } from "./task-spawner.js";
+
+// Export locking utilities
+export { AsyncLock, withLock } from "./lock.js";
 
 // Export task utilities
 export {

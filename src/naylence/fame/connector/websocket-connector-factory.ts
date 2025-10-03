@@ -493,11 +493,22 @@ export class WebSocketConnectorFactory extends ConnectorFactory<
   }
 
   private async _loadSslCertificate(): Promise<Buffer | undefined> {
-    if (!sslLoader) {
+    if (!sslLoader && typeof process !== "undefined" && process.versions?.node) {
+      try {
+        await import("./websocket-connector-node-ssl.js");
+      } catch (error) {
+        logger.debug("ssl_certificate_loader_import_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const loader = sslLoader;
+    if (!loader) {
       return undefined;
     }
 
-    return await sslLoader(logger);
+    return await loader(logger);
   }
 }
 

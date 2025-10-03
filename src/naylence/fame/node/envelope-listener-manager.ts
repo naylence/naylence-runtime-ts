@@ -13,6 +13,7 @@ import {
 } from "naylence-core";
 import { getLogger } from "../util/logging.js";
 import { TaskSpawner } from "../util/task-spawner.js";
+import { AsyncLock } from "../util/lock.js";
 import type { SpawnedTask } from "../util/task-types.js";
 import { BindingManager } from "./binding-manager.js";
 import type { NodeLike } from "./node-like.js";
@@ -31,24 +32,6 @@ const logger = getLogger("envelope-listener-manager");
 const SYSTEM_INBOX = "__sys__";
 
 type DeliverFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<void>;
-
-class AsyncMutex {
-  private cursor: Promise<void> = Promise.resolve();
-
-  async runExclusive<T>(fn: () => Promise<T> | T): Promise<T> {
-    let release!: () => void;
-    const wait = this.cursor;
-    this.cursor = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await wait;
-    try {
-      return await fn();
-    } finally {
-      release();
-    }
-  }
-}
 
 class EnvelopeListener {
   constructor(
@@ -102,17 +85,17 @@ export class EnvelopeListenerManager extends TaskSpawner {
   private readonly deliver: DeliverFn;
 
   private readonly listeners = new Map<string, RegisteredListener>();
-  private readonly listenersLock = new AsyncMutex();
+  private readonly listenersLock = new AsyncLock();
 
   private readonly serviceHandlers = new Map<string, FameEnvelopeHandler>();
-  private readonly serviceHandlersLock = new AsyncMutex();
+  private readonly serviceHandlersLock = new AsyncLock();
 
   private readonly pendingRecoveryServices = new Set<string>();
   private readonly pendingRecoveryEnvelopes: RecoveryCache = new Map();
-  private readonly pendingRecoveryLock = new AsyncMutex();
+  private readonly pendingRecoveryLock = new AsyncLock();
 
-  private readonly serviceRecoveryLocks = new Map<string, AsyncMutex>();
-  private readonly serviceRecoveryLocksLock = new AsyncMutex();
+  private readonly serviceRecoveryLocks = new Map<string, AsyncLock>();
+  private readonly serviceRecoveryLocksLock = new AsyncLock();
 
   private readonly responseContextManager: ResponseContextManager;
   private readonly streamingResponseHandler: StreamingResponseHandler;
@@ -509,7 +492,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
       logger.debug("recovering_unhandled_envelopes_on_listen", {
         service_name: serviceName,
         count: envelopes.length,
-        envelope_ids: envelopes.map((env) => env.envelopeId),
+        envelope_ids: envelopes.map((trackedEnvelope) => trackedEnvelope.envelopeId),
       });
 
       await this.recoverServiceEnvelopes(serviceName, envelopes, handler);
@@ -673,11 +656,11 @@ export class EnvelopeListenerManager extends TaskSpawner {
     return undefined;
   }
 
-  private async getServiceRecoveryLock(serviceName: string): Promise<AsyncMutex> {
+  private async getServiceRecoveryLock(serviceName: string): Promise<AsyncLock> {
     return this.serviceRecoveryLocksLock.runExclusive(async () => {
       let lock = this.serviceRecoveryLocks.get(serviceName);
       if (!lock) {
-        lock = new AsyncMutex();
+        lock = new AsyncLock();
         this.serviceRecoveryLocks.set(serviceName, lock);
       }
       return lock;

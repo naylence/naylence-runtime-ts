@@ -2,7 +2,10 @@ import { Expressions } from "naylence-factory";
 
 import type { DeliveryPolicy } from "./delivery-policy.js";
 import type { DeliveryPolicyConfig } from "./delivery-policy-config.js";
-import { DeliveryPolicyFactory, registerDeliveryPolicyFactory } from "./delivery-policy-factory.js";
+import {
+  DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  DeliveryPolicyFactory,
+} from "./delivery-policy-factory.js";
 import type { AtLeastOnceDeliveryPolicyConfig } from "./at-least-once-delivery-policy-factory.js";
 import type { AtMostOnceDeliveryPolicyConfig } from "./at-most-once-delivery-policy-factory.js";
 import { getLogger } from "../util/logging.js";
@@ -107,4 +110,9 @@ function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-registerDeliveryPolicyFactory("DeliveryProfile", DeliveryProfileFactory);
+export const FACTORY_META = {
+  base: DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  key: "DeliveryProfile",
+} as const;
+
+export default DeliveryProfileFactory;

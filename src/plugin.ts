@@ -3,7 +3,7 @@
  */
 import type { FamePlugin } from "naylence-factory";
 
-import { registerRuntimeFactories } from "./naylence/runtime/register-runtime-factories.js";
+import { registerRuntimeFactories } from "./naylence/fame/util/register-runtime-factories.js";
 
 let initialized = false;
 

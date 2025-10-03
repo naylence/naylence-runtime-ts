@@ -8,7 +8,10 @@ import {
 } from "naylence-core";
 
 import { getLogger } from "../util/logging.js";
+import { color, AnsiColor } from "../util/formatter.js";
+import { formatTimestampForConsole, prettyModel, showEnvelopes } from "../util/util.js";
 import { TaskSpawner } from "../util/task-spawner.js";
+import { AsyncLock } from "../util/lock.js";
 import { TaskCancelledError, SpawnedTask } from "../util/task-types.js";
 import type { RetryPolicy } from "./retry-policy.js";
 import type { RetryEventHandler } from "./retry-event-handler.js";
@@ -38,24 +41,6 @@ function createDeferred<T>(): Deferred<T> {
     reject = rej;
   });
   return { promise, resolve, reject };
-}
-
-class AsyncLock {
-  private cursor: Promise<void> = Promise.resolve();
-
-  async runExclusive<T>(fn: () => Promise<T> | T): Promise<T> {
-    let release: () => void;
-    const wait = this.cursor;
-    this.cursor = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await wait;
-    try {
-      return await fn();
-    } finally {
-      release!();
-    }
-  }
 }
 
 class AsyncQueue<T> {
@@ -223,6 +208,81 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   async onNodeStopped(_node: NodeLike): Promise<void> {
     await this.cleanup();
     await this.shutdownTasks();
+  }
+
+  async onForwardUpstreamComplete(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    result?: unknown,
+    error?: Error,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
+    void node;
+    void result;
+    void error;
+    void context;
+    if (showEnvelopes) {
+      console.log(
+        `\n${formatTimestampForConsole()} - ${color("Forwarded envelope to upstream", AnsiColor.BLUE)} 🚀\n${prettyModel(envelope)}`
+      );
+    }
+    return envelope;
+  }
+
+  async onForwardToRouteComplete(
+    node: NodeLike,
+    nextSegment: string,
+    envelope: FameEnvelope,
+    result?: unknown,
+    error?: Error,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
+    void node;
+    void result;
+    void error;
+    void context;
+    if (showEnvelopes) {
+      console.log(
+        `\n${formatTimestampForConsole()} - ${color(
+          `Forwarded envelope to route "${nextSegment}"`,
+          AnsiColor.BLUE
+        )} 🚀\n${prettyModel(envelope)}`
+      );
+    }
+    return envelope;
+  }
+
+  async onForwardToPeerComplete(
+    node: NodeLike,
+    peerSegment: string,
+    envelope: FameEnvelope,
+    result?: unknown,
+    error?: Error,
+    context?: FameDeliveryContext
+  ): Promise<FameEnvelope | null> {
+    void node;
+    void result;
+    void error;
+    void context;
+    if (showEnvelopes) {
+      console.log(
+        `\n${formatTimestampForConsole()} - ${color(
+          `Forwarded envelope to peer "${peerSegment}"`,
+          AnsiColor.BLUE
+        )} 🚀\n${prettyModel(envelope)}`
+      );
+    }
+    return envelope;
+  }
+
+  async onHeartbeatSent(envelope: FameEnvelope): Promise<void> {
+    if (showEnvelopes) {
+      console.log(
+        `\n${formatTimestampForConsole()} - ${color("Sent envelope", AnsiColor.BLUE)} 🚀\n${prettyModel(
+          envelope
+        )}`
+      );
+    }
   }
 
   async track(envelope: FameEnvelope, options: TrackOptions): Promise<TrackedEnvelope | null> {

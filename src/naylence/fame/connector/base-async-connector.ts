@@ -20,8 +20,14 @@ import { TaskSpawnerConfig } from "../util/task-types.js";
 import { FlowController } from "../channel/flow-controller.js";
 import { _NoopFlowController } from "./noop-flow-controller.js";
 import { getLogger } from "../util/logging.js";
+import { color, AnsiColor } from "../util/formatter.js";
 import { MetricsEmitter } from "../util/metrics-emitter.js";
 import { withEnvelopeContextAsync } from "../util/envelope-context.js";
+import {
+  formatTimestampForConsole,
+  isEnvelopeLoggingEnabled,
+  prettyModel,
+} from "../util/util.js";
 import {
   ConnectorState,
   ConnectorStateUtils,
@@ -42,7 +48,6 @@ import { FameMessageTooLarge, FameTransportClose, BackPressureFull } from "../er
 const logger = getLogger("base-async-connector");
 
 // Environment variables
-const ENV_VAR_SHOW_ENVELOPES = "FAME_SHOW_ENVELOPES";
 const ENV_VAR_FAME_FLOW_CONTROL = "FAME_FLOW_CONTROL";
 
 const FLOW_CONTROL_ENABLED = process.env[ENV_VAR_FAME_FLOW_CONTROL] !== "0";
@@ -505,10 +510,16 @@ export abstract class BaseAsyncConnector extends TaskSpawner implements FameConn
           ...(env.flowId && { flow_id: env.flowId }),
         };
         await withEnvelopeContextAsync(envelopeContext, async () => {
-          logger.trace("connector_received_envelope", { envelope: env });
+          const prettyEnvelope = prettyModel(env);
+          logger.trace("connector_received_envelope", {
+            envelope: env,
+            pretty: prettyEnvelope,
+          });
 
-          if (process.env[ENV_VAR_SHOW_ENVELOPES] === "true") {
-            console.log(`\n📨 Received envelope:\n${JSON.stringify(env, null, 2)}`);
+          if (isEnvelopeLoggingEnabled()) {
+            console.log(
+              `\n${formatTimestampForConsole()} - ${color("Received envelope 📨", AnsiColor.BLUE)}\n${prettyEnvelope}`
+            );
           }
 
           // Handle credit updates

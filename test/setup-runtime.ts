@@ -1,4 +1,4 @@
-import { registerRuntimeFactories } from "../src/naylence/runtime/register-runtime-factories.js";
+import { registerRuntimeFactories } from "../src/naylence/fame/util/register-runtime-factories.js";
 
 beforeAll(async () => {
   await registerRuntimeFactories();

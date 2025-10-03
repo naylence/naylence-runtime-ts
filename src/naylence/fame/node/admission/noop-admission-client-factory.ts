@@ -19,6 +19,8 @@ export const FACTORY_META = {
 
 export class NoopAdmissionClientFactory extends AdmissionClientFactory<NoopAdmissionClientConfig> {
   public readonly type = "NoopAdmissionClient";
+  public readonly isDefault = true;
+  public readonly priority = 0;
 
   public async create(
     config?: NoopAdmissionClientConfig | Record<string, unknown> | null,

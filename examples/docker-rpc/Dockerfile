@@ -43,4 +43,4 @@ RUN mkdir -p /opt/naylence-runtime-ts/local-sentinel
 
 EXPOSE 8000
 
-CMD ["node", "--enable-source-maps", "local-sentinel/docker-sentinel-calculator.mjs"]
+CMD ["node", "--enable-source-maps", "local-sentinel/sentinel-calculator.mjs"]

@@ -2,7 +2,7 @@
  * Tests for cross-platform logging functionality
  */
 
-import { getLogger, basicConfig, LogLevel } from "../logging.js";
+import { getLogger, basicConfig, LogLevel, enableLogging } from "../logging.js";
 import { withEnvelopeContext } from "../envelope-context.js";
 
 describe("Cross-platform Logging", () => {
@@ -107,6 +107,53 @@ describe("Cross-platform Logging", () => {
       logger.info("message with object", { key: "value" });
       logger.info("message with args", "arg1", "arg2", 123);
     }).not.toThrow();
+  });
+});
+
+describe("enableLogging", () => {
+  beforeEach(() => {
+    basicConfig({ level: LogLevel.TRACE });
+  });
+
+  test("should apply string levels to naylence loggers", () => {
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      enableLogging("debug");
+
+      const root = getLogger("naylence");
+      const child = getLogger("naylence.transport");
+
+      root.debug("root debug message");
+      child.debug("child debug message");
+
+      expect(consoleSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  });
+
+  test("should accept numeric log levels", () => {
+    const consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      enableLogging(LogLevel.INFO);
+
+      const root = getLogger("naylence");
+      const child = getLogger("naylence.services");
+
+      root.debug("should be filtered");
+      child.debug("should also be filtered");
+      root.info("visible info message");
+
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  });
+
+  test("should reject unknown log level names", () => {
+    expect(() => enableLogging("unknown-level")).toThrow("Unknown log level");
   });
 });
 

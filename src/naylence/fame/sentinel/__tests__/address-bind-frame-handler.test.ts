@@ -202,6 +202,20 @@ describe("AddressBindFrameHandler", () => {
         expectedResponseType: FameResponseType.NONE,
       });
 
+  expect(forwardUpstream).not.toHaveBeenCalled();
+      expect(forwardToPeers).toHaveBeenCalledWith(envelope, undefined, ["segment-1"], context);
+    });
+
+    it("forwards upstream for host-based logical bindings", async () => {
+      const address = formatAddress("svc", "api.service");
+      const routeManager = createRouteManager();
+      const { handler, forwardUpstream, forwardToPeers } = createTestContext({ routeManager });
+
+      const envelope = createBindEnvelope(address);
+      const context = createDeliveryContext(DeliveryOriginType.DOWNSTREAM);
+
+      await handler.acceptAddressBind(envelope, context);
+
       expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
       expect(forwardToPeers).toHaveBeenCalledWith(envelope, undefined, ["segment-1"], context);
     });
@@ -501,7 +515,7 @@ describe("AddressBindFrameHandler", () => {
       await handler.acceptAddressBind(envelope, context);
 
       expect(routingNode.forwardToPeers).toBeUndefined();
-      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+      expect(forwardUpstream).not.toHaveBeenCalled();
       expect(forwardToPeers).not.toHaveBeenCalled();
     });
 
@@ -595,7 +609,7 @@ describe("AddressBindFrameHandler", () => {
       expect(downstreamRoutes.has(addressKey)).toBe(false);
       expect(legacyRoutes.has(addressKey)).toBe(false);
 
-      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+      expect(forwardUpstream).not.toHaveBeenCalled();
       expect(forwardToRoute).toHaveBeenCalledTimes(1);
     });
 
@@ -618,7 +632,28 @@ describe("AddressBindFrameHandler", () => {
       await handler.acceptAddressUnbind(envelope, context);
 
       expect(downstreamRoutes.has(addressKey)).toBe(false);
+      expect(forwardUpstream).not.toHaveBeenCalled();
+    });
+
+    it("forwards upstream for host-based unbinds", async () => {
+      const address = formatAddress("svc", "api.service");
+      const addressKey = address.toString();
+      const downstreamRoutes = new Map([[addressKey, { segment: "segment-1" }]]);
+
+      const routeManager = createRouteManager({
+        _downstream_addresses_routes: downstreamRoutes,
+      });
+
+      const testContext = createTestContext({ routeManager });
+      const { handler, forwardUpstream } = testContext;
+
+      const envelope = createUnbindEnvelope(address);
+      const context = createDeliveryContext(DeliveryOriginType.DOWNSTREAM);
+
+      await handler.acceptAddressUnbind(envelope, context);
+
       expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+      expect(downstreamRoutes.has(addressKey)).toBe(false);
     });
 
     it("removes wildcard path pool entries and forwards upstream", async () => {
@@ -773,7 +808,7 @@ describe("AddressBindFrameHandler", () => {
 
       expect(addressKey in downstreamRoutes).toBe(false);
       expect(addressKey in legacyRoutes).toBe(false);
-      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+      expect(forwardUpstream).not.toHaveBeenCalled();
     });
 
     it("keeps pool entry when segment is not a member", async () => {
@@ -847,7 +882,7 @@ describe("AddressBindFrameHandler", () => {
       await handler.acceptAddressUnbind(envelope, context);
 
       expect(downstreamRoutes.has(addressKey)).toBe(false);
-      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+      expect(forwardUpstream).not.toHaveBeenCalled();
       expect(parseComponentsSpy).toHaveBeenCalled();
     });
   });

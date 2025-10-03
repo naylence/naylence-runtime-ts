@@ -13,7 +13,7 @@ import type { TokenProviderConfig } from "../auth/token-provider-factory.js";
 import type { TokenProvider } from "../auth/token-provider.js";
 import type { Token } from "../auth/token.js";
 import { isTokenExpired, isTokenValid } from "../auth/token.js";
-import { registerRuntimeFactories } from "../../../runtime/register-runtime-factories.js";
+import { registerRuntimeFactories } from "../../util/register-runtime-factories.js";
 
 describe("auth injection strategies", () => {
   beforeAll(() => {

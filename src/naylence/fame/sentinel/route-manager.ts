@@ -13,6 +13,7 @@ import { FameTransportClose } from "../errors/errors.js";
 import { TaskSpawner } from "../util/task-spawner.js";
 import { delay } from "../util/task-utils.js";
 import { getLogger } from "../util/logging.js";
+import { AsyncLock } from "../util/lock.js";
 import type {
   FameAuthorizedDeliveryContext,
   FameNodeAuthorizationContext,
@@ -24,31 +25,6 @@ import { getDefaultRouteStore, normalizeRouteEntry } from "./store/route-store.j
 const logger = getLogger("route-manager");
 
 const DEFAULT_CONNECTOR_CLEANUP_DELAY_MS = 200;
-
-class AsyncLock {
-  private tail: Promise<void> = Promise.resolve();
-
-  public async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
-    let release: (() => void) | undefined;
-    const next = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    const previous = this.tail;
-    this.tail = previous.then(
-      () => next,
-      () => next
-    );
-
-    await previous;
-
-    try {
-      return await operation();
-    } finally {
-      release?.();
-    }
-  }
-}
 
 export interface PendingRouteEntry {
   connector: FameConnector;

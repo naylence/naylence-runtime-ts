@@ -49,4 +49,4 @@ export {
   registerDefaultFactories,
   registerRuntimeFactories,
   type RuntimeFactoryRegistry,
-} from "./naylence/runtime/register-runtime-factories.js";
+} from "./naylence/fame/util/register-runtime-factories.js";

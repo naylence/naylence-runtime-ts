@@ -11,6 +11,7 @@ export const MODULES = [
   "./connector/websocket-listener-factory.js",
   "./delivery/at-least-once-delivery-policy-factory.js",
   "./delivery/at-most-once-delivery-policy-factory.js",
+  "./delivery/delivery-profile-factory.js",
   "./fabric/in-process-fame-fabric-factory.js",
   "./node/admission/admission-profile-factory.js",
   "./node/admission/direct-admission-client-factory.js",

@@ -14,7 +14,7 @@ docker-build: build
 	$(COMPOSE) build $(SERVICE)
 
 # Launch the sentinel in the foreground after compiling the framework locally.
-up: build
+up: #build
 	$(COMPOSE) up $(SERVICE)
 
 # Launch the sentinel in detached mode.

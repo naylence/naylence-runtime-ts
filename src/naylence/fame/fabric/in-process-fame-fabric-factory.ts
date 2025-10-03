@@ -2,7 +2,7 @@ import type { FameFabric, FameFabricConfig, FameConfig } from "naylence-core";
 import { FameFabricFactory } from "naylence-core";
 
 import { InProcessFameFabric } from "./in-process-fame-fabric.js";
-// import { registerRuntimeFactories } from "../../runtime/register-runtime-factories.js";
+// import { registerRuntimeFactories } from "../util/register-runtime-factories.js";
 
 export const FAME_FABRIC_FACTORY_BASE_TYPE = "FameFabricFactory";
 

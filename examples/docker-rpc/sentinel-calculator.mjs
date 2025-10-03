@@ -1,18 +1,14 @@
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import {
-  FameFabric,
-  registerRuntimeFactories,
   RpcMixin,
   operation,
   basicConfig,
   getLogger,
   LogLevel,
+  withFabric
 } from "naylence-runtime";
 
-await registerRuntimeFactories();
 
-const logger = getLogger("examples.docker-sentinel-calculator");
+const logger = getLogger("examples.sentinel-calculator");
 
 class CalculatorService extends RpcMixin {
   get capabilities() {
@@ -92,10 +88,7 @@ async function main() {
   const level = (logLevelEnv && LogLevel[logLevelEnv]) || LogLevel.INFO;
   basicConfig({ level });
 
-  const fabric = await FameFabric.getOrCreate();
-
-  await fabric.enter();
-  try {
+  await withFabric(async (fabric) => {
     const calculator = new CalculatorService();
     const address = await fabric.serve(calculator, "calculator");
 
@@ -105,19 +98,14 @@ async function main() {
     });
 
     await waitForSignals();
-  } finally {
-    await fabric.exit();
-  }
+  });
 }
 
-const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : null;
-if (invokedPath === import.meta.url) {
-  try {
-    await main();
-  } catch (error) {
-    logger.error("calculator_sentinel_failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    process.exitCode = 1;
-  }
+try {
+  await main();
+} catch (error) {
+  logger.error("calculator_sentinel_failed", {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  process.exitCode = 1;
 }

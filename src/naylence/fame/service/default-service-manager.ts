@@ -225,12 +225,9 @@ export class DefaultServiceManager implements ServiceManager {
   }
 
   private wrapMessageHandler(service: FameMessageService): Parameters<ServeProtocol>[1] {
-    return async (
-      envelope: FameEnvelope,
-      context: FameDeliveryContext | undefined
-    ): Promise<null> => {
-      await service.handleMessage(envelope, context);
-      return null;
+    return async (envelope: FameEnvelope, context: FameDeliveryContext | undefined) => {
+      const result = await service.handleMessage(envelope, context);
+      return result === undefined ? null : result;
     };
   }
 

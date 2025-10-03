@@ -7,6 +7,7 @@ import { EncryptedStorageProviderBase } from "./encrypted-storage-provider-base.
 import type { CredentialProvider } from "../security/credential/credential-provider.js";
 import { camelToSnakeCase } from "../util/util.js";
 import { getLogger } from "../util/logging.js";
+import { AsyncLock } from "../util/lock.js";
 
 type BetterSqlite3Constructor = typeof import("better-sqlite3");
 type BetterSqlite3Database = import("better-sqlite3").Database;
@@ -43,31 +44,6 @@ async function loadSqliteConstructor(): Promise<BetterSqlite3Constructor> {
       error: error instanceof Error ? error.message : String(error),
     });
     throw new Error("Failed to load better-sqlite3. Install it to enable SQLite storage support.");
-  }
-}
-
-class AsyncLock {
-  private tail: Promise<void> = Promise.resolve();
-
-  public async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
-    let release: (() => void) | undefined;
-    const next = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    const previous = this.tail;
-    this.tail = previous.then(
-      () => next,
-      () => next
-    );
-
-    await previous;
-
-    try {
-      return await operation();
-    } finally {
-      release?.();
-    }
   }
 }
 

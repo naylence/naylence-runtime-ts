@@ -287,6 +287,19 @@ const defaultConfig: LoggerConfig = {
   transports: [consoleTransport], // Start with console, switch to Pino when available
 };
 
+const logLevelValues = new Set<number>();
+const logLevelNameLookup = new Map<string, LogLevel>();
+
+for (const value of Object.values(LogLevel)) {
+  if (typeof value === "number") {
+    logLevelValues.add(value);
+    const name = LogLevelNames[value as LogLevel];
+    if (name) {
+      logLevelNameLookup.set(name.toUpperCase(), value as LogLevel);
+    }
+  }
+}
+
 // Logger implementation
 class FameLogger implements Logger {
   private config: LoggerConfig;
@@ -379,14 +392,39 @@ class FameLogger implements Logger {
 }
 
 // Global logger registry
-const loggers = new Map<string, Logger>();
+const loggers = new Map<string, FameLogger>();
+let naylenceLogLevelOverride: LogLevel | null = null;
+
+function isNaylenceLogger(name: string): boolean {
+  return name === "naylence" || name.startsWith("naylence.");
+}
+
+function normalizeLogLevel(level: LogLevel | string | number): LogLevel {
+  if (typeof level === "number") {
+    if (logLevelValues.has(level)) {
+      return level as LogLevel;
+    }
+  } else {
+    const key = level.toString().toUpperCase();
+    const resolved = logLevelNameLookup.get(key);
+    if (resolved !== undefined) {
+      return resolved;
+    }
+  }
+
+  throw new Error(`Unknown log level: ${level}`);
+}
 
 /**
  * Get a logger instance (similar to Python's getLogger)
  */
 export function getLogger(name: string): Logger {
   if (!loggers.has(name)) {
-    loggers.set(name, new FameLogger(name));
+    const config: Partial<LoggerConfig> = {};
+    if (naylenceLogLevelOverride !== null && isNaylenceLogger(name)) {
+      config.level = naylenceLogLevelOverride;
+    }
+    loggers.set(name, new FameLogger(name, config));
   }
   return loggers.get(name)!;
 }
@@ -413,7 +451,21 @@ export function basicConfig(
 
   // Update existing loggers
   for (const logger of loggers.values()) {
-    (logger as FameLogger).setLevel(level);
+    logger.setLevel(level);
+  }
+}
+
+export function enableLogging(level: LogLevel | string | number): void {
+  const resolvedLevel = normalizeLogLevel(level);
+
+  basicConfig({ level: LogLevel.WARNING });
+
+  naylenceLogLevelOverride = resolvedLevel;
+
+  for (const [name, logger] of loggers.entries()) {
+    if (isNaylenceLogger(name)) {
+      logger.setLevel(resolvedLevel);
+    }
   }
 }
 
@@ -444,3 +496,4 @@ export function summarizeEnvelope(
 
 // Re-export log levels and types
 export { LogLevel, LogLevelNames } from "./logging-types.js";
+

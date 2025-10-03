@@ -8,12 +8,14 @@ import {
 
 const sentinelAddress = process.env.RPC_TARGET_ADDRESS || "calculator@/test-sentinel";
 
-basicConfig({ level: LogLevel.WARNING });
+basicConfig({ level: LogLevel.INFO });
 
 
 async function main() {
 
   await withFabric(async (fabric) => {
+
+    await fabric.sendMessage("__sys__@/test-sentinel", "ping");
 
     const calculator = RpcProxy.remoteByAddress(sentinelAddress);
 
