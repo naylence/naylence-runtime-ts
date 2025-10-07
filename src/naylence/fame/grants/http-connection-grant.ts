@@ -1,14 +1,14 @@
-import type { ConnectorConfig } from "../connector/connector-config.js";
-import type { AuthInjectionStrategyConfig } from "../security/auth/auth-injection-strategy-factory.js";
+import type { ConnectorConfig } from '../connector/connector-config.js';
+import type { AuthInjectionStrategyConfig } from '../security/auth/auth-injection-strategy-factory.js';
 import {
   assertConnectionGrant,
   type ConnectionGrant,
   type ConnectionGrantLike,
   isConnectionGrant,
-} from "./connection-grant.js";
+} from './connection-grant.js';
 
-export const HTTP_CONNECTION_GRANT_TYPE = "HttpConnectionGrant" as const;
-export const HTTP_STATELESS_CONNECTOR_TYPE = "HttpStatelessConnector" as const;
+export const HTTP_CONNECTION_GRANT_TYPE = 'HttpConnectionGrant' as const;
+export const HTTP_STATELESS_CONNECTOR_TYPE = 'HttpStatelessConnector' as const;
 
 export type HttpConnectionGrantAuth =
   | AuthInjectionStrategyConfig
@@ -33,18 +33,24 @@ export type HttpStatelessConnectorConfigLike = ConnectorConfig & {
   auth?: HttpConnectionGrantAuth;
 };
 
-export function isHttpConnectionGrant(candidate: unknown): candidate is HttpConnectionGrant {
+export function isHttpConnectionGrant(
+  candidate: unknown
+): candidate is HttpConnectionGrant {
   return (
     isConnectionGrant(candidate) &&
-    (candidate as Partial<HttpConnectionGrant>).type === HTTP_CONNECTION_GRANT_TYPE &&
-    typeof (candidate as Partial<HttpConnectionGrant>).url === "string"
+    (candidate as Partial<HttpConnectionGrant>).type ===
+      HTTP_CONNECTION_GRANT_TYPE &&
+    typeof (candidate as Partial<HttpConnectionGrant>).url === 'string'
   );
 }
 
 export function normalizeHttpConnectionGrant(
   candidate: HttpConnectionGrantLike
 ): HttpConnectionGrant {
-  assertConnectionGrant(candidate, "HttpConnectionGrant requires a valid base grant");
+  assertConnectionGrant(
+    candidate,
+    'HttpConnectionGrant requires a valid base grant'
+  );
 
   const type = candidate.type ?? HTTP_CONNECTION_GRANT_TYPE;
   if (type !== HTTP_CONNECTION_GRANT_TYPE) {
@@ -54,16 +60,18 @@ export function normalizeHttpConnectionGrant(
   }
 
   const urlValue = candidate.url;
-  if (typeof urlValue !== "string" || urlValue.trim().length === 0) {
-    throw new TypeError('HttpConnectionGrant requires a non-empty string "url" field');
+  if (typeof urlValue !== 'string' || urlValue.trim().length === 0) {
+    throw new TypeError(
+      'HttpConnectionGrant requires a non-empty string "url" field'
+    );
   }
 
   return {
     type,
     purpose:
-      typeof candidate.purpose === "string" && candidate.purpose.length > 0
+      typeof candidate.purpose === 'string' && candidate.purpose.length > 0
         ? candidate.purpose
-        : "connection",
+        : 'connection',
     url: urlValue,
     auth: candidate.auth,
   };

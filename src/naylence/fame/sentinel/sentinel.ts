@@ -17,57 +17,63 @@ import {
   generateId,
   localDeliveryContext,
   // type NodeAttachAckFrame,
-} from "naylence-core";
+} from 'naylence-core';
 
-import { currentTraceId } from "../util/envelope-context.js";
-import { FameNode, type FameNodeOptions } from "../node/node.js";
+import { currentTraceId } from '../util/envelope-context.js';
+import { FameNode, type FameNodeOptions } from '../node/node.js';
 import type {
   FameAuthorizedDeliveryContext,
   FameNodeAuthorizationContext,
-} from "../node/node-context.js";
-import type { OriginConnectorOptions, RoutingNodeLike } from "../node/routing-node-like.js";
-import type { RouteStore } from "./store/route-store.js";
-import { getDefaultRouteStore } from "./store/route-store.js";
-import { RouteManager, type PendingRouteEntry } from "./route-manager.js";
-import type { RoutingPolicy } from "./routing-policy.js";
-import { CompositeRoutingPolicy } from "./composite-routing-policy.js";
-import { CapabilityAwareRoutingPolicy } from "./capability-aware-routing-policy.js";
-import { HybridPathRoutingPolicy } from "./hybrid-path-routing-policy.js";
-import { NodeAttachFrameHandler } from "./node-attach-frame-handler.js";
-import { AddressBindFrameHandler } from "./address-bind-frame-handler.js";
-import { NodeHeartbeatFrameHandler } from "./node-heartbeat-frame-handler.js";
-import { CapabilityFrameHandler } from "./capability-frame-handler.js";
-import { CreditUpdateFrameHandler } from "./credit-update-frame-handler.js";
+} from '../node/node-context.js';
+import type {
+  OriginConnectorOptions,
+  RoutingNodeLike,
+} from '../node/routing-node-like.js';
+import type { RouteStore } from './store/route-store.js';
+import { getDefaultRouteStore } from './store/route-store.js';
+import { RouteManager, type PendingRouteEntry } from './route-manager.js';
+import type { RoutingPolicy } from './routing-policy.js';
+import { CompositeRoutingPolicy } from './composite-routing-policy.js';
+import { CapabilityAwareRoutingPolicy } from './capability-aware-routing-policy.js';
+import { HybridPathRoutingPolicy } from './hybrid-path-routing-policy.js';
+import { NodeAttachFrameHandler } from './node-attach-frame-handler.js';
+import { AddressBindFrameHandler } from './address-bind-frame-handler.js';
+import { NodeHeartbeatFrameHandler } from './node-heartbeat-frame-handler.js';
+import { CapabilityFrameHandler } from './capability-frame-handler.js';
+import { CreditUpdateFrameHandler } from './credit-update-frame-handler.js';
 import {
   LogLevel,
   LogLevelNames,
   basicConfig,
   getLogger,
   summarizeEnvelope,
-} from "../util/logging.js";
+} from '../util/logging.js';
 // import { TaskSpawner } from "../util/task-spawner.js";
-import { delay } from "../util/task-utils.js";
-import { AsyncEvent } from "../util/async-event.js";
-import { AsyncLock } from "../util/lock.js";
-import type { ConnectorConfig } from "../connector/connector-config.js";
-import { createResource } from "../connector/connector-factory.js";
-import type { Peer } from "./peer.js";
-import { UpstreamSessionManager } from "../node/upstream-session-manager.js";
-import type { SessionManager } from "../node/session-manager.js";
-import type { NodeAttachClient, AttachInfo } from "../node/admission/node-attach-client.js";
-import type { AdmissionClient } from "../node/admission/admission-client.js";
-import type { AttachmentKeyValidator } from "../security/keys/attachment-key-validator.js";
-import type { LoadBalancerStickinessManager } from "../stickiness/load-balancer-stickiness-manager.js";
-import type { DefaultDeliveryTracker } from "../delivery/default-delivery-tracker.js";
-import { emitDeliveryNack, RouterState, type RoutingAction } from "./router.js";
-import type { AddressRouteInfo } from "./key-frame-handler.js";
-import type { NodeLike } from "../node/node-like.js";
-import { InProcessFameFabric } from "../fabric/in-process-fame-fabric.js";
+import { delay } from '../util/task-utils.js';
+import { AsyncEvent } from '../util/async-event.js';
+import { AsyncLock } from '../util/lock.js';
+import type { ConnectorConfig } from '../connector/connector-config.js';
+import { createResource } from '../connector/connector-factory.js';
+import type { Peer } from './peer.js';
+import { UpstreamSessionManager } from '../node/upstream-session-manager.js';
+import type { SessionManager } from '../node/session-manager.js';
+import type {
+  NodeAttachClient,
+  AttachInfo,
+} from '../node/admission/node-attach-client.js';
+import type { AdmissionClient } from '../node/admission/admission-client.js';
+import type { AttachmentKeyValidator } from '../security/keys/attachment-key-validator.js';
+import type { LoadBalancerStickinessManager } from '../stickiness/load-balancer-stickiness-manager.js';
+import type { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
+import { emitDeliveryNack, RouterState, type RoutingAction } from './router.js';
+import type { AddressRouteInfo } from './key-frame-handler.js';
+import type { NodeLike } from '../node/node-like.js';
+import { InProcessFameFabric } from '../fabric/in-process-fame-fabric.js';
 
-const logger = getLogger("sentinel");
+const logger = getLogger('sentinel');
 
-const ALLOWED_BEFORE_ATTACH = new Set(["NodeAttach"]);
-const SYSTEM_INBOX = "__sys__";
+const ALLOWED_BEFORE_ATTACH = new Set(['NodeAttach']);
+const SYSTEM_INBOX = '__sys__';
 const DEFAULT_BINDING_ACK_TIMEOUT_MS = 20_000;
 const DEFAULT_ATTACH_TIMEOUT_SEC = 5;
 const DEFAULT_CONNECTOR_CLEANUP_DELAY_MS = 200;
@@ -89,7 +95,7 @@ function createDeferred<T>(): Deferred<T> {
 }
 
 function computePhysicalSegments(path: string): string[] {
-  return path.replace(/^\/+/u, "").split("/").filter(Boolean);
+  return path.replace(/^\/+/u, '').split('/').filter(Boolean);
 }
 
 export interface SentinelOptions extends FameNodeOptions {
@@ -135,7 +141,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
   private readonly pendingBinds = new Map<string, Deferred<boolean>>();
   private readonly pendingLock = new AsyncLock();
 
-  private readonly peerSessionManagers = new Map<string, UpstreamSessionManager>();
+  private readonly peerSessionManagers = new Map<
+    string,
+    UpstreamSessionManager
+  >();
 
   private upstreamConnectorRef: FameConnector | null = null;
   private routingEpochValue = generateId();
@@ -150,21 +159,25 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       ? Math.max(0, Number(options.cleanupDelayMs))
       : DEFAULT_CONNECTOR_CLEANUP_DELAY_MS;
     this.cleanupDelayMs = cleanupDelayMs;
-    const attachTimeoutSec = options.attachTimeoutSec ?? DEFAULT_ATTACH_TIMEOUT_SEC;
+    const attachTimeoutSec =
+      options.attachTimeoutSec ?? DEFAULT_ATTACH_TIMEOUT_SEC;
     this.attachTimeoutMs =
-      typeof attachTimeoutSec === "number" && Number.isFinite(attachTimeoutSec)
+      typeof attachTimeoutSec === 'number' && Number.isFinite(attachTimeoutSec)
         ? Math.max(0, attachTimeoutSec * 1000)
         : null;
 
     this.routeManager = new RouteManager({
-          deliver: (envelope: FameEnvelope, context: FameAuthorizedDeliveryContext) =>
-            this.deliver(envelope, context),
+      deliver: (
+        envelope: FameEnvelope,
+        context: FameAuthorizedDeliveryContext
+      ) => this.deliver(envelope, context),
       routeStore,
       getId: () => this.id,
       cleanupDelayMs: this.cleanupDelayMs,
     });
 
-    (this as unknown as { _route_manager?: RouteManager })._route_manager = this.routeManager;
+    (this as unknown as { _route_manager?: RouteManager })._route_manager =
+      this.routeManager;
 
     this.routingPolicy =
       options.routingPolicy ??
@@ -176,7 +189,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     this.attachmentKeyValidator = options.attachmentKeyValidator ?? null;
     this.stickinessManager = options.stickinessManager ?? null;
     this.peers = options.peers ?? [];
-    this.ackTimeoutMs = options.bindingAckTimeoutMs ?? DEFAULT_BINDING_ACK_TIMEOUT_MS;
+    this.ackTimeoutMs =
+      options.bindingAckTimeoutMs ?? DEFAULT_BINDING_ACK_TIMEOUT_MS;
     this.maxAttachTtlSec = options.maxAttachTtlSec ?? null;
     this.requestedLogicals = options.requestedLogicals ?? [];
     this.attachClient = options.attachClient ?? null;
@@ -189,7 +203,9 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       maxTtlSec: this.maxAttachTtlSec,
     });
 
-    this.nodeHeartbeatFrameHandler = new NodeHeartbeatFrameHandler({ routingNode: this });
+    this.nodeHeartbeatFrameHandler = new NodeHeartbeatFrameHandler({
+      routingNode: this,
+    });
 
     this.addressBindFrameHandler = new AddressBindFrameHandler({
       routingNode: this,
@@ -209,7 +225,9 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
     const authorizer = this.securityManager?.authorizer ?? null;
     if (!authorizer) {
-      throw new Error("Sentinel nodes require a security manager with an authorizer");
+      throw new Error(
+        'Sentinel nodes require a security manager with an authorizer'
+      );
     }
   }
 
@@ -221,7 +239,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     if (this.upstreamConnectorRef) {
       return this.upstreamConnectorRef;
     }
-    const descriptor = Object.getOwnPropertyDescriptor(FameNode.prototype, "upstreamConnector");
+    const descriptor = Object.getOwnPropertyDescriptor(
+      FameNode.prototype,
+      'upstreamConnector'
+    );
     const baseGetter = descriptor?.get;
     return baseGetter ? baseGetter.call(this) : null;
   }
@@ -258,9 +279,12 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     await this.routeManager.stop();
   }
 
-  override async deliver(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
+  override async deliver(
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<void> {
     const processedEnvelope = await this.dispatchEnvelopeEvent(
-      "onDeliver",
+      'onDeliver',
       this,
       envelope,
       context
@@ -274,35 +298,66 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     if (
       frameType &&
       [
-        "AddressBindAck",
-        "AddressUnbindAck",
-        "CapabilityAdvertiseAck",
-        "CapabilityWithdrawAck",
+        'AddressBindAck',
+        'AddressUnbindAck',
+        'CapabilityAdvertiseAck',
+        'CapabilityWithdrawAck',
       ].includes(frameType)
     ) {
-      await this.deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, processedEnvelope, context);
-      if (frameType === "AddressBindAck") {
-        const frame = processedEnvelope.frame as AddressBindAckFrame | undefined;
-        await this.resolvePendingBind(processedEnvelope, frame?.ok ?? true, frame?.reason ?? null);
+      await this.deliveryTracker.onEnvelopeDelivered(
+        SYSTEM_INBOX,
+        processedEnvelope,
+        context
+      );
+      if (frameType === 'AddressBindAck') {
+        const frame = processedEnvelope.frame as
+          | AddressBindAckFrame
+          | undefined;
+        await this.resolvePendingBind(
+          processedEnvelope,
+          frame?.ok ?? true,
+          frame?.reason ?? null
+        );
       }
       return;
     }
 
     if (!context || context.originType !== DeliveryOriginType.LOCAL) {
-      if (frameType === "NodeAttach") {
-        await this.nodeAttachFrameHandler.acceptNodeAttach(processedEnvelope, context);
-      } else if (frameType === "AddressBind") {
-        await this.addressBindFrameHandler.acceptAddressBind(processedEnvelope, context);
-      } else if (frameType === "AddressUnbind") {
-        await this.addressBindFrameHandler.acceptAddressUnbind(processedEnvelope, context);
-      } else if (frameType === "CapabilityAdvertise") {
-        await this.capabilityFrameHandler.acceptCapabilityAdvertise(processedEnvelope, context);
-      } else if (frameType === "CapabilityWithdraw") {
-        await this.capabilityFrameHandler.acceptCapabilityWithdraw(processedEnvelope, context);
-      } else if (frameType === "CreditUpdate") {
-        await this.creditUpdateFrameHandler.acceptCreditUpdate(processedEnvelope, context);
-      } else if (frameType === "NodeHeartbeat") {
-        await this.nodeHeartbeatFrameHandler.acceptNodeHeartbeat(processedEnvelope, context);
+      if (frameType === 'NodeAttach') {
+        await this.nodeAttachFrameHandler.acceptNodeAttach(
+          processedEnvelope,
+          context
+        );
+      } else if (frameType === 'AddressBind') {
+        await this.addressBindFrameHandler.acceptAddressBind(
+          processedEnvelope,
+          context
+        );
+      } else if (frameType === 'AddressUnbind') {
+        await this.addressBindFrameHandler.acceptAddressUnbind(
+          processedEnvelope,
+          context
+        );
+      } else if (frameType === 'CapabilityAdvertise') {
+        await this.capabilityFrameHandler.acceptCapabilityAdvertise(
+          processedEnvelope,
+          context
+        );
+      } else if (frameType === 'CapabilityWithdraw') {
+        await this.capabilityFrameHandler.acceptCapabilityWithdraw(
+          processedEnvelope,
+          context
+        );
+      } else if (frameType === 'CreditUpdate') {
+        await this.creditUpdateFrameHandler.acceptCreditUpdate(
+          processedEnvelope,
+          context
+        );
+      } else if (frameType === 'NodeHeartbeat') {
+        await this.nodeHeartbeatFrameHandler.acceptNodeHeartbeat(
+          processedEnvelope,
+          context
+        );
       }
     }
 
@@ -320,8 +375,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<void> {
-    if (this.originMatches(context, nextSegment, DeliveryOriginType.DOWNSTREAM)) {
-      logger.debug("downstream_loop_detected", {
+    if (
+      this.originMatches(context, nextSegment, DeliveryOriginType.DOWNSTREAM)
+    ) {
+      logger.debug('downstream_loop_detected', {
         envp_id: envelope.id,
         segment: nextSegment,
       });
@@ -330,7 +387,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     let processed: FameEnvelope | null = null;
     try {
       processed = await this.dispatchEnvelopeEvent(
-        "onForwardToRoute",
+        'onForwardToRoute',
         this,
         nextSegment,
         envelope,
@@ -342,16 +399,16 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
       const connector = this.routeManager.downstreamRoutes.get(nextSegment);
       if (!connector) {
-        logger.warning("no_route_for_child_segment", { segment: nextSegment });
+        logger.warning('no_route_for_child_segment', { segment: nextSegment });
         await this.emitDeliveryNack(processed, {
-          code: "CHILD_UNREACHABLE",
+          code: 'CHILD_UNREACHABLE',
           context: context ?? null,
         });
         return;
       }
 
-      logger.debug("forwarding_downstream", {
-        ...summarizeEnvelope(processed, ""),
+      logger.debug('forwarding_downstream', {
+        ...summarizeEnvelope(processed, ''),
         route: nextSegment,
       });
 
@@ -361,7 +418,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       await this.dispatchEnvelopeEvent(
-        "onForwardToRouteComplete",
+        'onForwardToRouteComplete',
         this,
         nextSegment,
         processed ?? envelope,
@@ -373,7 +430,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
 
     await this.dispatchEnvelopeEvent(
-      "onForwardToRouteComplete",
+      'onForwardToRouteComplete',
       this,
       nextSegment,
       processed ?? envelope,
@@ -389,14 +446,14 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     context?: FameDeliveryContext
   ): Promise<void> {
     if (this.originMatches(context, peerSegment, DeliveryOriginType.PEER)) {
-      logger.debug("peer_loop_detected", {
+      logger.debug('peer_loop_detected', {
         envp_id: envelope.id,
         segment: peerSegment,
       });
     }
 
     const processed = await this.dispatchEnvelopeEvent(
-      "onForwardToPeer",
+      'onForwardToPeer',
       this,
       peerSegment,
       envelope,
@@ -408,9 +465,11 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
     const connector = this.routeManager._peer_routes.get(peerSegment);
     if (!connector) {
-      logger.warning("no_route_for_peer_segment", { peer_segment: peerSegment });
+      logger.warning('no_route_for_peer_segment', {
+        peer_segment: peerSegment,
+      });
       await this.emitDeliveryNack(processed, {
-        code: "PEER_UNREACHABLE",
+        code: 'PEER_UNREACHABLE',
         context: context ?? null,
       });
       return;
@@ -419,7 +478,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     await connector.send(processed);
 
     await this.dispatchEnvelopeEvent(
-      "onForwardToPeerComplete",
+      'onForwardToPeerComplete',
       this,
       peerSegment,
       processed,
@@ -439,7 +498,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     context?: FameDeliveryContext
   ): Promise<void> {
     const processed = await this.dispatchEnvelopeEvent(
-      "onForwardToPeers",
+      'onForwardToPeers',
       this,
       envelope,
       peers ?? undefined,
@@ -450,7 +509,9 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       return;
     }
 
-    const availablePeers = new Set(peers ?? Array.from(this.routeManager._peer_routes.keys()));
+    const availablePeers = new Set(
+      peers ?? Array.from(this.routeManager._peer_routes.keys())
+    );
     if (excludePeers) {
       for (const peer of excludePeers) {
         availablePeers.delete(peer);
@@ -464,7 +525,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       }
 
       const forwarded = await this.dispatchEnvelopeEvent(
-        "onForwardToPeer",
+        'onForwardToPeer',
         this,
         peerId,
         envelope,
@@ -476,7 +537,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
       await connector.send(forwarded);
       await this.dispatchEnvelopeEvent(
-        "onForwardToPeerComplete",
+        'onForwardToPeerComplete',
         this,
         peerId,
         forwarded,
@@ -490,7 +551,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
 
     await this.dispatchEnvelopeEvent(
-      "onForwardToPeersComplete",
+      'onForwardToPeersComplete',
       this,
       processed,
       peers ?? undefined,
@@ -506,7 +567,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     context?: FameDeliveryContext
   ): Promise<void> {
     if (context?.originType === DeliveryOriginType.UPSTREAM) {
-      logger.debug("skipping_forward_upstream", {
+      logger.debug('skipping_forward_upstream', {
         envp_id: envelope.id,
         origin_type: context.originType,
       });
@@ -515,22 +576,29 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
     let processed: FameEnvelope | null = null;
     try {
-      processed = await this.dispatchEnvelopeEvent("onForwardUpstream", this, envelope, context);
+      processed = await this.dispatchEnvelopeEvent(
+        'onForwardUpstream',
+        this,
+        envelope,
+        context
+      );
       if (!processed) {
         return;
       }
 
       const connector = this.upstreamConnector;
-      const sessionManager = (this as unknown as { _sessionManager: SessionManager | null })
-        ._sessionManager;
+      const sessionManager = (
+        this as unknown as { _sessionManager: SessionManager | null }
+      )._sessionManager;
       const upstreamManager =
-        sessionManager && typeof (sessionManager as UpstreamSessionManager).send === "function"
+        sessionManager &&
+        typeof (sessionManager as UpstreamSessionManager).send === 'function'
           ? (sessionManager as UpstreamSessionManager)
           : null;
 
       if (!connector || !upstreamManager) {
         await this.dispatchEnvelopeEvent(
-          "onForwardUpstreamComplete",
+          'onForwardUpstreamComplete',
           this,
           processed,
           undefined,
@@ -545,7 +613,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       this.maybeForgetFlow(processed);
 
       await this.dispatchEnvelopeEvent(
-        "onForwardUpstreamComplete",
+        'onForwardUpstreamComplete',
         this,
         processed,
         undefined,
@@ -555,7 +623,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       await this.dispatchEnvelopeEvent(
-        "onForwardUpstreamComplete",
+        'onForwardUpstreamComplete',
         this,
         processed ?? envelope,
         undefined,
@@ -566,7 +634,9 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
   }
 
-  async createOriginConnector(options: OriginConnectorOptions): Promise<FameConnector> {
+  async createOriginConnector(
+    options: OriginConnectorOptions
+  ): Promise<FameConnector> {
     const {
       connectorConfig,
       originType,
@@ -583,10 +653,15 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     const attachedEvent = new AsyncEvent();
     const buffer: FameEnvelope[] = [];
 
-    const authorization = (authorizationOption ?? null) as FameNodeAuthorizationContext | null;
+    const authorization = (authorizationOption ??
+      null) as FameNodeAuthorizationContext | null;
 
-    const buildContext = (ctx?: FameDeliveryContext | null): FameAuthorizedDeliveryContext => {
-      const baseSecurity = ctx?.security ? ({ ...ctx.security } as SecurityContext) : undefined;
+    const buildContext = (
+      ctx?: FameDeliveryContext | null
+    ): FameAuthorizedDeliveryContext => {
+      const baseSecurity = ctx?.security
+        ? ({ ...ctx.security } as SecurityContext)
+        : undefined;
       const security =
         baseSecurity || authorization !== null
           ? ({ ...(baseSecurity ?? {}), authorization } as SecurityContext & {
@@ -598,7 +673,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         fromConnector: connector,
         fromSystemId: systemId,
         originType,
-        expectedResponseType: ctx?.expectedResponseType ?? FameResponseType.NONE,
+        expectedResponseType:
+          ctx?.expectedResponseType ?? FameResponseType.NONE,
         security,
         meta: ctx?.meta,
         stickinessRequired: ctx?.stickinessRequired,
@@ -611,21 +687,21 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       ctx?: FameDeliveryContext
     ) => {
       if (ctx?.fromConnector && ctx.fromConnector !== connector) {
-        throw new Error("Context connector mismatch for origin connector");
+        throw new Error('Context connector mismatch for origin connector');
       }
       if (ctx?.fromSystemId && ctx.fromSystemId !== systemId) {
-        throw new Error("Context system id mismatch for origin connector");
+        throw new Error('Context system id mismatch for origin connector');
       }
       if (ctx?.originType && ctx.originType !== originType) {
-        throw new Error("Context origin type mismatch for origin connector");
+        throw new Error('Context origin type mismatch for origin connector');
       }
 
       const effectiveContext = buildContext(ctx);
 
-      await this.dispatchEnvelopeEvent("onEnvelopeReceived", this, env, ctx);
+      await this.dispatchEnvelopeEvent('onEnvelopeReceived', this, env, ctx);
 
       if (!attachedEvent.isSet()) {
-        const frameType = env.frame?.type ?? "";
+        const frameType = env.frame?.type ?? '';
         if (ALLOWED_BEFORE_ATTACH.has(frameType)) {
           await this.deliver(env, effectiveContext);
         } else {
@@ -651,7 +727,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       connector,
       attached: {
         set: () => attachedEvent.set(),
-        wait: (options?: { signal?: AbortSignal }) => attachedEvent.wait(options),
+        wait: (options?: { signal?: AbortSignal }) =>
+          attachedEvent.wait(options),
       },
       buffer,
     };
@@ -666,12 +743,12 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
           const combined = new AbortController();
           const abortHandler = () => combined.abort();
 
-          timeoutController.signal.addEventListener("abort", abortHandler);
+          timeoutController.signal.addEventListener('abort', abortHandler);
           if (taskSignal) {
             if (taskSignal.aborted) {
               combined.abort();
             } else {
-              taskSignal.addEventListener("abort", abortHandler);
+              taskSignal.addEventListener('abort', abortHandler);
             }
           }
 
@@ -679,23 +756,27 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
             await delay(timeoutMs, combined.signal);
           } catch (error) {
             if (!combined.signal.aborted) {
-              logger.debug("attach_timeout_delay_failed", {
+              logger.debug('attach_timeout_delay_failed', {
                 system_id: options.systemId,
                 error: error instanceof Error ? error.message : String(error),
               });
             }
             return;
           } finally {
-            timeoutController.signal.removeEventListener("abort", abortHandler);
-            taskSignal?.removeEventListener("abort", abortHandler);
+            timeoutController.signal.removeEventListener('abort', abortHandler);
+            taskSignal?.removeEventListener('abort', abortHandler);
           }
 
           let removed = false;
           await this.routeManager.routesLock.runExclusive(async () => {
-            const current = this.routeManager._pending_routes.get(options.systemId);
+            const current = this.routeManager._pending_routes.get(
+              options.systemId
+            );
             if (current === pendingEntry) {
               this.routeManager._pending_routes.delete(options.systemId);
-              this.routeManager._pending_route_metadata.delete(options.systemId);
+              this.routeManager._pending_route_metadata.delete(
+                options.systemId
+              );
               removed = true;
             }
           });
@@ -707,13 +788,13 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
           try {
             await connector.stop();
           } catch (error) {
-            logger.debug("attach_timeout_stop_failed", {
+            logger.debug('attach_timeout_stop_failed', {
               system_id: options.systemId,
               error: error instanceof Error ? error.message : String(error),
             });
           }
 
-          logger.warning("attach_timeout_expired", {
+          logger.warning('attach_timeout_expired', {
             system_id: options.systemId,
             timeout_ms: timeoutMs,
           });
@@ -723,19 +804,27 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
 
     this.routeManager._pending_routes.set(systemId, pendingEntry);
-    this.routeManager._pending_route_metadata.set(systemId, connectorConfig as ConnectorConfig);
+    this.routeManager._pending_route_metadata.set(
+      systemId,
+      connectorConfig as ConnectorConfig
+    );
 
     return connector;
   }
 
   childFor(address: FameAddress): string | null {
-    const entry = this.routeManager._downstream_addresses_routes.get(address.toString());
+    const entry = this.routeManager._downstream_addresses_routes.get(
+      address.toString()
+    );
     return entry?.segment ?? null;
   }
 
   buildRouterState(): RouterState {
     const downstream = new Map<string, string>();
-    for (const [addr, info] of this.routeManager._downstream_addresses_routes.entries()) {
+    for (const [
+      addr,
+      info,
+    ] of this.routeManager._downstream_addresses_routes.entries()) {
       if (info?.segment) {
         downstream.set(addr, info.segment);
       }
@@ -759,13 +848,18 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
   private getPoolsForRouter(): Map<readonly [string, string], Set<string>> {
     const result = new Map<readonly [string, string], Set<string>>();
-    for (const [poolKey, segments] of this.addressBindFrameHandler.pools.entries()) {
+    for (const [
+      poolKey,
+      segments,
+    ] of this.addressBindFrameHandler.pools.entries()) {
       result.set([poolKey.name, poolKey.pattern] as const, new Set(segments));
     }
     return result;
   }
 
-  private async resolveAddressByCapability(capabilities: string[]): Promise<FameAddress | null> {
+  private async resolveAddressByCapability(
+    capabilities: string[]
+  ): Promise<FameAddress | null> {
     for (const capability of capabilities) {
       const routes = this.capabilityFrameHandler.capRoutes[capability];
       if (!routes) {
@@ -775,7 +869,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         try {
           return new FameAddress(addressKey);
         } catch (error) {
-          logger.debug("invalid_capability_address", {
+          logger.debug('invalid_capability_address', {
             capability,
             address: addressKey,
             error: error instanceof Error ? error.message : String(error),
@@ -791,7 +885,13 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     options: { code: string; context?: FameDeliveryContext | null }
   ): Promise<void> {
     const state = this.buildRouterState();
-    await emitDeliveryNack(envelope, this, state, options.code, options.context ?? undefined);
+    await emitDeliveryNack(
+      envelope,
+      this,
+      state,
+      options.code,
+      options.context ?? undefined
+    );
   }
 
   async removeDownstreamRoute(
@@ -807,7 +907,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
   }
 
-  async removePeerRoute(segment: string, { stop = true }: { stop?: boolean } = {}): Promise<void> {
+  async removePeerRoute(
+    segment: string,
+    { stop = true }: { stop?: boolean } = {}
+  ): Promise<void> {
     if (stop) {
       await this.routeManager.unregisterPeerRoute(segment);
     } else {
@@ -817,7 +920,9 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
   }
 
-  async resolveEncryptionKeyForAddress(_targetAddress: FameAddress): Promise<string | null> {
+  async resolveEncryptionKeyForAddress(
+    _targetAddress: FameAddress
+  ): Promise<string | null> {
     return null;
   }
 
@@ -837,7 +942,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
   }
 
   private get deliveryTracker(): DefaultDeliveryTracker {
-    return (this as unknown as { _deliveryTracker: DefaultDeliveryTracker })._deliveryTracker;
+    return (this as unknown as { _deliveryTracker: DefaultDeliveryTracker })
+      ._deliveryTracker;
   }
 
   private originMatches(
@@ -846,11 +952,16 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     originType: DeliveryOriginType
   ): boolean {
     return Boolean(
-      context && context.originType === originType && context.fromSystemId === segment
+      context &&
+        context.originType === originType &&
+        context.fromSystemId === segment
     );
   }
 
-  private trackFlowRoute(envelope: FameEnvelope, connector: FameConnector): void {
+  private trackFlowRoute(
+    envelope: FameEnvelope,
+    connector: FameConnector
+  ): void {
     const flowId = envelope.flowId;
     if (!flowId || this.routeManager.getFlowRoute(flowId)) {
       return;
@@ -887,7 +998,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       if (ok) {
         pending.resolve(true);
       } else {
-        pending.reject(new Error(reason ?? "Bind rejected"));
+        pending.reject(new Error(reason ?? 'Bind rejected'));
       }
     });
   }
@@ -903,11 +1014,11 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
   private async connectToPeer(peer: Peer): Promise<void> {
     if (!this.attachClient) {
-      throw new Error("Missing attach client");
+      throw new Error('Missing attach client');
     }
 
     if (!peer.admissionClient) {
-      throw new Error("Missing admission client");
+      throw new Error('Missing admission client');
     }
 
     const sessionManager = new UpstreamSessionManager({
@@ -917,22 +1028,25 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       admissionClient: peer.admissionClient as AdmissionClient,
       attachClient: this.attachClient,
       requestedLogicals: this.requestedLogicals,
-          inboundHandler: (env: FameEnvelope, ctx?: FameDeliveryContext) =>
-            this.handleInboundFromPeer(env, ctx),
-          onAttach: (info: AttachInfo, connector: FameConnector) =>
-            this.onNodeAttachToPeer(info, connector),
-          onEpochChange: (epoch: string) => this.onEpochChange(epoch),
+      inboundHandler: (env: FameEnvelope, ctx?: FameDeliveryContext) =>
+        this.handleInboundFromPeer(env, ctx),
+      onAttach: (info: AttachInfo, connector: FameConnector) =>
+        this.onNodeAttachToPeer(info, connector),
+      onEpochChange: (epoch: string) => this.onEpochChange(epoch),
       onWelcome: async () => undefined,
     });
 
     await sessionManager.start();
     const systemId = sessionManager.systemId;
     if (!systemId) {
-      throw new Error("Peer session manager missing system id");
+      throw new Error('Peer session manager missing system id');
     }
 
     this.peerSessionManagers.set(systemId, sessionManager);
-    await this.routeManager.registerPeerRoute(systemId, sessionManager as unknown as FameConnector);
+    await this.routeManager.registerPeerRoute(
+      systemId,
+      sessionManager as unknown as FameConnector
+    );
   }
 
   private async handleInboundFromPeer(
@@ -940,7 +1054,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     context?: FameDeliveryContext
   ): Promise<FameMessageResponse | null | undefined> {
     const deliveryContext: FameDeliveryContext = {
-      expectedResponseType: context?.expectedResponseType ?? FameResponseType.NONE,
+      expectedResponseType:
+        context?.expectedResponseType ?? FameResponseType.NONE,
       fromConnector: context?.fromConnector,
       fromSystemId: context?.fromSystemId,
       originType: DeliveryOriginType.PEER,
@@ -953,23 +1068,32 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     return null;
   }
 
-  private async onNodeAttachToPeer(info: AttachInfo, connector: FameConnector): Promise<void> {
-    await this.dispatchEvent("onNodeAttachToPeer", this, info, connector).catch(() => undefined);
+  private async onNodeAttachToPeer(
+    info: AttachInfo,
+    connector: FameConnector
+  ): Promise<void> {
+    await this.dispatchEvent('onNodeAttachToPeer', this, info, connector).catch(
+      () => undefined
+    );
   }
 
   private async onEpochChange(epoch: string): Promise<void> {
     this.routingEpochValue = epoch;
-    await this.dispatchEvent("onEpochChange", this, epoch).catch(() => undefined);
+    await this.dispatchEvent('onEpochChange', this, epoch).catch(
+      () => undefined
+    );
     await this.propagateAddressBindingsUpstream();
   }
 
   private async propagateAddressBindingsUpstream(): Promise<void> {
     if (!this.hasParent) {
-      logger.warning("No upstream defined to rebind addresses");
+      logger.warning('No upstream defined to rebind addresses');
       return;
     }
 
-    const entries = Array.from(this.routeManager._downstream_addresses_routes.entries());
+    const entries = Array.from(
+      this.routeManager._downstream_addresses_routes.entries()
+    );
     for (const [address, info] of entries) {
       if (!info) {
         continue;
@@ -977,7 +1101,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       try {
         await this.bindAddressUpstream(new FameAddress(address), info);
       } catch (error) {
-        logger.error("rebind_failed", {
+        logger.error('rebind_failed', {
           address,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -985,7 +1109,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
   }
 
-  private async bindAddressUpstream(address: FameAddress, info: AddressRouteInfo): Promise<void> {
+  private async bindAddressUpstream(
+    address: FameAddress,
+    info: AddressRouteInfo
+  ): Promise<void> {
     if (!this.hasParent) {
       return;
     }
@@ -998,7 +1125,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     });
 
     const frame: AddressBindFrame = {
-      type: "AddressBind",
+      type: 'AddressBind',
       address: address.toString(),
     };
 
@@ -1010,7 +1137,9 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
 
     const replyTo = formatAddress(SYSTEM_INBOX, this.physicalPath);
-    const envelopeOptions: Parameters<typeof this.envelopeFactory.createEnvelope>[0] = {
+    const envelopeOptions: Parameters<
+      typeof this.envelopeFactory.createEnvelope
+    >[0] = {
       frame,
       corrId,
       replyTo,
@@ -1027,9 +1156,11 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
       timeoutId = setTimeout(() => {
-        reject(new Error(`Timeout waiting for bind ack for ${address.toString()}`));
+        reject(
+          new Error(`Timeout waiting for bind ack for ${address.toString()}`)
+        );
       }, this.ackTimeoutMs);
-      if (typeof (timeoutId as NodeJS.Timeout | null)?.unref === "function") {
+      if (typeof (timeoutId as NodeJS.Timeout | null)?.unref === 'function') {
         (timeoutId as NodeJS.Timeout).unref();
       }
     });
@@ -1059,7 +1190,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       config = null,
       node = null,
       fabric: providedFabric = null,
-      signals = ["SIGINT", "SIGTERM"],
+      signals = ['SIGINT', 'SIGTERM'],
       signal,
     } = options;
 
@@ -1067,25 +1198,29 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     basicConfig({ level: resolvedLevel });
 
     const processRef: NodeJS.Process | undefined =
-      typeof globalThis !== "undefined" && typeof (globalThis as any).process !== "undefined"
+      typeof globalThis !== 'undefined' &&
+      typeof (globalThis as any).process !== 'undefined'
         ? ((globalThis as any).process as NodeJS.Process)
         : undefined;
 
     if (
       !processRef ||
-      typeof processRef.once !== "function" ||
-      typeof processRef.removeListener !== "function"
+      typeof processRef.once !== 'function' ||
+      typeof processRef.removeListener !== 'function'
     ) {
-      throw new Error("Sentinel.aserve requires a Node.js runtime with signal support");
+      throw new Error(
+        'Sentinel.aserve requires a Node.js runtime with signal support'
+      );
     }
 
     const abortSignal = signal ?? null;
     if (abortSignal?.aborted) {
-      logger.info("shutdown_signal_received", { signal: "abort" });
+      logger.info('shutdown_signal_received', { signal: 'abort' });
       return;
     }
 
-    const fabric: FameFabric = providedFabric ?? new InProcessFameFabric(node, config ?? undefined);
+    const fabric: FameFabric =
+      providedFabric ?? new InProcessFameFabric(node, config ?? undefined);
 
     let stopResolve!: () => void;
     let stopResolved = false;
@@ -1098,7 +1233,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       };
     });
 
-    const listeners: Array<{ signal: NodeJS.Signals; listener: () => void }> = [];
+    const listeners: Array<{ signal: NodeJS.Signals; listener: () => void }> =
+      [];
     let abortListener: (() => void) | null = null;
 
     const cleanupListeners = (): void => {
@@ -1107,7 +1243,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         processRef.removeListener(registeredSignal, listener);
       }
       if (abortSignal && abortListener) {
-        abortSignal.removeEventListener("abort", abortListener);
+        abortSignal.removeEventListener('abort', abortListener);
         abortListener = null;
       }
     };
@@ -1115,7 +1251,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     const registerSignalListeners = (): void => {
       for (const sig of signals) {
         const listener = () => {
-          logger.info("shutdown_signal_received", { signal: sig });
+          logger.info('shutdown_signal_received', { signal: sig });
           cleanupListeners();
           stopResolve();
         };
@@ -1125,11 +1261,11 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
       if (abortSignal) {
         abortListener = () => {
-          logger.info("shutdown_signal_received", { signal: "abort" });
+          logger.info('shutdown_signal_received', { signal: 'abort' });
           cleanupListeners();
           stopResolve();
         };
-        abortSignal.addEventListener("abort", abortListener, { once: true });
+        abortSignal.addEventListener('abort', abortListener, { once: true });
       }
     };
 
@@ -1137,9 +1273,11 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     let shutdownError: unknown;
     try {
       registerSignalListeners();
-      logger.info("sentinel_live", { message: "Node is live! Press Ctrl+C to stop." });
+      logger.info('sentinel_live', {
+        message: 'Node is live! Press Ctrl+C to stop.',
+      });
       await stopPromise;
-      logger.info("sentinel_shutdown_begin");
+      logger.info('sentinel_shutdown_begin');
     } catch (error) {
       shutdownError = error;
       throw error;
@@ -1148,7 +1286,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       try {
         await fabric.exit();
       } catch (error) {
-        logger.error("sentinel_shutdown_failed", {
+        logger.error('sentinel_shutdown_failed', {
           error: error instanceof Error ? error.message : String(error),
         });
         if (!shutdownError) {
@@ -1157,20 +1295,22 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       }
     }
 
-    logger.info("sentinel_shutdown_complete");
+    logger.info('sentinel_shutdown_complete');
   }
 }
 
-function normalizeServeLogLevel(level: SentinelServeOptions["logLevel"]): LogLevel | undefined {
+function normalizeServeLogLevel(
+  level: SentinelServeOptions['logLevel']
+): LogLevel | undefined {
   if (level === null || level === undefined) {
     return undefined;
   }
 
-  if (typeof level === "number" && Number.isFinite(level)) {
+  if (typeof level === 'number' && Number.isFinite(level)) {
     return level as LogLevel;
   }
 
-  if (typeof level === "string") {
+  if (typeof level === 'string') {
     const trimmed = level.trim();
     if (!trimmed) {
       return undefined;
@@ -1181,7 +1321,7 @@ function normalizeServeLogLevel(level: SentinelServeOptions["logLevel"]): LogLev
     }
     const key = trimmed.toUpperCase();
     const value = (LogLevel as unknown as Record<string, LogLevel>)[key];
-    if (typeof value === "number" && Number.isFinite(value)) {
+    if (typeof value === 'number' && Number.isFinite(value)) {
       return value;
     }
   }

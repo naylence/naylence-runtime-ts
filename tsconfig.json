@@ -1,44 +1,39 @@
 {
   "compilerOptions": {
+    /* Language and Environment */
     "target": "ES2020",
-    "module": "Node16",
     "lib": ["ES2020", "DOM"],
-    "moduleResolution": "node16",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "allowJs": true,
-    "checkJs": false,
+    
+    /* Modules */
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    
+    /* Emit */
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "outDir": "./dist/types",
     "removeComments": false,
+    "importHelpers": true,
+    
+    /* Interop Constraints */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": false,
+    
+    /* Type Checking */
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
-    "resolveJsonModule": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "paths": {
-      "naylence-core": [
-        "../naylence-core-ts/dist/types/naylence-core-ts/src/index",
-        "../naylence-core-ts/src/index"
-      ],
-      "naylence-core/*": [
-        "../naylence-core-ts/dist/types/naylence-core-ts/src/naylence/*",
-        "../naylence-core-ts/src/naylence/*"
-      ]
-    }
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    
+    /* Completeness */
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*"
@@ -46,7 +41,8 @@
   "exclude": [
     "node_modules",
     "dist",
+    "coverage",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/__tests__/**"
   ]
 }

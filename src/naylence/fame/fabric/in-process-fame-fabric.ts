@@ -13,24 +13,24 @@ import {
   isFameMessageResponse,
   type FameMessageResponse,
   type FameEnvelopeHandler,
-} from "naylence-core";
+} from 'naylence-core';
 
-import type { NodeLike } from "../node/node-like.js";
-import { NodeLikeFactory } from "../node/node-like-factory.js";
-import { getLogger } from "../util/logging.js";
-import { decodeFameDataPayload } from "../util/util.js";
-import { resolveRuntimeVersion } from "../util/runtime-version.js";
-import type { ServiceManager } from "../service/service-manager.js";
-import { SinkService, isSinkService } from "../service/sink-service.js";
+import type { NodeLike } from '../node/node-like.js';
+import { NodeLikeFactory } from '../node/node-like-factory.js';
+import { getLogger } from '../util/logging.js';
+import { decodeFameDataPayload } from '../util/util.js';
+import { resolveRuntimeVersion } from '../util/runtime-version.js';
+import type { ServiceManager } from '../service/service-manager.js';
+import { SinkService, isSinkService } from '../service/sink-service.js';
 import {
   normalizeExtendedFameConfig,
   type ExtendedFameConfig,
-} from "../config/extended-fame-config-base.js";
+} from '../config/extended-fame-config-base.js';
 
-const logger = getLogger("naylence.fame.fabric.in_process");
+const logger = getLogger('naylence.fame.fabric.in_process');
 
 function normalizeNodeConfig(config: unknown): Record<string, unknown> | null {
-  if (config && typeof config === "object" && !Array.isArray(config)) {
+  if (config && typeof config === 'object' && !Array.isArray(config)) {
     return config as Record<string, unknown>;
   }
   return null;
@@ -64,21 +64,21 @@ export class InProcessFameFabric extends FameFabric {
 
     const version = await resolveRuntimeVersion();
     if (version) {
-      logger.info("naylence_runtime_startup", {
+      logger.info('naylence_runtime_startup', {
         version,
-        fabric_type: "in_process",
+        fabric_type: 'in_process',
       });
     } else {
-      logger.warning("naylence_runtime_version_not_found", {
-        message: "Could not determine package version",
-        fabric_type: "in_process",
+      logger.warning('naylence_runtime_version_not_found', {
+        message: 'Could not determine package version',
+        fabric_type: 'in_process',
       });
     }
   }
 
   private getRequiredNode(): NodeLike {
     if (!this._currentNode) {
-      throw new Error("InProcessFameFabric has not been started yet");
+      throw new Error('InProcessFameFabric has not been started yet');
     }
     return this._currentNode;
   }
@@ -89,7 +89,7 @@ export class InProcessFameFabric extends FameFabric {
       node.serviceManager ?? node.getServiceManager?.() ?? node._serviceManager;
 
     if (!manager) {
-      throw new Error("Node does not expose a service manager");
+      throw new Error('Node does not expose a service manager');
     }
 
     return manager;
@@ -101,7 +101,7 @@ export class InProcessFameFabric extends FameFabric {
     }
 
     await this.logStartupVersion();
-    logger.debug("starting_fabric", { type: "in_process" });
+    logger.debug('starting_fabric', { type: 'in_process' });
 
     if (!this._currentNode) {
       const nodeConfig = normalizeNodeConfig(this._config?.node ?? null);
@@ -162,7 +162,12 @@ export class InProcessFameFabric extends FameFabric {
     params: Record<string, any>,
     timeoutMs: number = DEFAULT_INVOKE_TIMEOUT_MILLIS
   ): Promise<unknown> {
-    return this.getRequiredNode().invokeByCapability(capabilities, method, params, timeoutMs);
+    return this.getRequiredNode().invokeByCapability(
+      capabilities,
+      method,
+      params,
+      timeoutMs
+    );
   }
 
   async invokeStream(
@@ -171,7 +176,12 @@ export class InProcessFameFabric extends FameFabric {
     params: Record<string, any>,
     timeoutMs: number = DEFAULT_INVOKE_TIMEOUT_MILLIS
   ): Promise<AsyncIterable<unknown>> {
-    return this.getRequiredNode().invokeStream(address, method, params, timeoutMs);
+    return this.getRequiredNode().invokeStream(
+      address,
+      method,
+      params,
+      timeoutMs
+    );
   }
 
   async invokeByCapabilityStream(
@@ -180,13 +190,24 @@ export class InProcessFameFabric extends FameFabric {
     params: Record<string, any>,
     timeoutMs: number = DEFAULT_INVOKE_TIMEOUT_MILLIS
   ): Promise<AsyncIterable<unknown>> {
-    return this.getRequiredNode().invokeByCapabilityStream(capabilities, method, params, timeoutMs);
+    return this.getRequiredNode().invokeByCapabilityStream(
+      capabilities,
+      method,
+      params,
+      timeoutMs
+    );
   }
 
-  async serve(service: FameService, serviceName?: string | null): Promise<FameAddress> {
-    const resolvedName = serviceName ?? (service as { name?: string }).name ?? null;
+  async serve(
+    service: FameService,
+    serviceName?: string | null
+  ): Promise<FameAddress> {
+    const resolvedName =
+      serviceName ?? (service as { name?: string }).name ?? null;
     if (!resolvedName) {
-      throw new Error("service_name parameter not set and service doesn't define 'name' property");
+      throw new Error(
+        "service_name parameter not set and service doesn't define 'name' property"
+      );
     }
     return this.serviceManager.registerService(resolvedName, service);
   }
@@ -227,7 +248,7 @@ export class InProcessFameFabric extends FameFabric {
       envelope: FameEnvelope
     ): Promise<FameMessageResponse | null> => {
       const frame: any = envelope.frame;
-      if (!frame || frame.type !== "Data") {
+      if (!frame || frame.type !== 'Data') {
         throw new Error(
           `Invalid envelope frame type. Expected: DataFrame, actual: ${frame?.type ?? typeof frame}`
         );
@@ -237,7 +258,10 @@ export class InProcessFameFabric extends FameFabric {
       return isFameMessageResponse(result) ? result : null;
     };
 
-    const subscriberAddress = await this.getRequiredNode().listen(subscriberName, decodeAndHandle);
+    const subscriberAddress = await this.getRequiredNode().listen(
+      subscriberName,
+      decodeAndHandle
+    );
 
     await this.sinkService.subscribe({
       sinkAddress: sinkAddress.toString(),

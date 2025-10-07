@@ -1,74 +1,96 @@
-export * from "./auth/authorizer.js";
-export { AUTHORIZER_FACTORY_BASE_TYPE } from "./auth/authorizer-factory.js";
-export type * from "./auth/authorizer-factory.js";
-export * from "./auth/auth-injection-strategy.js";
-export { AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE } from "./auth/auth-injection-strategy-factory.js";
-export * from "./auth/token-issuer.js";
-export { TOKEN_ISSUER_FACTORY_BASE_TYPE } from "./auth/token-issuer-factory.js";
-export type * from "./auth/token-issuer-factory.js";
-export { TOKEN_VERIFIER_FACTORY_BASE_TYPE } from "./auth/token-verifier-factory.js";
-export type * from "./auth/token-verifier-factory.js";
-export * from "./auth/token-verifier-provider.js";
-export * from "./auth/token-verifier.js";
-export * from "./auth/token-provider.js";
-export { TOKEN_PROVIDER_FACTORY_BASE_TYPE } from "./auth/token-provider-factory.js";
-export type * from "./auth/token-provider-factory.js";
-export * from "./auth/token.js";
-export * from "./cert/certificate-manager.js";
-export { CERTIFICATE_MANAGER_FACTORY_BASE_TYPE } from "./cert/certificate-manager-factory.js";
-export type * from "./cert/certificate-manager-factory.js";
-export * from "./encryption/encryption-manager.js";
-export { ENCRYPTION_MANAGER_FACTORY_BASE_TYPE } from "./encryption/encryption-manager-factory.js";
-export type * from "./encryption/encryption-manager-factory.js";
-export * from "./encryption/noop-encryption-manager.js";
-export * from "./encryption/secure-channel-manager.js";
-export { SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE } from "./encryption/secure-channel-manager-factory.js";
-export * from "./keys/key-manager.js";
-export { KEY_MANAGER_FACTORY_BASE_TYPE } from "./keys/key-manager-factory.js";
-export type * from "./keys/key-manager-factory.js";
-export * from "./keys/default-key-manager.js";
-export * from "./keys/attachment-key-validator.js";
-export { ATTACHMENT_KEY_VALIDATOR_FACTORY_BASE_TYPE } from "./keys/attachment-key-validator-factory.js";
-export type * from "./keys/attachment-key-validator-factory.js";
-export * from "./keys/noop-key-validator.js";
-export * from "./keys/key-management-handler.js";
-export * from "./keys/key-provider.js";
-export * from "./keys/key-store.js";
-export { KEY_STORE_FACTORY_BASE_TYPE } from "./keys/key-store-factory.js";
-export type * from "./keys/key-store-factory.js";
-export * from "./crypto/jwk-validation.js";
-export * from "./crypto/key-factories/index.js";
-export * from "./crypto/sealed-envelope.js";
-export * from "./policy/security-policy.js";
-export { SECURITY_POLICY_FACTORY_BASE_TYPE } from "./policy/security-policy-factory.js";
-export type * from "./policy/security-policy-factory.js";
-export * from "./policy/default-security-policy.js";
-export * from "./policy/no-security-policy.js";
-export * from "./security-manager.js";
-export * from "./security-manager-config.js";
-export { SECURITY_MANAGER_FACTORY_BASE_TYPE } from "./security-manager-factory.js";
-export type * from "./security-manager-factory.js";
-export * from "./signing/envelope-signer.js";
-export * from "./signing/envelope-verifier.js";
+export * from './auth/authorizer.js';
+export {
+  AUTHORIZER_FACTORY_BASE_TYPE,
+  AuthorizerFactory,
+} from './auth/authorizer-factory.js';
+export type * from './auth/authorizer-factory.js';
+export * from './auth/auth-injection-strategy.js';
+export { AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE } from './auth/auth-injection-strategy-factory.js';
+export type * from './auth/auth-injection-strategy-factory.js';
+export * from './auth/token-issuer.js';
+export {
+  TOKEN_ISSUER_FACTORY_BASE_TYPE,
+  TokenIssuerFactory,
+} from './auth/token-issuer-factory.js';
+export type * from './auth/token-issuer-factory.js';
+export {
+  TOKEN_VERIFIER_FACTORY_BASE_TYPE,
+  TokenVerifierFactory,
+} from './auth/token-verifier-factory.js';
+export type * from './auth/token-verifier-factory.js';
+export * from './auth/token-verifier-provider.js';
+export * from './auth/token-verifier.js';
+export * from './auth/token-provider.js';
+export {
+  TOKEN_PROVIDER_FACTORY_BASE_TYPE,
+  TokenProviderFactory,
+} from './auth/token-provider-factory.js';
+export type * from './auth/token-provider-factory.js';
+export * from './auth/token.js';
+export * from './cert/certificate-manager.js';
+export {
+  CERTIFICATE_MANAGER_FACTORY_BASE_TYPE,
+  CertificateManagerFactory,
+} from './cert/certificate-manager-factory.js';
+export type * from './cert/certificate-manager-factory.js';
+export * from './encryption/encryption-manager.js';
+export { ENCRYPTION_MANAGER_FACTORY_BASE_TYPE } from './encryption/encryption-manager-factory.js';
+export * from './encryption/encryption-manager-factory.js';
+export * from './encryption/noop-encryption-manager.js';
+export * from './encryption/secure-channel-manager.js';
+export {
+  SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE,
+  SecureChannelManagerFactory,
+  SecureChannelManagerConfig,
+} from './encryption/secure-channel-manager-factory.js';
+export * from './keys/key-manager.js';
+export { KEY_MANAGER_FACTORY_BASE_TYPE } from './keys/key-manager-factory.js';
+export * from './keys/key-manager-factory.js';
+export * from './keys/default-key-manager.js';
+export * from './keys/attachment-key-validator.js';
+export { ATTACHMENT_KEY_VALIDATOR_FACTORY_BASE_TYPE } from './keys/attachment-key-validator-factory.js';
+export type * from './keys/attachment-key-validator-factory.js';
+export * from './keys/noop-key-validator.js';
+export * from './keys/key-management-handler.js';
+export * from './keys/key-provider.js';
+export * from './keys/key-store.js';
+export { KEY_STORE_FACTORY_BASE_TYPE } from './keys/key-store-factory.js';
+export * from './keys/key-store-factory.js';
+export * from './crypto/jwk-validation.js';
+export * from './crypto/key-factories/index.js';
+export * from './crypto/sealed-envelope.js';
+export * from './policy/security-policy.js';
+export { SECURITY_POLICY_FACTORY_BASE_TYPE } from './policy/security-policy-factory.js';
+export type * from './policy/security-policy-factory.js';
+export * from './policy/default-security-policy.js';
+export * from './default-security-manager.js';
+export * from './policy/no-security-policy.js';
+export * from './security-manager.js';
+export * from './security-manager-config.js';
+export { SECURITY_MANAGER_FACTORY_BASE_TYPE } from './security-manager-factory.js';
+export type * from './security-manager-factory.js';
+export * from './signing/envelope-signer.js';
+export * from './signing/envelope-verifier.js';
 export {
   SigningConfig as SigningConfigClass,
   type SigningConfigOptions,
-} from "./signing/signing-config.js";
-export * from "./crypto/providers/crypto-provider.js";
-export * from "./crypto/providers/default-crypto-provider.js";
-export * from "./credential/credential-provider.js";
-export { CREDENTIAL_PROVIDER_FACTORY_BASE_TYPE } from "./credential/credential-provider-factory.js";
-export type * from "./credential/credential-provider-factory.js";
-export * from "./credential/env-credential-provider.js";
-export * from "./credential/none-credential-provider.js";
-export * from "./credential/prompt-credential-provider.js";
-export * from "./credential/secret-source.js";
-export * from "./credential/secret-store-credential-provider.js";
-export * from "./credential/static-credential-provider.js";
-export * from "./credential/browser-auto-key-credential-provider.js";
-export * from "./credential/browser-wrapped-key-credential-provider.js";
-export * from "./credential/session-key-credential-provider.js";
-export * from "./credential/dev-fixed-key-credential-provider.js";
+} from './signing/signing-config.js';
+export * from './crypto/providers/crypto-provider.js';
+export * from './crypto/providers/default-crypto-provider.js';
+export * from './credential/credential-provider.js';
+export * from './crypto/crypto-dependencies.js';
+export { CREDENTIAL_PROVIDER_FACTORY_BASE_TYPE } from './credential/credential-provider-factory.js';
+export type * from './credential/credential-provider-factory.js';
+export * from './credential/env-credential-provider.js';
+export * from './credential/none-credential-provider.js';
+export * from './credential/prompt-credential-provider.js';
+export * from './credential/secret-source.js';
+export * from './credential/secret-store-credential-provider.js';
+export * from './credential/static-credential-provider.js';
+export * from './credential/browser-auto-key-credential-provider.js';
+export * from './credential/browser-wrapped-key-credential-provider.js';
+export * from './credential/session-key-credential-provider.js';
+export * from './credential/dev-fixed-key-credential-provider.js';
 export {
   ENV_VAR_JWT_TRUSTED_ISSUER,
   ENV_VAR_JWT_ALGORITHM,
@@ -84,5 +106,4 @@ export {
   PROFILE_NAME_GATED,
   PROFILE_NAME_GATED_CALLBACK,
   PROFILE_NAME_OPEN,
-} from "./node-security-profile-factory.js";
-
+} from './node-security-profile-factory.js';

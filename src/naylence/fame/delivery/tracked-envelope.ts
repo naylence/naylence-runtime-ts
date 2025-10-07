@@ -1,21 +1,21 @@
-import { FameEnvelope, FameResponseType } from "naylence-core";
+import { FameEnvelope, FameResponseType } from 'naylence-core';
 
 export enum EnvelopeStatus {
-  PENDING = "pending",
-  ACKED = "acked",
-  NACKED = "nacked",
-  RESPONDED = "responded",
-  STREAMING = "streaming",
-  TIMED_OUT = "timed_out",
-  FAILED = "failed",
-  RECEIVED = "received",
-  HANDLED = "handled",
-  FAILED_TO_HANDLE = "failed_to_handle",
+  PENDING = 'pending',
+  ACKED = 'acked',
+  NACKED = 'nacked',
+  RESPONDED = 'responded',
+  STREAMING = 'streaming',
+  TIMED_OUT = 'timed_out',
+  FAILED = 'failed',
+  RECEIVED = 'received',
+  HANDLED = 'handled',
+  FAILED_TO_HANDLE = 'failed_to_handle',
 }
 
 export enum MailboxType {
-  INBOX = "inbox",
-  OUTBOX = "outbox",
+  INBOX = 'inbox',
+  OUTBOX = 'outbox',
 }
 
 export interface TrackedEnvelopeInit {
@@ -78,8 +78,10 @@ export class TrackedEnvelope {
   clone(overrides: Partial<TrackedEnvelopeInit> = {}): TrackedEnvelope {
     return new TrackedEnvelope({
       timeoutAtMs: overrides.timeoutAtMs ?? this.timeoutAtMs,
-      overallTimeoutAtMs: overrides.overallTimeoutAtMs ?? this.overallTimeoutAtMs,
-      expectedResponseType: overrides.expectedResponseType ?? this.expectedResponseType,
+      overallTimeoutAtMs:
+        overrides.overallTimeoutAtMs ?? this.overallTimeoutAtMs,
+      expectedResponseType:
+        overrides.expectedResponseType ?? this.expectedResponseType,
       createdAtMs: overrides.createdAtMs ?? this.createdAtMs,
       attempt: overrides.attempt ?? this.attempt,
       status: overrides.status ?? this.status,

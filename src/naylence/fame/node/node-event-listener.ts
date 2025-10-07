@@ -8,11 +8,11 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeWelcomeFrame,
-} from "naylence-core";
+} from 'naylence-core';
 
-import type { AttachInfo } from "./admission/node-attach-client.js";
+import type { AttachInfo } from './admission/node-attach-client.js';
 // Import NodeLike from the proper module
-import type { NodeLike } from "./node-like.js";
+import type { NodeLike } from './node-like.js';
 
 /**
  * Protocol for components that need to respond to node lifecycle events.
@@ -115,7 +115,10 @@ export interface NodeEventListener {
    * This is the ideal place to handle parent-specific setup, policy
    * validation, and other attach-specific initialization logic.
    */
-  onNodeAttachToUpstream?(node: NodeLike, attachInfo: AttachInfo): Promise<void>;
+  onNodeAttachToUpstream?(
+    node: NodeLike,
+    attachInfo: AttachInfo
+  ): Promise<void>;
 
   /**
    * Called when an envelope is received by the node.
@@ -445,7 +448,10 @@ export abstract class BaseNodeEventListener implements NodeEventListener {
     // Default implementation does nothing
   }
 
-  async onNodeAttachToUpstream?(_node: NodeLike, _attachInfo: AttachInfo): Promise<void> {
+  async onNodeAttachToUpstream?(
+    _node: NodeLike,
+    _attachInfo: AttachInfo
+  ): Promise<void> {
     // Default implementation does nothing
   }
 

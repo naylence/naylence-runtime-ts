@@ -1,5 +1,9 @@
-import { BaseTraceEmitter } from "./base-trace-emitter.js";
-import type { TraceSpan, TraceSpanOptions, TraceSpanScope } from "./trace-emitter.js";
+import { BaseTraceEmitter } from './base-trace-emitter.js';
+import type {
+  TraceSpan,
+  TraceSpanOptions,
+  TraceSpanScope,
+} from './trace-emitter.js';
 
 class NoopTraceSpan implements TraceSpan {
   public setAttribute(): void {}

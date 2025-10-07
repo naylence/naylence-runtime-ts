@@ -5,8 +5,11 @@
  * error handling, cancellation, and graceful shutdown capabilities.
  */
 
-import { getLogger } from "./logging.js";
-import { withEnvelopeContextAsync, getCurrentEnvelope } from "./envelope-context.js";
+import { getLogger } from './logging.js';
+import {
+  withEnvelopeContextAsync,
+  getCurrentEnvelope,
+} from './envelope-context.js';
 import {
   SpawnedTask,
   TaskSpawnerConfig,
@@ -14,9 +17,9 @@ import {
   TaskState,
   TaskTimeoutError,
   TaskCancelledError,
-} from "./task-types.js";
+} from './task-types.js';
 
-const logger = getLogger("task-spawner");
+const logger = getLogger('task-spawner');
 
 // Internal task implementation
 class TaskImpl<T> implements SpawnedTask<T> {
@@ -49,7 +52,10 @@ class TaskImpl<T> implements SpawnedTask<T> {
         return result;
       })
       .catch((error) => {
-        if (error.name === "AbortError" || this.abortController.signal.aborted) {
+        if (
+          error.name === 'AbortError' ||
+          this.abortController.signal.aborted
+        ) {
           this._state = TaskState.CANCELLED;
           throw new TaskCancelledError(this.name);
         } else {
@@ -123,15 +129,23 @@ export class TaskSpawner {
     this._suppressCompletionLogging = false;
 
     // Check concurrency limits
-    if (this._config.maxConcurrent > 0 && this._tasks.size >= this._config.maxConcurrent) {
-      throw new Error(`Task limit reached: ${this._config.maxConcurrent} concurrent tasks`);
+    if (
+      this._config.maxConcurrent > 0 &&
+      this._tasks.size >= this._config.maxConcurrent
+    ) {
+      throw new Error(
+        `Task limit reached: ${this._config.maxConcurrent} concurrent tasks`
+      );
     }
 
     const taskId = `task-${++this._taskCounter}`;
     const taskName = options.name || `unnamed-${taskId}`;
     const timeout = options.timeout ?? this._config.defaultTimeout;
 
-    logger.debug("starting_background_task", { task_name: taskName, task_id: taskId });
+    logger.debug('starting_background_task', {
+      task_name: taskName,
+      task_id: taskId,
+    });
 
     // Create abort controller for cancellation
     const abortController = new AbortController();
@@ -156,7 +170,7 @@ export class TaskSpawner {
     task.promise
       .then(() => {
         if (!this._suppressCompletionLogging) {
-          logger.debug("task_completed_successfully", {
+          logger.debug('task_completed_successfully', {
             task_name: taskName,
             task_id: taskId,
             duration_ms: Date.now() - task.startTime,
@@ -192,7 +206,10 @@ export class TaskSpawner {
 
     // Handle timeout if specified
     if (timeout > 0) {
-      return Promise.race<T>([runTask(), this._createTimeoutPromise<T>(timeout, taskName)]);
+      return Promise.race<T>([
+        runTask(),
+        this._createTimeoutPromise<T>(timeout, taskName),
+      ]);
     }
 
     return runTask();
@@ -201,7 +218,10 @@ export class TaskSpawner {
   /**
    * Create a timeout promise that rejects after the specified time
    */
-  private _createTimeoutPromise<T>(timeout: number, taskName: string): Promise<T> {
+  private _createTimeoutPromise<T>(
+    timeout: number,
+    taskName: string
+  ): Promise<T> {
     return new Promise<T>((_, reject) => {
       setTimeout(() => {
         reject(new TaskTimeoutError(taskName, timeout));
@@ -218,20 +238,20 @@ export class TaskSpawner {
     // Handle cancellation (including AbortError from AbortSignal)
     if (
       error instanceof TaskCancelledError ||
-      error.name === "AbortError" ||
-      error.message === "Task cancelled" ||
-      error.message === "Aborted"
+      error.name === 'AbortError' ||
+      error.message === 'Task cancelled' ||
+      error.message === 'Aborted'
     ) {
-      logger.debug("task_cancelled", {
+      logger.debug('task_cancelled', {
         task_name: taskName,
-        note: "Task cancelled as requested",
+        note: 'Task cancelled as requested',
       });
       return;
     }
 
     // Handle timeout
     if (error instanceof TaskTimeoutError) {
-      logger.warning("task_timed_out", {
+      logger.warning('task_timed_out', {
         task_name: taskName,
         error: error.message,
       });
@@ -244,30 +264,30 @@ export class TaskSpawner {
     // Handle known WebSocket shutdown race condition (similar to Python version)
     if (
       error.message.includes("await wasn't used with future") ||
-      error.message.includes("WebSocket closed during receive")
+      error.message.includes('WebSocket closed during receive')
     ) {
-      logger.debug("task_shutdown_race_condition_handled", {
+      logger.debug('task_shutdown_race_condition_handled', {
         task_name: taskName,
-        note: "Normal WebSocket close timing during shutdown - not an error",
+        note: 'Normal WebSocket close timing during shutdown - not an error',
       });
       return;
     }
 
     // Handle transport close errors (similar to Python FameTransportClose)
     if (
-      error.name === "FameTransportClose" ||
-      error.message.includes("normal closure") ||
-      error.message.includes("Connection closed")
+      error.name === 'FameTransportClose' ||
+      error.message.includes('normal closure') ||
+      error.message.includes('Connection closed')
     ) {
-      logger.debug("task_shutdown_completed_normally", {
+      logger.debug('task_shutdown_completed_normally', {
         task_name: taskName,
-        note: "Task closed normally during shutdown",
+        note: 'Task closed normally during shutdown',
       });
       return;
     }
 
     // All other exceptions are considered real failures
-    logger.error("background_task_failed", {
+    logger.error('background_task_failed', {
       task_name: taskName,
       error: error.message,
       stack: error.stack,
@@ -297,7 +317,7 @@ export class TaskSpawner {
 
     this._suppressCompletionLogging = true;
 
-    logger.debug("shutting_down_tasks", {
+    logger.debug('shutting_down_tasks', {
       task_count: this._tasks.size,
       grace_period_ms: gracePeriod,
     });
@@ -314,7 +334,7 @@ export class TaskSpawner {
       );
 
       if (stillRunning.length > 0) {
-        logger.debug("cancelling_hanging_tasks", {
+        logger.debug('cancelling_hanging_tasks', {
           hanging_count: stillRunning.length,
         });
 
@@ -328,7 +348,7 @@ export class TaskSpawner {
               await this._waitWithTimeout(task.promise, joinTimeout);
             } catch (error) {
               if (error instanceof TaskTimeoutError) {
-                logger.warning("task_did_not_shutdown", {
+                logger.warning('task_did_not_shutdown', {
                   task_name: task.name || task.id,
                   join_timeout_ms: joinTimeout,
                 });
@@ -338,7 +358,7 @@ export class TaskSpawner {
                 // implementation changes in future refactors.
               } else if (!(error instanceof TaskCancelledError)) {
                 /* istanbul ignore next - unreachable defensive branch */
-                logger.error("task_raised_during_cancellation", {
+                logger.error('task_raised_during_cancellation', {
                   task_name: task.name || task.id,
                   error: error instanceof Error ? error.message : String(error),
                 });
@@ -396,10 +416,16 @@ export class TaskSpawner {
   /**
    * Wait for a promise with a timeout
    */
-  private async _waitWithTimeout<T>(promise: Promise<T>, timeout: number): Promise<T> {
+  private async _waitWithTimeout<T>(
+    promise: Promise<T>,
+    timeout: number
+  ): Promise<T> {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => reject(new TaskTimeoutError("shutdown-wait", timeout)), timeout);
+      timeoutId = setTimeout(
+        () => reject(new TaskTimeoutError('shutdown-wait', timeout)),
+        timeout
+      );
     });
 
     try {

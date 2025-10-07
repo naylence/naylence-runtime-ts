@@ -1,34 +1,34 @@
-import type { NodeAttachFrame } from "naylence-core";
+import type { NodeAttachFrame } from 'naylence-core';
 
-import type { RoutingNodeLike } from "../node/routing-node-like.js";
-import type { ConnectionGrant } from "../grants/connection-grant.js";
+import type { RoutingNodeLike } from '../node/routing-node-like.js';
+import type { ConnectionGrant } from '../grants/connection-grant.js';
 import {
   HTTP_CONNECTION_GRANT_TYPE,
   type HttpConnectionGrant,
   type HttpConnectionGrantLike,
   httpGrantToConnectorConfig,
   normalizeHttpConnectionGrant,
-} from "../grants/http-connection-grant.js";
+} from '../grants/http-connection-grant.js';
 import {
   WEBSOCKET_CONNECTION_GRANT_TYPE,
   type WebSocketConnectionGrant,
   type WebSocketConnectionGrantLike,
   normalizeWebSocketConnectionGrant,
   websocketGrantToConnectorConfig,
-} from "../grants/websocket-connection-grant.js";
-import type { ConnectorConfig } from "./connector-config.js";
-import { getLogger } from "../util/logging.js";
+} from '../grants/websocket-connection-grant.js';
+import type { ConnectorConfig } from './connector-config.js';
+import { getLogger } from '../util/logging.js';
 
-const logger = getLogger("grant-selection-policy");
+const logger = getLogger('grant-selection-policy');
 
 function isSerializedGrant(value: unknown): value is SerializedGrant {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export enum ConnectorType {
-  HTTP_STATELESS = "HttpStatelessConnector",
-  WEBSOCKET_STATELESS = "WebSocketStatelessConnector",
-  WEBSOCKET = "WebSocketConnector",
+  HTTP_STATELESS = 'HttpStatelessConnector',
+  WEBSOCKET_STATELESS = 'WebSocketStatelessConnector',
+  WEBSOCKET = 'WebSocketConnector',
 }
 
 export interface SerializedGrant extends Record<string, unknown> {
@@ -56,7 +56,9 @@ export class GrantSelectionContext {
   }
 
   get clientSupportedCallbackGrants(): SerializedGrant[] {
-  const callbackGrants = this.attachFrame.callbackGrants as unknown[] | undefined;
+    const callbackGrants = this.attachFrame.callbackGrants as
+      | unknown[]
+      | undefined;
     if (!callbackGrants || callbackGrants.length === 0) {
       return [];
     }
@@ -68,11 +70,15 @@ export class GrantSelectionContext {
         }
         return {} as SerializedGrant;
       })
-      .filter((grant): grant is SerializedGrant => Object.keys(grant).length > 0);
+      .filter(
+        (grant): grant is SerializedGrant => Object.keys(grant).length > 0
+      );
   }
 }
 
-export class GrantSelectionResult<TGrant extends ConnectionGrant = ConnectionGrant> {
+export class GrantSelectionResult<
+  TGrant extends ConnectionGrant = ConnectionGrant,
+> {
   constructor(
     public readonly grant: TGrant,
     public readonly selectionReason: string,
@@ -85,7 +91,9 @@ export class GrantSelectionResult<TGrant extends ConnectionGrant = ConnectionGra
 }
 
 export interface GrantSelectionStrategy {
-  selectCallbackGrant(context: GrantSelectionContext): GrantSelectionResult | null;
+  selectCallbackGrant(
+    context: GrantSelectionContext
+  ): GrantSelectionResult | null;
 }
 
 type TypedGrant = ConnectionGrant & {
@@ -103,32 +111,40 @@ function createGrantFromRecord(serialized: SerializedGrant): TypedGrant | null {
   }
 }
 
-function createHttpGrant(serialized: HttpConnectionGrantLike): TypedGrant | null {
+function createHttpGrant(
+  serialized: HttpConnectionGrantLike
+): TypedGrant | null {
   try {
     const normalized = normalizeHttpConnectionGrant(serialized);
-    const grant: HttpConnectionGrant & { toConnectorConfig: () => ConnectorConfig } = {
+    const grant: HttpConnectionGrant & {
+      toConnectorConfig: () => ConnectorConfig;
+    } = {
       ...normalized,
       toConnectorConfig: () => httpGrantToConnectorConfig(serialized),
     };
     return grant;
   } catch (error) {
-    logger.debug("grant_selection_http_normalization_failed", {
+    logger.debug('grant_selection_http_normalization_failed', {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
   }
 }
 
-function createWebSocketGrant(serialized: WebSocketConnectionGrantLike): TypedGrant | null {
+function createWebSocketGrant(
+  serialized: WebSocketConnectionGrantLike
+): TypedGrant | null {
   try {
     const normalized = normalizeWebSocketConnectionGrant(serialized);
-    const grant: WebSocketConnectionGrant & { toConnectorConfig: () => ConnectorConfig } = {
+    const grant: WebSocketConnectionGrant & {
+      toConnectorConfig: () => ConnectorConfig;
+    } = {
       ...normalized,
       toConnectorConfig: () => websocketGrantToConnectorConfig(serialized),
     };
     return grant;
   } catch (error) {
-    logger.debug("grant_selection_websocket_normalization_failed", {
+    logger.debug('grant_selection_websocket_normalization_failed', {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;
@@ -136,7 +152,9 @@ function createWebSocketGrant(serialized: WebSocketConnectionGrantLike): TypedGr
 }
 
 class PreferSameTypeStrategy implements GrantSelectionStrategy {
-  selectCallbackGrant(context: GrantSelectionContext): GrantSelectionResult | null {
+  selectCallbackGrant(
+    context: GrantSelectionContext
+  ): GrantSelectionResult | null {
     const targetType = context.callbackGrantType;
 
     for (const serialized of context.clientSupportedCallbackGrants) {
@@ -149,7 +167,10 @@ class PreferSameTypeStrategy implements GrantSelectionStrategy {
         continue;
       }
 
-      return new GrantSelectionResult(grant, `Matching inbound connector type: ${targetType}`);
+      return new GrantSelectionResult(
+        grant,
+        `Matching inbound connector type: ${targetType}`
+      );
     }
 
     return null;
@@ -157,22 +178,32 @@ class PreferSameTypeStrategy implements GrantSelectionStrategy {
 }
 
 class PreferHttpStrategy implements GrantSelectionStrategy {
-  selectCallbackGrant(context: GrantSelectionContext): GrantSelectionResult | null {
+  selectCallbackGrant(
+    context: GrantSelectionContext
+  ): GrantSelectionResult | null {
     for (const serialized of context.clientSupportedCallbackGrants) {
       if (serialized.type !== HTTP_CONNECTION_GRANT_TYPE) {
         continue;
       }
 
       try {
-        const normalized = normalizeHttpConnectionGrant(serialized as HttpConnectionGrantLike);
-        const grant: HttpConnectionGrant & { toConnectorConfig: () => ConnectorConfig } = {
+        const normalized = normalizeHttpConnectionGrant(
+          serialized as HttpConnectionGrantLike
+        );
+        const grant: HttpConnectionGrant & {
+          toConnectorConfig: () => ConnectorConfig;
+        } = {
           ...normalized,
           toConnectorConfig: () =>
             httpGrantToConnectorConfig(serialized as HttpConnectionGrantLike),
         };
-        return new GrantSelectionResult(grant, "Preferred HTTP connector type", true);
+        return new GrantSelectionResult(
+          grant,
+          'Preferred HTTP connector type',
+          true
+        );
       } catch (error) {
-        logger.debug("grant_selection_prefer_http_failed", {
+        logger.debug('grant_selection_prefer_http_failed', {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -183,7 +214,9 @@ class PreferHttpStrategy implements GrantSelectionStrategy {
 }
 
 class ClientPreferenceStrategy implements GrantSelectionStrategy {
-  selectCallbackGrant(context: GrantSelectionContext): GrantSelectionResult | null {
+  selectCallbackGrant(
+    context: GrantSelectionContext
+  ): GrantSelectionResult | null {
     const [first] = context.clientSupportedCallbackGrants;
     if (!first) {
       return null;
@@ -193,7 +226,7 @@ class ClientPreferenceStrategy implements GrantSelectionStrategy {
     if (grant) {
       return new GrantSelectionResult(
         grant,
-        `Client's first preference: ${first.type ?? "unknown"}`,
+        `Client's first preference: ${first.type ?? 'unknown'}`,
         true
       );
     }
@@ -214,10 +247,12 @@ export class GrantSelectionPolicy {
   }
 
   selectCallbackGrant(context: GrantSelectionContext): GrantSelectionResult {
-    logger.debug("grant_selection_start", {
+    logger.debug('grant_selection_start', {
       child: context.childId,
       inboundType: context.callbackGrantType,
-      clientGrants: context.clientSupportedCallbackGrants.map((grant) => grant.type),
+      clientGrants: context.clientSupportedCallbackGrants.map(
+        (grant) => grant.type
+      ),
     });
 
     for (const strategy of this._strategies) {
@@ -226,7 +261,7 @@ export class GrantSelectionPolicy {
         continue;
       }
 
-      logger.debug("grant_selection_success", {
+      logger.debug('grant_selection_success', {
         child: context.childId,
         selectedType: result.grant.type,
         strategy: strategy.constructor.name,
@@ -236,12 +271,14 @@ export class GrantSelectionPolicy {
       return result;
     }
 
-    const supportedTypes = context.clientSupportedCallbackGrants.map((grant) => grant.type);
-    logger.warning("grant_selection_failed", {
+    const supportedTypes = context.clientSupportedCallbackGrants.map(
+      (grant) => grant.type
+    );
+    logger.warning('grant_selection_failed', {
       child: context.childId,
       clientConnectors: supportedTypes,
       inboundType: context.callbackGrantType,
-      reason: "No matching strategy found",
+      reason: 'No matching strategy found',
     });
 
     throw new Error(

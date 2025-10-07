@@ -5,8 +5,8 @@
  * and manage the server lifecycle tied to node lifecycle.
  */
 
-import type { NodeEventListener } from "../node/node-event-listener.js";
-import type { NodeLike } from "../node/node-like.js";
+import type { NodeEventListener } from '../node/node-event-listener.js';
+import type { NodeLike } from '../node/node-like.js';
 
 /**
  * Abstract base class for transport listeners.

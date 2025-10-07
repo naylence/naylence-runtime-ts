@@ -1,26 +1,26 @@
-import { ConnectorState } from "naylence-core";
+import { ConnectorState } from 'naylence-core';
 
-import "../../security/index.js";
-import "../../node/index.js";
-import "../../connector/index.js";
-import "../../sentinel/index.js";
-import "../../delivery/index.js";
-import "../../stickiness/index.js";
+import '../../security/index.js';
+import '../../node/index.js';
+import '../../connector/index.js';
+import '../../sentinel/index.js';
+import '../../delivery/index.js';
+import '../../stickiness/index.js';
 
-import { WebSocketConnector } from "../websocket-connector.js";
-import { getWebsocketListenerInstance } from "../websocket-listener.js";
-import { DefaultHttpServer } from "../default-http-server.js";
-import { SentinelFactory } from "../../sentinel/sentinel-factory.js";
-import type { Sentinel } from "../../sentinel/sentinel.js";
-import type { RouteManager } from "../../sentinel/route-manager.js";
-import { basicConfig, LogLevel } from "../../util/logging.js";
+import { WebSocketConnector } from '../websocket-connector.js';
+import { getWebsocketListenerInstance } from '../websocket-listener.js';
+import { DefaultHttpServer } from '../default-http-server.js';
+import { SentinelFactory } from '../../sentinel/sentinel-factory.js';
+import type { Sentinel } from '../../sentinel/sentinel.js';
+import type { RouteManager } from '../../sentinel/route-manager.js';
+import { basicConfig, LogLevel } from '../../util/logging.js';
 
-jest.mock("fastify", () => {
-  const actual = jest.requireActual("fastify");
+jest.mock('fastify', () => {
+  const actual = jest.requireActual('fastify');
   return (...args: unknown[]) => {
     const instance = actual(...args);
-    Object.defineProperty(instance, "version", {
-      value: actual.version ?? instance.version ?? "5.6.1",
+    Object.defineProperty(instance, 'version', {
+      value: actual.version ?? instance.version ?? '5.6.1',
       configurable: true,
     });
     return instance;
@@ -29,16 +29,16 @@ jest.mock("fastify", () => {
 
 jest.setTimeout(20000);
 
-const SOCKET_HOST = "127.0.0.1";
+const SOCKET_HOST = '127.0.0.1';
 const WAIT_TIMEOUT_MS = 10_000;
 const WAIT_INTERVAL_MS = 50;
 
 function createSecurityConfig(): Record<string, unknown> {
   return {
-    type: "DefaultSecurityManager",
-    authorizer: { type: "NoopAuthorizer" },
+    type: 'DefaultSecurityManager',
+    authorizer: { type: 'NoopAuthorizer' },
     security_policy: {
-      type: "NoSecurityPolicy",
+      type: 'NoSecurityPolicy',
     },
   } satisfies Record<string, unknown>;
 }
@@ -63,41 +63,41 @@ async function waitForCondition(
     });
   }
 
-  throw new Error("Timed out waiting for condition");
+  throw new Error('Timed out waiting for condition');
 }
 
-describe("WebSocket Sentinel integration", () => {
+describe('WebSocket Sentinel integration', () => {
   beforeAll(() => {
-    basicConfig({ level: LogLevel.DEBUG, format: "json" });
+    basicConfig({ level: LogLevel.DEBUG, format: 'json' });
   });
 
   afterEach(async () => {
     await DefaultHttpServer.shutdownAll();
   });
 
-  test("downstream sentinel performs a real WebSocket attach", async () => {
+  test('downstream sentinel performs a real WebSocket attach', async () => {
     const sentinelFactory = new SentinelFactory();
     let server: Sentinel | null = null;
     let child: Sentinel | null = null;
 
     try {
       server = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-node",
+        type: 'Sentinel',
+        id: 'parent-node',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -114,28 +114,28 @@ describe("WebSocket Sentinel integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       child = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "child-node",
+        type: 'Sentinel',
+        id: 'child-node',
         hasParent: true,
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -149,8 +149,11 @@ describe("WebSocket Sentinel integration", () => {
 
       await waitForCondition(() => child?.handshakeCompleted === true);
 
-      const routeManager = (server as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager.downstreamRoutes.has(child!.id));
+      const routeManager = (server as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager.downstreamRoutes.has(child!.id)
+      );
 
       const serverConnector = routeManager.downstreamRoutes.get(child.id);
       expect(serverConnector).toBeInstanceOf(WebSocketConnector);

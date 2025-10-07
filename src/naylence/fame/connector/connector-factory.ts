@@ -5,18 +5,17 @@
  * conversion logic.
  */
 
-import type { FactoryInfo, ResourceFactory } from "naylence-factory";
-import { ExtensionManager, ExpressionEvaluationPolicy } from "naylence-factory";
-import { ConnectorConfig } from "./connector-config.js";
-import { FameConnector } from "naylence-core";
-import { getLogger } from "../util/logging.js";
-import type { ConnectionGrant } from "../grants/index.js";
-export type { ConnectionGrant } from "../grants/index.js";
+import type { FactoryInfo, ResourceFactory } from 'naylence-factory';
+import { ExtensionManager, ExpressionEvaluationPolicy } from 'naylence-factory';
+import { ConnectorConfig } from './connector-config.js';
+import { FameConnector } from 'naylence-core';
+import { getLogger } from '../util/logging.js';
+import type { ConnectionGrant } from '../grants/index.js';
+export type { ConnectionGrant } from '../grants/index.js';
 
-const logger = getLogger("connector-factory");
+const logger = getLogger('connector-factory');
 
-
-export const CONNECTOR_FACTORY_BASE_TYPE = "ConnectorFactory";
+export const CONNECTOR_FACTORY_BASE_TYPE = 'ConnectorFactory';
 
 /**
  * Abstract base class for connector factories
@@ -69,13 +68,14 @@ export abstract class ConnectorFactory<
    */
   public static evaluateGrant(grant: Record<string, unknown>): ConnectionGrant {
     const grantType = grant.type;
-    if (!grantType || typeof grantType !== "string") {
+    if (!grantType || typeof grantType !== 'string') {
       throw new Error("Missing 'type' field in grant");
     }
 
-    const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
-      CONNECTOR_FACTORY_BASE_TYPE
-    );
+    const factories = ExtensionManager.getExtensionsByType<
+      FameConnector,
+      ConnectorConfig
+    >(CONNECTOR_FACTORY_BASE_TYPE);
 
     for (const [, factoryInfo] of factories) {
       try {
@@ -135,9 +135,10 @@ export abstract class ConnectorFactory<
       throw new Error("Missing 'type' field in configuration");
     }
 
-    const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
-      CONNECTOR_FACTORY_BASE_TYPE
-    );
+    const factories = ExtensionManager.getExtensionsByType<
+      FameConnector,
+      ConnectorConfig
+    >(CONNECTOR_FACTORY_BASE_TYPE);
 
     for (const [, factoryInfo] of factories) {
       try {
@@ -152,13 +153,15 @@ export abstract class ConnectorFactory<
           break;
         }
       } catch (error) {
-        logger.warning(`Failed to create connector config from grant: ${error}`);
+        logger.warning(
+          `Failed to create connector config from grant: ${error}`
+        );
         continue;
       }
     }
 
     if (!connectorConfig) {
-      throw new Error("No suitable connector configuration found");
+      throw new Error('No suitable connector configuration found');
     }
 
     return await this.createResource(connectorConfig, ...kwargs);
@@ -171,16 +174,17 @@ export abstract class ConnectorFactory<
     config: ConnectorConfig,
     ...kwargs: unknown[]
   ): Promise<FameConnector> {
-    const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
-      CONNECTOR_FACTORY_BASE_TYPE
-    );
+    const factories = ExtensionManager.getExtensionsByType<
+      FameConnector,
+      ConnectorConfig
+    >(CONNECTOR_FACTORY_BASE_TYPE);
 
     const requestedType = config.type;
     const candidateTypes = new Set<string>([requestedType]);
-    if (requestedType === "websocket") {
-      candidateTypes.add("WebSocketConnector");
-    } else if (requestedType === "WebSocketConnector") {
-      candidateTypes.add("websocket");
+    if (requestedType === 'websocket') {
+      candidateTypes.add('WebSocketConnector');
+    } else if (requestedType === 'WebSocketConnector') {
+      candidateTypes.add('websocket');
     }
 
     for (const candidateType of candidateTypes) {
@@ -205,9 +209,9 @@ export abstract class ConnectorFactory<
   private static isConnectorConfig(obj: unknown): obj is ConnectorConfig {
     return (
       obj !== null &&
-      typeof obj === "object" &&
-      "type" in obj &&
-      typeof (obj as any).type === "string"
+      typeof obj === 'object' &&
+      'type' in obj &&
+      typeof (obj as any).type === 'string'
     );
   }
 
@@ -217,11 +221,11 @@ export abstract class ConnectorFactory<
   private static isConnectionGrant(obj: unknown): obj is ConnectionGrant {
     return (
       obj !== null &&
-      typeof obj === "object" &&
-      "type" in obj &&
-      "purpose" in obj &&
-      typeof (obj as any).type === "string" &&
-      typeof (obj as any).purpose === "string"
+      typeof obj === 'object' &&
+      'type' in obj &&
+      'purpose' in obj &&
+      typeof (obj as any).type === 'string' &&
+      typeof (obj as any).purpose === 'string'
     );
   }
 
@@ -229,7 +233,7 @@ export abstract class ConnectorFactory<
    * Type guard for Record<string, unknown>
    */
   private static isRecord(obj: unknown): obj is Record<string, unknown> {
-    return obj !== null && typeof obj === "object" && !Array.isArray(obj);
+    return obj !== null && typeof obj === 'object' && !Array.isArray(obj);
   }
 
   private static getGrantAwareFactory(
@@ -276,10 +280,10 @@ export abstract class ConnectorFactory<
 
     const maybe = candidate as Partial<ConnectorFactory>;
     return (
-      typeof maybe.supportedGrantTypes === "function" &&
-      typeof maybe.supportedGrants === "function" &&
-      typeof maybe.configFromGrant === "function" &&
-      typeof maybe.grantFromConfig === "function"
+      typeof maybe.supportedGrantTypes === 'function' &&
+      typeof maybe.supportedGrants === 'function' &&
+      typeof maybe.configFromGrant === 'function' &&
+      typeof maybe.grantFromConfig === 'function'
     );
   }
 }
@@ -291,16 +295,17 @@ export async function createResource<T extends FameConnector>(
   config: ConnectorConfig,
   ...kwargs: unknown[]
 ): Promise<T> {
-  const factories = ExtensionManager.getExtensionsByType<FameConnector, ConnectorConfig>(
-    CONNECTOR_FACTORY_BASE_TYPE
-  );
+  const factories = ExtensionManager.getExtensionsByType<
+    FameConnector,
+    ConnectorConfig
+  >(CONNECTOR_FACTORY_BASE_TYPE);
 
   const requestedType = config.type;
   const candidateTypes = new Set<string>([requestedType]);
-  if (requestedType === "websocket") {
-    candidateTypes.add("WebSocketConnector");
-  } else if (requestedType === "WebSocketConnector") {
-    candidateTypes.add("websocket");
+  if (requestedType === 'websocket') {
+    candidateTypes.add('WebSocketConnector');
+  } else if (requestedType === 'WebSocketConnector') {
+    candidateTypes.add('websocket');
   }
 
   for (const candidateType of candidateTypes) {

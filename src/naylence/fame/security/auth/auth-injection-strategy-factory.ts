@@ -1,8 +1,13 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
-import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
+import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
 
-export const AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE = "AuthInjectionStrategyFactory";
+export const AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE =
+  'AuthInjectionStrategyFactory';
 
 export interface AuthInjectionStrategyConfig extends ResourceConfig {
   type: string;
@@ -31,7 +36,9 @@ export abstract class AuthInjectionStrategyFactory<
       );
 
       if (!strategy) {
-        throw new Error("Failed to create auth injection strategy from configuration");
+        throw new Error(
+          'Failed to create auth injection strategy from configuration'
+        );
       }
 
       return strategy;
@@ -44,7 +51,7 @@ export abstract class AuthInjectionStrategyFactory<
     );
 
     if (!strategy) {
-      throw new Error("Failed to create default auth injection strategy");
+      throw new Error('Failed to create default auth injection strategy');
     }
 
     return strategy;

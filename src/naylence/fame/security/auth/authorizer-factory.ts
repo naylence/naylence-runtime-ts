@@ -1,8 +1,12 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
-import type { Authorizer } from "./authorizer.js";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
+import type { Authorizer } from './authorizer.js';
 
-export const AUTHORIZER_FACTORY_BASE_TYPE = "AuthorizerFactory";
+export const AUTHORIZER_FACTORY_BASE_TYPE = 'AuthorizerFactory';
 
 export interface AuthorizerConfig extends ResourceConfig {
   type: string;
@@ -17,7 +21,9 @@ export abstract class AuthorizerFactory<
     ...factoryArgs: unknown[]
   ): Promise<Authorizer>;
 
-  public static async createAuthorizer<C extends AuthorizerConfig = AuthorizerConfig>(
+  public static async createAuthorizer<
+    C extends AuthorizerConfig = AuthorizerConfig,
+  >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<Authorizer | undefined> {
@@ -29,7 +35,7 @@ export abstract class AuthorizerFactory<
       );
 
       if (!authorizer) {
-        throw new Error("Failed to create authorizer from configuration");
+        throw new Error('Failed to create authorizer from configuration');
       }
 
       return authorizer;

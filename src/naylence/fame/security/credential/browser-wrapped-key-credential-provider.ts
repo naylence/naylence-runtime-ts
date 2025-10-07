@@ -1,8 +1,8 @@
-import type { CredentialProvider } from "./credential-provider.js";
+import type { CredentialProvider } from './credential-provider.js';
 
-const DEFAULT_DB_NAME = "naylence-secrets";
-const DEFAULT_STORE_NAME = "wrapped-master-key";
-const DEFAULT_KEY_ID = "master";
+const DEFAULT_DB_NAME = 'naylence-secrets';
+const DEFAULT_STORE_NAME = 'wrapped-master-key';
+const DEFAULT_KEY_ID = 'master';
 const DEFAULT_ITERATIONS = 200_000;
 const WRAPPED_RECORD_VERSION = 1;
 const MASTER_KEY_LENGTH = 32;
@@ -12,13 +12,13 @@ const GCM_IV_LENGTH = 12;
 interface WrappedRecord {
   version: number;
   kdf: {
-    algo: "PBKDF2";
-    hash: "SHA-256";
+    algo: 'PBKDF2';
+    hash: 'SHA-256';
     iterations: number;
     saltB64: string;
   };
   wrap: {
-    algo: "AES-GCM";
+    algo: 'AES-GCM';
     ivB64: string;
     ciphertextB64: string;
   };
@@ -34,9 +34,11 @@ export type BrowserWrappedKeyCredentialProviderOptions = {
 };
 
 export class InvalidPassphraseError extends Error {
-  constructor(message = "Unable to decrypt master key with provided passphrase") {
+  constructor(
+    message = 'Unable to decrypt master key with provided passphrase'
+  ) {
     super(message);
-    this.name = "InvalidPassphraseError";
+    this.name = 'InvalidPassphraseError';
   }
 }
 
@@ -45,16 +47,16 @@ type CryptoLike = {
   getRandomValues<T extends ArrayBufferView | null>(array: T): T;
 };
 
-let cachedNodeCrypto: typeof import("node:crypto") | null | undefined;
+let cachedNodeCrypto: typeof import('node:crypto') | null | undefined;
 let cachedCrypto: CryptoLike | null | undefined;
 
-async function loadNodeCrypto(): Promise<typeof import("node:crypto") | null> {
+async function loadNodeCrypto(): Promise<typeof import('node:crypto') | null> {
   if (cachedNodeCrypto !== undefined) {
     return cachedNodeCrypto;
   }
 
   try {
-    cachedNodeCrypto = await import("node:crypto");
+    cachedNodeCrypto = await import('node:crypto');
     return cachedNodeCrypto;
   } catch {
     cachedNodeCrypto = null;
@@ -67,7 +69,7 @@ async function getCrypto(): Promise<CryptoLike> {
     return cachedCrypto;
   }
 
-  if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.subtle) {
+  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
     const cryptoObject = globalThis.crypto as CryptoLike;
     cachedCrypto = cryptoObject;
     return cryptoObject;
@@ -80,12 +82,12 @@ async function getCrypto(): Promise<CryptoLike> {
     return cryptoObject;
   }
 
-  throw new Error("Web Crypto API is not available in this environment");
+  throw new Error('Web Crypto API is not available in this environment');
 }
 
 async function getRandomBytes(length: number): Promise<Uint8Array> {
   const cryptoObject = await getCrypto();
-  if (typeof cryptoObject.getRandomValues === "function") {
+  if (typeof cryptoObject.getRandomValues === 'function') {
     const buffer = new Uint8Array(length);
     cryptoObject.getRandomValues(buffer);
     return buffer;
@@ -97,7 +99,7 @@ async function getRandomBytes(length: number): Promise<Uint8Array> {
     return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   }
 
-  throw new Error("Unable to generate secure random bytes in this environment");
+  throw new Error('Unable to generate secure random bytes in this environment');
 }
 
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {
@@ -107,23 +109,23 @@ function toArrayBuffer(data: Uint8Array): ArrayBuffer {
 }
 
 function base64Encode(data: Uint8Array): string {
-  if (typeof btoa === "function") {
-    let binary = "";
+  if (typeof btoa === 'function') {
+    let binary = '';
     for (let i = 0; i < data.length; i++) {
       binary += String.fromCharCode(data[i]);
     }
     return btoa(binary);
   }
 
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(data).toString("base64");
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(data).toString('base64');
   }
 
-  throw new Error("Base64 encoding is not available in this environment");
+  throw new Error('Base64 encoding is not available in this environment');
 }
 
 function base64Decode(value: string): Uint8Array {
-  if (typeof atob === "function") {
+  if (typeof atob === 'function') {
     const binary = atob(value);
     const buffer = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
@@ -132,11 +134,11 @@ function base64Decode(value: string): Uint8Array {
     return buffer;
   }
 
-  if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(value, "base64"));
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(value, 'base64'));
   }
 
-  throw new Error("Base64 decoding is not available in this environment");
+  throw new Error('Base64 decoding is not available in this environment');
 }
 
 const UTF8_ENCODER = new TextEncoder();
@@ -150,24 +152,24 @@ async function deriveKEK(
   const subtle = cryptoObject.subtle;
 
   const baseKey = await subtle.importKey(
-    "raw",
+    'raw',
     UTF8_ENCODER.encode(passphrase),
-    { name: "PBKDF2" },
+    { name: 'PBKDF2' },
     false,
-    ["deriveKey"]
+    ['deriveKey']
   );
 
   return subtle.deriveKey(
     {
-      name: "PBKDF2",
+      name: 'PBKDF2',
       salt: toArrayBuffer(salt),
       iterations,
-      hash: "SHA-256",
+      hash: 'SHA-256',
     },
     baseKey,
-    { name: "AES-GCM", length: 256 },
+    { name: 'AES-GCM', length: 256 },
     false,
-    ["encrypt", "decrypt"]
+    ['encrypt', 'decrypt']
   );
 }
 
@@ -182,7 +184,7 @@ async function aesGcmEncrypt(
   const subtle = cryptoObject.subtle;
   const iv = await getRandomBytes(GCM_IV_LENGTH);
   const ciphertextBuffer = await subtle.encrypt(
-    { name: "AES-GCM", iv: toArrayBuffer(iv) },
+    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
     key,
     toArrayBuffer(data)
   );
@@ -197,7 +199,7 @@ async function aesGcmDecrypt(
   const cryptoObject = await getCrypto();
   const subtle = cryptoObject.subtle;
   const plaintextBuffer = await subtle.decrypt(
-    { name: "AES-GCM", iv: toArrayBuffer(iv) },
+    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
     key,
     toArrayBuffer(data)
   );
@@ -213,7 +215,7 @@ async function openDatabase(
     const request = factory.open(dbName, 1);
 
     request.onerror = () => {
-      reject(request.error ?? new Error("Failed to open IndexedDB"));
+      reject(request.error ?? new Error('Failed to open IndexedDB'));
     };
 
     request.onupgradeneeded = () => {
@@ -235,12 +237,12 @@ async function readWrappedRecord(
   keyId: string
 ): Promise<WrappedRecord | null> {
   return new Promise<WrappedRecord | null>((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
+    const tx = db.transaction(storeName, 'readonly');
     const store = tx.objectStore(storeName);
     const request = store.get(keyId);
 
     request.onerror = () => {
-      reject(request.error ?? new Error("Failed to read wrapped master key"));
+      reject(request.error ?? new Error('Failed to read wrapped master key'));
     };
 
     request.onsuccess = () => {
@@ -256,17 +258,19 @@ async function writeWrappedRecord(
   record: WrappedRecord
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
+    const tx = db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
     const request = store.put(record, keyId);
 
     request.onerror = () => {
-      reject(request.error ?? new Error("Failed to persist wrapped master key"));
+      reject(
+        request.error ?? new Error('Failed to persist wrapped master key')
+      );
     };
 
     tx.oncomplete = () => resolve();
     tx.onerror = () => {
-      reject(tx.error ?? new Error("Failed to persist wrapped master key"));
+      reject(tx.error ?? new Error('Failed to persist wrapped master key'));
     };
   });
 }
@@ -277,14 +281,16 @@ export class BrowserWrappedKeyCredentialProvider implements CredentialProvider {
   private readonly keyId: string;
   private readonly iterations: number;
   private readonly promptPassphrase: () => Promise<string>;
-  private readonly idbFactory: { open: (name: string, version?: number) => IDBOpenDBRequest };
+  private readonly idbFactory: {
+    open: (name: string, version?: number) => IDBOpenDBRequest;
+  };
 
   private cachedKey: Uint8Array | null = null;
   private inflight: Promise<Uint8Array> | null = null;
 
   constructor(options: BrowserWrappedKeyCredentialProviderOptions) {
     if (!options?.promptPassphrase) {
-      throw new Error("promptPassphrase callback is required");
+      throw new Error('promptPassphrase callback is required');
     }
 
     this.dbName = options.dbName ?? DEFAULT_DB_NAME;
@@ -295,10 +301,10 @@ export class BrowserWrappedKeyCredentialProvider implements CredentialProvider {
 
     if (options.idbFactory) {
       this.idbFactory = options.idbFactory;
-    } else if (typeof indexedDB !== "undefined") {
+    } else if (typeof indexedDB !== 'undefined') {
       this.idbFactory = indexedDB;
     } else {
-      throw new Error("IndexedDB is not available in this environment");
+      throw new Error('IndexedDB is not available in this environment');
     }
   }
 
@@ -338,7 +344,7 @@ export class BrowserWrappedKeyCredentialProvider implements CredentialProvider {
   private async createAndPersistKey(db: IDBDatabase): Promise<Uint8Array> {
     const passphrase = (await this.promptPassphrase()).trim();
     if (!passphrase) {
-      throw new Error("Passphrase must not be empty");
+      throw new Error('Passphrase must not be empty');
     }
 
     const salt = await getRandomBytes(SALT_LENGTH);
@@ -349,13 +355,13 @@ export class BrowserWrappedKeyCredentialProvider implements CredentialProvider {
     const record: WrappedRecord = {
       version: WRAPPED_RECORD_VERSION,
       kdf: {
-        algo: "PBKDF2",
-        hash: "SHA-256",
+        algo: 'PBKDF2',
+        hash: 'SHA-256',
         iterations: this.iterations,
         saltB64: base64Encode(salt),
       },
       wrap: {
-        algo: "AES-GCM",
+        algo: 'AES-GCM',
         ivB64: base64Encode(iv),
         ciphertextB64: base64Encode(ciphertext),
       },
@@ -370,12 +376,12 @@ export class BrowserWrappedKeyCredentialProvider implements CredentialProvider {
       throw new Error(`Unsupported wrapped key version: ${record.version}`);
     }
 
-    if (record.kdf.algo !== "PBKDF2" || record.kdf.hash !== "SHA-256") {
-      throw new Error("Unsupported KDF configuration for wrapped master key");
+    if (record.kdf.algo !== 'PBKDF2' || record.kdf.hash !== 'SHA-256') {
+      throw new Error('Unsupported KDF configuration for wrapped master key');
     }
 
-    if (record.wrap.algo !== "AES-GCM") {
-      throw new Error("Unsupported wrapping algorithm for wrapped master key");
+    if (record.wrap.algo !== 'AES-GCM') {
+      throw new Error('Unsupported wrapping algorithm for wrapped master key');
     }
 
     const passphrase = (await this.promptPassphrase()).trim();
@@ -395,7 +401,7 @@ export class BrowserWrappedKeyCredentialProvider implements CredentialProvider {
       return await aesGcmDecrypt(kek, iv, ciphertext);
     } catch (error) {
       throw new InvalidPassphraseError(
-        error instanceof Error ? error.message : "Unable to decrypt master key"
+        error instanceof Error ? error.message : 'Unable to decrypt master key'
       );
     }
   }

@@ -1,5 +1,5 @@
-import { DeliveryOriginType, FameResponseType } from "naylence-core";
-import { RPCClientManager } from "../rpc-client-manager.js";
+import { DeliveryOriginType, FameResponseType } from 'naylence-core';
+import { RPCClientManager } from '../rpc-client-manager.js';
 
 var loggerInstance: {
   debug: jest.Mock;
@@ -14,7 +14,7 @@ var coreMocks: {
 
 const getCoreMocks = () => {
   if (!coreMocks) {
-    throw new Error("coreMocks not initialised");
+    throw new Error('coreMocks not initialised');
   }
   return coreMocks;
 };
@@ -24,7 +24,7 @@ const flushAsync = async (): Promise<void> => {
   await Promise.resolve();
 };
 
-jest.mock("../../util/logging.js", () => {
+jest.mock('../../util/logging.js', () => {
   loggerInstance = {
     debug: jest.fn(),
     warning: jest.fn(),
@@ -34,21 +34,22 @@ jest.mock("../../util/logging.js", () => {
   };
 });
 
-jest.mock("../../util/envelope-context.js", () => ({
+jest.mock('../../util/envelope-context.js', () => ({
   currentTraceId: jest.fn(),
 }));
 
 const { currentTraceId: currentTraceIdMock } = jest.requireMock(
-  "../../util/envelope-context.js"
+  '../../util/envelope-context.js'
 ) as { currentTraceId: jest.Mock };
 
 const getCurrentTraceMock = () => currentTraceIdMock;
 
 const getLoggerMock = () =>
-  (jest.requireMock("../../util/logging.js") as { getLogger: jest.Mock }).getLogger;
+  (jest.requireMock('../../util/logging.js') as { getLogger: jest.Mock })
+    .getLogger;
 
-jest.mock("naylence-core", () => {
-  const actual = jest.requireActual("naylence-core");
+jest.mock('naylence-core', () => {
+  const actual = jest.requireActual('naylence-core');
   coreMocks = {
     generateId: jest.fn(),
     makeRequest: jest.fn(),
@@ -66,7 +67,7 @@ jest.mock("naylence-core", () => {
   };
 });
 
-describe("RPCClientManager", () => {
+describe('RPCClientManager', () => {
   const defaultEnvelopeFactory = {
     createEnvelope: jest.fn((options) => ({
       id: `${options.corrId}-envelope`,
@@ -88,12 +89,14 @@ describe("RPCClientManager", () => {
 
   const defaultDeliverFn = jest.fn().mockResolvedValue(undefined);
   const defaultDeliverWrapper = jest.fn(() => defaultDeliverFn);
-  const defaultListenCallback = jest.fn().mockResolvedValue({ toString: () => "listener@/node" });
+  const defaultListenCallback = jest
+    .fn()
+    .mockResolvedValue({ toString: () => 'listener@/node' });
 
   const createManager = () =>
     new RPCClientManager(
-      () => "/node",
-      () => "node-1",
+      () => '/node',
+      () => 'node-1',
       defaultDeliverWrapper,
       defaultEnvelopeFactory as never,
       defaultListenCallback as never,
@@ -105,9 +108,11 @@ describe("RPCClientManager", () => {
     jest.useRealTimers();
     const mocks = getCoreMocks();
     mocks.formatAddress.mockClear();
-    mocks.formatAddress.mockImplementation((recipient: string, path: string) => ({
-      toString: () => `${recipient}@${path}`,
-    }));
+    mocks.formatAddress.mockImplementation(
+      (recipient: string, path: string) => ({
+        toString: () => `${recipient}@${path}`,
+      })
+    );
     mocks.generateId.mockReset();
     mocks.makeRequest.mockReset();
     mocks.parseResponse.mockReset();
@@ -132,93 +137,97 @@ describe("RPCClientManager", () => {
     defaultDeliverWrapper.mockImplementation(() => defaultDeliverFn);
     defaultListenCallback.mockClear();
     defaultListenCallback.mockResolvedValue({
-      toString: () => "listener@/node",
+      toString: () => 'listener@/node',
     });
   });
 
-  it("rejects when neither target nor capabilities are provided", async () => {
+  it('rejects when neither target nor capabilities are provided', async () => {
     const manager = createManager();
-    await expect(manager.invoke({ method: "noop", params: {} })).rejects.toThrow(
-      "Either target address or capabilities must be provided"
-    );
+    await expect(
+      manager.invoke({ method: 'noop', params: {} })
+    ).rejects.toThrow('Either target address or capabilities must be provided');
   });
 
-  it("rejects when both target and capabilities are provided", async () => {
+  it('rejects when both target and capabilities are provided', async () => {
     const manager = createManager();
     await expect(
       manager.invoke({
-        targetAddr: { toString: () => "target" } as never,
-        capabilities: ["cap"],
-        method: "noop",
+        targetAddr: { toString: () => 'target' } as never,
+        capabilities: ['cap'],
+        method: 'noop',
         params: {},
       })
-    ).rejects.toThrow("Provide either target address or capabilities, not both");
+    ).rejects.toThrow(
+      'Provide either target address or capabilities, not both'
+    );
   });
 
-  it("omits replyTo when reply address is unavailable and includes trace id for stream", async () => {
+  it('omits replyTo when reply address is unavailable and includes trace id for stream', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
     const traceMock = getCurrentTraceMock();
 
     mocks.formatAddress.mockReturnValueOnce(null as never);
-    traceMock.mockReturnValueOnce("trace-single");
-    mocks.generateId.mockReturnValueOnce("no-reply-single");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "single" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "ok" });
+    traceMock.mockReturnValueOnce('trace-single');
+    mocks.generateId.mockReturnValueOnce('no-reply-single');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'single' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'ok' });
 
     const singlePromise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
     await flushAsync();
 
-    const singleEnvelope = defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
+    const singleEnvelope =
+      defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
     expect(singleEnvelope.replyTo).toBeUndefined();
-    expect(singleEnvelope.traceId).toBe("trace-single");
+    expect(singleEnvelope.traceId).toBe('trace-single');
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-single",
-      corrId: "no-reply-single",
-      frame: { type: "Data", payload: { result: "ok" } },
+      id: 'reply-single',
+      corrId: 'no-reply-single',
+      frame: { type: 'Data', payload: { result: 'ok' } },
     });
 
-    await expect(singlePromise).resolves.toBe("ok");
+    await expect(singlePromise).resolves.toBe('ok');
 
-    traceMock.mockReturnValueOnce("trace-stream");
-    mocks.generateId.mockReturnValueOnce("no-reply-stream");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "stream" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "value" });
+    traceMock.mockReturnValueOnce('trace-stream');
+    mocks.generateId.mockReturnValueOnce('no-reply-stream');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'stream' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'value' });
     mocks.parseResponse.mockReturnValueOnce({ result: null });
 
     const iterator = (await manager.invokeStream({
       capabilities: [],
-      method: "stream",
+      method: 'stream',
       params: {},
     })) as AsyncIterableIterator<unknown>;
 
     await flushAsync();
 
-    const streamEnvelope = defaultEnvelopeFactory.createEnvelope.mock.calls[1][0];
+    const streamEnvelope =
+      defaultEnvelopeFactory.createEnvelope.mock.calls[1][0];
     expect(streamEnvelope.capabilities).toBeUndefined();
     expect(streamEnvelope.replyTo).toBeUndefined();
-    expect(streamEnvelope.traceId).toBe("trace-stream");
+    expect(streamEnvelope.traceId).toBe('trace-stream');
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-stream-value",
-      corrId: "no-reply-stream",
-      frame: { type: "Data", payload: { result: "value" } },
+      id: 'reply-stream-value',
+      corrId: 'no-reply-stream',
+      frame: { type: 'Data', payload: { result: 'value' } },
     });
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-stream-end",
-      corrId: "no-reply-stream",
-      frame: { type: "Data", payload: { result: null } },
+      id: 'reply-stream-end',
+      corrId: 'no-reply-stream',
+      frame: { type: 'Data', payload: { result: null } },
     });
 
     await expect(iterator.next()).resolves.toEqual({
-      value: "value",
+      value: 'value',
       done: false,
     });
     await expect(iterator.next()).resolves.toEqual({
@@ -229,7 +238,7 @@ describe("RPCClientManager", () => {
     expect(defaultDeliveryTracker.onStreamItem).toHaveBeenCalledTimes(2);
     expect(defaultDeliveryTracker.onStreamItem).toHaveBeenLastCalledWith(
       expect.stringMatching(/no-reply-stream-envelope/),
-      expect.objectContaining({ id: "reply-stream-end" })
+      expect.objectContaining({ id: 'reply-stream-end' })
     );
     expect(defaultDeliveryTracker.onStreamEnd).toHaveBeenCalledTimes(1);
     expect(defaultDeliveryTracker.onStreamEnd).toHaveBeenCalledWith(
@@ -237,79 +246,81 @@ describe("RPCClientManager", () => {
     );
   });
 
-  it("rejects when invoking stream without target or capabilities", async () => {
+  it('rejects when invoking stream without target or capabilities', async () => {
     const manager = createManager();
 
-    await expect(manager.invokeStream({ method: "stream", params: {} })).rejects.toThrow(
-      "Either target address or capabilities must be provided"
-    );
+    await expect(
+      manager.invokeStream({ method: 'stream', params: {} })
+    ).rejects.toThrow('Either target address or capabilities must be provided');
   });
 
-  it("rejects when stream invocation provides target and capabilities", async () => {
+  it('rejects when stream invocation provides target and capabilities', async () => {
     const manager = createManager();
 
     await expect(
       manager.invokeStream({
-        targetAddr: { toString: () => "target" } as never,
-        capabilities: ["cap"],
-        method: "stream",
+        targetAddr: { toString: () => 'target' } as never,
+        capabilities: ['cap'],
+        method: 'stream',
         params: {},
       })
-    ).rejects.toThrow("Provide either target address or capabilities, not both");
+    ).rejects.toThrow(
+      'Provide either target address or capabilities, not both'
+    );
   });
 
-  it("binds listener once and resolves replies for single requests", async () => {
+  it('binds listener once and resolves replies for single requests', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
     const traceMock = getCurrentTraceMock();
-    traceMock.mockReturnValueOnce("trace-1");
-    mocks.generateId.mockReturnValueOnce("req-1");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request-1" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "alpha" });
+    traceMock.mockReturnValueOnce('trace-1');
+    mocks.generateId.mockReturnValueOnce('req-1');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request-1' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'alpha' });
 
     const firstPromise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: { value: 1 },
     });
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-1",
-      corrId: "req-1",
-      frame: { type: "Data", payload: { result: "alpha" } },
+      id: 'reply-1',
+      corrId: 'req-1',
+      frame: { type: 'Data', payload: { result: 'alpha' } },
     });
 
-    await expect(firstPromise).resolves.toBe("alpha");
+    await expect(firstPromise).resolves.toBe('alpha');
 
-    const targetAddr = { toString: () => "target@/node" };
+    const targetAddr = { toString: () => 'target@/node' };
     traceMock.mockReturnValueOnce(undefined);
-    mocks.generateId.mockReturnValueOnce("req-2");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request-2" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "beta" });
+    mocks.generateId.mockReturnValueOnce('req-2');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request-2' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'beta' });
 
     const secondPromise = manager.invoke({
       targetAddr: targetAddr as never,
-      method: "call2",
+      method: 'call2',
       params: { value: 2 },
     });
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-2",
-      corrId: "req-2",
-      frame: { type: "Data", payload: { result: "beta" } },
+      id: 'reply-2',
+      corrId: 'req-2',
+      frame: { type: 'Data', payload: { result: 'beta' } },
     });
 
-    await expect(secondPromise).resolves.toBe("beta");
+    await expect(secondPromise).resolves.toBe('beta');
 
     expect(defaultListenCallback).toHaveBeenCalledTimes(1);
     expect(defaultEnvelopeFactory.createEnvelope).toHaveBeenCalledTimes(2);
     const [firstCall] = defaultEnvelopeFactory.createEnvelope.mock.calls;
-    expect(firstCall[0].capabilities).toEqual(["cap"]);
-    expect(firstCall[0].replyTo?.toString()).toBe("__rpc__@/node");
+    expect(firstCall[0].capabilities).toEqual(['cap']);
+    expect(firstCall[0].replyTo?.toString()).toBe('__rpc__@/node');
     const secondCall = defaultEnvelopeFactory.createEnvelope.mock.calls[1][0];
     expect(secondCall.to).toBe(targetAddr);
     expect(secondCall.capabilities).toBeUndefined();
@@ -317,23 +328,25 @@ describe("RPCClientManager", () => {
     expect(defaultDeliverFn).toHaveBeenCalledTimes(2);
     expect(defaultDeliverFn.mock.calls[0][1]).toEqual({
       originType: DeliveryOriginType.LOCAL,
-      fromSystemId: "node-1",
+      fromSystemId: 'node-1',
       expectedResponseType: FameResponseType.REPLY,
     });
   });
 
-  it("continues delivery when delivery tracker tracking fails", async () => {
+  it('continues delivery when delivery tracker tracking fails', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("req-track");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "ok" });
-    defaultDeliveryTracker.track.mockRejectedValueOnce(new Error("tracker failure"));
+    mocks.generateId.mockReturnValueOnce('req-track');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'ok' });
+    defaultDeliveryTracker.track.mockRejectedValueOnce(
+      new Error('tracker failure')
+    );
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
@@ -353,65 +366,65 @@ describe("RPCClientManager", () => {
     expect(defaultDeliverFn).toHaveBeenCalledTimes(1);
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-track",
-      corrId: "req-track",
-      frame: { type: "Data", payload: { result: "ok" } },
+      id: 'reply-track',
+      corrId: 'req-track',
+      frame: { type: 'Data', payload: { result: 'ok' } },
     });
 
-    await expect(promise).resolves.toBe("ok");
+    await expect(promise).resolves.toBe('ok');
     expect(loggerInstance.warning).toHaveBeenCalledWith(
-      "delivery_tracker_track_failed",
-      expect.objectContaining({ request_id: "req-track" })
+      'delivery_tracker_track_failed',
+      expect.objectContaining({ request_id: 'req-track' })
     );
   });
 
-  it("sends requests even when delivery tracker is unavailable", async () => {
+  it('sends requests even when delivery tracker is unavailable', async () => {
     const mocks = getCoreMocks();
     const deliverFn = jest.fn().mockResolvedValue(undefined);
     const deliverWrapper = jest.fn(() => deliverFn);
     const manager = new RPCClientManager(
-      () => "/node",
-      () => "node-1",
+      () => '/node',
+      () => 'node-1',
       deliverWrapper,
       defaultEnvelopeFactory as never,
       defaultListenCallback as never,
       undefined as never
     );
 
-    mocks.generateId.mockReturnValueOnce("no-tracker");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "body" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "ok" });
+    mocks.generateId.mockReturnValueOnce('no-tracker');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'body' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'ok' });
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-no-tracker",
-      corrId: "no-tracker",
-      frame: { type: "Data", payload: { result: "ok" } },
+      id: 'reply-no-tracker',
+      corrId: 'no-tracker',
+      frame: { type: 'Data', payload: { result: 'ok' } },
     });
 
-    await expect(promise).resolves.toBe("ok");
+    await expect(promise).resolves.toBe('ok');
     expect(deliverWrapper).toHaveBeenCalledTimes(1);
     expect(deliverFn).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects duplicate pending requests", async () => {
+  it('rejects duplicate pending requests', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValue("dup-id");
-    mocks.makeRequest.mockReturnValue({ payload: "dup" });
-    mocks.parseResponse.mockReturnValue({ result: "ok" });
+    mocks.generateId.mockReturnValue('dup-id');
+    mocks.makeRequest.mockReturnValue({ payload: 'dup' });
+    mocks.parseResponse.mockReturnValue({ result: 'ok' });
 
     const firstPromise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
       timeoutMs: 5,
     });
@@ -419,24 +432,24 @@ describe("RPCClientManager", () => {
     await flushAsync();
 
     await expect(
-      manager.invoke({ capabilities: ["cap"], method: "call", params: {} })
-    ).rejects.toThrow("Request dup-id is already pending");
+      manager.invoke({ capabilities: ['cap'], method: 'call', params: {} })
+    ).rejects.toThrow('Request dup-id is already pending');
 
     await manager.cleanup();
-    await expect(firstPromise).rejects.toThrow("RPC client cleaned up");
+    await expect(firstPromise).rejects.toThrow('RPC client cleaned up');
   });
 
-  it("times out pending single requests when no reply arrives", async () => {
+  it('times out pending single requests when no reply arrives', async () => {
     jest.useFakeTimers();
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("timeout-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "slow" });
+    mocks.generateId.mockReturnValueOnce('timeout-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'slow' });
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "slow",
+      capabilities: ['cap'],
+      method: 'slow',
       params: {},
       timeoutMs: 10,
     });
@@ -444,41 +457,43 @@ describe("RPCClientManager", () => {
     await flushAsync();
 
     jest.advanceTimersByTime(11);
-    await expect(promise).rejects.toThrow("Timeout waiting for RPC response timeout-id");
+    await expect(promise).rejects.toThrow(
+      'Timeout waiting for RPC response timeout-id'
+    );
     jest.useRealTimers();
   });
 
-  it("delivers streaming responses and terminates on null results", async () => {
+  it('delivers streaming responses and terminates on null results', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("stream-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "stream request" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "first" });
+    mocks.generateId.mockReturnValueOnce('stream-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'first' });
     mocks.parseResponse.mockReturnValueOnce({ result: null });
 
     const iterator = (await manager.invokeStream({
-      capabilities: ["cap"],
-      method: "stream",
+      capabilities: ['cap'],
+      method: 'stream',
       params: {},
     })) as AsyncIterableIterator<unknown>;
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-stream-1",
-      corrId: "stream-id",
-      frame: { type: "Data", payload: { result: "first" } },
+      id: 'reply-stream-1',
+      corrId: 'stream-id',
+      frame: { type: 'Data', payload: { result: 'first' } },
     });
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-stream-2",
-      corrId: "stream-id",
-      frame: { type: "Data", payload: { result: null } },
+      id: 'reply-stream-2',
+      corrId: 'stream-id',
+      frame: { type: 'Data', payload: { result: null } },
     });
 
     await expect(iterator.next()).resolves.toEqual({
-      value: "first",
+      value: 'first',
       done: false,
     });
     await expect(iterator.next()).resolves.toEqual({
@@ -487,17 +502,17 @@ describe("RPCClientManager", () => {
     });
   });
 
-  it("resolves pending stream next calls and handles iterator return", async () => {
+  it('resolves pending stream next calls and handles iterator return', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("await-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "stream request" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "delayed" });
+    mocks.generateId.mockReturnValueOnce('await-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'delayed' });
 
     const iterator = (await manager.invokeStream({
-      capabilities: ["cap"],
-      method: "stream",
+      capabilities: ['cap'],
+      method: 'stream',
       params: {},
     })) as AsyncIterableIterator<unknown>;
 
@@ -506,17 +521,17 @@ describe("RPCClientManager", () => {
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-delayed",
-      corrId: "await-id",
-      frame: { type: "Data", payload: { result: "delayed" } },
+      id: 'reply-delayed',
+      corrId: 'await-id',
+      frame: { type: 'Data', payload: { result: 'delayed' } },
     });
 
     await expect(pendingBeforeReply).resolves.toEqual({
-      value: "delayed",
+      value: 'delayed',
       done: false,
     });
 
-    const entryBeforeReturn = (manager as any).pending.get("await-id");
+    const entryBeforeReturn = (manager as any).pending.get('await-id');
     expect(entryBeforeReturn).toBeDefined();
 
     const originalPush = entryBeforeReturn.push.bind(entryBeforeReturn);
@@ -524,7 +539,7 @@ describe("RPCClientManager", () => {
     entryBeforeReturn.push = pushSpy;
 
     if (!iterator.return) {
-      throw new Error("Expected iterator.return to be defined");
+      throw new Error('Expected iterator.return to be defined');
     }
 
     await expect(iterator.return()).resolves.toEqual({
@@ -532,10 +547,10 @@ describe("RPCClientManager", () => {
       done: true,
     });
 
-    expect((manager as any).pending.has("await-id")).toBe(false);
+    expect((manager as any).pending.has('await-id')).toBe(false);
 
-    entryBeforeReturn.push("late-value");
-    expect(pushSpy).toHaveBeenCalledWith("late-value");
+    entryBeforeReturn.push('late-value');
+    expect(pushSpy).toHaveBeenCalledWith('late-value');
 
     await expect(iterator.next()).resolves.toEqual({
       value: undefined,
@@ -543,211 +558,217 @@ describe("RPCClientManager", () => {
     });
   });
 
-  it("propagates iterator.throw errors and clears pending stream entries", async () => {
+  it('propagates iterator.throw errors and clears pending stream entries', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("throw-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "stream request" });
-    mocks.parseResponse.mockReturnValueOnce({ result: "first" });
+    mocks.generateId.mockReturnValueOnce('throw-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'first' });
 
     const iterator = (await manager.invokeStream({
-      capabilities: ["cap"],
-      method: "stream",
+      capabilities: ['cap'],
+      method: 'stream',
       params: {},
     })) as AsyncIterableIterator<unknown>;
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-stream-throw",
-      corrId: "throw-id",
-      frame: { type: "Data", payload: { result: "first" } },
+      id: 'reply-stream-throw',
+      corrId: 'throw-id',
+      frame: { type: 'Data', payload: { result: 'first' } },
     });
 
     await iterator.next();
     if (!iterator.throw) {
-      throw new Error("Expected iterator.throw to be defined");
+      throw new Error('Expected iterator.throw to be defined');
     }
-    await expect(iterator.throw("abort")).rejects.toThrow("abort");
-    expect((manager as any).pending.has("throw-id")).toBe(false);
+    await expect(iterator.throw('abort')).rejects.toThrow('abort');
+    expect((manager as any).pending.has('throw-id')).toBe(false);
   });
 
-  it("rejects single requests when reply frame is not data", async () => {
+  it('rejects single requests when reply frame is not data', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("frame-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
+    mocks.generateId.mockReturnValueOnce('frame-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-frame",
-      corrId: "frame-id",
-      frame: { type: "Unexpected" },
+      id: 'reply-frame',
+      corrId: 'frame-id',
+      frame: { type: 'Unexpected' },
     });
 
     await flushAsync();
 
-    await expect(promise).rejects.toThrow("Unexpected frame type in reply");
+    await expect(promise).rejects.toThrow('Unexpected frame type in reply');
     expect(loggerInstance.warning).toHaveBeenCalledWith(
-      "unexpected_reply_frame_type",
-      expect.objectContaining({ request_id: "frame-id" })
+      'unexpected_reply_frame_type',
+      expect.objectContaining({ request_id: 'frame-id' })
     );
   });
 
-  it("rejects responses carrying rpc errors", async () => {
+  it('rejects responses carrying rpc errors', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("error-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
+    mocks.generateId.mockReturnValueOnce('error-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
     mocks.parseResponse.mockReturnValueOnce({
-      error: { message: "rpc error" },
+      error: { message: 'rpc error' },
     });
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-error",
-      corrId: "error-id",
-      frame: { type: "Data", payload: { result: null } },
+      id: 'reply-error',
+      corrId: 'error-id',
+      frame: { type: 'Data', payload: { result: null } },
     });
 
     await flushAsync();
 
-    await expect(promise).rejects.toThrow("rpc error");
+    await expect(promise).rejects.toThrow('rpc error');
   });
 
-  it("rejects when parseResponse throws", async () => {
+  it('rejects when parseResponse throws', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("parse-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
+    mocks.generateId.mockReturnValueOnce('parse-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
     mocks.parseResponse.mockImplementationOnce(() => {
-      throw new Error("parse failure");
+      throw new Error('parse failure');
     });
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-parse",
-      corrId: "parse-id",
-      frame: { type: "Data", payload: { result: "unused" } },
+      id: 'reply-parse',
+      corrId: 'parse-id',
+      frame: { type: 'Data', payload: { result: 'unused' } },
     });
 
     await flushAsync();
 
-    await expect(promise).rejects.toThrow("parse failure");
+    await expect(promise).rejects.toThrow('parse failure');
   });
 
-  it("rejects requests when delivery ack indicates signature required", async () => {
+  it('rejects requests when delivery ack indicates signature required', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("ack-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
+    mocks.generateId.mockReturnValueOnce('ack-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-ack",
-      corrId: "ack-id",
+      id: 'reply-ack',
+      corrId: 'ack-id',
       frame: {
-        type: "DeliveryAck",
-        code: "signature_required",
-        reason: "missing",
+        type: 'DeliveryAck',
+        code: 'signature_required',
+        reason: 'missing',
       },
     });
 
     await flushAsync();
 
     await expect(promise).rejects.toThrow(
-      "Message rejected because it lacks a required digital signature."
+      'Message rejected because it lacks a required digital signature.'
     );
   });
 
   it.each([
-    ["crypto_level_violation", "Message rejected due to insufficient encryption."],
     [
-      "signature_verification_failed",
-      "Message rejected because its digital signature could not be verified.",
+      'crypto_level_violation',
+      'Message rejected due to insufficient encryption.',
     ],
-  ])("rejects requests when delivery ack code %s is returned", async (code, message) => {
+    [
+      'signature_verification_failed',
+      'Message rejected because its digital signature could not be verified.',
+    ],
+  ])(
+    'rejects requests when delivery ack code %s is returned',
+    async (code, message) => {
+      const manager = createManager();
+      const mocks = getCoreMocks();
+
+      mocks.generateId.mockReturnValueOnce(`ack-${code}`);
+      mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
+
+      const promise = manager.invoke({
+        capabilities: ['cap'],
+        method: 'call',
+        params: {},
+      });
+
+      await flushAsync();
+
+      await (manager as any).handleReplyEnvelope({
+        id: `reply-${code}`,
+        corrId: `ack-${code}`,
+        frame: {
+          type: 'DeliveryAck',
+          code,
+        },
+      });
+
+      await flushAsync();
+
+      await expect(promise).rejects.toThrow(message as string);
+    }
+  );
+
+  it('ends streaming iterator when delivery ack has custom code', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce(`ack-${code}`);
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
-
-    const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
-      params: {},
-    });
-
-    await flushAsync();
-
-    await (manager as any).handleReplyEnvelope({
-      id: `reply-${code}`,
-      corrId: `ack-${code}`,
-      frame: {
-        type: "DeliveryAck",
-        code,
-      },
-    });
-
-    await flushAsync();
-
-    await expect(promise).rejects.toThrow(message as string);
-  });
-
-  it("ends streaming iterator when delivery ack has custom code", async () => {
-    const manager = createManager();
-    const mocks = getCoreMocks();
-
-    mocks.generateId.mockReturnValueOnce("ack-stream");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
+    mocks.generateId.mockReturnValueOnce('ack-stream');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
     const iterator = (await manager.invokeStream({
-      capabilities: ["cap"],
-      method: "stream",
+      capabilities: ['cap'],
+      method: 'stream',
       params: {},
     })) as AsyncIterableIterator<unknown>;
 
     await flushAsync();
 
     await (manager as any).handleReplyEnvelope({
-      id: "reply-ack-stream",
-      corrId: "ack-stream",
+      id: 'reply-ack-stream',
+      corrId: 'ack-stream',
       frame: {
-        type: "DeliveryAck",
-        code: "other_code",
-        reason: "failure",
+        type: 'DeliveryAck',
+        code: 'other_code',
+        reason: 'failure',
       },
     });
 
@@ -758,47 +779,47 @@ describe("RPCClientManager", () => {
     );
   });
 
-  it("logs when reply envelope lacks correlation id", async () => {
+  it('logs when reply envelope lacks correlation id', async () => {
     const manager = createManager();
 
     await (manager as any).handleReplyEnvelope({
       id: undefined,
-      frame: { type: "Data", payload: {} },
+      frame: { type: 'Data', payload: {} },
     });
 
     expect(loggerInstance.warning).toHaveBeenCalledWith(
-      "reply_envelope_missing_corr_id",
+      'reply_envelope_missing_corr_id',
       expect.objectContaining({ envelope_id: undefined })
     );
   });
 
-  it("logs when no pending request matches the reply", async () => {
+  it('logs when no pending request matches the reply', async () => {
     const manager = createManager();
 
     await (manager as any).handleReplyEnvelope({
-      id: "no-match",
-      corrId: "no-match",
-      frame: { type: "Data", payload: {} },
+      id: 'no-match',
+      corrId: 'no-match',
+      frame: { type: 'Data', payload: {} },
     });
 
     expect(loggerInstance.debug).toHaveBeenCalledWith(
-      "no_pending_request_for_reply",
-      expect.objectContaining({ request_id: "no-match" })
+      'no_pending_request_for_reply',
+      expect.objectContaining({ request_id: 'no-match' })
     );
   });
 
-  it("cleans up pending entries on cleanup call", async () => {
+  it('cleans up pending entries on cleanup call', async () => {
     const manager = createManager();
 
     expect(defaultDeliveryTracker.addEventHandler).toHaveBeenCalledTimes(1);
 
     const mocks = getCoreMocks();
-    mocks.generateId.mockReturnValueOnce("cleanup-id");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "request" });
+    mocks.generateId.mockReturnValueOnce('cleanup-id');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
     const promise = manager.invoke({
-      capabilities: ["cap"],
-      method: "call",
+      capabilities: ['cap'],
+      method: 'call',
       params: {},
     });
 
@@ -807,27 +828,27 @@ describe("RPCClientManager", () => {
     await manager.cleanup();
 
     await flushAsync();
-    await expect(promise).rejects.toThrow("RPC client cleaned up");
+    await expect(promise).rejects.toThrow('RPC client cleaned up');
     expect(defaultListenCallback).toHaveBeenCalledTimes(1);
     expect(defaultDeliveryTracker.removeEventHandler).toHaveBeenCalledWith(
       defaultDeliveryTracker.addEventHandler.mock.calls[0][0]
     );
   });
 
-  it("cleans up stream entries even when timers are already cleared", async () => {
+  it('cleans up stream entries even when timers are already cleared', async () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-    mocks.generateId.mockReturnValueOnce("cleanup-stream");
-    mocks.makeRequest.mockReturnValueOnce({ payload: "stream request" });
+    mocks.generateId.mockReturnValueOnce('cleanup-stream');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
 
     const iterator = (await manager.invokeStream({
-      capabilities: ["cap"],
-      method: "stream",
+      capabilities: ['cap'],
+      method: 'stream',
       params: {},
     })) as AsyncIterableIterator<unknown>;
 
-    const pendingEntry = (manager as any).pending.get("cleanup-stream");
+    const pendingEntry = (manager as any).pending.get('cleanup-stream');
     expect(pendingEntry).toBeDefined();
 
     const originalEnd = pendingEntry.end.bind(pendingEntry);
@@ -840,8 +861,8 @@ describe("RPCClientManager", () => {
     expect(endSpy).toHaveBeenCalledTimes(1);
     const [cleanupError] = endSpy.mock.calls[0];
     expect(cleanupError).toBeInstanceOf(Error);
-    expect(cleanupError?.message).toBe("RPC client cleaned up");
+    expect(cleanupError?.message).toBe('RPC client cleaned up');
 
-    await expect(iterator.next()).rejects.toThrow("RPC client cleaned up");
+    await expect(iterator.next()).rejects.toThrow('RPC client cleaned up');
   });
 });

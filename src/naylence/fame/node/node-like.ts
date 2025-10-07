@@ -15,14 +15,14 @@ import type {
   FameEnvelopeHandler,
   FameRPCHandler,
   Binding,
-} from "naylence-core";
+} from 'naylence-core';
 
-import type { AdmissionClient } from "./admission/admission-client.js";
-import type { NodeEventListener } from "./node-event-listener.js";
-import type { DeliveryPolicy } from "../delivery/delivery-policy.js";
-import type { SecurityManager } from "../security/security-manager.js";
-import type { StorageProvider } from "../storage/storage-provider.js";
-import { CryptoProvider } from "../security/index.js";
+import type { AdmissionClient } from './admission/admission-client.js';
+import type { NodeEventListener } from './node-event-listener.js';
+import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
+import type { SecurityManager } from '../security/security-manager.js';
+import type { StorageProvider } from '../storage/storage-provider.js';
+import { CryptoProvider } from '../security/index.js';
 
 /**
  * The main NodeLike protocol interface.
@@ -129,7 +129,10 @@ export interface NodeLike {
     envelope: FameEnvelope,
     context?: FameDeliveryContext,
     deliveryPolicy?: DeliveryPolicy,
-    deliveryFn?: (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<any>,
+    deliveryFn?: (
+      envelope: FameEnvelope,
+      context?: FameDeliveryContext
+    ) => Promise<any>,
     timeoutMs?: number
   ): Promise<DeliveryAckFrame | null>;
 
@@ -252,7 +255,10 @@ export interface NodeLike {
    * @param envelope The envelope to forward
    * @param context Optional delivery context
    */
-  forwardUpstream(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void>;
+  forwardUpstream(
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<void>;
 
   /**
    * Check if an address is handled locally by this node.
@@ -286,7 +292,10 @@ export interface NodeLike {
    * @param kwargs Event keyword arguments
    * @returns Modified envelope or null
    */
-  dispatchEnvelopeEvent(eventName: string, ...args: any[]): Promise<FameEnvelope | null>;
+  dispatchEnvelopeEvent(
+    eventName: string,
+    ...args: any[]
+  ): Promise<FameEnvelope | null>;
 }
 
 /**
@@ -298,26 +307,26 @@ export interface NodeLike {
 export function isNodeLike(obj: any): obj is NodeLike {
   return (
     obj &&
-    typeof obj.id === "string" &&
-    typeof obj.physicalPath === "string" &&
+    typeof obj.id === 'string' &&
+    typeof obj.physicalPath === 'string' &&
     obj.acceptedLogicals instanceof Set &&
-    typeof obj.hasParent === "boolean" &&
+    typeof obj.hasParent === 'boolean' &&
     Array.isArray(obj.eventListeners) &&
-    typeof obj.addEventListener === "function" &&
-    typeof obj.removeEventListener === "function" &&
-    typeof obj.start === "function" &&
-    typeof obj.stop === "function" &&
-    typeof obj.bind === "function" &&
-    typeof obj.unbind === "function" &&
-    typeof obj.send === "function" &&
-    typeof obj.listen === "function" &&
-    typeof obj.listenRpc === "function" &&
-    typeof obj.invoke === "function" &&
-    typeof obj.invokeByCapability === "function" &&
-    typeof obj.deliver === "function" &&
-    typeof obj.deliverLocal === "function" &&
-    typeof obj.forwardUpstream === "function" &&
-    typeof obj.hasLocal === "function" &&
-    typeof obj.gatherSupportedCallbackGrants === "function"
+    typeof obj.addEventListener === 'function' &&
+    typeof obj.removeEventListener === 'function' &&
+    typeof obj.start === 'function' &&
+    typeof obj.stop === 'function' &&
+    typeof obj.bind === 'function' &&
+    typeof obj.unbind === 'function' &&
+    typeof obj.send === 'function' &&
+    typeof obj.listen === 'function' &&
+    typeof obj.listenRpc === 'function' &&
+    typeof obj.invoke === 'function' &&
+    typeof obj.invokeByCapability === 'function' &&
+    typeof obj.deliver === 'function' &&
+    typeof obj.deliverLocal === 'function' &&
+    typeof obj.forwardUpstream === 'function' &&
+    typeof obj.hasLocal === 'function' &&
+    typeof obj.gatherSupportedCallbackGrants === 'function'
   );
 }

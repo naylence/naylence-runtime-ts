@@ -1,19 +1,21 @@
-import fastify from "fastify";
-import { createFameEnvelope, type FameEnvelope } from "naylence-core";
+import fastify from 'fastify';
+import { createFameEnvelope, type FameEnvelope } from 'naylence-core';
 
-import type { NodeHelloFrame, NodeWelcomeFrame } from "naylence-core";
-import type { WelcomeService } from "../welcome-service.js";
-import { nodeWelcomeRouter } from "../node-welcome-router.js";
-import type { Authorizer } from "../../security/auth/authorizer.js";
+import type { NodeHelloFrame, NodeWelcomeFrame } from 'naylence-core';
+import type { WelcomeService } from '../welcome-service.js';
+import { nodeWelcomeRouter } from '../node-welcome-router.js';
+import type { Authorizer } from '../../security/auth/authorizer.js';
 
-function createHelloEnvelope(overrides: Partial<NodeHelloFrame> = {}): FameEnvelope {
+function createHelloEnvelope(
+  overrides: Partial<NodeHelloFrame> = {}
+): FameEnvelope {
   const frame: NodeHelloFrame = {
-    type: "NodeHello",
-    systemId: overrides.systemId ?? "",
-    instanceId: overrides.instanceId ?? "instance-123",
-    logicals: overrides.logicals ?? ["api.service"],
-    capabilities: overrides.capabilities ?? ["capability-a"],
-    supportedTransports: overrides.supportedTransports ?? ["websocket"],
+    type: 'NodeHello',
+    systemId: overrides.systemId ?? '',
+    instanceId: overrides.instanceId ?? 'instance-123',
+    logicals: overrides.logicals ?? ['api.service'],
+    capabilities: overrides.capabilities ?? ['capability-a'],
+    supportedTransports: overrides.supportedTransports ?? ['websocket'],
     securitySettings: overrides.securitySettings,
     regionHint: overrides.regionHint,
   };
@@ -21,19 +23,19 @@ function createHelloEnvelope(overrides: Partial<NodeHelloFrame> = {}): FameEnvel
   return createFameEnvelope({ frame });
 }
 
-describe("nodeWelcomeRouter", () => {
+describe('nodeWelcomeRouter', () => {
   afterEach(async () => {
     jest.restoreAllMocks();
   });
 
-  it("responds with welcome envelope when hello accepted", async () => {
+  it('responds with welcome envelope when hello accepted', async () => {
     const app = fastify();
 
     const welcomeFrame: NodeWelcomeFrame = {
-      type: "NodeWelcome",
-      systemId: "assigned-1",
-      instanceId: "instance-123",
-      assignedPath: "/fabric/node-1",
+      type: 'NodeWelcome',
+      systemId: 'assigned-1',
+      instanceId: 'instance-123',
+      assignedPath: '/fabric/node-1',
     };
 
     const service: WelcomeService = {
@@ -45,22 +47,22 @@ describe("nodeWelcomeRouter", () => {
     await app.ready();
 
     const response = await app.inject({
-      method: "POST",
-      url: "/fame/v1/welcome/hello",
+      method: 'POST',
+      url: '/fame/v1/welcome/hello',
       payload: createHelloEnvelope(),
     });
 
     expect(response.statusCode).toBe(200);
     const payload = response.json();
-    expect(payload.frame.type).toBe("NodeWelcome");
+    expect(payload.frame.type).toBe('NodeWelcome');
     expect(service.handleHello).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "NodeHello" })
+      expect.objectContaining({ type: 'NodeHello' })
     );
 
     await app.close();
   });
 
-  it("returns 401 when authentication fails", async () => {
+  it('returns 401 when authentication fails', async () => {
     const app = fastify();
 
     const authorizer: Authorizer = {
@@ -77,8 +79,8 @@ describe("nodeWelcomeRouter", () => {
     await app.ready();
 
     const response = await app.inject({
-      method: "POST",
-      url: "/fame/v1/welcome/hello",
+      method: 'POST',
+      url: '/fame/v1/welcome/hello',
       payload: createHelloEnvelope(),
     });
 
@@ -89,7 +91,7 @@ describe("nodeWelcomeRouter", () => {
     await app.close();
   });
 
-  it("returns 422 when payload invalid", async () => {
+  it('returns 422 when payload invalid', async () => {
     const app = fastify();
     const service: WelcomeService = {
       authorizer: null,
@@ -100,8 +102,8 @@ describe("nodeWelcomeRouter", () => {
     await app.ready();
 
     const response = await app.inject({
-      method: "POST",
-      url: "/fame/v1/welcome/hello",
+      method: 'POST',
+      url: '/fame/v1/welcome/hello',
       payload: { invalid: true },
     });
 

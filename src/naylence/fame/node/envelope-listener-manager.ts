@@ -10,28 +10,35 @@ import {
   FameMessageResponse,
   FameRPCHandler,
   formatAddress,
-} from "naylence-core";
-import { getLogger } from "../util/logging.js";
-import { TaskSpawner } from "../util/task-spawner.js";
-import { AsyncLock } from "../util/lock.js";
-import type { SpawnedTask } from "../util/task-types.js";
-import { BindingManager } from "./binding-manager.js";
-import type { NodeLike } from "./node-like.js";
-import { ResponseContextManager } from "./response-context-manager.js";
-import { StreamingResponseHandler } from "./streaming-response-handler.js";
-import { ChannelPollingManager } from "./channel-polling-manager.js";
-import { RPCServerHandler } from "./rpc-server-handler.js";
-import { RPCClientManager } from "./rpc-client-manager.js";
-import type { DefaultDeliveryTracker } from "../delivery/default-delivery-tracker.js";
-import type { DeliveryTracker as BasicDeliveryTracker } from "../delivery/delivery-tracker.js";
-import { EnvelopeStatus, MailboxType, TrackedEnvelope } from "../delivery/tracked-envelope.js";
-import type { RetryPolicy } from "../delivery/retry-policy.js";
+} from 'naylence-core';
+import { getLogger } from '../util/logging.js';
+import { TaskSpawner } from '../util/task-spawner.js';
+import { AsyncLock } from '../util/lock.js';
+import type { SpawnedTask } from '../util/task-types.js';
+import { BindingManager } from './binding-manager.js';
+import type { NodeLike } from './node-like.js';
+import { ResponseContextManager } from './response-context-manager.js';
+import { StreamingResponseHandler } from './streaming-response-handler.js';
+import { ChannelPollingManager } from './channel-polling-manager.js';
+import { RPCServerHandler } from './rpc-server-handler.js';
+import { RPCClientManager } from './rpc-client-manager.js';
+import type { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
+import type { DeliveryTracker as BasicDeliveryTracker } from '../delivery/delivery-tracker.js';
+import {
+  EnvelopeStatus,
+  MailboxType,
+  TrackedEnvelope,
+} from '../delivery/tracked-envelope.js';
+import type { RetryPolicy } from '../delivery/retry-policy.js';
 
-const logger = getLogger("envelope-listener-manager");
+const logger = getLogger('envelope-listener-manager');
 
-const SYSTEM_INBOX = "__sys__";
+const SYSTEM_INBOX = '__sys__';
 
-type DeliverFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<void>;
+type DeliverFn = (
+  envelope: FameEnvelope,
+  context?: FameDeliveryContext
+) => Promise<void>;
 
 class EnvelopeListener {
   constructor(
@@ -40,21 +47,24 @@ class EnvelopeListener {
   ) {}
 
   stop(): void {
-    logger.debug("stopping_listener", {
+    logger.debug('stopping_listener', {
       task_name: this.task.name,
     });
     try {
       const maybeCleanup = this.stopFn();
-      if (maybeCleanup && typeof (maybeCleanup as Promise<void>).then === "function") {
+      if (
+        maybeCleanup &&
+        typeof (maybeCleanup as Promise<void>).then === 'function'
+      ) {
         void (maybeCleanup as Promise<void>).catch((error) => {
-          logger.debug("listener_stop_cleanup_failed", {
+          logger.debug('listener_stop_cleanup_failed', {
             task_name: this.task.name,
             error: error instanceof Error ? error.message : String(error),
           });
         });
       }
     } catch (error) {
-      logger.debug("listener_stop_cleanup_failed", {
+      logger.debug('listener_stop_cleanup_failed', {
         task_name: this.task.name,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -116,12 +126,18 @@ export class EnvelopeListenerManager extends TaskSpawner {
     this.envelopeFactory = options.envelopeFactory;
     this.deliveryTracker = options.deliveryTracker;
 
-  this.deliver = async (envelope: FameEnvelope, context?: FameDeliveryContext) => {
+    this.deliver = async (
+      envelope: FameEnvelope,
+      context?: FameDeliveryContext
+    ) => {
       if (!envelope.replyTo) {
         try {
-          envelope.replyTo = formatAddress(SYSTEM_INBOX, this.nodeLike.physicalPath);
+          envelope.replyTo = formatAddress(
+            SYSTEM_INBOX,
+            this.nodeLike.physicalPath
+          );
         } catch (error) {
-          logger.warning("default_reply_to_assignment_failed", {
+          logger.warning('default_reply_to_assignment_failed', {
             envelope_id: envelope.id,
             service_name: envelope.capabilities?.[0] ?? null,
             error: error instanceof Error ? error.message : String(error),
@@ -132,7 +148,9 @@ export class EnvelopeListenerManager extends TaskSpawner {
       await this.nodeLike.send(envelope, context);
     };
 
-    this.responseContextManager = new ResponseContextManager(() => this.nodeLike.id);
+    this.responseContextManager = new ResponseContextManager(
+      () => this.nodeLike.id
+    );
 
     this.streamingResponseHandler = new StreamingResponseHandler(
       () => this.deliver,
@@ -169,13 +187,18 @@ export class EnvelopeListenerManager extends TaskSpawner {
   async stop(): Promise<void> {
     await this.listenersLock.runExclusive(async () => {
       for (const [serviceName, entry] of this.listeners.entries()) {
-        logger.debug("stopping_listener_for_service", { service_name: serviceName });
+        logger.debug('stopping_listener_for_service', {
+          service_name: serviceName,
+        });
         entry.listener.stop();
         try {
           await entry.listener.task.promise;
         } catch (error) {
-          if (!(error instanceof Error) || error.name !== "TaskCancelledError") {
-            logger.debug("listener_task_stopped", {
+          if (
+            !(error instanceof Error) ||
+            error.name !== 'TaskCancelledError'
+          ) {
+            logger.debug('listener_task_stopped', {
               service_name: serviceName,
               error: error instanceof Error ? error.message : String(error),
             });
@@ -194,24 +217,25 @@ export class EnvelopeListenerManager extends TaskSpawner {
   }
 
   async recoverUnhandledInboundEnvelopes(): Promise<void> {
-    if (typeof this.deliveryTracker.listInbound !== "function") {
-      logger.debug("delivery_tracker_missing_inbound_listing");
+    if (typeof this.deliveryTracker.listInbound !== 'function') {
+      logger.debug('delivery_tracker_missing_inbound_listing');
       return;
     }
 
     const failedInbound = await this.deliveryTracker.listInbound(
       (env) =>
-        env.status === EnvelopeStatus.RECEIVED || env.status === EnvelopeStatus.FAILED_TO_HANDLE
+        env.status === EnvelopeStatus.RECEIVED ||
+        env.status === EnvelopeStatus.FAILED_TO_HANDLE
     );
 
     if (!failedInbound.length) {
-      logger.debug("no_failed_inbound_envelopes_to_recover");
+      logger.debug('no_failed_inbound_envelopes_to_recover');
       return;
     }
 
     const grouped = new Map<string, TrackedEnvelope[]>();
     for (const tracked of failedInbound) {
-      const serviceName = tracked.serviceName ?? "unknown";
+      const serviceName = tracked.serviceName ?? 'unknown';
       const list = grouped.get(serviceName) ?? [];
       list.push(tracked);
       grouped.set(serviceName, list);
@@ -225,7 +249,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
       }
     });
 
-    logger.debug("discovered_failed_inbound_envelopes", {
+    logger.debug('discovered_failed_inbound_envelopes', {
       total: failedInbound.length,
       services: Array.from(grouped.keys()),
     });
@@ -236,9 +260,10 @@ export class EnvelopeListenerManager extends TaskSpawner {
     handler?: FameEnvelopeHandler | null,
     options: ListenOptions = {}
   ): Promise<FameAddress> {
-    const { capabilities = null, pollTimeoutMs = DEFAULT_POLLING_TIMEOUT_MS } = options;
+    const { capabilities = null, pollTimeoutMs = DEFAULT_POLLING_TIMEOUT_MS } =
+      options;
 
-    logger.debug("listen_start", {
+    logger.debug('listen_start', {
       recipient: serviceName,
       poll_timeout_ms: pollTimeoutMs ?? DEFAULT_POLLING_TIMEOUT_MS,
     });
@@ -254,7 +279,10 @@ export class EnvelopeListenerManager extends TaskSpawner {
     }
 
     const stopState = { stopped: false };
-    const binding = await this.bindingManager.bind(serviceName, capabilities ?? undefined);
+    const binding = await this.bindingManager.bind(
+      serviceName,
+      capabilities ?? undefined
+    );
     const channel = binding.channel;
 
     const trackingHandler: FameEnvelopeHandler = async (
@@ -277,32 +305,33 @@ export class EnvelopeListenerManager extends TaskSpawner {
           tracked.status === EnvelopeStatus.RESPONDED ||
           tracked.status === EnvelopeStatus.STREAMING ||
           tracked?.mailboxType === MailboxType.OUTBOX ||
-          envelope.frame?.["type"] === "DeliveryAck";
+          envelope.frame?.['type'] === 'DeliveryAck';
 
         if (!shouldInvoke) {
-          logger.debug("skipping_listener_handler", {
+          logger.debug('skipping_listener_handler', {
             recipient: serviceName,
             envelope_id: envelope.id,
             tracked_status: tracked?.status,
             mailbox_type: tracked?.mailboxType ?? null,
-            frame_type: envelope.frame?.["type"],
+            frame_type: envelope.frame?.['type'],
           });
           return null;
         }
 
-        const receiverPolicy = this.nodeLike.deliveryPolicy?.receiverRetryPolicy ?? null;
+        const receiverPolicy =
+          this.nodeLike.deliveryPolicy?.receiverRetryPolicy ?? null;
         if (tracked && tracked.attempt > 0) {
-          logger.info("resuming_handler_retry_after_restart", {
+          logger.info('resuming_handler_retry_after_restart', {
             envelope_id: envelope.id,
             current_attempts: tracked.attempt,
             service_name: serviceName,
           });
         }
 
-        logger.debug("forwarding_to_listener_handler", {
+        logger.debug('forwarding_to_listener_handler', {
           recipient: serviceName,
           envelope_id: envelope.id,
-          frame_type: envelope.frame?.["type"],
+          frame_type: envelope.frame?.['type'],
         });
         return this.executeHandlerWithRetries(
           handler,
@@ -335,7 +364,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
       try {
         await channel.send(null);
       } catch (error) {
-        logger.debug("listener_stop_signal_failed", {
+        logger.debug('listener_stop_signal_failed', {
           service_name: serviceName,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -345,7 +374,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
     await this.listenersLock.runExclusive(async () => {
       const existing = this.listeners.get(serviceName);
       if (existing) {
-        logger.debug("replacing_envelope_listener", { recipient: serviceName });
+        logger.debug('replacing_envelope_listener', { recipient: serviceName });
         existing.listener.stop();
         try {
           await existing.listener.task.promise;
@@ -368,7 +397,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
     handler: FameRPCHandler,
     options: ListenOptions = {}
   ): Promise<FameAddress> {
-    logger.debug("rpc_listen_start", { service_name: serviceName });
+    logger.debug('rpc_listen_start', { service_name: serviceName });
 
     const rpcHandler: FameEnvelopeHandler = async (
       envelope: FameEnvelope,
@@ -385,7 +414,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
 
     const address = await this.listen(serviceName, rpcHandler, options);
 
-    logger.debug("rpc_listen_bound", {
+    logger.debug('rpc_listen_bound', {
       service_name: serviceName,
       address: address.toString(),
     });
@@ -400,7 +429,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
     params: Record<string, unknown>;
     timeoutMs?: number;
   }): Promise<unknown> {
-    const invokeOptions: Parameters<RPCClientManager["invoke"]>[0] = {
+    const invokeOptions: Parameters<RPCClientManager['invoke']>[0] = {
       method: options.method,
       params: options.params,
       timeoutMs: options.timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS,
@@ -424,7 +453,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
     params: Record<string, unknown>;
     timeoutMs?: number;
   }): Promise<AsyncIterable<unknown>> {
-    const streamOptions: Parameters<RPCClientManager["invokeStream"]>[0] = {
+    const streamOptions: Parameters<RPCClientManager['invokeStream']>[0] = {
       method: options.method,
       params: options.params,
       timeoutMs: options.timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS,
@@ -456,7 +485,9 @@ export class EnvelopeListenerManager extends TaskSpawner {
     });
 
     if (!entry || !entry.handler) {
-      throw new Error(`No listener registered for address: ${address.toString()}`);
+      throw new Error(
+        `No listener registered for address: ${address.toString()}`
+      );
     }
 
     await entry.handler(envelope, context);
@@ -477,22 +508,28 @@ export class EnvelopeListenerManager extends TaskSpawner {
         return;
       }
 
-      const envelopes = await this.pendingRecoveryLock.runExclusive(async () => {
-        const cached = this.pendingRecoveryEnvelopes.get(serviceName) ?? [];
-        this.pendingRecoveryEnvelopes.delete(serviceName);
-        this.pendingRecoveryServices.delete(serviceName);
-        return cached;
-      });
+      const envelopes = await this.pendingRecoveryLock.runExclusive(
+        async () => {
+          const cached = this.pendingRecoveryEnvelopes.get(serviceName) ?? [];
+          this.pendingRecoveryEnvelopes.delete(serviceName);
+          this.pendingRecoveryServices.delete(serviceName);
+          return cached;
+        }
+      );
 
       if (!envelopes.length) {
-        logger.debug("no_cached_recovery_for_service", { service_name: serviceName });
+        logger.debug('no_cached_recovery_for_service', {
+          service_name: serviceName,
+        });
         return;
       }
 
-      logger.debug("recovering_unhandled_envelopes_on_listen", {
+      logger.debug('recovering_unhandled_envelopes_on_listen', {
         service_name: serviceName,
         count: envelopes.length,
-        envelope_ids: envelopes.map((trackedEnvelope) => trackedEnvelope.envelopeId),
+        envelope_ids: envelopes.map(
+          (trackedEnvelope) => trackedEnvelope.envelopeId
+        ),
       });
 
       await this.recoverServiceEnvelopes(serviceName, envelopes, handler);
@@ -506,7 +543,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
   ): Promise<void> {
     for (const tracked of envelopes) {
       try {
-        logger.warning("recovering_unhandled_envelope", {
+        logger.warning('recovering_unhandled_envelope', {
           envelope_id: tracked.envelopeId,
           service_name: serviceName,
           current_attempts: tracked.attempt,
@@ -514,7 +551,8 @@ export class EnvelopeListenerManager extends TaskSpawner {
         });
 
         const originalEnvelope = tracked.originalEnvelope;
-        const receiverPolicy = this.nodeLike.deliveryPolicy?.receiverRetryPolicy ?? undefined;
+        const receiverPolicy =
+          this.nodeLike.deliveryPolicy?.receiverRetryPolicy ?? undefined;
 
         await this.executeHandlerWithRetries(
           handler,
@@ -525,12 +563,12 @@ export class EnvelopeListenerManager extends TaskSpawner {
           serviceName
         );
 
-        logger.debug("envelope_recovery_completed", {
+        logger.debug('envelope_recovery_completed', {
           envelope_id: tracked.envelopeId,
           service_name: serviceName,
         });
       } catch (error) {
-        logger.error("envelope_recovery_failed", {
+        logger.error('envelope_recovery_failed', {
           envelope_id: tracked.envelopeId,
           service_name: serviceName,
           error: error instanceof Error ? error.message : String(error),
@@ -573,7 +611,9 @@ export class EnvelopeListenerManager extends TaskSpawner {
     const maxAttempts = (retryPolicy?.maxRetries ?? 0) + 1;
 
     if (trackedAttempt >= maxAttempts) {
-      const error = new Error(`Handler retries exhausted: ${trackedAttempt}/${maxAttempts}`);
+      const error = new Error(
+        `Handler retries exhausted: ${trackedAttempt}/${maxAttempts}`
+      );
       if (trackedEnvelope) {
         await this.deliveryTracker.onEnvelopeHandleFailed(
           inboxName,
@@ -602,7 +642,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
         }
 
         if (currentAttempt > 0) {
-          logger.info("handler_retry_succeeded", {
+          logger.info('handler_retry_succeeded', {
             envelope_id: envelope.id,
             attempt: currentAttempt + 1,
             total_attempts: currentAttempt + 1,
@@ -626,7 +666,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
         }
 
         if (isFinalAttempt) {
-          logger.error("handler_execution_failed_exhausted_retries", {
+          logger.error('handler_execution_failed_exhausted_retries', {
             envelope_id: envelope.id,
             total_attempts: attemptNumber,
             max_retries: retryPolicy?.maxRetries ?? 0,
@@ -636,7 +676,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
         }
 
         const delayMs = retryPolicy?.nextDelayMs(attemptNumber) ?? 0;
-        logger.warning("handler_execution_failed_will_retry", {
+        logger.warning('handler_execution_failed_will_retry', {
           envelope_id: envelope.id,
           attempt: attemptNumber,
           max_retries: retryPolicy?.maxRetries ?? 0,
@@ -650,13 +690,17 @@ export class EnvelopeListenerManager extends TaskSpawner {
     }
 
     if (lastError) {
-      throw lastError instanceof Error ? lastError : new Error(String(lastError));
+      throw lastError instanceof Error
+        ? lastError
+        : new Error(String(lastError));
     }
 
     return undefined;
   }
 
-  private async getServiceRecoveryLock(serviceName: string): Promise<AsyncLock> {
+  private async getServiceRecoveryLock(
+    serviceName: string
+  ): Promise<AsyncLock> {
     return this.serviceRecoveryLocksLock.runExclusive(async () => {
       let lock = this.serviceRecoveryLocks.get(serviceName);
       if (!lock) {

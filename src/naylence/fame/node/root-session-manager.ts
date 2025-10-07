@@ -1,15 +1,15 @@
-import { generateId, type NodeWelcomeFrame } from "naylence-core";
-import { TaskSpawner } from "../util/task-spawner.js";
-import { AsyncEvent } from "../util/async-event.js";
-import { getLogger } from "../util/logging.js";
-import type { SessionManager } from "./session-manager.js";
-import type { NodeLike } from "./node-like.js";
-import type { AdmissionClient } from "./admission/admission-client.js";
-import { FameConnectError } from "../errors/errors.js";
-import type { SpawnedTask } from "../util/task-types.js";
-import { TaskCancelledError } from "../util/task-types.js";
+import { generateId, type NodeWelcomeFrame } from 'naylence-core';
+import { TaskSpawner } from '../util/task-spawner.js';
+import { AsyncEvent } from '../util/async-event.js';
+import { getLogger } from '../util/logging.js';
+import type { SessionManager } from './session-manager.js';
+import type { NodeLike } from './node-like.js';
+import type { AdmissionClient } from './admission/admission-client.js';
+import { FameConnectError } from '../errors/errors.js';
+import type { SpawnedTask } from '../util/task-types.js';
+import { TaskCancelledError } from '../util/task-types.js';
 
-const logger = getLogger("root-session-manager");
+const logger = getLogger('root-session-manager');
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -62,7 +62,7 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     this.onAdmissionFailed = options.onAdmissionFailed;
     this.enableContinuousRefresh = options.enableContinuousRefresh ?? true;
 
-    logger.debug("created_root_session_manager");
+    logger.debug('created_root_session_manager');
   }
 
   public get isReady(): boolean {
@@ -85,20 +85,24 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     }
   }
 
-  public async start(options: { waitUntilReady?: boolean } = {}): Promise<void> {
+  public async start(
+    options: { waitUntilReady?: boolean } = {}
+  ): Promise<void> {
     const { waitUntilReady = true } = options;
 
     if (this.admissionTask) {
       return;
     }
 
-    logger.debug("root_session_manager_starting");
+    logger.debug('root_session_manager_starting');
 
     this.stopEvent.clear();
     this.readyEvent.clear();
 
     const taskName = `root-admission-${this.admissionEpoch}`;
-    this.admissionTask = this.spawn((signal) => this.admissionLoop(signal), { name: taskName });
+    this.admissionTask = this.spawn((signal) => this.admissionLoop(signal), {
+      name: taskName,
+    });
 
     if (!waitUntilReady) {
       return;
@@ -112,14 +116,14 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
 
     if (!this.readyEvent.isSet()) {
       await this.admissionTask.promise;
-      throw new FameConnectError("Root session manager failed to become ready");
+      throw new FameConnectError('Root session manager failed to become ready');
     }
 
-    logger.debug("root_session_manager_started");
+    logger.debug('root_session_manager_started');
   }
 
   public async stop(): Promise<void> {
-    logger.debug("root_session_manager_stopping");
+    logger.debug('root_session_manager_stopping');
     this.stopEvent.set();
 
     if (this.admissionTask) {
@@ -134,7 +138,7 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
       this.expiryGuardTask = null;
     }
 
-    logger.debug("root_session_manager_stopped");
+    logger.debug('root_session_manager_stopped');
   }
 
   public async awaitReady(timeoutMs?: number): Promise<void> {
@@ -147,7 +151,10 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
       return;
     }
 
-    const waitPromises: Array<Promise<void>> = [this.readyEvent.wait(), admissionTask.promise];
+    const waitPromises: Array<Promise<void>> = [
+      this.readyEvent.wait(),
+      admissionTask.promise,
+    ];
     if (timeoutMs !== undefined) {
       waitPromises.push(this.waitWithTimeout(timeoutMs));
     }
@@ -156,7 +163,9 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
 
     if (!this.isReady) {
       await admissionTask.promise;
-      throw new FameConnectError("Root session manager terminated before ready");
+      throw new FameConnectError(
+        'Root session manager terminated before ready'
+      );
     }
   }
 
@@ -188,7 +197,7 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     if (this.onEpochChange) {
       await this.onEpochChange(epoch);
     } else {
-      logger.debug("epoch_change_ignored_no_handler", { epoch });
+      logger.debug('epoch_change_ignored_no_handler', { epoch });
     }
   }
 
@@ -200,7 +209,7 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     onEpochChange?: EpochCallback
   ): RootSessionManager {
     const handleWelcome: WelcomeCallback = async (frame) => {
-      logger.info("root_admission_successful", {
+      logger.info('root_admission_successful', {
         system_id: frame.systemId,
         assigned_path: frame.assignedPath ?? null,
         accepted_logicals: frame.acceptedLogicals ?? [],
@@ -209,15 +218,19 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
 
       for (const grant of frame.connectionGrants ?? []) {
         const purpose =
-          typeof grant === "object" && grant ? (grant as Record<string, any>).purpose : undefined;
+          typeof grant === 'object' && grant
+            ? (grant as Record<string, any>).purpose
+            : undefined;
         if (purpose) {
-          logger.debug("received_admission_grant", { purpose });
+          logger.debug('received_admission_grant', { purpose });
         }
       }
     };
 
     const handleFailure: AdmissionFailureCallback = async (error) => {
-      logger.error("root_admission_failed_permanently", { error: error.message });
+      logger.error('root_admission_failed_permanently', {
+        error: error.message,
+      });
     };
 
     const options: RootSessionManagerOptions = {
@@ -253,9 +266,9 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
         }
 
         if (this.hadSuccessfulAdmission) {
-          logger.debug("root_admission_refreshed");
+          logger.debug('root_admission_refreshed');
         } else {
-          logger.debug("root_admission_completed");
+          logger.debug('root_admission_completed');
         }
 
         this.hadSuccessfulAdmission = true;
@@ -266,7 +279,7 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
           await this.startExpiryGuard(welcomeFrame);
           const expiryTriggered = await this.waitForExpiryOrStop();
           if (expiryTriggered && !this.stopEvent.isSet()) {
-            logger.debug("performing_scheduled_re_admission");
+            logger.debug('performing_scheduled_re_admission');
             continue;
           }
         }
@@ -277,10 +290,11 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
           throw error;
         }
 
-        const errorObject = error instanceof Error ? error : new Error(String(error));
+        const errorObject =
+          error instanceof Error ? error : new Error(String(error));
         const willRetry = attempts < RootSessionManager.RETRY_MAX_ATTEMPTS;
 
-        logger.warning("root_admission_failed", {
+        logger.warning('root_admission_failed', {
           error: errorObject.message,
           attempt: attempts,
           will_retry: willRetry,
@@ -301,19 +315,25 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     }
 
     if (attempts >= RootSessionManager.RETRY_MAX_ATTEMPTS) {
-      logger.error("root_admission_max_attempts_exceeded", {
+      logger.error('root_admission_max_attempts_exceeded', {
         max_attempts: RootSessionManager.RETRY_MAX_ATTEMPTS,
       });
     }
   }
 
-  private async applyBackoff(delay: number, signal?: AbortSignal): Promise<number> {
+  private async applyBackoff(
+    delay: number,
+    signal?: AbortSignal
+  ): Promise<number> {
     const jitter = Math.random() * delay;
     await this.sleepWithStop(delay + jitter, signal);
     return Math.min(delay * 2, RootSessionManager.BACKOFF_CAP);
   }
 
-  private async sleepWithStop(delaySeconds: number, signal?: AbortSignal): Promise<void> {
+  private async sleepWithStop(
+    delaySeconds: number,
+    signal?: AbortSignal
+  ): Promise<void> {
     if (delaySeconds <= 0) {
       return;
     }
@@ -327,7 +347,11 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     });
 
     try {
-      await Promise.race([timeoutPromise, this.stopEvent.wait(), this.waitForAbort(signal)]);
+      await Promise.race([
+        timeoutPromise,
+        this.stopEvent.wait(),
+        this.waitForAbort(signal),
+      ]);
     } finally {
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
@@ -335,16 +359,21 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     }
   }
 
-  private async startExpiryGuard(welcomeFrame: NodeWelcomeFrame): Promise<void> {
+  private async startExpiryGuard(
+    welcomeFrame: NodeWelcomeFrame
+  ): Promise<void> {
     if (this.expiryGuardTask) {
       this.expiryGuardTask.cancel();
       await this.consumeTask(this.expiryGuardTask);
       this.expiryGuardTask = null;
     }
 
-    this.expiryGuardTask = this.spawn((signal) => this.expiryGuard(welcomeFrame, signal), {
-      name: `root-expiry-guard-${this.admissionEpoch}`,
-    });
+    this.expiryGuardTask = this.spawn(
+      (signal) => this.expiryGuard(welcomeFrame, signal),
+      {
+        name: `root-expiry-guard-${this.admissionEpoch}`,
+      }
+    );
   }
 
   private async waitForExpiryOrStop(): Promise<boolean> {
@@ -354,12 +383,12 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     }
 
     try {
-      const result = await Promise.race<"expiry" | "stop">([
-        expiryTask.promise.then(() => "expiry"),
-        this.stopEvent.wait().then(() => "stop"),
+      const result = await Promise.race<'expiry' | 'stop'>([
+        expiryTask.promise.then(() => 'expiry'),
+        this.stopEvent.wait().then(() => 'stop'),
       ]);
 
-      if (result === "stop") {
+      if (result === 'stop') {
         expiryTask.cancel();
         await this.consumeTask(expiryTask);
         return false;
@@ -372,15 +401,22 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
       }
       throw error;
     } finally {
-      if (expiryTask.isCancelled() || expiryTask.isCompleted() || expiryTask.isFailed()) {
+      if (
+        expiryTask.isCancelled() ||
+        expiryTask.isCompleted() ||
+        expiryTask.isFailed()
+      ) {
         this.expiryGuardTask = null;
       }
     }
   }
 
-  private async expiryGuard(welcomeFrame: NodeWelcomeFrame, signal?: AbortSignal): Promise<void> {
+  private async expiryGuard(
+    welcomeFrame: NodeWelcomeFrame,
+    signal?: AbortSignal
+  ): Promise<void> {
     if (!welcomeFrame.expiresAt) {
-      logger.debug("no_admission_expiry_configured");
+      logger.debug('no_admission_expiry_configured');
       await Promise.race([this.stopEvent.wait(), this.waitForAbort(signal)]);
       return;
     }
@@ -388,10 +424,11 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     const expiresAt = new Date(welcomeFrame.expiresAt);
     const now = new Date();
     let delaySeconds =
-      (expiresAt.getTime() - now.getTime()) / 1000 - RootSessionManager.JWT_REFRESH_SAFETY;
+      (expiresAt.getTime() - now.getTime()) / 1000 -
+      RootSessionManager.JWT_REFRESH_SAFETY;
     delaySeconds = Math.max(delaySeconds, 0);
 
-    logger.debug("admission_expiry_guard_started", {
+    logger.debug('admission_expiry_guard_started', {
       welcome_expires_at: expiresAt.toISOString(),
       delay_seconds: delaySeconds,
       refresh_safety_seconds: RootSessionManager.JWT_REFRESH_SAFETY,
@@ -403,7 +440,7 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
       return;
     }
 
-    logger.debug("admission_expiry_triggered_refresh", {
+    logger.debug('admission_expiry_triggered_refresh', {
       expires_at: expiresAt.toISOString(),
       current_time: new Date().toISOString(),
       seconds_before_expiry: RootSessionManager.JWT_REFRESH_SAFETY,
@@ -414,7 +451,9 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     const nodeAny = this.node as any;
     if (!this.node.id) {
       nodeAny._id = generateId();
-      logger.debug("root_identity_generated_id_for_admission", { system_id: this.node.id });
+      logger.debug('root_identity_generated_id_for_admission', {
+        system_id: this.node.id,
+      });
     }
   }
 
@@ -425,8 +464,9 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
       if (error instanceof TaskCancelledError) {
         return;
       }
-      const errorObject = error instanceof Error ? error : new Error(String(error));
-      logger.debug("background_task_error", {
+      const errorObject =
+        error instanceof Error ? error : new Error(String(error));
+      logger.debug('background_task_error', {
         task_name: task.name,
         error: errorObject.message,
       });
@@ -438,14 +478,14 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
       return new Promise<never>(() => {});
     }
     if (signal.aborted) {
-      return Promise.reject(new TaskCancelledError("root-session-aborted"));
+      return Promise.reject(new TaskCancelledError('root-session-aborted'));
     }
     return new Promise<never>((_, reject) => {
       const onAbort = () => {
-        signal.removeEventListener("abort", onAbort);
-        reject(new TaskCancelledError("root-session-aborted"));
+        signal.removeEventListener('abort', onAbort);
+        reject(new TaskCancelledError('root-session-aborted'));
       };
-      signal.addEventListener("abort", onAbort, { once: true });
+      signal.addEventListener('abort', onAbort, { once: true });
     });
   }
 
@@ -453,7 +493,11 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
     return new Promise<void>((_, reject) => {
       const id = setTimeout(() => {
         clearTimeout(id);
-        reject(new FameConnectError("Timed out waiting for root session manager readiness"));
+        reject(
+          new FameConnectError(
+            'Timed out waiting for root session manager readiness'
+          )
+        );
       }, timeoutMs);
     });
   }

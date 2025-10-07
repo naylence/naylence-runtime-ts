@@ -1,17 +1,29 @@
-import type { CryptoKey as JoseCryptoKey, JWTPayload, JWK, KeyObject } from "jose";
-import type { AuthorizationContext } from "naylence-core";
-import { getLogger } from "../../util/logging.js";
-import { TTL_NEVER_EXPIRES } from "../../constants/ttl-constants.js";
-import { validateJwtTokenTtlSec } from "../../util/ttl-validation.js";
-import type { TokenVerifier } from "./token-verifier.js";
-import { requireJose, type JWTVerifyOptions, type JoseModule } from "./jose-loader.js";
-import { buildAuthorizationContext, extractScopesFromPayload } from "./jwt-authorization-utils.js";
+import type {
+  CryptoKey as JoseCryptoKey,
+  JWTPayload,
+  JWK,
+  KeyObject,
+} from 'jose';
+import type { AuthorizationContext } from 'naylence-core';
+import { getLogger } from '../../util/logging.js';
+import { TTL_NEVER_EXPIRES } from '../../constants/ttl-constants.js';
+import { validateJwtTokenTtlSec } from '../../util/ttl-validation.js';
+import type { TokenVerifier } from './token-verifier.js';
+import {
+  requireJose,
+  type JWTVerifyOptions,
+  type JoseModule,
+} from './jose-loader.js';
+import {
+  buildAuthorizationContext,
+  extractScopesFromPayload,
+} from './jwt-authorization-utils.js';
 
-const logger = getLogger("jwt-token-verifier");
+const logger = getLogger('jwt-token-verifier');
 
 type SigningKey = JoseCryptoKey | KeyObject | JWK | Uint8Array;
 
-const DEFAULT_ALGORITHMS = ["EdDSA", "RS256", "HS256"] as const;
+const DEFAULT_ALGORITHMS = ['EdDSA', 'RS256', 'HS256'] as const;
 
 interface JWTTokenVerifierOptions {
   verificationKey: string | Uint8Array | JoseCryptoKey | KeyObject | JWK;
@@ -36,18 +48,23 @@ export class JWTTokenVerifier implements TokenVerifier {
 
   constructor(private readonly options: JWTTokenVerifierOptions) {
     if (!options.verificationKey) {
-      throw new Error("JWTTokenVerifier requires a verification key");
+      throw new Error('JWTTokenVerifier requires a verification key');
     }
     if (!options.issuer) {
-      throw new Error("JWTTokenVerifier requires an issuer");
+      throw new Error('JWTTokenVerifier requires an issuer');
     }
 
     this.issuer = options.issuer;
-    const requestedTtl = Number.isFinite(options.ttlSec) ? Number(options.ttlSec) : 3600;
+    const requestedTtl = Number.isFinite(options.ttlSec)
+      ? Number(options.ttlSec)
+      : 3600;
     const validatedTtl = validateJwtTokenTtlSec(requestedTtl);
-    this.ttlSec = typeof validatedTtl === "number" ? validatedTtl : requestedTtl;
+    this.ttlSec =
+      typeof validatedTtl === 'number' ? validatedTtl : requestedTtl;
     if (this.ttlSec === TTL_NEVER_EXPIRES) {
-      throw new Error("JWTTokenVerifier does not support tokens that never expire");
+      throw new Error(
+        'JWTTokenVerifier does not support tokens that never expire'
+      );
     }
 
     this.algorithms = (
@@ -56,11 +73,14 @@ export class JWTTokenVerifier implements TokenVerifier {
         : Array.from(DEFAULT_ALGORITHMS)
     ).map((alg) => alg.toString().trim());
 
-    this.requiredScopes = options.requiredScopes?.filter((scope) => scope.trim().length > 0) ?? [];
+    this.requiredScopes =
+      options.requiredScopes?.filter((scope) => scope.trim().length > 0) ?? [];
     this.revokedCapacity = Math.max(0, options.revokedCapacity ?? 1000);
-    this.revokedTokens = new Array<RevokedEntry>(this.revokedCapacity).fill(null);
+    this.revokedTokens = new Array<RevokedEntry>(this.revokedCapacity).fill(
+      null
+    );
 
-    logger.debug("jwt_token_verifier_initialized", {
+    logger.debug('jwt_token_verifier_initialized', {
       issuer: this.issuer,
       ttl_sec: this.ttlSec,
       revoked_capacity: this.revokedCapacity,
@@ -85,9 +105,9 @@ export class JWTTokenVerifier implements TokenVerifier {
     const jose = await requireJose();
 
     const unverified = jose.decodeJwt(token);
-    const jti = typeof unverified.jti === "string" ? unverified.jti : null;
+    const jti = typeof unverified.jti === 'string' ? unverified.jti : null;
     if (jti && this.isRevoked(jti)) {
-      throw new Error("Token has been revoked");
+      throw new Error('Token has been revoked');
     }
 
     const key = await this.resolveVerificationKey(jose);
@@ -103,13 +123,17 @@ export class JWTTokenVerifier implements TokenVerifier {
         verifyOptions.audience = options.expectedAudience;
       }
 
-      const { payload, protectedHeader } = await jose.jwtVerify(token, key, verifyOptions);
+      const { payload, protectedHeader } = await jose.jwtVerify(
+        token,
+        key,
+        verifyOptions
+      );
 
       this.ensureRequiredScopes(payload);
 
       return buildAuthorizationContext(payload, protectedHeader?.kid);
     } catch (error) {
-      logger.warning("jwt_token_verifier_failed", {
+      logger.warning('jwt_token_verifier_failed', {
         error: error instanceof Error ? error.message : String(error),
       });
       throw this.normalizeJoseError(error);
@@ -130,7 +154,9 @@ export class JWTTokenVerifier implements TokenVerifier {
     }
 
     const tokenScopes = extractScopesFromPayload(payload);
-    const missingScope = this.requiredScopes.find((scope) => !tokenScopes.has(scope));
+    const missingScope = this.requiredScopes.find(
+      (scope) => !tokenScopes.has(scope)
+    );
     if (missingScope) {
       throw new Error(`Token missing required scope: ${missingScope}`);
     }
@@ -145,54 +171,57 @@ export class JWTTokenVerifier implements TokenVerifier {
 
   private async loadVerificationKey(jose: JoseModule): Promise<SigningKey> {
     const key = this.options.verificationKey;
-    if (typeof key === "string") {
+    if (typeof key === 'string') {
       if (this.isSymmetricAlgorithm()) {
         return new TextEncoder().encode(key);
       }
 
-      return jose.importSPKI(key, this.algorithms[0] ?? "EdDSA");
+      return jose.importSPKI(key, this.algorithms[0] ?? 'EdDSA');
     }
 
     return key as SigningKey;
   }
 
   private isSymmetricAlgorithm(): boolean {
-    return this.algorithms.some((alg) => alg.toUpperCase().startsWith("HS"));
+    return this.algorithms.some((alg) => alg.toUpperCase().startsWith('HS'));
   }
 
   private normalizeJoseError(error: unknown): Error {
     if (error instanceof Error) {
-      if ("code" in error) {
+      if ('code' in error) {
         switch ((error as { code?: string }).code) {
-          case "ERR_JWE_INVALID":
-          case "ERR_JWS_INVALID":
-          case "ERR_JWT_INVALID":
-            return this.withCause("Invalid token", error);
+          case 'ERR_JWE_INVALID':
+          case 'ERR_JWS_INVALID':
+          case 'ERR_JWT_INVALID':
+            return this.withCause('Invalid token', error);
           default:
             break;
         }
       }
 
-      if (error.name === "JWTExpired" || /\b(exp|expired|expiration)\b/i.test(error.message)) {
-        return this.withCause("Token has expired", error);
+      if (
+        error.name === 'JWTExpired' ||
+        /\b(exp|expired|expiration)\b/i.test(error.message)
+      ) {
+        return this.withCause('Token has expired', error);
       }
-      if (error.name === "JWTClaimValidationFailed") {
+      if (error.name === 'JWTClaimValidationFailed') {
         const claim = (error as { claim?: string }).claim;
-        if (claim === "aud" || /audience/.test(error.message)) {
-          return this.withCause("Invalid audience", error);
+        if (claim === 'aud' || /audience/.test(error.message)) {
+          return this.withCause('Invalid audience', error);
         }
-        if (claim === "iss" || /issuer/.test(error.message)) {
-          return this.withCause("Invalid issuer", error);
+        if (claim === 'iss' || /issuer/.test(error.message)) {
+          return this.withCause('Invalid issuer', error);
         }
-        if (claim === "sub" || /subject/.test(error.message)) {
-          return this.withCause("Invalid subject", error);
+        if (claim === 'sub' || /subject/.test(error.message)) {
+          return this.withCause('Invalid subject', error);
         }
       }
 
       return error;
     }
 
-    return new Error("Token verification failed");
+    return new Error('Token verification failed');
   }
 
   private withCause(message: string, cause: unknown): Error {

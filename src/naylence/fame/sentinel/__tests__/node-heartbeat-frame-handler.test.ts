@@ -4,11 +4,11 @@ import {
   type FameConnector,
   type FameDeliveryContext,
   type FameEnvelope,
-} from "naylence-core";
+} from 'naylence-core';
 
-import { NodeHeartbeatFrameHandler } from "../node-heartbeat-frame-handler.js";
+import { NodeHeartbeatFrameHandler } from '../node-heartbeat-frame-handler.js';
 
-describe("NodeHeartbeatFrameHandler", () => {
+describe('NodeHeartbeatFrameHandler', () => {
   function createRoutingNode(
     options: {
       routingEpoch?: string | null;
@@ -20,35 +20,43 @@ describe("NodeHeartbeatFrameHandler", () => {
   ) {
     const processedEnvelope: FameEnvelope | null | undefined =
       options.onForwardResult === undefined
-        ? ({ id: "processed-env", frame: { type: "NodeHeartbeatAck" } } as FameEnvelope)
+        ? ({
+            id: 'processed-env',
+            frame: { type: 'NodeHeartbeatAck' },
+          } as FameEnvelope)
         : options.onForwardResult;
 
-    const dispatchEnvelopeEvent = jest.fn(async (event: string, ...args: unknown[]) => {
-      if (event === "onForwardToRoute") {
-        return processedEnvelope ?? null;
-      }
-
-      if (event === "onForwardToRouteComplete") {
-        const errorArg = args[4];
-        if (!errorArg && options.onForwardCompleteReject) {
-          throw new Error("complete listener failure");
+    const dispatchEnvelopeEvent = jest.fn(
+      async (event: string, ...args: unknown[]) => {
+        if (event === 'onForwardToRoute') {
+          return processedEnvelope ?? null;
         }
 
-        if (errorArg instanceof Error && options.onForwardCompleteErrorReject) {
-          throw new Error("cleanup failure");
+        if (event === 'onForwardToRouteComplete') {
+          const errorArg = args[4];
+          if (!errorArg && options.onForwardCompleteReject) {
+            throw new Error('complete listener failure');
+          }
+
+          if (
+            errorArg instanceof Error &&
+            options.onForwardCompleteErrorReject
+          ) {
+            throw new Error('cleanup failure');
+          }
+
+          options.onForwardComplete?.();
+          return args[2] as FameEnvelope;
         }
 
-        options.onForwardComplete?.();
-        return args[2] as FameEnvelope;
+        return null;
       }
-
-      return null;
-    });
+    );
 
     const createEnvelope = jest.fn((_options: unknown) => ({
-      id: "ack-env",
-      frame: { type: "NodeHeartbeatAck" },
-      corrId: "ack-corr",
+      id: 'ack-env',
+      frame: { type: 'NodeHeartbeatAck' },
+      corrId: 'ack-corr',
     })) as jest.MockedFunction<any>;
 
     return {
@@ -77,24 +85,26 @@ describe("NodeHeartbeatFrameHandler", () => {
     frameOverrides: Record<string, unknown> = {}
   ) {
     const frame = {
-      type: "NodeHeartbeat",
-      systemId: "system-1",
-      address: "route://child",
+      type: 'NodeHeartbeat',
+      systemId: 'system-1',
+      address: 'route://child',
       ...frameOverrides,
     } as Record<string, unknown>;
 
     return {
-      id: "heartbeat-env",
-      corrId: "corr-1",
-      traceId: "trace-1",
+      id: 'heartbeat-env',
+      corrId: 'corr-1',
+      traceId: 'trace-1',
       frame,
       ...overrides,
     } as FameEnvelope;
   }
 
-  it("acknowledges heartbeat and forwards envelope", async () => {
-    const routingNode = createRoutingNode({ routingEpoch: "epoch-123" });
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
+  it('acknowledges heartbeat and forwards envelope', async () => {
+    const routingNode = createRoutingNode({ routingEpoch: 'epoch-123' });
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
+    });
 
     const connector = createConnector();
     const context = createContext(connector);
@@ -105,32 +115,34 @@ describe("NodeHeartbeatFrameHandler", () => {
 
     expect(routingNode.envelopeFactory.createEnvelope).toHaveBeenCalledWith({
       frame: expect.objectContaining({
-        type: "NodeHeartbeatAck",
+        type: 'NodeHeartbeatAck',
         ok: true,
-        refId: "heartbeat-env",
-        routingEpoch: "epoch-123",
-        address: "route://child",
+        refId: 'heartbeat-env',
+        routingEpoch: 'epoch-123',
+        address: 'route://child',
       }),
-      corrId: "corr-1",
-      traceId: "trace-1",
+      corrId: 'corr-1',
+      traceId: 'trace-1',
     });
 
     expect(routingNode.dispatchEnvelopeEvent).toHaveBeenNthCalledWith(
       1,
-      "onForwardToRoute",
+      'onForwardToRoute',
       routingNode,
-      "system-1",
-      expect.objectContaining({ frame: expect.objectContaining({ type: "NodeHeartbeatAck" }) }),
+      'system-1',
+      expect.objectContaining({
+        frame: expect.objectContaining({ type: 'NodeHeartbeatAck' }),
+      }),
       context
     );
 
     expect(connector.send).toHaveBeenCalledWith(
-      expect.objectContaining({ frame: { type: "NodeHeartbeatAck" } })
+      expect.objectContaining({ frame: { type: 'NodeHeartbeatAck' } })
     );
     expect(routingNode.dispatchEnvelopeEvent).toHaveBeenCalledWith(
-      "onForwardToRouteComplete",
+      'onForwardToRouteComplete',
       routingNode,
-      "system-1",
+      'system-1',
       expect.any(Object),
       undefined,
       undefined,
@@ -138,9 +150,11 @@ describe("NodeHeartbeatFrameHandler", () => {
     );
   });
 
-  it("omits optional ack fields when metadata is absent", async () => {
+  it('omits optional ack fields when metadata is absent', async () => {
     const routingNode = createRoutingNode({ routingEpoch: null });
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
+    });
 
     const connector = createConnector();
     const context = createContext(connector);
@@ -152,77 +166,89 @@ describe("NodeHeartbeatFrameHandler", () => {
 
     await handler.acceptNodeHeartbeat(envelope, context);
 
-    const callArgs = routingNode.envelopeFactory.createEnvelope.mock.calls[0][0] as Record<
-      string,
-      unknown
-    >;
+    const callArgs = routingNode.envelopeFactory.createEnvelope.mock
+      .calls[0][0] as Record<string, unknown>;
     const ackFrame = callArgs.frame as Record<string, unknown>;
 
-    expect(ackFrame).toMatchObject({ type: "NodeHeartbeatAck", ok: true });
-    expect(ackFrame).not.toHaveProperty("refId");
-    expect(ackFrame).not.toHaveProperty("routingEpoch");
-    expect(ackFrame).not.toHaveProperty("address");
-    expect(callArgs).not.toHaveProperty("corrId");
-    expect(callArgs).not.toHaveProperty("traceId");
+    expect(ackFrame).toMatchObject({ type: 'NodeHeartbeatAck', ok: true });
+    expect(ackFrame).not.toHaveProperty('refId');
+    expect(ackFrame).not.toHaveProperty('routingEpoch');
+    expect(ackFrame).not.toHaveProperty('address');
+    expect(callArgs).not.toHaveProperty('corrId');
+    expect(callArgs).not.toHaveProperty('traceId');
   });
 
-  it("throws when envelope frame is missing or invalid", async () => {
+  it('throws when envelope frame is missing or invalid', async () => {
     const handler = new NodeHeartbeatFrameHandler({
       routingNode: createRoutingNode() as any,
     });
 
-    const envelope = { frame: { type: "OtherFrame" } } as unknown as FameEnvelope;
+    const envelope = {
+      frame: { type: 'OtherFrame' },
+    } as unknown as FameEnvelope;
 
     await expect(
       handler.acceptNodeHeartbeat(envelope, createContext(createConnector()))
-    ).rejects.toThrow("Invalid envelope frame. Expected: NodeHeartbeatFrame, actual: OtherFrame");
+    ).rejects.toThrow(
+      'Invalid envelope frame. Expected: NodeHeartbeatFrame, actual: OtherFrame'
+    );
   });
 
-  it("throws when envelope frame is entirely missing", async () => {
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: createRoutingNode() as any });
+  it('throws when envelope frame is entirely missing', async () => {
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: createRoutingNode() as any,
+    });
     const envelope = { frame: undefined } as unknown as FameEnvelope;
 
     await expect(
       handler.acceptNodeHeartbeat(envelope, createContext(createConnector()))
-    ).rejects.toThrow("Invalid envelope frame. Expected: NodeHeartbeatFrame, actual: unknown");
-  });
-
-  it("throws when delivery context is missing", async () => {
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: createRoutingNode() as any });
-    const heartbeatEnvelope = createHeartbeatEnvelope();
-
-    await expect(handler.acceptNodeHeartbeat(heartbeatEnvelope, undefined)).rejects.toThrow(
-      "missing FameDeliveryContext"
+    ).rejects.toThrow(
+      'Invalid envelope frame. Expected: NodeHeartbeatFrame, actual: unknown'
     );
   });
 
-  it("throws when connector is not present in context", async () => {
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: createRoutingNode() as any });
+  it('throws when delivery context is missing', async () => {
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: createRoutingNode() as any,
+    });
+    const heartbeatEnvelope = createHeartbeatEnvelope();
+
+    await expect(
+      handler.acceptNodeHeartbeat(heartbeatEnvelope, undefined)
+    ).rejects.toThrow('missing FameDeliveryContext');
+  });
+
+  it('throws when connector is not present in context', async () => {
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: createRoutingNode() as any,
+    });
     const heartbeatEnvelope = createHeartbeatEnvelope();
 
     const context = createContext(undefined);
 
-    await expect(handler.acceptNodeHeartbeat(heartbeatEnvelope, context)).rejects.toThrow(
-      "Connector in context does not match pending connector"
-    );
+    await expect(
+      handler.acceptNodeHeartbeat(heartbeatEnvelope, context)
+    ).rejects.toThrow('Connector in context does not match pending connector');
   });
 
-  it("throws when forwarding event blocks the envelope", async () => {
+  it('throws when forwarding event blocks the envelope', async () => {
     const routingNode = createRoutingNode({ onForwardResult: null });
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
+    });
 
     const connector = createConnector();
     const context = createContext(connector);
 
-    await expect(handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)).rejects.toThrow(
-      "Envelope was blocked by onForwardToRoute event"
-    );
+    await expect(
+      handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)
+    ).rejects.toThrow('Envelope was blocked by onForwardToRoute event');
 
     expect(routingNode.dispatchEnvelopeEvent).toHaveBeenNthCalledWith(
       2,
-      "onForwardToRouteComplete",
+      'onForwardToRouteComplete',
       routingNode,
-      "system-1",
+      'system-1',
       expect.any(Object),
       undefined,
       expect.any(Error),
@@ -230,25 +256,27 @@ describe("NodeHeartbeatFrameHandler", () => {
     );
   });
 
-  it("propagates errors from connector.send and notifies completion with error", async () => {
+  it('propagates errors from connector.send and notifies completion with error', async () => {
     const routingNode = createRoutingNode();
-    const error = new Error("send failed");
+    const error = new Error('send failed');
     const connector = createConnector(async () => {
       throw error;
     });
 
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
+    });
     const context = createContext(connector);
 
-    await expect(handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)).rejects.toThrow(
-      "send failed"
-    );
+    await expect(
+      handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)
+    ).rejects.toThrow('send failed');
 
     expect(routingNode.dispatchEnvelopeEvent).toHaveBeenNthCalledWith(
       2,
-      "onForwardToRouteComplete",
+      'onForwardToRouteComplete',
       routingNode,
-      "system-1",
+      'system-1',
       expect.any(Object),
       undefined,
       error,
@@ -256,9 +284,11 @@ describe("NodeHeartbeatFrameHandler", () => {
     );
   });
 
-  it("ignores errors thrown by onForwardToRouteComplete after successful send", async () => {
+  it('ignores errors thrown by onForwardToRouteComplete after successful send', async () => {
     const routingNode = createRoutingNode({ onForwardCompleteReject: true });
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
+    });
 
     const connector = createConnector();
     const context = createContext(connector);
@@ -269,9 +299,9 @@ describe("NodeHeartbeatFrameHandler", () => {
 
     expect(connector.send).toHaveBeenCalledTimes(1);
     expect(routingNode.dispatchEnvelopeEvent).toHaveBeenCalledWith(
-      "onForwardToRouteComplete",
+      'onForwardToRouteComplete',
       routingNode,
-      "system-1",
+      'system-1',
       expect.any(Object),
       undefined,
       undefined,
@@ -279,25 +309,29 @@ describe("NodeHeartbeatFrameHandler", () => {
     );
   });
 
-  it("still throws the original error when cleanup listener rejects during failure handling", async () => {
-    const routingNode = createRoutingNode({ onForwardCompleteErrorReject: true });
-    const error = new Error("send failed");
+  it('still throws the original error when cleanup listener rejects during failure handling', async () => {
+    const routingNode = createRoutingNode({
+      onForwardCompleteErrorReject: true,
+    });
+    const error = new Error('send failed');
     const connector = createConnector(async () => {
       throw error;
     });
 
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
+    });
     const context = createContext(connector);
 
-    await expect(handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)).rejects.toThrow(
-      "send failed"
-    );
+    await expect(
+      handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)
+    ).rejects.toThrow('send failed');
 
     expect(routingNode.dispatchEnvelopeEvent).toHaveBeenNthCalledWith(
       2,
-      "onForwardToRouteComplete",
+      'onForwardToRouteComplete',
       routingNode,
-      "system-1",
+      'system-1',
       expect.any(Object),
       undefined,
       error,
@@ -305,47 +339,59 @@ describe("NodeHeartbeatFrameHandler", () => {
     );
   });
 
-  it("uses fallback identifiers when ack envelope metadata is absent", async () => {
+  it('uses fallback identifiers when ack envelope metadata is absent', async () => {
     const routingNode = createRoutingNode();
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
-
-    routingNode.envelopeFactory.createEnvelope.mockImplementation((options: any) => {
-      return {
-        frame: options.frame,
-      } as FameEnvelope;
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
     });
+
+    routingNode.envelopeFactory.createEnvelope.mockImplementation(
+      (options: any) => {
+        return {
+          frame: options.frame,
+        } as FameEnvelope;
+      }
+    );
 
     const connector = createConnector();
     const context = createContext(connector);
 
-    const envelope = createHeartbeatEnvelope({}, { systemId: undefined, address: undefined });
+    const envelope = createHeartbeatEnvelope(
+      {},
+      { systemId: undefined, address: undefined }
+    );
 
     await handler.acceptNodeHeartbeat(envelope, context);
 
     expect(routingNode.dispatchEnvelopeEvent).toHaveBeenNthCalledWith(
       1,
-      "onForwardToRoute",
+      'onForwardToRoute',
       routingNode,
-      "unknown",
+      'unknown',
       expect.any(Object),
       context
     );
 
-    const envelopeArg = routingNode.dispatchEnvelopeEvent.mock.calls[0]?.[3] as FameEnvelope;
-    expect(envelopeArg.frame).toMatchObject({ type: "NodeHeartbeatAck" });
+    const envelopeArg = routingNode.dispatchEnvelopeEvent.mock
+      .calls[0]?.[3] as FameEnvelope;
+    expect(envelopeArg.frame).toMatchObject({ type: 'NodeHeartbeatAck' });
   });
 
-  it("coerces non-error failures thrown by connector.send", async () => {
-    const routingNode = createRoutingNode({ onForwardCompleteErrorReject: true });
+  it('coerces non-error failures thrown by connector.send', async () => {
+    const routingNode = createRoutingNode({
+      onForwardCompleteErrorReject: true,
+    });
     const connector = createConnector(async () => {
-      throw "string-failure";
+      throw 'string-failure';
     });
 
-    const handler = new NodeHeartbeatFrameHandler({ routingNode: routingNode as any });
+    const handler = new NodeHeartbeatFrameHandler({
+      routingNode: routingNode as any,
+    });
     const context = createContext(connector);
 
-    await expect(handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)).rejects.toThrow(
-      "string-failure"
-    );
+    await expect(
+      handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)
+    ).rejects.toThrow('string-failure');
   });
 });

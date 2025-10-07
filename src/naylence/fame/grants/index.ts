@@ -4,14 +4,14 @@ export {
   isGrant,
   type Grant,
   type GrantPurpose,
-} from "./grant.js";
+} from './grant.js';
 
 export {
   assertConnectionGrant,
   isConnectionGrant,
   type ConnectionGrant,
   type ConnectionGrantLike,
-} from "./connection-grant.js";
+} from './connection-grant.js';
 
 export {
   HTTP_CONNECTION_GRANT_TYPE,
@@ -23,7 +23,7 @@ export {
   httpGrantToConnectorConfig,
   isHttpConnectionGrant,
   normalizeHttpConnectionGrant,
-} from "./http-connection-grant.js";
+} from './http-connection-grant.js';
 
 export {
   WEBSOCKET_CONNECTION_GRANT_TYPE,
@@ -34,4 +34,4 @@ export {
   isWebSocketConnectionGrant,
   normalizeWebSocketConnectionGrant,
   websocketGrantToConnectorConfig,
-} from "./websocket-connection-grant.js";
+} from './websocket-connection-grant.js';

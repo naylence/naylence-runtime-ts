@@ -1,21 +1,22 @@
-import { safeImport } from "../../util/lazy-import.js";
-import type { EnvelopeSigner } from "./envelope-signer.js";
+import { safeImport } from '../../util/lazy-import.js';
+import type { EnvelopeSigner } from './envelope-signer.js';
 import {
   ENVELOPE_SIGNER_FACTORY_BASE_TYPE,
   EnvelopeSignerFactory,
   type EnvelopeSignerConfig,
-} from "./envelope-signer.js";
-import type { EdDSAEnvelopeSignerOptions } from "./eddsa-envelope-signer.js";
+} from './envelope-signer.js';
+import type { EdDSAEnvelopeSignerOptions } from './eddsa-envelope-signer.js';
 
-type EdDSAEnvelopeSignerModule = typeof import("./eddsa-envelope-signer.js");
+type EdDSAEnvelopeSignerModule = typeof import('./eddsa-envelope-signer.js');
 
-let eddsaEnvelopeSignerModulePromise: Promise<EdDSAEnvelopeSignerModule> | null = null;
+let eddsaEnvelopeSignerModulePromise: Promise<EdDSAEnvelopeSignerModule> | null =
+  null;
 async function getEdDSAEnvelopeSignerModule(): Promise<EdDSAEnvelopeSignerModule> {
   if (!eddsaEnvelopeSignerModulePromise) {
     eddsaEnvelopeSignerModulePromise = safeImport(
-      () => import("./eddsa-envelope-signer.js"),
+      () => import('./eddsa-envelope-signer.js'),
       {
-        dependencyName: "EdDSAEnvelopeSigner",
+        dependencyName: 'EdDSAEnvelopeSigner',
         helpMessage:
           "Missing optional signing dependencies. Install '@noble/ed25519' and '@noble/hashes' to enable EdDSA signing.",
       }
@@ -26,16 +27,16 @@ async function getEdDSAEnvelopeSignerModule(): Promise<EdDSAEnvelopeSignerModule
 }
 
 export interface EdDSAEnvelopeSignerConfig extends EnvelopeSignerConfig {
-  type: "EdDSAEnvelopeSigner";
+  type: 'EdDSAEnvelopeSigner';
 }
 
 export const FACTORY_META = {
   base: ENVELOPE_SIGNER_FACTORY_BASE_TYPE,
-  key: "EdDSAEnvelopeSigner",
+  key: 'EdDSAEnvelopeSigner',
 } as const;
 
 export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvelopeSignerConfig> {
-  public readonly type = "EdDSAEnvelopeSigner";
+  public readonly type = 'EdDSAEnvelopeSigner';
   public readonly isDefault = true;
 
   public async create(
@@ -62,4 +63,3 @@ export class EdDSAEnvelopeSignerFactory extends EnvelopeSignerFactory<EdDSAEnvel
 }
 
 export default EdDSAEnvelopeSignerFactory;
-

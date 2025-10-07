@@ -1,32 +1,37 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-import { getNode } from "../node/node-context-stack.js";
-import type { NodeLike } from "../node/node-like.js";
+import { getNode } from '../node/node-context-stack.js';
+import type { NodeLike } from '../node/node-like.js';
 
 import {
   NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
   NodePlacementStrategyFactory,
   registerNodePlacementStrategyFactory,
   type NodePlacementConfig,
-} from "./node-placement-strategy-factory.js";
-import type { NodePlacementStrategy } from "./node-placement-strategy.js";
-import { WebSocketPlacementStrategy } from "./websocket-node-placement-strategy.js";
+} from './node-placement-strategy-factory.js';
+import type { NodePlacementStrategy } from './node-placement-strategy.js';
+import { WebSocketPlacementStrategy } from './websocket-node-placement-strategy.js';
 
 export interface WebSocketPlacementConfig extends NodePlacementConfig {
-  type: "WebSocketNodePlacementStrategy";
+  type: 'WebSocketNodePlacementStrategy';
 }
 
 const webSocketPlacementConfigSchema = z
   .object({
-    type: z.literal("WebSocketNodePlacementStrategy").default("WebSocketNodePlacementStrategy"),
+    type: z
+      .literal('WebSocketNodePlacementStrategy')
+      .default('WebSocketNodePlacementStrategy'),
   })
   .passthrough();
 
 function emitFactoryDeprecationWarning(): void {
   const message =
-    "WebSocketPlacementStrategyFactory is deprecated; use StaticNodePlacementStrategyFactory";
-  if (typeof process !== "undefined" && typeof process.emitWarning === "function") {
-    process.emitWarning(message, { type: "DeprecationWarning" });
+    'WebSocketPlacementStrategyFactory is deprecated; use StaticNodePlacementStrategyFactory';
+  if (
+    typeof process !== 'undefined' &&
+    typeof process.emitWarning === 'function'
+  ) {
+    process.emitWarning(message, { type: 'DeprecationWarning' });
   } else {
     console.warn(message);
   }
@@ -37,7 +42,7 @@ function resolveParentSystemId(node: NodeLike): string {
 }
 
 export class WebSocketPlacementStrategyFactory extends NodePlacementStrategyFactory<WebSocketPlacementConfig> {
-  public readonly type = "WebSocketNodePlacementStrategy";
+  public readonly type = 'WebSocketNodePlacementStrategy';
   private readonly parentSystemIdFn: (() => string) | null;
   private readonly parentPathFn: (() => string) | null;
 
@@ -55,7 +60,9 @@ export class WebSocketPlacementStrategyFactory extends NodePlacementStrategyFact
     config?: WebSocketPlacementConfig | Record<string, unknown> | null
   ): Promise<NodePlacementStrategy> {
     if (!config) {
-      throw new Error("WebSocketPlacementStrategyFactory requires configuration");
+      throw new Error(
+        'WebSocketPlacementStrategyFactory requires configuration'
+      );
     }
 
     const parsed = webSocketPlacementConfigSchema.parse(config);
@@ -83,11 +90,11 @@ export class WebSocketPlacementStrategyFactory extends NodePlacementStrategyFact
 
 export const FACTORY_META = {
   base: NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
-  key: "WebSocketNodePlacementStrategy",
+  key: 'WebSocketNodePlacementStrategy',
 } as const;
 
 registerNodePlacementStrategyFactory(
-  "WebSocketNodePlacementStrategy",
+  'WebSocketNodePlacementStrategy',
   WebSocketPlacementStrategyFactory
 );
 

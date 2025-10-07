@@ -1,4 +1,4 @@
-import type { CredentialProvider } from "./credential-provider.js";
+import type { CredentialProvider } from './credential-provider.js';
 
 export class StaticCredentialProvider implements CredentialProvider {
   private readonly credentialValue: string;

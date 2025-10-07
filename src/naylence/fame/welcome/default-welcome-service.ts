@@ -1,28 +1,36 @@
-import { generateId, type NodeHelloFrame, type NodeWelcomeFrame } from "naylence-core";
+import {
+  generateId,
+  type NodeHelloFrame,
+  type NodeWelcomeFrame,
+} from 'naylence-core';
 
 import type {
   NodePlacementStrategy,
   PlacementDecision,
-} from "../placement/node-placement-strategy.js";
+} from '../placement/node-placement-strategy.js';
 import type {
   TransportProvisionResult,
   TransportProvisioner,
-} from "../transport/transport-provisioner.js";
-import type { TokenIssuer } from "../security/auth/token-issuer.js";
-import type { Authorizer } from "../security/auth/authorizer.js";
-import { color, AnsiColor, formatTimestamp } from "../util/formatter.js";
-import { jsonDumps } from "../util/util.js";
-import { validateHostLogicals } from "../util/logicals.js";
-import { getLogger } from "../util/logging.js";
-import type { WelcomeService, WelcomeServiceMetadata } from "./welcome-service.js";
+} from '../transport/transport-provisioner.js';
+import type { TokenIssuer } from '../security/auth/token-issuer.js';
+import type { Authorizer } from '../security/auth/authorizer.js';
+import { color, AnsiColor, formatTimestamp } from '../util/formatter.js';
+import { jsonDumps } from '../util/util.js';
+import { validateHostLogicals } from '../util/logicals.js';
+import { getLogger } from '../util/logging.js';
+import type {
+  WelcomeService,
+  WelcomeServiceMetadata,
+} from './welcome-service.js';
 
-const logger = getLogger("naylence.fame.welcome.DefaultWelcomeService");
+const logger = getLogger('naylence.fame.welcome.DefaultWelcomeService');
 
-const ENV_VAR_SHOW_ENVELOPES = "FAME_SHOW_ENVELOPES";
+const ENV_VAR_SHOW_ENVELOPES = 'FAME_SHOW_ENVELOPES';
 const DEFAULT_TTL_SEC = 3600;
 
 const showEnvelopes =
-  typeof process !== "undefined" && process.env?.[ENV_VAR_SHOW_ENVELOPES] === "true";
+  typeof process !== 'undefined' &&
+  process.env?.[ENV_VAR_SHOW_ENVELOPES] === 'true';
 
 function nowUtc(): Date {
   return new Date();
@@ -41,7 +49,7 @@ function prettyModel(value: unknown): string {
 }
 
 function coercePlacementMetadataValue<T>(
-  metadata: PlacementDecision["metadata"],
+  metadata: PlacementDecision['metadata'],
   camelCaseKey: string,
   snakeCaseKey: string
 ): T | undefined {
@@ -84,7 +92,7 @@ export class DefaultWelcomeService implements WelcomeService {
     this.tokenIssuer = options.tokenIssuer;
     this.authorizer = options.authorizer ?? null;
     this.ttlSec =
-      typeof options.ttlSec === "number" && Number.isFinite(options.ttlSec)
+      typeof options.ttlSec === 'number' && Number.isFinite(options.ttlSec)
         ? Math.max(0, options.ttlSec)
         : DEFAULT_TTL_SEC;
   }
@@ -93,10 +101,14 @@ export class DefaultWelcomeService implements WelcomeService {
     hello: NodeHelloFrame,
     metadata?: WelcomeServiceMetadata
   ): Promise<NodeWelcomeFrame> {
-    const fullMetadata: Record<string, unknown> = metadata ? { ...metadata } : {};
+    const fullMetadata: Record<string, unknown> = metadata
+      ? { ...metadata }
+      : {};
 
-    const trimmedSystemId = typeof hello.systemId === "string" ? hello.systemId.trim() : "";
-    const systemId = trimmedSystemId.length > 0 ? trimmedSystemId : generateId();
+    const trimmedSystemId =
+      typeof hello.systemId === 'string' ? hello.systemId.trim() : '';
+    const systemId =
+      trimmedSystemId.length > 0 ? trimmedSystemId : generateId();
     const wasAssigned = trimmedSystemId.length === 0;
 
     const normalizedHello: NodeHelloFrame = {
@@ -107,11 +119,11 @@ export class DefaultWelcomeService implements WelcomeService {
     if (showEnvelopes) {
       // eslint-disable-next-line no-console
       console.log(
-        `\n${formatTimestampForConsole()} - ${color("Received envelope 📨", AnsiColor.BLUE)}\n${prettyModel(normalizedHello)}`
+        `\n${formatTimestampForConsole()} - ${color('Received envelope 📨', AnsiColor.BLUE)}\n${prettyModel(normalizedHello)}`
       );
     }
 
-    logger.debug("starting_hello_frame_processing", {
+    logger.debug('starting_hello_frame_processing', {
       instanceId: normalizedHello.instanceId,
       systemId,
       logicals: normalizedHello.logicals,
@@ -129,39 +141,41 @@ export class DefaultWelcomeService implements WelcomeService {
       fullMetadata.instance_id = normalizedHello.instanceId;
     }
 
-    logger.debug("system_id_assignment_completed", {
+    logger.debug('system_id_assignment_completed', {
       systemId,
       wasAssigned,
     });
 
     if (normalizedHello.logicals?.length) {
-      logger.debug("validating_logicals_for_dns_compatibility", {
+      logger.debug('validating_logicals_for_dns_compatibility', {
         logicals: normalizedHello.logicals,
       });
-      const [pathsValid, pathError] = validateHostLogicals(normalizedHello.logicals);
+      const [pathsValid, pathError] = validateHostLogicals(
+        normalizedHello.logicals
+      );
       if (!pathsValid) {
-        logger.error("logical_validation_failed", {
+        logger.error('logical_validation_failed', {
           error: pathError,
           logicals: normalizedHello.logicals,
         });
         throw new Error(`Invalid logical format: ${pathError}`);
       }
-      logger.debug("logicals_validation_successful");
+      logger.debug('logicals_validation_successful');
     }
 
-    logger.debug("requesting_node_placement", { systemId });
+    logger.debug('requesting_node_placement', { systemId });
     const placementResult = await this.placementStrategy.place(normalizedHello);
 
     if (!placementResult.accept) {
-      logger.error("node_placement_rejected", {
+      logger.error('node_placement_rejected', {
         systemId,
         reason: placementResult.reason,
       });
-      throw new Error(placementResult.reason || "Node not accepted");
+      throw new Error(placementResult.reason || 'Node not accepted');
     }
 
     const assignedPath = placementResult.assignedPath;
-    logger.debug("node_placement_accepted", {
+    logger.debug('node_placement_accepted', {
       systemId,
       assignedPath,
       targetPhysicalPath: placementResult.targetPhysicalPath ?? null,
@@ -171,8 +185,8 @@ export class DefaultWelcomeService implements WelcomeService {
     const acceptedCapabilities =
       coercePlacementMetadataValue<string[] | null>(
         placementResult.metadata,
-        "acceptedCapabilities",
-        "accepted_capabilities"
+        'acceptedCapabilities',
+        'accepted_capabilities'
       ) ??
       normalizedHello.capabilities ??
       null;
@@ -180,23 +194,25 @@ export class DefaultWelcomeService implements WelcomeService {
     const acceptedLogicals =
       coercePlacementMetadataValue<string[] | null>(
         placementResult.metadata,
-        "acceptedLogicals",
-        "accepted_logicals"
+        'acceptedLogicals',
+        'accepted_logicals'
       ) ??
       normalizedHello.logicals ??
       null;
 
-    logger.debug("processing_placement_result_metadata", {
+    logger.debug('processing_placement_result_metadata', {
       acceptedCapabilities,
       acceptedLogicals,
       hasPlacementMetadata:
-        placementResult.metadata !== undefined && placementResult.metadata !== null,
+        placementResult.metadata !== undefined &&
+        placementResult.metadata !== null,
     });
 
-    const connectionGrants: Array<TransportProvisionResult["connectionGrant"]> = [];
+    const connectionGrants: Array<TransportProvisionResult['connectionGrant']> =
+      [];
 
     if (placementResult.targetSystemId) {
-      logger.debug("issuing_node_attach_token", {
+      logger.debug('issuing_node_attach_token', {
         systemId,
         assignedPath,
       });
@@ -208,15 +224,17 @@ export class DefaultWelcomeService implements WelcomeService {
         assigned_path: placementResult.assignedPath,
         accepted_logicals: acceptedLogicals,
         instance_id:
-          (typeof fullMetadata.instanceId === "string" && fullMetadata.instanceId) ||
-          (typeof fullMetadata.instance_id === "string" && fullMetadata.instance_id) ||
+          (typeof fullMetadata.instanceId === 'string' &&
+            fullMetadata.instanceId) ||
+          (typeof fullMetadata.instance_id === 'string' &&
+            fullMetadata.instance_id) ||
           normalizedHello.instanceId ||
           generateId(),
       });
 
-      logger.debug("token_issued_successfully");
+      logger.debug('token_issued_successfully');
 
-      logger.debug("provisioning_transport", { systemId });
+      logger.debug('provisioning_transport', { systemId });
       const transportInfo = await this.transportProvisioner.provision(
         placementResult,
         normalizedHello,
@@ -224,19 +242,21 @@ export class DefaultWelcomeService implements WelcomeService {
         nodeAttachToken
       );
 
-      logger.debug("transport_provisioned_successfully", {
+      logger.debug('transport_provisioned_successfully', {
         systemId,
         directiveType:
-          transportInfo.connectionGrant && typeof transportInfo.connectionGrant === "object"
-            ? ((transportInfo.connectionGrant as { type?: unknown }).type ?? "Unknown")
-            : "Unknown",
+          transportInfo.connectionGrant &&
+          typeof transportInfo.connectionGrant === 'object'
+            ? ((transportInfo.connectionGrant as { type?: unknown }).type ??
+              'Unknown')
+            : 'Unknown',
       });
 
       connectionGrants.push(transportInfo.connectionGrant);
     }
 
     const welcomeFrame: NodeWelcomeFrame = {
-      type: "NodeWelcome",
+      type: 'NodeWelcome',
       systemId,
       targetSystemId: placementResult.targetSystemId ?? undefined,
       targetPhysicalPath: placementResult.targetPhysicalPath ?? undefined,
@@ -250,7 +270,7 @@ export class DefaultWelcomeService implements WelcomeService {
       expiresAt: expiry.toISOString(),
     };
 
-    logger.debug("hello_frame_processing_completed_successfully", {
+    logger.debug('hello_frame_processing_completed_successfully', {
       systemId,
       assignedPath,
       acceptedLogicals,
@@ -262,7 +282,7 @@ export class DefaultWelcomeService implements WelcomeService {
     if (showEnvelopes) {
       // eslint-disable-next-line no-console
       console.log(
-        `\n${formatTimestampForConsole()} - ${color("Sent envelope", AnsiColor.BLUE)} 🚀\n${prettyModel(welcomeFrame)}`
+        `\n${formatTimestampForConsole()} - ${color('Sent envelope', AnsiColor.BLUE)} 🚀\n${prettyModel(welcomeFrame)}`
       );
     }
 

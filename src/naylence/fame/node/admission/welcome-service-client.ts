@@ -5,15 +5,18 @@ import {
   type FameEnvelopeWith,
   type NodeHelloFrame,
   type NodeWelcomeFrame,
-} from "naylence-core";
-import { getLogger } from "../../util/logging.js";
-import { camelToSnakeCase, snakeToCamelCase } from "../../util/util.js";
-import type { AuthInjectionStrategy } from "../../security/auth/auth-injection-strategy.js";
-import type { AdmissionClient } from "./admission-client.js";
+} from 'naylence-core';
+import { getLogger } from '../../util/logging.js';
+import { camelToSnakeCase, snakeToCamelCase } from '../../util/util.js';
+import type { AuthInjectionStrategy } from '../../security/auth/auth-injection-strategy.js';
+import type { AdmissionClient } from './admission-client.js';
 
-const logger = getLogger("welcome-service-client");
+const logger = getLogger('welcome-service-client');
 
-type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+type FetchLike = (
+  input: RequestInfo | URL,
+  init?: RequestInit
+) => Promise<Response>;
 
 export interface WelcomeServiceClientOptions {
   readonly hasUpstream: boolean;
@@ -41,7 +44,7 @@ export class WelcomeServiceClient implements AdmissionClient {
   }
 
   public setAuthHeader(value: string): void {
-    if (typeof value === "string" && value.trim().length > 0) {
+    if (typeof value === 'string' && value.trim().length > 0) {
       this.authHeaders.Authorization = value.trim();
     }
   }
@@ -54,7 +57,7 @@ export class WelcomeServiceClient implements AdmissionClient {
     const fetchFn = this.resolveFetch();
 
     const helloFrame: NodeHelloFrame = {
-      type: "NodeHello",
+      type: 'NodeHello',
       systemId,
       instanceId,
       logicals: requestedLogicals ?? [],
@@ -67,11 +70,11 @@ export class WelcomeServiceClient implements AdmissionClient {
     );
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...this.authHeaders,
     };
 
-    logger.debug("welcome_service_hello_request", {
+    logger.debug('welcome_service_hello_request', {
       url: this.url,
       systemId,
       instanceId,
@@ -80,7 +83,7 @@ export class WelcomeServiceClient implements AdmissionClient {
     });
 
     const response = await fetchFn(this.url, {
-      method: "POST",
+      method: 'POST',
       headers,
       body: payload,
     });
@@ -97,11 +100,13 @@ export class WelcomeServiceClient implements AdmissionClient {
     try {
       data = responseText ? JSON.parse(responseText) : {};
     } catch (error) {
-      throw new Error(`Failed to parse welcome service response: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to parse welcome service response: ${(error as Error).message}`
+      );
     }
 
     if (!isRecord(data)) {
-      throw new Error("Welcome service response is not a JSON object");
+      throw new Error('Welcome service response is not a JSON object');
     }
 
     const camelData = convertKeysToCamelCase(data);
@@ -110,11 +115,13 @@ export class WelcomeServiceClient implements AdmissionClient {
       camelData
     ) as FameEnvelopeWith<NodeWelcomeFrame>;
 
-    if (!parsedEnvelope.frame || parsedEnvelope.frame.type !== "NodeWelcome") {
-      throw new Error(`Unexpected frame type '${parsedEnvelope.frame?.type ?? "unknown"}'`);
+    if (!parsedEnvelope.frame || parsedEnvelope.frame.type !== 'NodeWelcome') {
+      throw new Error(
+        `Unexpected frame type '${parsedEnvelope.frame?.type ?? 'unknown'}'`
+      );
     }
 
-    logger.debug("welcome_service_hello_success", {
+    logger.debug('welcome_service_hello_success', {
       systemId: parsedEnvelope.frame.systemId,
       targetSystemId: parsedEnvelope.frame.targetSystemId,
       assignedPath: parsedEnvelope.frame.assignedPath,
@@ -135,16 +142,18 @@ export class WelcomeServiceClient implements AdmissionClient {
       return this.fetchImpl;
     }
 
-    if (typeof fetch === "function") {
+    if (typeof fetch === 'function') {
       return fetch.bind(globalThis) as FetchLike;
     }
 
-    throw new Error("Global fetch implementation is not available. Provide fetchImpl in options.");
+    throw new Error(
+      'Global fetch implementation is not available. Provide fetchImpl in options.'
+    );
   }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function convertKeysToSnakeCase(value: unknown): unknown {

@@ -26,7 +26,8 @@ export default defineConfig({
       'node:fs': 'null',
       'node:fs/promises': 'null',
       'node:path': 'null',
-      'node:crypto': 'null'
+      'node:crypto': 'null',
+      'node:url': 'null'
     }
   },
   plugins: [
@@ -38,10 +39,11 @@ export default defineConfig({
     commonjs(),
     typescript({
       target: 'es2020',
-      module: 'node16',
+      module: 'esnext',
       declaration: false,
       declarationMap: false,
       sourceMap: true,
+      outDir: 'dist/browser',
     }),
   ],
   external: [
@@ -58,6 +60,7 @@ export default defineConfig({
     'node:fs',
     'node:fs/promises',
     'node:path',
-    'node:crypto'
+    'node:crypto',
+    'node:url'
   ], // Mark Node.js modules as external
 });

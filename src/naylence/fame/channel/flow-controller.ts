@@ -22,14 +22,17 @@
  * flow at any time.
  */
 
-import { FlowFlags } from "naylence-core";
+import { FlowFlags } from 'naylence-core';
 
 /**
  * Simple condition variable implementation for TypeScript/Node.js
  * Similar to Python's asyncio.Condition
  */
 class Condition {
-  private waiters: Array<{ resolve: () => void; reject: (reason?: any) => void }> = [];
+  private waiters: Array<{
+    resolve: () => void;
+    reject: (reason?: any) => void;
+  }> = [];
 
   /**
    * Wait for a notification
@@ -81,7 +84,7 @@ export class FlowController {
 
   constructor(initialWindow: number, lowWatermarkRatio: number = 0.25) {
     if (initialWindow <= 0) {
-      throw new Error("initial_window must be > 0");
+      throw new Error('initial_window must be > 0');
     }
 
     this.initialWindow = initialWindow;
@@ -195,7 +198,7 @@ export class FlowController {
    */
   consume(flowId: string, credits: number = 1): number {
     if (credits < 0) {
-      throw new Error("credits must be positive");
+      throw new Error('credits must be positive');
     }
 
     if (credits === 0) {

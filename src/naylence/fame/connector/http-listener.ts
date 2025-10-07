@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import {
   DeliveryOriginType,
   FameChannelMessage,
@@ -10,35 +10,38 @@ import {
   type FameEnvelope,
   type NodeAttachFrame,
   type SecurityContext,
-} from "naylence-core";
+} from 'naylence-core';
 
-import { TransportListener } from "./transport-listener.js";
-import type { HttpRouter, HttpServer } from "./http-server.js";
-import { DefaultHttpServer } from "./default-http-server.js";
-import type { Authorizer } from "../security/auth/authorizer.js";
-import type { NodeLike } from "../node/node-like.js";
-import type { RoutingNodeLike } from "../node/routing-node-like.js";
-import { GrantSelectionContext, defaultGrantSelectionPolicy } from "./grant-selection-policy.js";
+import { TransportListener } from './transport-listener.js';
+import type { HttpRouter, HttpServer } from './http-server.js';
+import { DefaultHttpServer } from './default-http-server.js';
+import type { Authorizer } from '../security/auth/authorizer.js';
+import type { NodeLike } from '../node/node-like.js';
+import type { RoutingNodeLike } from '../node/routing-node-like.js';
+import {
+  GrantSelectionContext,
+  defaultGrantSelectionPolicy,
+} from './grant-selection-policy.js';
 import {
   HTTP_CONNECTION_GRANT_TYPE,
   httpGrantToConnectorConfig,
   type HttpConnectionGrantLike,
-} from "../grants/http-connection-grant.js";
+} from '../grants/http-connection-grant.js';
 import {
   WEBSOCKET_CONNECTION_GRANT_TYPE,
   websocketGrantToConnectorConfig,
   type WebSocketConnectionGrantLike,
-} from "../grants/websocket-connection-grant.js";
-import type { ConnectionGrant } from "../grants/connection-grant.js";
-import type { ConnectorConfig } from "./connector-config.js";
-import { getLogger } from "../util/logging.js";
-import type { NoAuthInjectionStrategyConfig } from "../security/auth/no-auth-injection-strategy-factory.js";
-import type { RouteManager } from "../sentinel/route-manager.js";
+} from '../grants/websocket-connection-grant.js';
+import type { ConnectionGrant } from '../grants/connection-grant.js';
+import type { ConnectorConfig } from './connector-config.js';
+import { getLogger } from '../util/logging.js';
+import type { NoAuthInjectionStrategyConfig } from '../security/auth/no-auth-injection-strategy-factory.js';
+import type { RouteManager } from '../sentinel/route-manager.js';
 
-const logger = getLogger("http-listener");
+const logger = getLogger('http-listener');
 
 function isRoutingNodeLike(node: NodeLike): node is RoutingNodeLike {
-  return typeof (node as RoutingNodeLike).createOriginConnector === "function";
+  return typeof (node as RoutingNodeLike).createOriginConnector === 'function';
 }
 
 let _lastHttpListenerInstance: HttpListener | null = null;
@@ -52,8 +55,10 @@ export class HttpListener extends TransportListener {
   private _publicUrl: string | null = null;
   private _routerRegistered = false;
   private _node: RoutingNodeLike | null = null;
-  private _reverseAuthConfig: (NoAuthInjectionStrategyConfig | Record<string, unknown>) | null = {
-    type: "NoAuth",
+  private _reverseAuthConfig:
+    | (NoAuthInjectionStrategyConfig | Record<string, unknown>)
+    | null = {
+    type: 'NoAuth',
   };
 
   constructor(params: { httpServer: HttpServer; authorizer?: Authorizer }) {
@@ -76,7 +81,7 @@ export class HttpListener extends TransportListener {
   }
 
   get ingressPrefix(): string {
-    return "/fame/v1/ingress";
+    return '/fame/v1/ingress';
   }
 
   get upstreamEndpoint(): string {
@@ -94,7 +99,7 @@ export class HttpListener extends TransportListener {
       url: `${baseUrl}${this.upstreamEndpoint}`,
     };
 
-    const defaultAuth: NoAuthInjectionStrategyConfig = { type: "NoAuth" };
+    const defaultAuth: NoAuthInjectionStrategyConfig = { type: 'NoAuth' };
     grant.auth = this._reverseAuthConfig ?? defaultAuth;
 
     return grant;
@@ -106,21 +111,27 @@ export class HttpListener extends TransportListener {
     }
 
     if (!isRoutingNodeLike(node)) {
-      throw new Error("HttpListener requires a RoutingNodeLike node instance");
+      throw new Error('HttpListener requires a RoutingNodeLike node instance');
     }
 
     this._node = node;
     this._publicUrl = node.publicUrl ?? null;
 
-    logger.debug("registering_http_routes", { baseUrl: this._httpServer.actualBaseUrl });
+    logger.debug('registering_http_routes', {
+      baseUrl: this._httpServer.actualBaseUrl,
+    });
 
     await this._refreshReverseAuthConfig(node);
 
     const router = await this.createRouter();
-    await this._httpServer.includeRouter(router, { prefix: this.ingressPrefix });
+    await this._httpServer.includeRouter(router, {
+      prefix: this.ingressPrefix,
+    });
     this._routerRegistered = true;
 
-    logger.debug("http_routes_registered", { baseUrl: this._httpServer.actualBaseUrl });
+    logger.debug('http_routes_registered', {
+      baseUrl: this._httpServer.actualBaseUrl,
+    });
   }
 
   async onNodeStarted(_node: NodeLike): Promise<void> {
@@ -131,26 +142,29 @@ export class HttpListener extends TransportListener {
     this._routerRegistered = false;
 
     if (this._httpServer instanceof DefaultHttpServer) {
-      await DefaultHttpServer.release({ host: this._httpServer.host, port: this._httpServer.port });
+      await DefaultHttpServer.release({
+        host: this._httpServer.host,
+        port: this._httpServer.port,
+      });
     }
   }
 
   async createRouter(): Promise<HttpRouter> {
     const plugin: FastifyPluginAsync = async (instance) => {
-      instance.post<{ Body: unknown }>("/upstream", async (request, reply) => {
+      instance.post<{ Body: unknown }>('/upstream', async (request, reply) => {
         return await this._handleUpstreamIngress(request, reply);
       });
 
       instance.post<{ Params: { childId: string }; Body: unknown }>(
-        "/downstream/:childId",
+        '/downstream/:childId',
         async (request, reply) => {
           return await this._handleDownstreamIngress(request, reply);
         }
       );
 
-      instance.get("/health", async () => ({
-        status: "healthy",
-        listener_type: "HttpListener",
+      instance.get('/health', async () => ({
+        status: 'healthy',
+        listener_type: 'HttpListener',
       }));
     };
 
@@ -163,23 +177,31 @@ export class HttpListener extends TransportListener {
   ): Promise<any> {
     const node = this._node;
     if (!node) {
-      return reply.code(503).send({ error: "Node not initialized" });
+      return reply.code(503).send({ error: 'Node not initialized' });
     }
 
     try {
-      const authorization = await this._authenticateRequest(request.headers["authorization"]);
+      const authorization = await this._authenticateRequest(
+        request.headers['authorization']
+      );
 
       const envelope = this._parseEnvelope(request.body);
       if (!envelope) {
-        return reply.code(400).send({ error: "Invalid request body - expected FameEnvelope JSON" });
+        return reply
+          .code(400)
+          .send({ error: 'Invalid request body - expected FameEnvelope JSON' });
       }
 
       const upstreamConnector = node.upstreamConnector;
       if (!upstreamConnector) {
-        return reply.code(503).send({ error: "No upstream connector available" });
+        return reply
+          .code(503)
+          .send({ error: 'No upstream connector available' });
       }
 
-      const security = authorization ? ({ authorization } as SecurityContext) : undefined;
+      const security = authorization
+        ? ({ authorization } as SecurityContext)
+        : undefined;
       await upstreamConnector.pushToReceive(
         this._buildChannelMessage({
           envelope,
@@ -189,9 +211,9 @@ export class HttpListener extends TransportListener {
         })
       );
 
-      return reply.code(202).send({ status: "message_received" });
+      return reply.code(202).send({ status: 'message_received' });
     } catch (error) {
-      return this._handleIngressError(error, reply, "upstream");
+      return this._handleIngressError(error, reply, 'upstream');
     }
   }
 
@@ -201,25 +223,29 @@ export class HttpListener extends TransportListener {
   ): Promise<any> {
     const node = this._node;
     if (!node) {
-      return reply.code(503).send({ error: "Node not initialized" });
+      return reply.code(503).send({ error: 'Node not initialized' });
     }
 
     const childId = request.params.childId;
 
     try {
-      const authorization = await this._authenticateRequest(request.headers["authorization"]);
+      const authorization = await this._authenticateRequest(
+        request.headers['authorization']
+      );
       const envelope = this._parseEnvelope(request.body);
       if (!envelope) {
-        return reply.code(400).send({ error: "Invalid request body - expected FameEnvelope JSON" });
+        return reply
+          .code(400)
+          .send({ error: 'Invalid request body - expected FameEnvelope JSON' });
       }
 
       if (this._isNodeAttachFrame(envelope.frame)) {
         if (childId !== envelope.frame.systemId) {
-          logger.warning("child_id_mismatch", {
+          logger.warning('child_id_mismatch', {
             received: childId,
             frameSystemId: envelope.frame.systemId,
           });
-          return reply.code(400).send({ error: "Child ID mismatch" });
+          return reply.code(400).send({ error: 'Child ID mismatch' });
         }
 
         const connector = await this._handleNodeAttachFrame({
@@ -229,7 +255,9 @@ export class HttpListener extends TransportListener {
           ...(authorization ? { authorization } : {}),
         });
 
-        const security = authorization ? ({ authorization } as SecurityContext) : undefined;
+        const security = authorization
+          ? ({ authorization } as SecurityContext)
+          : undefined;
         await connector.pushToReceive(
           this._buildChannelMessage({
             envelope,
@@ -240,16 +268,20 @@ export class HttpListener extends TransportListener {
           })
         );
 
-        return reply.code(202).send({ status: "attach_in_progress" });
+        return reply.code(202).send({ status: 'attach_in_progress' });
       }
 
       const connector = this._getExistingConnector(childId);
       if (!connector) {
-        logger.warning("no_connector_for_child", { childId });
-        return reply.code(400).send({ error: "No established connection - NodeAttach required" });
+        logger.warning('no_connector_for_child', { childId });
+        return reply
+          .code(400)
+          .send({ error: 'No established connection - NodeAttach required' });
       }
 
-      const security = authorization ? ({ authorization } as SecurityContext) : undefined;
+      const security = authorization
+        ? ({ authorization } as SecurityContext)
+        : undefined;
       await connector.pushToReceive(
         this._buildChannelMessage({
           envelope,
@@ -260,9 +292,9 @@ export class HttpListener extends TransportListener {
         })
       );
 
-      return reply.code(202).send({ status: "message_received" });
+      return reply.code(202).send({ status: 'message_received' });
     } catch (error) {
-      return this._handleIngressError(error, reply, "downstream", childId);
+      return this._handleIngressError(error, reply, 'downstream', childId);
     }
   }
 
@@ -292,7 +324,7 @@ export class HttpListener extends TransportListener {
   }): Promise<FameConnector> {
     const node = this._node;
     if (!node) {
-      throw new Error("Node not initialized");
+      throw new Error('Node not initialized');
     }
 
     const selectionContext = new GrantSelectionContext({
@@ -302,7 +334,8 @@ export class HttpListener extends TransportListener {
       node,
     });
 
-    const selection = defaultGrantSelectionPolicy.selectCallbackGrant(selectionContext);
+    const selection =
+      defaultGrantSelectionPolicy.selectCallbackGrant(selectionContext);
     const connectorConfig = this._grantToConnectorConfig(selection.grant);
 
     const options = {
@@ -314,9 +347,9 @@ export class HttpListener extends TransportListener {
 
     const connector = await node.createOriginConnector(options);
 
-    logger.debug("created_http_connector", {
+    logger.debug('created_http_connector', {
       child: params.childId,
-      connectorType: connector.constructor?.name ?? "unknown",
+      connectorType: connector.constructor?.name ?? 'unknown',
       selectionReason: selection.selectionReason,
     });
 
@@ -328,9 +361,11 @@ export class HttpListener extends TransportListener {
       case HTTP_CONNECTION_GRANT_TYPE:
         return httpGrantToConnectorConfig(grant as HttpConnectionGrantLike);
       case WEBSOCKET_CONNECTION_GRANT_TYPE:
-        return websocketGrantToConnectorConfig(grant as WebSocketConnectionGrantLike);
+        return websocketGrantToConnectorConfig(
+          grant as WebSocketConnectionGrantLike
+        );
       default:
-        if (typeof grant.toConnectorConfig === "function") {
+        if (typeof grant.toConnectorConfig === 'function') {
           return grant.toConnectorConfig();
         }
     }
@@ -344,8 +379,9 @@ export class HttpListener extends TransportListener {
       return null;
     }
 
-    const routeManager = (node as unknown as { routeManager?: RouteManager | undefined })
-      .routeManager;
+    const routeManager = (
+      node as unknown as { routeManager?: RouteManager | undefined }
+    ).routeManager;
     if (!routeManager) {
       return null;
     }
@@ -359,9 +395,13 @@ export class HttpListener extends TransportListener {
     return pending?.connector ?? null;
   }
 
-  private _isNodeAttachFrame(frame: FameEnvelope["frame"]): frame is NodeAttachFrame {
+  private _isNodeAttachFrame(
+    frame: FameEnvelope['frame']
+  ): frame is NodeAttachFrame {
     return Boolean(
-      frame && typeof frame === "object" && (frame as { type?: string }).type === "NodeAttach"
+      frame &&
+        typeof frame === 'object' &&
+        (frame as { type?: string }).type === 'NodeAttach'
     );
   }
 
@@ -372,21 +412,21 @@ export class HttpListener extends TransportListener {
 
     try {
       if (Buffer.isBuffer(body)) {
-        const decoded = body.toString("utf8");
+        const decoded = body.toString('utf8');
         const parsed = JSON.parse(decoded);
         return deserializeEnvelope(parsed);
       }
 
-      if (typeof body === "string") {
+      if (typeof body === 'string') {
         const parsed = JSON.parse(body);
         return deserializeEnvelope(parsed);
       }
 
-      if (typeof body === "object") {
+      if (typeof body === 'object') {
         return deserializeEnvelope(body as Record<string, unknown>);
       }
     } catch (error) {
-      logger.warning("http_listener_envelope_parse_failed", {
+      logger.warning('http_listener_envelope_parse_failed', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -394,19 +434,26 @@ export class HttpListener extends TransportListener {
     return null;
   }
 
-  private async _authenticateRequest(header: unknown): Promise<AuthorizationContext | undefined> {
+  private async _authenticateRequest(
+    header: unknown
+  ): Promise<AuthorizationContext | undefined> {
     const authorizer = await this._resolveAuthorizer();
     if (!authorizer) {
-      logger.debug("http_ingress_no_authorization");
+      logger.debug('http_ingress_no_authorization');
       return undefined;
     }
 
-    const token = typeof header === "string" ? header : Array.isArray(header) ? header[0] : "";
+    const token =
+      typeof header === 'string'
+        ? header
+        : Array.isArray(header)
+          ? header[0]
+          : '';
 
     try {
-      const result = await authorizer.authenticate(token ?? "");
+      const result = await authorizer.authenticate(token ?? '');
       if (!result) {
-        throw new Error("Authentication failed");
+        throw new Error('Authentication failed');
       }
       return result;
     } catch (error) {
@@ -430,11 +477,13 @@ export class HttpListener extends TransportListener {
   private _handleIngressError(
     error: unknown,
     reply: FastifyReply,
-    direction: "upstream" | "downstream",
+    direction: 'upstream' | 'downstream',
     childId?: string
   ) {
     if (error instanceof Error) {
-      const status = error.message.includes("Authentication failed") ? 401 : 500;
+      const status = error.message.includes('Authentication failed')
+        ? 401
+        : 500;
       logger.error(`http_${direction}_ingress_error`, {
         childId,
         error: error.message,
@@ -446,14 +495,19 @@ export class HttpListener extends TransportListener {
       childId,
       error: String(error),
     });
-    return reply.code(500).send({ error: "Internal server error" });
+    return reply.code(500).send({ error: 'Internal server error' });
   }
 
-  private async _refreshReverseAuthConfig(node: RoutingNodeLike): Promise<void> {
-    const defaultAuth: NoAuthInjectionStrategyConfig = { type: "NoAuth" };
+  private async _refreshReverseAuthConfig(
+    node: RoutingNodeLike
+  ): Promise<void> {
+    const defaultAuth: NoAuthInjectionStrategyConfig = { type: 'NoAuth' };
     const securityManager = node.securityManager;
     const authorizer = this._authorizer ?? securityManager?.authorizer;
-    if (!authorizer || typeof authorizer.createReverseAuthorizationConfig !== "function") {
+    if (
+      !authorizer ||
+      typeof authorizer.createReverseAuthorizationConfig !== 'function'
+    ) {
       this._reverseAuthConfig = defaultAuth;
       return;
     }
@@ -462,7 +516,7 @@ export class HttpListener extends TransportListener {
       const config = await authorizer.createReverseAuthorizationConfig(node);
       this._reverseAuthConfig = config ?? defaultAuth;
     } catch (error) {
-      logger.warning("reverse_auth_config_failure", {
+      logger.warning('reverse_auth_config_failure', {
         error: error instanceof Error ? error.message : String(error),
       });
       this._reverseAuthConfig = defaultAuth;

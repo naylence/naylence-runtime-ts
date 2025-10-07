@@ -6,4 +6,4 @@ export {
   registerDefaultFactories,
   registerRuntimeFactories,
   type RuntimeFactoryRegistry,
-} from "../fame/util/register-runtime-factories.js";
+} from '../fame/util/register-runtime-factories.js';

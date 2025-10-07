@@ -5,13 +5,20 @@
  * Supports both native WebSocket clients and server-side WebSocket connections.
  */
 
-import { BaseAsyncConnector, BaseAsyncConnectorConfig } from "./base-async-connector.js";
-import type { ConnectorConfig } from "./connector-config.js";
-import { FameTransportClose } from "../errors/errors.js";
-import { getLogger } from "../util/logging.js";
-import type { AuthorizationContext as CoreAuthorizationContext } from "naylence-core";
+import {
+  BaseAsyncConnector,
+  BaseAsyncConnectorConfig,
+} from './base-async-connector.js';
+import type { ConnectorConfig } from './connector-config.js';
+import { FameTransportClose } from '../errors/errors.js';
+import { getLogger } from '../util/logging.js';
+import type {
+  AuthorizationContext as CoreAuthorizationContext,
+  FameEnvelope,
+  FameChannelMessage,
+} from 'naylence-core';
 
-const logger = getLogger("websocket-connector");
+const logger = getLogger('websocket-connector');
 
 interface ReceiveWaiter {
   resolve: (value: Uint8Array) => void;
@@ -56,7 +63,9 @@ export interface WebSocketLike {
 /**
  * Configuration for WebSocket connector
  */
-export interface WebSocketConnectorConfig extends BaseAsyncConnectorConfig, ConnectorConfig {
+export interface WebSocketConnectorConfig
+  extends BaseAsyncConnectorConfig,
+    ConnectorConfig {
   /** Authorization context for the connection */
   authorizationContext?: AuthorizationContext | undefined;
 }
@@ -87,10 +96,13 @@ export class WebSocketConnector extends BaseAsyncConnector {
   private _removeReceiveHandlers: (() => void) | null = null;
   private _terminateFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(websocket: WebSocketLike, config: WebSocketConnectorConfig = { type: "websocket" }) {
+  constructor(
+    websocket: WebSocketLike,
+    config: WebSocketConnectorConfig = { type: 'websocket' }
+  ) {
     // Ensure the connector type is always set for factory compatibility
     if (!config.type) {
-      config.type = "websocket";
+      config.type = 'websocket';
     }
     super(config);
 
@@ -100,15 +112,21 @@ export class WebSocketConnector extends BaseAsyncConnector {
     this._isFastApiLike = !!(
       websocket.receive_bytes &&
       websocket.send_bytes &&
-      typeof websocket.receive_bytes === "function" &&
-      typeof websocket.send_bytes === "function"
+      typeof websocket.receive_bytes === 'function' &&
+      typeof websocket.send_bytes === 'function'
     );
 
-    logger.debug("websocket_connector_created", {
+    logger.debug('websocket_connector_created', {
       is_fastapi_like: this._isFastApiLike,
       ready_state: websocket.readyState,
       url: websocket.url,
     });
+
+    // For non-FastAPI WebSockets (browser/Node.js ws), attach receive handlers immediately
+    // to avoid race conditions where messages arrive before the first _transportReceive() call
+    if (!this._isFastApiLike) {
+      this._ensureReceiveHandlers();
+    }
   }
 
   /**
@@ -117,7 +135,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
    * handshake; the stored value is retained for observability or refresh logic.
    */
   public setAuthHeader(value: string): void {
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       this._authHeader = value.trim();
     }
   }
@@ -127,6 +145,42 @@ export class WebSocketConnector extends BaseAsyncConnector {
    */
   public get authHeader(): string | null {
     return this._authHeader;
+  }
+
+  /**
+   * Push data to the receive queue for processing (override from base class).
+   * This is used to replay buffered messages after authentication.
+   */
+  async pushToReceive(
+    rawOrEnvelope: Uint8Array | FameEnvelope | FameChannelMessage
+  ): Promise<void> {
+    // Convert to Uint8Array if needed
+    let data: Uint8Array;
+
+    if (rawOrEnvelope instanceof Uint8Array) {
+      data = rawOrEnvelope;
+    } else {
+      // FameEnvelope or FameChannelMessage - serialize to JSON bytes
+      const jsonStr = JSON.stringify(rawOrEnvelope);
+      data = new TextEncoder().encode(jsonStr);
+    }
+
+    // Push to receive queue - if there's a waiter, resolve it immediately
+    if (this._receiveWaiters.length > 0) {
+      const waiter = this._receiveWaiters.shift() as ReceiveWaiter;
+      if (waiter.timeoutId) {
+        clearTimeout(waiter.timeoutId);
+        delete waiter.timeoutId;
+      }
+      waiter.resolve(data);
+    } else {
+      this._receiveQueue.push(data);
+    }
+
+    logger.debug('websocket_message_pushed_to_queue', {
+      queueLength: this._receiveQueue.length,
+      waitersLength: this._receiveWaiters.length,
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -140,7 +194,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
     try {
       if (this._isFastApiLike && this._websocket.send_bytes) {
         // FastAPI-style server WebSocket
-        await this._websocket.send_bytes(data);
+        this._websocket.send_bytes(data);
       } else {
         // Browser WebSocket or Node.js ws client
         this._websocket.send(data);
@@ -149,7 +203,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
       // Handle WebSocket disconnection errors
       if (this._isWebSocketDisconnectError(error)) {
         const closeCode = this._extractCloseCode(error);
-        const reason = this._extractCloseReason(error) || "peer closed";
+        const reason = this._extractCloseReason(error) || 'peer closed';
         throw new FameTransportClose(reason, closeCode);
       }
       throw error;
@@ -163,7 +217,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
     try {
       // Validate WebSocket object before attempting to receive
       if (!this._websocket) {
-        throw new FameTransportClose("WebSocket object is null", 1006);
+        throw new FameTransportClose('WebSocket object is null', 1006);
       }
 
       // Use a timeout to prevent hanging during shutdown scenarios
@@ -173,9 +227,9 @@ export class WebSocketConnector extends BaseAsyncConnector {
         // FastAPI-style server WebSocket
         const receiveMethod = this._websocket.receive_bytes;
 
-        if (typeof receiveMethod !== "function") {
+        if (typeof receiveMethod !== 'function') {
           throw new FameTransportClose(
-            "FastAPI WebSocket receive_bytes method not available",
+            'FastAPI WebSocket receive_bytes method not available',
             1006
           );
         }
@@ -183,8 +237,8 @@ export class WebSocketConnector extends BaseAsyncConnector {
         const result = receiveMethod.call(this._websocket);
 
         // Ensure we have a Promise
-        if (!result || typeof result.then !== "function") {
-          logger.error("fastapi_receive_not_awaitable", {
+        if (!result || typeof result.then !== 'function') {
+          logger.error('fastapi_receive_not_awaitable', {
             result_type: typeof result,
             result_str: String(result).substring(0, 100),
           });
@@ -198,17 +252,24 @@ export class WebSocketConnector extends BaseAsyncConnector {
         try {
           return await this._withTimeout(result, receiveTimeout);
         } catch (error) {
-          if (error instanceof Error && error.name === "TimeoutError") {
-            throw new FameTransportClose("FastAPI receive_bytes timed out", 1006);
+          if (error instanceof Error && error.name === 'TimeoutError') {
+            throw new FameTransportClose(
+              'FastAPI receive_bytes timed out',
+              1006
+            );
           }
 
           // Handle known WebSocket shutdown race condition
           if (this._isAwaitFutureError(error)) {
-            logger.debug("websocket_shutdown_race_condition_handled", {
-              note: "Normal WebSocket close timing - converting to cancellation",
-              websocket_state: (this._websocket as any).client_state || "unknown",
+            logger.debug('websocket_shutdown_race_condition_handled', {
+              note: 'Normal WebSocket close timing - converting to cancellation',
+              websocket_state:
+                (this._websocket as any).client_state || 'unknown',
             });
-            throw new FameTransportClose("WebSocket cancelled during receive operation", 1006);
+            throw new FameTransportClose(
+              'WebSocket cancelled during receive operation',
+              1006
+            );
           }
           throw error;
         }
@@ -241,7 +302,9 @@ export class WebSocketConnector extends BaseAsyncConnector {
             if (index !== -1) {
               this._receiveWaiters.splice(index, 1);
             }
-            waiter.reject(new FameTransportClose("WebSocket receive timed out", 1006));
+            waiter.reject(
+              new FameTransportClose('WebSocket receive timed out', 1006)
+            );
           }, receiveTimeout);
 
           this._receiveWaiters.push(waiter);
@@ -249,18 +312,21 @@ export class WebSocketConnector extends BaseAsyncConnector {
       }
     } catch (error) {
       if (this._isAwaitFutureError(error)) {
-        logger.debug("websocket_shutdown_race_condition_detected", {
+        logger.debug('websocket_shutdown_race_condition_detected', {
           websocket_type: this._websocket.constructor.name,
           is_fastapi: this._isFastApiLike,
-          note: "Normal WebSocket close timing during shutdown",
+          note: 'Normal WebSocket close timing during shutdown',
         });
 
-        throw new FameTransportClose("WebSocket cancelled during receive operation", 1006);
+        throw new FameTransportClose(
+          'WebSocket cancelled during receive operation',
+          1006
+        );
       }
 
       if (this._isWebSocketDisconnectError(error)) {
         const closeCode = this._extractCloseCode(error);
-        const reason = this._extractCloseReason(error) || "peer closed";
+        const reason = this._extractCloseReason(error) || 'peer closed';
         throw new FameTransportClose(reason, closeCode);
       }
 
@@ -276,7 +342,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
       if (this._isFastApiLike) {
         // FastAPI-style WebSocket has explicit state tracking
         const websocketState = (this._websocket as any).client_state;
-        if (websocketState === "CONNECTED" || websocketState === 1) {
+        if (websocketState === 'CONNECTED' || websocketState === 1) {
           await this._websocket.close?.(code, reason);
         }
       } else {
@@ -290,7 +356,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
         // need connections to close promptly to avoid hanging receive loops. If terminate()
         // is available, schedule a fallback to forcefully tear down the socket after a short
         // delay in case the graceful close does not complete in time.
-        if (typeof (this._websocket as any).terminate === "function") {
+        if (typeof (this._websocket as any).terminate === 'function') {
           const socketAny = this._websocket as any;
           if (
             socketAny.readyState !== WebSocketState.CLOSED &&
@@ -301,12 +367,13 @@ export class WebSocketConnector extends BaseAsyncConnector {
               if (socketAny.readyState !== WebSocketState.CLOSED) {
                 try {
                   socketAny.terminate();
-                  logger.debug("websocket_force_terminated", {
+                  logger.debug('websocket_force_terminated', {
                     ready_state: socketAny.readyState,
                   });
                 } catch (error) {
-                  logger.debug("websocket_force_terminate_failed", {
-                    error: error instanceof Error ? error.message : String(error),
+                  logger.debug('websocket_force_terminate_failed', {
+                    error:
+                      error instanceof Error ? error.message : String(error),
                   });
                 }
               }
@@ -315,7 +382,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
         }
       }
     } catch (error) {
-      logger.error("websocket_close_failed", {
+      logger.error('websocket_close_failed', {
         error: error instanceof Error ? error.message : String(error),
       });
       // Don't re-throw - close errors are not critical during shutdown
@@ -338,11 +405,11 @@ export class WebSocketConnector extends BaseAsyncConnector {
       // Common WebSocket error patterns
       const message = error.message.toLowerCase();
       return (
-        message.includes("websocket") &&
-        (message.includes("disconnect") ||
-          message.includes("closed") ||
-          message.includes("connection") ||
-          error.name === "WebSocketDisconnect")
+        message.includes('websocket') &&
+        (message.includes('disconnect') ||
+          message.includes('closed') ||
+          message.includes('connection') ||
+          error.name === 'WebSocketDisconnect')
       );
     }
     return false;
@@ -352,16 +419,19 @@ export class WebSocketConnector extends BaseAsyncConnector {
    * Check if an error is the "await wasn't used with future" error
    */
   private _isAwaitFutureError(error: unknown): boolean {
-    return error instanceof Error && error.message.includes("await wasn't used with future");
+    return (
+      error instanceof Error &&
+      error.message.includes("await wasn't used with future")
+    );
   }
 
   /**
    * Extract close code from WebSocket error
    */
   private _extractCloseCode(error: unknown): number {
-    if (error && typeof error === "object") {
+    if (error && typeof error === 'object') {
       const code = (error as any).code;
-      if (typeof code === "number") {
+      if (typeof code === 'number') {
         return code;
       }
     }
@@ -375,23 +445,26 @@ export class WebSocketConnector extends BaseAsyncConnector {
     if (error instanceof Error) {
       return error.message;
     }
-    if (error && typeof error === "object") {
+    if (error && typeof error === 'object') {
       const reason = (error as any).reason;
-      if (typeof reason === "string") {
+      if (typeof reason === 'string') {
         return reason;
       }
     }
-    return "";
+    return '';
   }
 
   /**
    * Add timeout protection to a Promise
    */
-  private async _withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  private async _withTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number
+  ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
-        const error = new Error("Operation timed out");
-        error.name = "TimeoutError";
+        const error = new Error('Operation timed out');
+        error.name = 'TimeoutError';
         reject(error);
       }, timeoutMs);
 
@@ -415,6 +488,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
     const handleMessage = (data: unknown, isBinary?: boolean) => {
       try {
         const payload = this._normalizeIncomingMessage(data, isBinary);
+
         if (this._receiveWaiters.length > 0) {
           const waiter = this._receiveWaiters.shift() as ReceiveWaiter;
           if (waiter.timeoutId) {
@@ -426,7 +500,9 @@ export class WebSocketConnector extends BaseAsyncConnector {
           this._receiveQueue.push(payload);
         }
       } catch (error) {
-        this._rejectPendingWaiters(error instanceof Error ? error : new Error(String(error)));
+        this._rejectPendingWaiters(
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     };
 
@@ -434,23 +510,29 @@ export class WebSocketConnector extends BaseAsyncConnector {
       let code: number;
       let reason: string;
 
-      if (typeof event === "number") {
+      if (typeof event === 'number') {
         code = event;
-        if (typeof rawReason === "string") {
+        if (typeof rawReason === 'string') {
           reason = rawReason;
-        } else if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(rawReason)) {
+        } else if (
+          typeof Buffer !== 'undefined' &&
+          Buffer.isBuffer?.(rawReason)
+        ) {
           reason = rawReason.toString();
         } else {
-          reason = "peer closed";
+          reason = 'peer closed';
         }
       } else {
-        code = typeof event?.code === "number" ? event.code : 1006;
-        if (typeof event?.reason === "string") {
+        code = typeof event?.code === 'number' ? event.code : 1006;
+        if (typeof event?.reason === 'string') {
           reason = event.reason;
-        } else if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(event?.reason)) {
+        } else if (
+          typeof Buffer !== 'undefined' &&
+          Buffer.isBuffer?.(event?.reason)
+        ) {
           reason = event.reason.toString();
         } else {
-          reason = "peer closed";
+          reason = 'peer closed';
         }
       }
 
@@ -461,43 +543,51 @@ export class WebSocketConnector extends BaseAsyncConnector {
     const handleError = (event: any) => {
       const candidate = event?.error ?? event;
       const message =
-        candidate instanceof Error ? candidate.message : (candidate?.message ?? "WebSocket error");
+        candidate instanceof Error
+          ? candidate.message
+          : (candidate?.message ?? 'WebSocket error');
       this._rejectPendingWaiters(new FameTransportClose(String(message), 1006));
       this._detachReceiveHandlers();
     };
 
     const socketAny = this._websocket as any;
 
-    if (typeof socketAny.addEventListener === "function") {
-      const messageListener = (event: any) => handleMessage(event?.data ?? event, event?.isBinary);
+    if (typeof socketAny.addEventListener === 'function') {
+      const messageListener = (event: any) => {
+        handleMessage(event?.data ?? event, event?.isBinary);
+      };
       const closeListener = (event: any) => handleClose(event);
       const errorListener = (event: any) => handleError(event);
 
-      socketAny.addEventListener("message", messageListener);
-      socketAny.addEventListener("close", closeListener);
-      socketAny.addEventListener("error", errorListener);
+      socketAny.addEventListener('message', messageListener);
+      socketAny.addEventListener('close', closeListener);
+      socketAny.addEventListener('error', errorListener);
       this._removeReceiveHandlers = () => {
-        socketAny.removeEventListener("message", messageListener);
-        socketAny.removeEventListener("close", closeListener);
-        socketAny.removeEventListener("error", errorListener);
+        socketAny.removeEventListener('message', messageListener);
+        socketAny.removeEventListener('close', closeListener);
+        socketAny.removeEventListener('error', errorListener);
       };
-    } else if (typeof socketAny.on === "function") {
-      socketAny.on("message", handleMessage);
-      socketAny.on("close", handleClose);
-      socketAny.on("error", handleError);
+    } else if (typeof socketAny.on === 'function') {
+      const onMessageHandler = (data: any, isBinary?: boolean) => {
+        handleMessage(data, isBinary);
+      };
+      socketAny.on('message', onMessageHandler);
+      socketAny.on('close', handleClose);
+      socketAny.on('error', handleError);
       this._removeReceiveHandlers = () => {
-        if (typeof socketAny.off === "function") {
-          socketAny.off("message", handleMessage);
-          socketAny.off("close", handleClose);
-          socketAny.off("error", handleError);
-        } else if (typeof socketAny.removeListener === "function") {
-          socketAny.removeListener("message", handleMessage);
-          socketAny.removeListener("close", handleClose);
-          socketAny.removeListener("error", handleError);
+        if (typeof socketAny.off === 'function') {
+          socketAny.off('message', onMessageHandler);
+          socketAny.off('close', handleClose);
+          socketAny.off('error', handleError);
+        } else if (typeof socketAny.removeListener === 'function') {
+          socketAny.removeListener('message', onMessageHandler);
+          socketAny.removeListener('close', handleClose);
+          socketAny.removeListener('error', handleError);
         }
       };
     } else {
-      const messageHandler = (event: any) => handleMessage(event?.data ?? event, event?.isBinary);
+      const messageHandler = (event: any) =>
+        handleMessage(event?.data ?? event, event?.isBinary);
       const closeHandler = (event: any) => handleClose(event);
       const errorHandler = (event: any) => handleError(event);
       this._websocket.onmessage = messageHandler;
@@ -519,7 +609,9 @@ export class WebSocketConnector extends BaseAsyncConnector {
     this._receiveHandlersAttached = true;
   }
 
-  private _detachReceiveHandlers(options: { cancelTerminateFallback?: boolean } = {}): void {
+  private _detachReceiveHandlers(
+    options: { cancelTerminateFallback?: boolean } = {}
+  ): void {
     const { cancelTerminateFallback = true } = options;
 
     if (cancelTerminateFallback && this._terminateFallbackTimer !== null) {
@@ -531,7 +623,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
       try {
         this._removeReceiveHandlers();
       } catch (error) {
-        logger.debug("websocket_remove_handlers_failed", {
+        logger.debug('websocket_remove_handlers_failed', {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -540,12 +632,15 @@ export class WebSocketConnector extends BaseAsyncConnector {
     this._receiveHandlersAttached = false;
   }
 
-  private _normalizeIncomingMessage(data: unknown, isBinary?: boolean): Uint8Array {
+  private _normalizeIncomingMessage(
+    data: unknown,
+    isBinary?: boolean
+  ): Uint8Array {
     if (data instanceof Uint8Array) {
       return data;
     }
 
-    if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(data)) {
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(data)) {
       return new Uint8Array(data);
     }
 
@@ -553,15 +648,19 @@ export class WebSocketConnector extends BaseAsyncConnector {
       return new Uint8Array(data);
     }
 
-    if (typeof data === "string" && !isBinary) {
+    if (typeof data === 'string' && !isBinary) {
       return new TextEncoder().encode(data);
     }
 
-    if (typeof data === "string") {
+    if (typeof data === 'string') {
       return new TextEncoder().encode(data);
     }
 
-    if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) {
+    if (
+      data &&
+      typeof data === 'object' &&
+      'data' in (data as Record<string, unknown>)
+    ) {
       return this._normalizeIncomingMessage(
         (data as { data: unknown }).data,
         (data as { isBinary?: boolean }).isBinary ?? isBinary

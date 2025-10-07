@@ -3,27 +3,27 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from "naylence-core";
-import { DeliveryOriginType, FameResponseType } from "naylence-core";
-import { OAuth2Authorizer } from "../auth/oauth2-authorizer.js";
-import { JWTTokenIssuer } from "../auth/jwt-token-issuer.js";
-import { JWTTokenVerifier } from "../auth/jwt-token-verifier.js";
-import type { NodeLike } from "../../node/node-like.js";
-import type { TokenVerifier } from "../auth/token-verifier.js";
-import type { TokenIssuer } from "../auth/token-issuer.js";
+} from 'naylence-core';
+import { DeliveryOriginType, FameResponseType } from 'naylence-core';
+import { OAuth2Authorizer } from '../auth/oauth2-authorizer.js';
+import { JWTTokenIssuer } from '../auth/jwt-token-issuer.js';
+import { JWTTokenVerifier } from '../auth/jwt-token-verifier.js';
+import type { NodeLike } from '../../node/node-like.js';
+import type { TokenVerifier } from '../auth/token-verifier.js';
+import type { TokenIssuer } from '../auth/token-issuer.js';
 
-const HMAC_SECRET = "oauth2-secret";
-const NODE_PHYSICAL_PATH = "/nodes/node-1";
+const HMAC_SECRET = 'oauth2-secret';
+const NODE_PHYSICAL_PATH = '/nodes/node-1';
 
 function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
   const base: NodeLike = {
-    id: "node-1",
+    id: 'node-1',
     sid: null,
     physicalPath: NODE_PHYSICAL_PATH,
     acceptedLogicals: new Set(),
     envelopeFactory: {} as any,
     deliveryPolicy: null,
-    defaultBindingPath: "",
+    defaultBindingPath: '',
     hasParent: false,
     securityManager: null,
     admissionClient: null,
@@ -57,7 +57,7 @@ function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
   return { ...base, ...overrides };
 }
 
-describe("OAuth2Authorizer", () => {
+describe('OAuth2Authorizer', () => {
   let issuer: JWTTokenIssuer;
   let verifier: JWTTokenVerifier;
 
@@ -65,29 +65,29 @@ describe("OAuth2Authorizer", () => {
     jest.useRealTimers();
     issuer = new JWTTokenIssuer({
       signingKeyPem: HMAC_SECRET,
-      kid: "oauth2-kid",
-      issuer: "https://issuer.example",
-      algorithm: "HS256",
+      kid: 'oauth2-kid',
+      issuer: 'https://issuer.example',
+      algorithm: 'HS256',
       ttlSec: 600,
     });
 
     verifier = new JWTTokenVerifier({
       verificationKey: HMAC_SECRET,
-      issuer: "https://issuer.example",
+      issuer: 'https://issuer.example',
       ttlSec: 600,
     });
   });
 
-  it("authenticates tokens and enforces required scopes", async () => {
+  it('authenticates tokens and enforces required scopes', async () => {
     const token = await issuer.issue({
-      sub: "user-1",
-      scope: "fame:connect fame:read",
+      sub: 'user-1',
+      scope: 'fame:connect fame:read',
       aud: NODE_PHYSICAL_PATH,
     });
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
-      requiredScopes: ["fame:connect"],
+      requiredScopes: ['fame:connect'],
     });
 
     const node = createNodeStub();
@@ -97,21 +97,23 @@ describe("OAuth2Authorizer", () => {
 
     expect(context).toBeDefined();
     expect(context?.authenticated).toBe(true);
-    expect(context?.principal).toBe("user-1");
-    expect(context?.grantedScopes).toEqual(expect.arrayContaining(["fame:connect", "fame:read"]));
-    expect(context?.claims.iss).toBe("https://issuer.example");
+    expect(context?.principal).toBe('user-1');
+    expect(context?.grantedScopes).toEqual(
+      expect.arrayContaining(['fame:connect', 'fame:read'])
+    );
+    expect(context?.claims.iss).toBe('https://issuer.example');
   });
 
-  it("rejects authentication when required scopes are missing", async () => {
+  it('rejects authentication when required scopes are missing', async () => {
     const token = await issuer.issue({
-      sub: "user-2",
-      scope: "profile:read",
+      sub: 'user-2',
+      scope: 'profile:read',
       aud: NODE_PHYSICAL_PATH,
     });
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
-      requiredScopes: ["fame:connect"],
+      requiredScopes: ['fame:connect'],
     });
 
     const node = createNodeStub();
@@ -121,16 +123,16 @@ describe("OAuth2Authorizer", () => {
     expect(context).toBeUndefined();
   });
 
-  it("authorizes delivery contexts when scopes are satisfied", async () => {
+  it('authorizes delivery contexts when scopes are satisfied', async () => {
     const token = await issuer.issue({
-      sub: "user-3",
-      scope: "fame:connect",
+      sub: 'user-3',
+      scope: 'fame:connect',
       aud: NODE_PHYSICAL_PATH,
     });
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
-      requiredScopes: ["fame:connect"],
+      requiredScopes: ['fame:connect'],
     });
 
     const node = createNodeStub();
@@ -152,11 +154,11 @@ describe("OAuth2Authorizer", () => {
     expect(result?.authorized).toBe(true);
   });
 
-  it("creates reverse authorization configuration when issuer is available", async () => {
+  it('creates reverse authorization configuration when issuer is available', async () => {
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
       tokenIssuer: issuer,
-      requiredScopes: ["fame:connect"],
+      requiredScopes: ['fame:connect'],
     });
 
     const node = createNodeStub();
@@ -164,25 +166,28 @@ describe("OAuth2Authorizer", () => {
 
     const config = await authorizer.createReverseAuthorizationConfig(node);
     expect(config).toBeDefined();
-    expect(config).toHaveProperty("tokenProvider");
+    expect(config).toHaveProperty('tokenProvider');
 
-    const tokenProvider = config!.tokenProvider as { token: string; expiresAt: Date };
-    expect(typeof tokenProvider.token).toBe("string");
+    const tokenProvider = config!.tokenProvider as {
+      token: string;
+      expiresAt: Date;
+    };
+    expect(typeof tokenProvider.token).toBe('string');
 
     const reverseContext = await verifier.verify(tokenProvider.token);
     expect(reverseContext.claims.sub).toBe(`reverse-auth-${node.id}`);
   });
 
-  it("creates node authorization context during attach validation", async () => {
+  it('creates node authorization context during attach validation', async () => {
     const token = await issuer.issue({
-      sub: "user-4",
-      scope: "fame:connect fame:write",
+      sub: 'user-4',
+      scope: 'fame:connect fame:write',
       aud: NODE_PHYSICAL_PATH,
     });
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
-      requiredScopes: ["fame:connect"],
+      requiredScopes: ['fame:connect'],
     });
 
     const node = createNodeStub();
@@ -191,27 +196,31 @@ describe("OAuth2Authorizer", () => {
     expect(authContext).toBeDefined();
 
     const frame: NodeAttachFrame = {
-      type: "NodeAttach",
+      type: 'NodeAttach',
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: "system-1",
-      instanceId: "instance-1",
-      assignedPath: "/assigned/path",
-      capabilities: ["fame:connect"],
-      acceptedLogicals: ["logical-a"],
+      systemId: 'system-1',
+      instanceId: 'instance-1',
+      assignedPath: '/assigned/path',
+      capabilities: ['fame:connect'],
+      acceptedLogicals: ['logical-a'],
     };
 
-    const nodeContext = await authorizer.validateNodeAttachRequest(node, frame, authContext!);
+    const nodeContext = await authorizer.validateNodeAttachRequest(
+      node,
+      frame,
+      authContext!
+    );
     expect(nodeContext).toBeDefined();
     expect(nodeContext?.authorized).toBe(true);
-    expect(nodeContext?.claims.instance_id).toBe("instance-1");
-    expect(nodeContext?.claims.assigned_path).toBe("/assigned/path");
+    expect(nodeContext?.claims.instance_id).toBe('instance-1');
+    expect(nodeContext?.claims.assigned_path).toBe('/assigned/path');
     expect(nodeContext?.grantedScopes).toEqual(
-      expect.arrayContaining(["fame:connect", "fame:write"])
+      expect.arrayContaining(['fame:connect', 'fame:write'])
     );
   });
 });
 
-describe("OAuth2Authorizer edge cases", () => {
+describe('OAuth2Authorizer edge cases', () => {
   const createVerifierMock = () => {
     const verify = jest.fn();
     return {
@@ -223,23 +232,23 @@ describe("OAuth2Authorizer edge cases", () => {
   const baseAuthContext: AuthorizationContext = {
     authenticated: true,
     authorized: false,
-    principal: "stub-user",
+    principal: 'stub-user',
     claims: {},
     grantedScopes: [],
     restrictions: {},
   };
 
-  it("returns undefined when credentials are empty", async () => {
+  it('returns undefined when credentials are empty', async () => {
     const { mock, verifier } = createVerifierMock();
     const authorizer = new OAuth2Authorizer({ tokenVerifier: verifier });
 
-    const result = await authorizer.authenticate("   ");
+    const result = await authorizer.authenticate('   ');
 
     expect(result).toBeUndefined();
     expect(mock).not.toHaveBeenCalled();
   });
 
-  it("accepts raw tokens without Bearer prefix", async () => {
+  it('accepts raw tokens without Bearer prefix', async () => {
     const { mock, verifier } = createVerifierMock();
     mock.mockResolvedValue({
       ...baseAuthContext,
@@ -249,113 +258,118 @@ describe("OAuth2Authorizer edge cases", () => {
     });
 
     const authorizer = new OAuth2Authorizer({ tokenVerifier: verifier });
-    await authorizer.authenticate("raw-token");
+    await authorizer.authenticate('raw-token');
 
-    expect(mock).toHaveBeenCalledWith("raw-token");
+    expect(mock).toHaveBeenCalledWith('raw-token');
   });
 
-  it("decodes bearer tokens from Uint8Array and merges scopes uniquely", async () => {
+  it('decodes bearer tokens from Uint8Array and merges scopes uniquely', async () => {
     const { mock, verifier } = createVerifierMock();
     mock.mockResolvedValue({
       ...baseAuthContext,
       claims: {
-        scopes: ["alpha", "beta "],
-        capabilities: ["gamma", ""],
+        scopes: ['alpha', 'beta '],
+        capabilities: ['gamma', ''],
       },
-      grantedScopes: ["delta"],
+      grantedScopes: ['delta'],
     });
 
     const authorizer = new OAuth2Authorizer({ tokenVerifier: verifier });
-    const tokenBytes = new TextEncoder().encode("Bearer stub-token");
+    const tokenBytes = new TextEncoder().encode('Bearer stub-token');
 
     const context = await authorizer.authenticate(tokenBytes);
 
-    expect(mock).toHaveBeenCalledWith("stub-token");
+    expect(mock).toHaveBeenCalledWith('stub-token');
     expect(context?.grantedScopes).toEqual(
-      expect.arrayContaining(["delta", "alpha", "beta", "gamma"])
+      expect.arrayContaining(['delta', 'alpha', 'beta', 'gamma'])
     );
   });
 
-  it("returns undefined when token verification fails", async () => {
+  it('returns undefined when token verification fails', async () => {
     const { mock, verifier } = createVerifierMock();
-    mock.mockRejectedValue(new Error("boom"));
+    mock.mockRejectedValue(new Error('boom'));
 
     const authorizer = new OAuth2Authorizer({ tokenVerifier: verifier });
 
-    const context = await authorizer.authenticate("Bearer broken");
+    const context = await authorizer.authenticate('Bearer broken');
 
     expect(context).toBeUndefined();
   });
 
-  it("rejects authentication when required scope is absent", async () => {
+  it('rejects authentication when required scope is absent', async () => {
     const { mock, verifier } = createVerifierMock();
     mock.mockResolvedValue({
       ...baseAuthContext,
-      grantedScopes: ["scope:other"],
+      grantedScopes: ['scope:other'],
       claims: {},
     });
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
     });
 
-    const context = await authorizer.authenticate("Bearer missing-scope");
+    const context = await authorizer.authenticate('Bearer missing-scope');
     expect(context).toBeUndefined();
   });
 
-  it("skips scope enforcement when disabled during authentication", async () => {
+  it('skips scope enforcement when disabled during authentication', async () => {
     const { mock, verifier } = createVerifierMock();
     mock.mockResolvedValue({
       ...baseAuthContext,
-      grantedScopes: ["scope:other"],
+      grantedScopes: ['scope:other'],
       claims: {},
     });
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
       requireScope: false,
     });
 
-    const context = await authorizer.authenticate("Bearer relaxed-scope");
+    const context = await authorizer.authenticate('Bearer relaxed-scope');
     expect(context).toBeDefined();
-    expect(mock).toHaveBeenCalledWith("relaxed-scope");
+    expect(mock).toHaveBeenCalledWith('relaxed-scope');
   });
 
-  it("derives audience from node path when none configured", async () => {
+  it('derives audience from node path when none configured', async () => {
     const { mock, verifier } = createVerifierMock();
     mock.mockResolvedValue({
       ...baseAuthContext,
       authorized: true,
-      grantedScopes: ["scope:a"],
+      grantedScopes: ['scope:a'],
     });
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: verifier,
-      requiredScopes: ["scope:a"],
+      requiredScopes: ['scope:a'],
     });
     const node = createNodeStub();
     await authorizer.onNodeStarted(node);
 
-    await authorizer.authenticate("Bearer node-token");
+    await authorizer.authenticate('Bearer node-token');
 
-    expect(mock).toHaveBeenCalledWith("node-token", { expectedAudience: NODE_PHYSICAL_PATH });
+    expect(mock).toHaveBeenCalledWith('node-token', {
+      expectedAudience: NODE_PHYSICAL_PATH,
+    });
   });
 
-  it("returns undefined from authorize when no security context is present", async () => {
+  it('returns undefined from authorize when no security context is present', async () => {
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
     });
 
-    const result = await authorizer.authorize(createNodeStub(), {} as FameEnvelope);
+    const result = await authorizer.authorize(
+      createNodeStub(),
+      {} as FameEnvelope
+    );
     expect(result).toBeUndefined();
   });
 
-  it("denies authorization when required scope is missing", async () => {
+  it('denies authorization when required scope is missing', async () => {
     const authorization: AuthorizationContext = {
       ...baseAuthContext,
-      grantedScopes: ["scope:incomplete"],
+      grantedScopes: ['scope:incomplete'],
       authorized: false,
     };
     const deliveryContext: FameDeliveryContext = {
@@ -365,7 +379,7 @@ describe("OAuth2Authorizer edge cases", () => {
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
     });
 
     const result = await authorizer.authorize(
@@ -376,11 +390,11 @@ describe("OAuth2Authorizer edge cases", () => {
     expect(result).toBeUndefined();
   });
 
-  it("returns existing authorization context when already authorized", async () => {
+  it('returns existing authorization context when already authorized', async () => {
     const authorization: AuthorizationContext = {
       ...baseAuthContext,
       authorized: true,
-      grantedScopes: ["scope:required"],
+      grantedScopes: ['scope:required'],
     };
     const deliveryContext: FameDeliveryContext = {
       expectedResponseType: FameResponseType.ACK,
@@ -389,7 +403,7 @@ describe("OAuth2Authorizer edge cases", () => {
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
     });
 
     const result = await authorizer.authorize(
@@ -400,60 +414,68 @@ describe("OAuth2Authorizer edge cases", () => {
     expect(result).toBe(authorization);
   });
 
-  it("returns undefined when no token issuer is configured for reverse auth", async () => {
-    const authorizer = new OAuth2Authorizer({ tokenVerifier: createVerifierMock().verifier });
-    const config = await authorizer.createReverseAuthorizationConfig(createNodeStub());
+  it('returns undefined when no token issuer is configured for reverse auth', async () => {
+    const authorizer = new OAuth2Authorizer({
+      tokenVerifier: createVerifierMock().verifier,
+    });
+    const config =
+      await authorizer.createReverseAuthorizationConfig(createNodeStub());
     expect(config).toBeUndefined();
   });
 
-  it("returns undefined when token issuing fails for reverse auth", async () => {
-    const issue = jest.fn().mockRejectedValue(new Error("issue failed"));
+  it('returns undefined when token issuing fails for reverse auth', async () => {
+    const issue = jest.fn().mockRejectedValue(new Error('issue failed'));
     const tokenIssuer: TokenIssuer = {
-      issuer: "stub-issuer",
+      issuer: 'stub-issuer',
       issue,
     };
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
       tokenIssuer,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
     });
 
-    const config = await authorizer.createReverseAuthorizationConfig(createNodeStub());
+    const config =
+      await authorizer.createReverseAuthorizationConfig(createNodeStub());
     expect(issue).toHaveBeenCalled();
     expect(config).toBeUndefined();
   });
 
-  it("validateNodeAttachRequest returns undefined without auth context", async () => {
+  it('validateNodeAttachRequest returns undefined without auth context', async () => {
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
     });
 
     const frame: NodeAttachFrame = {
-      type: "NodeAttach",
+      type: 'NodeAttach',
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: "system",
-      instanceId: "instance",
-      assignedPath: "/assigned",
+      systemId: 'system',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
     } as NodeAttachFrame;
 
-    const result = await authorizer.validateNodeAttachRequest(createNodeStub(), frame, undefined);
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      undefined
+    );
     expect(result).toBeUndefined();
   });
 
-  it("validateNodeAttachRequest returns undefined when not authenticated", async () => {
+  it('validateNodeAttachRequest returns undefined when not authenticated', async () => {
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
     });
 
     const frame: NodeAttachFrame = {
-      type: "NodeAttach",
+      type: 'NodeAttach',
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: "system",
-      instanceId: "instance",
-      assignedPath: "/assigned",
+      systemId: 'system',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
     } as NodeAttachFrame;
 
     const authContext: AuthorizationContext = {
@@ -461,15 +483,19 @@ describe("OAuth2Authorizer edge cases", () => {
       authenticated: false,
     };
 
-    const result = await authorizer.validateNodeAttachRequest(createNodeStub(), frame, authContext);
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
     expect(result).toBeUndefined();
   });
 
-  it("authorize skips scope check when disabled", async () => {
+  it('authorize skips scope check when disabled', async () => {
     const authorization: AuthorizationContext = {
       ...baseAuthContext,
       authorized: false,
-      grantedScopes: ["scope:other"],
+      grantedScopes: ['scope:other'],
     };
     const deliveryContext: FameDeliveryContext = {
       expectedResponseType: FameResponseType.ACK,
@@ -478,7 +504,7 @@ describe("OAuth2Authorizer edge cases", () => {
 
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
       requireScope: false,
     });
 
@@ -495,52 +521,60 @@ describe("OAuth2Authorizer edge cases", () => {
     );
   });
 
-  it("validateNodeAttachRequest enforces required scopes", async () => {
+  it('validateNodeAttachRequest enforces required scopes', async () => {
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
     });
 
     const frame: NodeAttachFrame = {
-      type: "NodeAttach",
+      type: 'NodeAttach',
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: "system",
-      instanceId: "instance",
-      assignedPath: "/assigned",
+      systemId: 'system',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
     } as NodeAttachFrame;
 
     const authContext: AuthorizationContext = {
       ...baseAuthContext,
       authenticated: true,
-      grantedScopes: ["scope:other"],
+      grantedScopes: ['scope:other'],
     };
 
-    const result = await authorizer.validateNodeAttachRequest(createNodeStub(), frame, authContext);
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
     expect(result).toBeUndefined();
   });
 
-  it("validateNodeAttachRequest skips scope enforcement when disabled", async () => {
+  it('validateNodeAttachRequest skips scope enforcement when disabled', async () => {
     const authorizer = new OAuth2Authorizer({
       tokenVerifier: createVerifierMock().verifier,
-      requiredScopes: ["scope:required"],
+      requiredScopes: ['scope:required'],
       requireScope: false,
     });
 
     const frame: NodeAttachFrame = {
-      type: "NodeAttach",
+      type: 'NodeAttach',
       originType: DeliveryOriginType.DOWNSTREAM,
-      systemId: "system",
-      instanceId: "instance",
-      assignedPath: "/assigned",
+      systemId: 'system',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
     } as NodeAttachFrame;
 
     const authContext: AuthorizationContext = {
       ...baseAuthContext,
       authenticated: true,
-      grantedScopes: ["scope:other"],
+      grantedScopes: ['scope:other'],
     };
 
-    const result = await authorizer.validateNodeAttachRequest(createNodeStub(), frame, authContext);
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
     expect(result).toBeDefined();
     expect(result?.authorized).toBe(true);
   });

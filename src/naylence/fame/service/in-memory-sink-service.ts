@@ -11,18 +11,25 @@ import {
   type FameEnvelope,
   type FameServiceFactory,
   type WriteChannel,
-} from "naylence-core";
+} from 'naylence-core';
 
 import {
   InMemoryFanoutBroker,
   type InMemoryFanoutBrokerConfig,
-} from "../channel/in-memory/in-memory-fanout-broker.js";
-import { getLogger } from "../util/logging.js";
-import { SinkService, type CreateSinkParams, type SubscribeParams } from "./sink-service.js";
+} from '../channel/in-memory/in-memory-fanout-broker.js';
+import { getLogger } from '../util/logging.js';
+import {
+  SinkService,
+  type CreateSinkParams,
+  type SubscribeParams,
+} from './sink-service.js';
 
-const logger = getLogger("in-memory-sink-service");
+const logger = getLogger('in-memory-sink-service');
 
-type DeliverFunction = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<unknown>;
+type DeliverFunction = (
+  envelope: FameEnvelope,
+  context?: FameDeliveryContext
+) => Promise<unknown>;
 
 type SubscribeChannel = WriteChannel & { close?: () => Promise<void> };
 
@@ -62,7 +69,7 @@ class FameFabricWriteChannel implements WriteChannel {
     try {
       await this.deliver(envelope, context);
     } catch (error) {
-      logger.error("sink_delivery_failed", {
+      logger.error('sink_delivery_failed', {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
@@ -94,12 +101,17 @@ export class InMemorySinkService extends SinkService {
       options.deliver ??
       (async (envelope, _context) => {
         if (!envelope.to) {
-          throw new Error("Sink delivery envelope requires a destination address");
+          throw new Error(
+            'Sink delivery envelope requires a destination address'
+          );
         }
 
         const deliverEnvelope: FameEnvelope = {
           ...envelope,
-          to: typeof envelope.to === "string" ? envelope.to : envelope.to.toString(),
+          to:
+            typeof envelope.to === 'string'
+              ? envelope.to
+              : envelope.to.toString(),
         };
 
         const fabric = FameFabric.current() as unknown as {
@@ -108,7 +120,7 @@ export class InMemorySinkService extends SinkService {
         await fabric.send(deliverEnvelope);
       });
     this.brokerConfig = options.brokerConfig;
-    this.name = options.name ?? "sink-service";
+    this.name = options.name ?? 'sink-service';
   }
 
   async stop(): Promise<void> {
@@ -116,7 +128,7 @@ export class InMemorySinkService extends SinkService {
       try {
         await broker.stop();
       } catch (error) {
-        logger.error("failed_to_stop_fanout_broker", {
+        logger.error('failed_to_stop_fanout_broker', {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -126,13 +138,16 @@ export class InMemorySinkService extends SinkService {
     this.subscriptions.clear();
   }
 
-  async handleRpcRequest(method: string, params: Record<string, any>): Promise<any> {
+  async handleRpcRequest(
+    method: string,
+    params: Record<string, any>
+  ): Promise<any> {
     switch (method) {
-      case "createSink":
-      case "create_sink":
-      case "sink/create":
+      case 'createSink':
+      case 'create_sink':
+      case 'sink/create':
         return await this.createSink(params as CreateSinkParams);
-      case "subscribe":
+      case 'subscribe':
         return await this.subscribe(params as SubscribeParams);
       default:
         throw new Error(`Unknown RPC method: ${method}`);
@@ -144,7 +159,7 @@ export class InMemorySinkService extends SinkService {
 
     const binding = await this.bindingManager.bind(key);
     if (!binding) {
-      throw new Error("Binding manager did not return a binding");
+      throw new Error('Binding manager did not return a binding');
     }
 
     const sinkAddress = binding.address;
@@ -154,7 +169,7 @@ export class InMemorySinkService extends SinkService {
 
     await broker.start();
 
-    logger.debug("created_sink", {
+    logger.debug('created_sink', {
       sink_name: key,
       sink_address: sinkAddress.toString(),
     });
@@ -167,7 +182,7 @@ export class InMemorySinkService extends SinkService {
     const subscriberAddress = params?.subscriberAddress;
 
     if (!sinkAddress || !subscriberAddress) {
-      throw new Error("sinkAddress and subscriberAddress are required");
+      throw new Error('sinkAddress and subscriberAddress are required');
     }
 
     const broker = this.fanouts.get(sinkAddress);
@@ -176,7 +191,10 @@ export class InMemorySinkService extends SinkService {
     }
 
     const destination = makeFameAddress(subscriberAddress);
-    const channel: SubscribeChannel = new FameFabricWriteChannel(this.deliver, destination);
+    const channel: SubscribeChannel = new FameFabricWriteChannel(
+      this.deliver,
+      destination
+    );
 
     broker.addSubscriber(channel);
 
@@ -186,14 +204,16 @@ export class InMemorySinkService extends SinkService {
     this.subscriptions.set(sinkAddress, existing);
     this.subscriptionIndex.set(subscription, sinkAddress);
 
-    logger.debug("subscribed_to_sink", {
+    logger.debug('subscribed_to_sink', {
       sink_address: sinkAddress,
       subscriber_address: subscriberAddress,
     });
   }
 
   async unsubscribe(subscription: Subscription): Promise<void> {
-    const sinkAddress = this.subscriptionIndex.get(subscription) ?? subscription.address.toString();
+    const sinkAddress =
+      this.subscriptionIndex.get(subscription) ??
+      subscription.address.toString();
     const current = this.subscriptions.get(sinkAddress);
     if (!current) {
       return;
@@ -213,24 +233,34 @@ export class InMemorySinkService extends SinkService {
       broker.removeSubscriber(subscription.channel as WriteChannel);
     }
 
-    if (typeof (subscription.channel as SubscribeChannel).close === "function") {
+    if (
+      typeof (subscription.channel as SubscribeChannel).close === 'function'
+    ) {
       await (subscription.channel as SubscribeChannel).close?.();
     }
   }
 }
 
-export class InMemorySinkServiceFactory implements FameServiceFactory<InMemorySinkService> {
+export class InMemorySinkServiceFactory
+  implements FameServiceFactory<InMemorySinkService>
+{
   create(
-    config: Partial<InMemorySinkServiceOptions> & { bindingManager: SinkBindingManager }
+    config: Partial<InMemorySinkServiceOptions> & {
+      bindingManager: SinkBindingManager;
+    }
   ): InMemorySinkService {
     if (!config.bindingManager) {
-      throw new Error("bindingManager is required to create InMemorySinkService");
+      throw new Error(
+        'bindingManager is required to create InMemorySinkService'
+      );
     }
 
     const options: InMemorySinkServiceOptions = {
       bindingManager: config.bindingManager,
       ...(config.deliver !== undefined ? { deliver: config.deliver } : {}),
-      ...(config.brokerConfig !== undefined ? { brokerConfig: config.brokerConfig } : {}),
+      ...(config.brokerConfig !== undefined
+        ? { brokerConfig: config.brokerConfig }
+        : {}),
       ...(config.name !== undefined ? { name: config.name } : {}),
     };
 

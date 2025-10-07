@@ -8,13 +8,13 @@ import {
   JSONRPCError,
   makeResponse,
   parseRequest,
-} from "naylence-core";
-import { getLogger } from "../util/logging.js";
-import { ResponseContextManager } from "./response-context-manager.js";
-import { StreamingResponseHandler } from "./streaming-response-handler.js";
-import { isFameMessageResponse } from "naylence-core";
+} from 'naylence-core';
+import { getLogger } from '../util/logging.js';
+import { ResponseContextManager } from './response-context-manager.js';
+import { StreamingResponseHandler } from './streaming-response-handler.js';
+import { isFameMessageResponse } from 'naylence-core';
 
-const logger = getLogger("rpc-server-handler");
+const logger = getLogger('rpc-server-handler');
 
 type RpcHandlerResult = FameMessageResponse | unknown;
 
@@ -32,14 +32,14 @@ export class RPCServerHandler {
     serviceName: string
   ): Promise<FameMessageResponse | void> {
     if (!this.isDataFrame(envelope.frame)) {
-      logger.warning("rpc_request_missing_data_frame", {
+      logger.warning('rpc_request_missing_data_frame', {
         service_name: serviceName,
         envelope_id: envelope.id,
       });
       return;
     }
 
-    logger.debug("rpc_request_received", {
+    logger.debug('rpc_request_received', {
       service_name: serviceName,
       envelope_id: envelope.id,
       trace_id: envelope.traceId,
@@ -49,7 +49,7 @@ export class RPCServerHandler {
     let request: ReturnType<typeof parseRequest>;
     try {
       request = parseRequest(envelope.frame.payload);
-      logger.debug("parsed_rpc_request", {
+      logger.debug('parsed_rpc_request', {
         service_name: serviceName,
         method: request.method,
         request_id: request.id,
@@ -57,7 +57,7 @@ export class RPCServerHandler {
         params_keys: request.params ? Object.keys(request.params) : undefined,
       });
     } catch (error) {
-      logger.warning("request_decode_error", {
+      logger.warning('request_decode_error', {
         service_name: serviceName,
         envelope_id: envelope.id,
         error: error instanceof Error ? error.message : String(error),
@@ -66,7 +66,7 @@ export class RPCServerHandler {
     }
 
     if (request.id == null) {
-      logger.warning("request_missing_id", {
+      logger.warning('request_missing_id', {
         service_name: serviceName,
         envelope_id: envelope.id,
       });
@@ -76,7 +76,7 @@ export class RPCServerHandler {
     const params = (request.params ?? {}) as Record<string, unknown>;
     const replyTo = this.resolveReplyTo(envelope, params);
     if (!replyTo) {
-      logger.warning("missing_reply_to", {
+      logger.warning('missing_reply_to', {
         service_name: serviceName,
         envelope_id: envelope.id,
         request_id: request.id,
@@ -86,27 +86,32 @@ export class RPCServerHandler {
 
     let handlerResult: RpcHandlerResult;
     try {
-      logger.debug("calling_rpc_handler", {
+      logger.debug('calling_rpc_handler', {
         service_name: serviceName,
         method: request.method,
         request_id: request.id,
       });
       handlerResult = await handler(request.method, params);
-      logger.debug("rpc_handler_returned", {
+      logger.debug('rpc_handler_returned', {
         service_name: serviceName,
         method: request.method,
         request_id: request.id,
-        result_type: handlerResult === null ? "null" : typeof handlerResult,
-        is_streaming: this.streamingResponseHandler.isStreamingResult(handlerResult),
+        result_type: handlerResult === null ? 'null' : typeof handlerResult,
+        is_streaming:
+          this.streamingResponseHandler.isStreamingResult(handlerResult),
       });
     } catch (error) {
-      logger.error("rpc_handler_error", {
+      logger.error('rpc_handler_error', {
         service_name: serviceName,
         request_id: request.id,
         envelope_id: envelope.id,
         error: error instanceof Error ? error.message : String(error),
       });
-      const response = makeResponse(request.id, undefined, this.toJsonRpcError(error));
+      const response = makeResponse(
+        request.id,
+        undefined,
+        this.toJsonRpcError(error)
+      );
       return this.createTraditionalResponse(
         response,
         request.id,
@@ -118,7 +123,7 @@ export class RPCServerHandler {
     }
 
     if (isFameMessageResponse(handlerResult)) {
-      logger.debug("returning_response_message", {
+      logger.debug('returning_response_message', {
         service_name: serviceName,
         request_id: request.id,
         response_envelope_id: handlerResult.envelope.id,
@@ -127,7 +132,7 @@ export class RPCServerHandler {
     }
 
     if (this.streamingResponseHandler.isStreamingResult(handlerResult)) {
-      logger.debug("handling_streaming_response", {
+      logger.debug('handling_streaming_response', {
         service_name: serviceName,
         request_id: request.id,
         envelope_id: envelope.id,
@@ -161,10 +166,10 @@ export class RPCServerHandler {
       return envelope.replyTo as string;
     }
     const value = params?.reply_to ?? params?.replyTo;
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       return value;
     }
-    if (typeof value === "object" && value !== null && "toString" in value) {
+    if (typeof value === 'object' && value !== null && 'toString' in value) {
       return String(value);
     }
     return null;
@@ -178,7 +183,7 @@ export class RPCServerHandler {
     handlerContext: FameDeliveryContext | undefined,
     serviceName: string
   ): Promise<FameMessageResponse> {
-    logger.debug("creating_traditional_response_envelope", {
+    logger.debug('creating_traditional_response_envelope', {
       service_name: serviceName,
       request_id: requestId,
       envelope_id: requestEnvelope.id,
@@ -186,7 +191,7 @@ export class RPCServerHandler {
     });
 
     const frame: DataFrame = {
-      type: "Data",
+      type: 'Data',
       payload,
     };
 
@@ -205,12 +210,12 @@ export class RPCServerHandler {
     if (!responseContext.meta) {
       responseContext.meta = {};
     }
-    responseContext.meta["message-type"] = "response";
+    responseContext.meta['message-type'] = 'response';
     if (requestEnvelope.id) {
-      responseContext.meta["response-to-id"] = requestEnvelope.id;
+      responseContext.meta['response-to-id'] = requestEnvelope.id;
     }
 
-    logger.debug("returning_traditional_response", {
+    logger.debug('returning_traditional_response', {
       service_name: serviceName,
       request_id: requestId,
       envelope_id: requestEnvelope.id,
@@ -224,11 +229,15 @@ export class RPCServerHandler {
   }
 
   private isDataFrame(frame: unknown): frame is DataFrame {
-    return typeof frame === "object" && frame !== null && (frame as DataFrame).type === "Data";
+    return (
+      typeof frame === 'object' &&
+      frame !== null &&
+      (frame as DataFrame).type === 'Data'
+    );
   }
 
   private toJsonRpcError(error: unknown): JSONRPCError {
-    if (error && typeof error === "object") {
+    if (error && typeof error === 'object') {
       const maybeError = error as Partial<JSONRPCError> & { message?: string };
       if (maybeError.code && maybeError.message) {
         return {

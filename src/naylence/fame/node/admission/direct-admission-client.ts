@@ -3,16 +3,16 @@ import {
   generateIdAsync,
   type FameEnvelopeWith,
   type NodeWelcomeFrame,
-} from "naylence-core";
+} from 'naylence-core';
 import {
   DEFAULT_DIRECT_ADMISSION_TTL_SEC,
   TTL_NEVER_EXPIRES,
-} from "../../constants/ttl-constants.js";
-import { getLogger } from "../../util/logging.js";
-import { validateTtlSec } from "../../util/ttl-validation.js";
-import type { AdmissionClient } from "./admission-client.js";
+} from '../../constants/ttl-constants.js';
+import { getLogger } from '../../util/logging.js';
+import { validateTtlSec } from '../../util/ttl-validation.js';
+import type { AdmissionClient } from './admission-client.js';
 
-const logger = getLogger("direct-admission-client");
+const logger = getLogger('direct-admission-client');
 
 export interface DirectAdmissionClientOptions {
   readonly connectionGrants: Array<Record<string, unknown>>;
@@ -26,11 +26,18 @@ export class DirectAdmissionClient implements AdmissionClient {
   private readonly ttlSec: number | null | undefined;
 
   constructor(options: DirectAdmissionClientOptions) {
-    if (!Array.isArray(options.connectionGrants) || options.connectionGrants.length === 0) {
-      throw new Error("DirectAdmissionClient requires at least one connection grant");
+    if (
+      !Array.isArray(options.connectionGrants) ||
+      options.connectionGrants.length === 0
+    ) {
+      throw new Error(
+        'DirectAdmissionClient requires at least one connection grant'
+      );
     }
 
-    this.connectionGrants = options.connectionGrants.map((grant) => cloneGrant(grant));
+    this.connectionGrants = options.connectionGrants.map((grant) =>
+      cloneGrant(grant)
+    );
 
     const ttlCandidate = options.ttlSec ?? TTL_NEVER_EXPIRES;
     if (ttlCandidate != null && ttlCandidate !== TTL_NEVER_EXPIRES) {
@@ -38,10 +45,10 @@ export class DirectAdmissionClient implements AdmissionClient {
         min: 60,
         max: 86400 * 7,
         allowNeverExpires: true,
-        context: "Direct admission TTL",
+        context: 'Direct admission TTL',
       });
 
-      this.ttlSec = typeof validated === "number" ? validated : ttlCandidate;
+      this.ttlSec = typeof validated === 'number' ? validated : ttlCandidate;
     } else {
       this.ttlSec = ttlCandidate;
     }
@@ -52,7 +59,7 @@ export class DirectAdmissionClient implements AdmissionClient {
     instanceId: string,
     requestedLogicals?: string[]
   ): Promise<FameEnvelopeWith<NodeWelcomeFrame>> {
-    logger.debug("direct_admission_hello_start", {
+    logger.debug('direct_admission_hello_start', {
       providedSystemId: systemId,
       instanceId,
       requestedLogicals,
@@ -61,22 +68,24 @@ export class DirectAdmissionClient implements AdmissionClient {
     const effectiveSystemId =
       systemId && systemId.trim().length > 0
         ? systemId
-        : await generateIdAsync({ mode: "fingerprint" }).catch(async () => {
-            logger.debug("direct_admission_fingerprint_generation_failed", {
-              reason: "falling back to random id",
+        : await generateIdAsync({ mode: 'fingerprint' }).catch(async () => {
+            logger.debug('direct_admission_fingerprint_generation_failed', {
+              reason: 'falling back to random id',
             });
-            return generateIdAsync({ mode: "random" });
+            return generateIdAsync({ mode: 'random' });
           });
 
     const acceptedLogicals =
-      requestedLogicals && requestedLogicals.length > 0 ? [...requestedLogicals] : ["*"];
+      requestedLogicals && requestedLogicals.length > 0
+        ? [...requestedLogicals]
+        : ['*'];
 
     const now = Date.now();
     const ttlSeconds = this.resolveTtlSeconds();
     const expiresAt = new Date(now + ttlSeconds * 1000);
 
     const welcomeFrame: NodeWelcomeFrame = {
-      type: "NodeWelcome",
+      type: 'NodeWelcome',
       systemId: effectiveSystemId,
       instanceId,
       acceptedLogicals,
@@ -88,7 +97,7 @@ export class DirectAdmissionClient implements AdmissionClient {
       frame: welcomeFrame,
     }) as FameEnvelopeWith<NodeWelcomeFrame>;
 
-    logger.debug("direct_admission_hello_success", {
+    logger.debug('direct_admission_hello_success', {
       systemId: welcomeFrame.systemId,
       instanceId: welcomeFrame.instanceId,
       acceptedLogicals: welcomeFrame.acceptedLogicals,

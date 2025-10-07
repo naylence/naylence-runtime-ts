@@ -1,17 +1,20 @@
-import type { Tracer } from "@opentelemetry/api";
+import type { Tracer } from '@opentelemetry/api';
 
 import {
   AuthInjectionStrategyFactory,
   type AuthInjectionStrategyConfig,
-} from "../security/auth/auth-injection-strategy-factory.js";
-import { setupOtel } from "./otel-setup.js";
-import { safeImport } from "../util/lazy-import.js";
-import type { TraceEmitter } from "./trace-emitter.js";
-import type { TraceEmitterConfig } from "./trace-emitter-config.js";
-import { TRACE_EMITTER_FACTORY_BASE_TYPE, TraceEmitterFactory } from "./trace-emitter-factory.js";
+} from '../security/auth/auth-injection-strategy-factory.js';
+import { setupOtel } from './otel-setup.js';
+import { safeImport } from '../util/lazy-import.js';
+import type { TraceEmitter } from './trace-emitter.js';
+import type { TraceEmitterConfig } from './trace-emitter-config.js';
+import {
+  TRACE_EMITTER_FACTORY_BASE_TYPE,
+  TraceEmitterFactory,
+} from './trace-emitter-factory.js';
 
 export interface OpenTelemetryTraceEmitterConfig extends TraceEmitterConfig {
-  type: "OpenTelemetryTraceEmitter";
+  type: 'OpenTelemetryTraceEmitter';
   serviceName?: string;
   endpoint?: string | null;
   environment?: string | null;
@@ -34,18 +37,20 @@ interface OpenTelemetryTraceEmitterFactoryOptions {
   headers?: Record<string, string>;
 }
 
-type OpenTelemetryTraceEmitterModule = typeof import("./open-telemetry-trace-emitter.js");
+type OpenTelemetryTraceEmitterModule =
+  typeof import('./open-telemetry-trace-emitter.js');
 
-let openTelemetryTraceEmitterModulePromise: Promise<OpenTelemetryTraceEmitterModule> | null = null;
+let openTelemetryTraceEmitterModulePromise: Promise<OpenTelemetryTraceEmitterModule> | null =
+  null;
 
 function getOpenTelemetryTraceEmitterModule(): Promise<OpenTelemetryTraceEmitterModule> {
   if (!openTelemetryTraceEmitterModulePromise) {
     openTelemetryTraceEmitterModulePromise = safeImport(
-      () => import("./open-telemetry-trace-emitter.js"),
-      "@opentelemetry/api",
+      () => import('./open-telemetry-trace-emitter.js'),
+      '@opentelemetry/api',
       {
         helpMessage:
-          "Missing optional OpenTelemetry dependency. Install @opentelemetry/api (and related packages) to enable trace emission.",
+          'Missing optional OpenTelemetry dependency. Install @opentelemetry/api (and related packages) to enable trace emission.',
       }
     );
   }
@@ -54,17 +59,18 @@ function getOpenTelemetryTraceEmitterModule(): Promise<OpenTelemetryTraceEmitter
 
 export const FACTORY_META = {
   base: TRACE_EMITTER_FACTORY_BASE_TYPE,
-  key: "OpenTelemetryTraceEmitter",
+  key: 'OpenTelemetryTraceEmitter',
 } as const;
 
 export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTelemetryTraceEmitterConfig> {
-  public readonly type = "OpenTelemetryTraceEmitter";
+  public readonly type = 'OpenTelemetryTraceEmitter';
 
   public async create(
     config?: OpenTelemetryTraceEmitterConfig | Record<string, unknown> | null,
     ...factoryArgs: unknown[]
   ): Promise<TraceEmitter> {
-    const options = (factoryArgs[0] ?? {}) as OpenTelemetryTraceEmitterFactoryOptions;
+    const options = (factoryArgs[0] ??
+      {}) as OpenTelemetryTraceEmitterFactoryOptions;
     const normalized = normalizeConfig(config);
 
     const mergedHeaders: Record<string, string> = {
@@ -73,9 +79,10 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
     };
 
     if (normalized.auth) {
-      const authStrategy = await AuthInjectionStrategyFactory.createAuthInjectionStrategy(
-        normalized.auth
-      );
+      const authStrategy =
+        await AuthInjectionStrategyFactory.createAuthInjectionStrategy(
+          normalized.auth
+        );
       await authStrategy.apply(mergedHeaders);
     }
 
@@ -84,10 +91,12 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
       endpoint: normalized.endpoint,
       environment: normalized.environment,
       sampler: normalized.sampler,
-      headers: Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
+      headers:
+        Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
     });
 
-    const { OpenTelemetryTraceEmitter } = await getOpenTelemetryTraceEmitterModule();
+    const { OpenTelemetryTraceEmitter } =
+      await getOpenTelemetryTraceEmitterModule();
 
     const emitterOptions: { serviceName: string; tracer?: Tracer } = {
       serviceName: normalized.serviceName,
@@ -106,7 +115,7 @@ function normalizeConfig(
 ): NormalizedOpenTelemetryTraceEmitterConfig {
   if (!config) {
     return {
-      serviceName: "naylence-service",
+      serviceName: 'naylence-service',
       endpoint: null,
       environment: null,
       sampler: null,
@@ -116,37 +125,42 @@ function normalizeConfig(
   }
 
   const candidate = config as Record<string, unknown>;
-  const headersFromConfig = extractHeaders(candidate.headers ?? candidate["headers"]);
-  const authConfig = (candidate.auth ?? candidate["auth"]) as
+  const headersFromConfig = extractHeaders(
+    candidate.headers ?? candidate['headers']
+  );
+  const authConfig = (candidate.auth ?? candidate['auth']) as
     | AuthInjectionStrategyConfig
     | null
     | undefined;
 
   return {
     serviceName:
-      extractString(candidate.serviceName ?? candidate["service_name"]) ?? "naylence-service",
-    endpoint: extractString(candidate.endpoint ?? candidate["endpoint"]) ?? null,
-    environment: extractString(candidate.environment ?? candidate["environment"]) ?? null,
-    sampler: extractString(candidate.sampler ?? candidate["sampler"]) ?? null,
+      extractString(candidate.serviceName ?? candidate['service_name']) ??
+      'naylence-service',
+    endpoint:
+      extractString(candidate.endpoint ?? candidate['endpoint']) ?? null,
+    environment:
+      extractString(candidate.environment ?? candidate['environment']) ?? null,
+    sampler: extractString(candidate.sampler ?? candidate['sampler']) ?? null,
     headers: headersFromConfig ?? {},
     auth: authConfig ?? null,
   };
 }
 
 function extractString(value: unknown): string | undefined {
-  if (typeof value === "string" && value.trim().length > 0) {
+  if (typeof value === 'string' && value.trim().length > 0) {
     return value;
   }
   return undefined;
 }
 
 function extractHeaders(value: unknown): Record<string, string> | null {
-  if (!value || typeof value !== "object") {
+  if (!value || typeof value !== 'object') {
     return null;
   }
   const headers: Record<string, string> = {};
   for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof raw === "string") {
+    if (typeof raw === 'string') {
       headers[key] = raw;
     }
   }

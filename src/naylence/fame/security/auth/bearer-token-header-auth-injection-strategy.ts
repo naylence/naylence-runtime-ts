@@ -1,30 +1,39 @@
-import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
-import { isTokenExpired } from "./token.js";
-import type { TokenProvider } from "./token-provider.js";
-import { TokenProviderFactory } from "./token-provider-factory.js";
-import type { BearerTokenHeaderAuthInjectionStrategyConfig } from "./bearer-token-header-auth-injection-strategy-factory.js";
+import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
+import { isTokenExpired } from './token.js';
+import type { TokenProvider } from './token-provider.js';
+import { TokenProviderFactory } from './token-provider-factory.js';
+import type { BearerTokenHeaderAuthInjectionStrategyConfig } from './bearer-token-header-auth-injection-strategy-factory.js';
 
 export interface BearerTokenHeaderAuthInjectionOptions {
-  type?: "BearerTokenHeaderAuth";
-  tokenProvider: BearerTokenHeaderAuthInjectionStrategyConfig["tokenProvider"];
+  type?: 'BearerTokenHeaderAuth';
+  tokenProvider: BearerTokenHeaderAuthInjectionStrategyConfig['tokenProvider'];
   headerName: string;
 }
 
-export class BearerTokenHeaderAuthInjectionStrategy implements AuthInjectionStrategy {
+export class BearerTokenHeaderAuthInjectionStrategy
+  implements AuthInjectionStrategy
+{
   private refreshLoop: Promise<void> | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private timerResolver: (() => void) | null = null;
   private stopped = false;
 
-  public constructor(private readonly options: BearerTokenHeaderAuthInjectionOptions) {}
+  public constructor(
+    private readonly options: BearerTokenHeaderAuthInjectionOptions
+  ) {}
 
   public async apply(connector: unknown): Promise<void> {
-    const provider = await TokenProviderFactory.createTokenProvider(this.options.tokenProvider);
+    const provider = await TokenProviderFactory.createTokenProvider(
+      this.options.tokenProvider
+    );
     await this.updateAuthHeader(connector, provider);
     this.startRefreshLoop(connector, provider);
   }
 
-  private async updateAuthHeader(connector: unknown, provider: TokenProvider): Promise<void> {
+  private async updateAuthHeader(
+    connector: unknown,
+    provider: TokenProvider
+  ): Promise<void> {
     const token = await provider.getToken();
     const authHeader = `Bearer ${token.value}`;
 
@@ -39,8 +48,8 @@ export class BearerTokenHeaderAuthInjectionStrategy implements AuthInjectionStra
     }
 
     console.warn(
-      `Connector of type ${connector ? (connector.constructor?.name ?? typeof connector) : "unknown"} ` +
-        "does not support auth header injection"
+      `Connector of type ${connector ? (connector.constructor?.name ?? typeof connector) : 'unknown'} ` +
+        'does not support auth header injection'
     );
   }
 
@@ -64,7 +73,10 @@ export class BearerTokenHeaderAuthInjectionStrategy implements AuthInjectionStra
     }
   }
 
-  private async runRefreshLoop(connector: unknown, provider: TokenProvider): Promise<void> {
+  private async runRefreshLoop(
+    connector: unknown,
+    provider: TokenProvider
+  ): Promise<void> {
     while (!this.stopped) {
       try {
         const token = await provider.getToken();
@@ -75,13 +87,15 @@ export class BearerTokenHeaderAuthInjectionStrategy implements AuthInjectionStra
         }
 
         await this.updateAuthHeader(connector, provider);
-        console.debug("auth_token_refreshed", { connectorType: connectorTypeName(connector) });
+        console.debug('auth_token_refreshed', {
+          connectorType: connectorTypeName(connector),
+        });
       } catch (error) {
         if (this.stopped) {
           break;
         }
 
-        console.error("auth_token_refresh_failed", error);
+        console.error('auth_token_refresh_failed', error);
         await this.wait(60_000);
       }
     }
@@ -102,12 +116,14 @@ export class BearerTokenHeaderAuthInjectionStrategy implements AuthInjectionStra
     });
   }
 
-  private computeDelayMs(token: Awaited<ReturnType<TokenProvider["getToken"]>>): number {
+  private computeDelayMs(
+    token: Awaited<ReturnType<TokenProvider['getToken']>>
+  ): number {
     if (!token || isTokenExpired(token)) {
       return 60_000;
     }
 
-    if (typeof token.expiresAt !== "number") {
+    if (typeof token.expiresAt !== 'number') {
       return 3_600_000;
     }
 
@@ -137,11 +153,14 @@ interface HeaderCapableConnector {
   setAuthHeader(value: string): void;
 }
 
-function isSetAuthHeaderCapable(connector: unknown): connector is HeaderCapableConnector {
+function isSetAuthHeaderCapable(
+  connector: unknown
+): connector is HeaderCapableConnector {
   return (
-    typeof connector === "object" &&
+    typeof connector === 'object' &&
     connector !== null &&
-    typeof (connector as Partial<HeaderCapableConnector>).setAuthHeader === "function"
+    typeof (connector as Partial<HeaderCapableConnector>).setAuthHeader ===
+      'function'
   );
 }
 
@@ -150,16 +169,20 @@ interface HeaderMap {
 }
 
 function isHeaderMap(connector: unknown): connector is HeaderMap {
-  return typeof connector === "object" && connector !== null;
+  return typeof connector === 'object' && connector !== null;
 }
 
 function connectorTypeName(connector: unknown): string {
   if (!connector) {
-    return "unknown";
+    return 'unknown';
   }
 
-  if (typeof connector === "object" && "constructor" in connector && connector.constructor) {
-    return connector.constructor.name ?? "object";
+  if (
+    typeof connector === 'object' &&
+    'constructor' in connector &&
+    connector.constructor
+  ) {
+    return connector.constructor.name ?? 'object';
   }
 
   return typeof connector;

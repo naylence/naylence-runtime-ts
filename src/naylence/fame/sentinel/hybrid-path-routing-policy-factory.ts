@@ -1,35 +1,41 @@
-import { createResource } from "naylence-factory";
-import { HybridPathRoutingPolicy } from "./hybrid-path-routing-policy.js";
-import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
+import { createResource } from 'naylence-factory';
+import { HybridPathRoutingPolicy } from './hybrid-path-routing-policy.js';
+import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
   LoadBalancingStrategyFactory,
   type LoadBalancingStrategyConfig,
-} from "./load-balancing/load-balancing-strategy-factory.js";
+} from './load-balancing/load-balancing-strategy-factory.js';
 import {
   ROUTING_POLICY_FACTORY_BASE,
   RoutingPolicyFactory,
   type RoutingPolicy,
   type RoutingPolicyConfig,
-} from "./routing-policy.js";
+} from './routing-policy.js';
 
 export interface HybridPathRoutingPolicyConfig extends RoutingPolicyConfig {
-  type: "HybridPathRoutingPolicy";
-  loadBalancingStrategy?: LoadBalancingStrategyConfig | Record<string, unknown> | null;
+  type: 'HybridPathRoutingPolicy';
+  loadBalancingStrategy?:
+    | LoadBalancingStrategyConfig
+    | Record<string, unknown>
+    | null;
 }
 
 interface NormalizedHybridRoutingConfig {
-  type: "HybridPathRoutingPolicy";
-  loadBalancingStrategy: LoadBalancingStrategyConfig | Record<string, unknown> | null;
+  type: 'HybridPathRoutingPolicy';
+  loadBalancingStrategy:
+    | LoadBalancingStrategyConfig
+    | Record<string, unknown>
+    | null;
 }
 
 export const FACTORY_META = {
   base: ROUTING_POLICY_FACTORY_BASE,
-  key: "HybridPathRoutingPolicy",
+  key: 'HybridPathRoutingPolicy',
 } as const;
 
 export class HybridPathRoutingPolicyFactory extends RoutingPolicyFactory {
-  public readonly type = "HybridPathRoutingPolicy";
+  public readonly type = 'HybridPathRoutingPolicy';
 
   public async create(
     config?: HybridPathRoutingPolicyConfig | Record<string, unknown> | null,
@@ -58,12 +64,12 @@ export class HybridPathRoutingPolicyFactory extends RoutingPolicyFactory {
   ): NormalizedHybridRoutingConfig {
     if (!config) {
       return {
-        type: "HybridPathRoutingPolicy",
+        type: 'HybridPathRoutingPolicy',
         loadBalancingStrategy: null,
       };
     }
 
-    if ("type" in config && config.type !== "HybridPathRoutingPolicy") {
+    if ('type' in config && config.type !== 'HybridPathRoutingPolicy') {
       throw new Error(
         `HybridPathRoutingPolicyFactory only supports HybridPathRoutingPolicy config, got type ${String(
           (config as { type?: unknown }).type
@@ -72,7 +78,7 @@ export class HybridPathRoutingPolicyFactory extends RoutingPolicyFactory {
     }
 
     return {
-      type: "HybridPathRoutingPolicy",
+      type: 'HybridPathRoutingPolicy',
       loadBalancingStrategy: this.extractStrategyConfig(config),
     };
   }
@@ -80,21 +86,34 @@ export class HybridPathRoutingPolicyFactory extends RoutingPolicyFactory {
   private extractStrategyConfig(
     config: HybridPathRoutingPolicyConfig | Record<string, unknown>
   ): LoadBalancingStrategyConfig | Record<string, unknown> | null {
-    if ("loadBalancingStrategy" in config) {
-      const value = (config as HybridPathRoutingPolicyConfig).loadBalancingStrategy;
-      if (value === undefined || value === null || typeof value === "object") {
-        return (value as LoadBalancingStrategyConfig | Record<string, unknown> | null) ?? null;
+    if ('loadBalancingStrategy' in config) {
+      const value = (config as HybridPathRoutingPolicyConfig)
+        .loadBalancingStrategy;
+      if (value === undefined || value === null || typeof value === 'object') {
+        return (
+          (value as
+            | LoadBalancingStrategyConfig
+            | Record<string, unknown>
+            | null) ?? null
+        );
       }
 
-      throw new Error("loadBalancingStrategy must be an object or null when provided");
+      throw new Error(
+        'loadBalancingStrategy must be an object or null when provided'
+      );
     }
 
     const raw = (config as Record<string, unknown>).loadBalancingStrategy;
-    if (raw === undefined || raw === null || typeof raw === "object") {
-      return (raw as LoadBalancingStrategyConfig | Record<string, unknown> | null) ?? null;
+    if (raw === undefined || raw === null || typeof raw === 'object') {
+      return (
+        (raw as LoadBalancingStrategyConfig | Record<string, unknown> | null) ??
+        null
+      );
     }
 
-    throw new Error("loadBalancingStrategy must be an object or null when provided");
+    throw new Error(
+      'loadBalancingStrategy must be an object or null when provided'
+    );
   }
 
   private async tryCreateStrategy(

@@ -1,18 +1,18 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
   registerFactory,
-} from "naylence-factory";
+} from 'naylence-factory';
 
 import type {
   DefaultDeliveryTracker,
   DeliveryTrackerEventHandler,
-} from "./default-delivery-tracker.js";
-import type { StorageProvider } from "../storage/storage-provider.js";
+} from './default-delivery-tracker.js';
+import type { StorageProvider } from '../storage/storage-provider.js';
 
-export const DELIVERY_TRACKER_FACTORY_BASE_TYPE = "DeliveryTrackerFactory";
+export const DELIVERY_TRACKER_FACTORY_BASE_TYPE = 'DeliveryTrackerFactory';
 
 export interface DeliveryTrackerConfig extends ResourceConfig {
   type: string;
@@ -48,7 +48,7 @@ export abstract class DeliveryTrackerFactory<
 
     const configRecord = (config ?? null) as Record<string, unknown> | null;
     const typeValue = configRecord?.type;
-    const hasType = typeof typeValue === "string" && typeValue.length > 0;
+    const hasType = typeof typeValue === 'string' && typeValue.length > 0;
 
     if (hasType) {
       return createResource<DefaultDeliveryTracker>(

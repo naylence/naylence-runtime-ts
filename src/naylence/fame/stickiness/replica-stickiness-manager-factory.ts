@@ -1,9 +1,14 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
 
-import type { ReplicaStickinessManager } from "./replica-stickiness-manager.js";
+import type { ReplicaStickinessManager } from './replica-stickiness-manager.js';
 
-export const REPLICA_STICKINESS_MANAGER_FACTORY_BASE_TYPE = "ReplicaStickinessManagerFactory";
+export const REPLICA_STICKINESS_MANAGER_FACTORY_BASE_TYPE =
+  'ReplicaStickinessManagerFactory';
 
 export interface ReplicaStickinessManagerConfig extends ResourceConfig {
   type: string;

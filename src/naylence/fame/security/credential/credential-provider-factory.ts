@@ -1,9 +1,14 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
 
-import type { CredentialProvider } from "./credential-provider.js";
+import type { CredentialProvider } from './credential-provider.js';
 
-export const CREDENTIAL_PROVIDER_FACTORY_BASE_TYPE = "CredentialProviderFactory";
+export const CREDENTIAL_PROVIDER_FACTORY_BASE_TYPE =
+  'CredentialProviderFactory';
 
 export interface CredentialProviderConfig extends ResourceConfig {
   type: string;
@@ -37,7 +42,9 @@ export abstract class CredentialProviderFactory<
         );
 
     if (!instance) {
-      throw new Error("Failed to create credential provider from configuration");
+      throw new Error(
+        'Failed to create credential provider from configuration'
+      );
     }
 
     return instance;

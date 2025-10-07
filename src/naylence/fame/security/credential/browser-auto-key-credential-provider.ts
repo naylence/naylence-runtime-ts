@@ -1,8 +1,8 @@
-import type { CredentialProvider } from "./credential-provider.js";
+import type { CredentialProvider } from './credential-provider.js';
 
-const DEFAULT_DB_NAME = "naylence-secrets";
-const DEFAULT_STORE_NAME = "auto-master-key";
-const DEFAULT_KEY_ID = "master";
+const DEFAULT_DB_NAME = 'naylence-secrets';
+const DEFAULT_STORE_NAME = 'auto-master-key';
+const DEFAULT_KEY_ID = 'master';
 const MASTER_KEY_LENGTH = 32;
 
 export type BrowserAutoKeyCredentialProviderOptions = {
@@ -31,7 +31,9 @@ function toUint8Array(value: unknown): Uint8Array | null {
 
   if (isArrayBufferView(value)) {
     const view = value as ArrayBufferView;
-    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+    return new Uint8Array(
+      view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength)
+    );
   }
 
   return null;
@@ -46,7 +48,7 @@ async function openDatabase(
     const request = factory.open(dbName, 1);
 
     request.onerror = () => {
-      reject(request.error ?? new Error("Failed to open IndexedDB"));
+      reject(request.error ?? new Error('Failed to open IndexedDB'));
     };
 
     request.onupgradeneeded = () => {
@@ -68,12 +70,14 @@ async function readPersistedKey(
   keyId: string
 ): Promise<Uint8Array | null> {
   return new Promise<Uint8Array | null>((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
+    const tx = db.transaction(storeName, 'readonly');
     const store = tx.objectStore(storeName);
     const request = store.get(keyId);
 
     request.onerror = () => {
-      reject(request.error ?? new Error("Failed to read master key from IndexedDB"));
+      reject(
+        request.error ?? new Error('Failed to read master key from IndexedDB')
+      );
     };
 
     request.onsuccess = () => {
@@ -89,25 +93,34 @@ async function persistKey(
   key: Uint8Array
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(storeName, "readwrite");
+    const tx = db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
-    const buffer = key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength);
+    const buffer = key.buffer.slice(
+      key.byteOffset,
+      key.byteOffset + key.byteLength
+    );
     const request = store.put(buffer, keyId);
 
     request.onerror = () => {
-      reject(request.error ?? new Error("Failed to persist master key to IndexedDB"));
+      reject(
+        request.error ?? new Error('Failed to persist master key to IndexedDB')
+      );
     };
 
     tx.oncomplete = () => resolve();
     tx.onerror = () => {
-      reject(tx.error ?? new Error("Failed to persist master key to IndexedDB"));
+      reject(
+        tx.error ?? new Error('Failed to persist master key to IndexedDB')
+      );
     };
   });
 }
 
 function getRandomBytes(length: number): Uint8Array {
   if (!globalThis.crypto?.getRandomValues) {
-    throw new Error("crypto.getRandomValues is not available in this environment");
+    throw new Error(
+      'crypto.getRandomValues is not available in this environment'
+    );
   }
 
   const buffer = new Uint8Array(length);
@@ -119,7 +132,9 @@ export class BrowserAutoKeyCredentialProvider implements CredentialProvider {
   private readonly dbName: string;
   private readonly storeName: string;
   private readonly keyId: string;
-  private readonly idbFactory: { open: (name: string, version?: number) => IDBOpenDBRequest };
+  private readonly idbFactory: {
+    open: (name: string, version?: number) => IDBOpenDBRequest;
+  };
 
   private cachedKey: Uint8Array | null = null;
   private inflight: Promise<Uint8Array> | null = null;
@@ -131,10 +146,10 @@ export class BrowserAutoKeyCredentialProvider implements CredentialProvider {
 
     if (options.idbFactory) {
       this.idbFactory = options.idbFactory;
-    } else if (typeof indexedDB !== "undefined") {
+    } else if (typeof indexedDB !== 'undefined') {
       this.idbFactory = indexedDB;
     } else {
-      throw new Error("IndexedDB is not available in this environment");
+      throw new Error('IndexedDB is not available in this environment');
     }
   }
 

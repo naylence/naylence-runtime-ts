@@ -14,18 +14,18 @@ function isModuleNotFoundError(error: unknown): boolean {
     return false;
   }
 
-  const message = error.message || "";
+  const message = error.message || '';
   if (
-    message.includes("Cannot find module") ||
-    message.includes("ERR_MODULE_NOT_FOUND") ||
-    message.includes("MODULE_NOT_FOUND")
+    message.includes('Cannot find module') ||
+    message.includes('ERR_MODULE_NOT_FOUND') ||
+    message.includes('MODULE_NOT_FOUND')
   ) {
     return true;
   }
 
   const code = (error as { code?: unknown }).code;
-  if (typeof code === "string") {
-    return code === "MODULE_NOT_FOUND" || code === "ERR_MODULE_NOT_FOUND";
+  if (typeof code === 'string') {
+    return code === 'MODULE_NOT_FOUND' || code === 'ERR_MODULE_NOT_FOUND';
   }
 
   return false;
@@ -37,10 +37,10 @@ function isModuleNotFoundError(error: unknown): boolean {
 export async function safeImport<T>(
   loader: () => Promise<T>,
   dependencyNameOrOptions: string | SafeImportOptions,
-  maybeOptions?: Omit<SafeImportOptions, "dependencyName">
+  maybeOptions?: Omit<SafeImportOptions, 'dependencyName'>
 ): Promise<T> {
   const options: SafeImportOptions =
-    typeof dependencyNameOrOptions === "string"
+    typeof dependencyNameOrOptions === 'string'
       ? { dependencyName: dependencyNameOrOptions, ...(maybeOptions ?? {}) }
       : dependencyNameOrOptions;
 

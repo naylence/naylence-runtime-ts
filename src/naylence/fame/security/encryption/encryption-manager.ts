@@ -1,4 +1,4 @@
-import type { FameAddress, FameEnvelope } from "naylence-core";
+import type { FameAddress, FameEnvelope } from 'naylence-core';
 
 export const FIXED_PREFIX_LEN = 44; // 32-byte ephemeral public key + 12-byte nonce prefix
 
@@ -16,15 +16,15 @@ export interface EncryptionOptions {
   readonly recip_kid?: string;
   readonly recipientKeyId?: string;
   readonly requestAddress?: FameAddress;
-  readonly encryptionType?: "standard" | "channel" | string;
+  readonly encryptionType?: 'standard' | 'channel' | string;
   readonly destination?: FameAddress;
   readonly [key: string]: unknown;
 }
 
 export enum EncryptionStatus {
-  OK = "OK",
-  SKIPPED = "SKIPPED",
-  QUEUED = "QUEUED",
+  OK = 'OK',
+  SKIPPED = 'SKIPPED',
+  QUEUED = 'QUEUED',
 }
 
 export class EncryptionResult {
@@ -49,11 +49,20 @@ export class EncryptionResult {
 export interface EncryptionManager {
   readonly nodeStaticPublicKey?: Uint8Array;
 
-  encryptEnvelope(envelope: FameEnvelope, opts?: EncryptionOptions): Promise<EncryptionResult>;
+  encryptEnvelope(
+    envelope: FameEnvelope,
+    opts?: EncryptionOptions
+  ): Promise<EncryptionResult>;
 
-  decryptEnvelope(envelope: FameEnvelope, opts?: EncryptionOptions): Promise<FameEnvelope>;
+  decryptEnvelope(
+    envelope: FameEnvelope,
+    opts?: EncryptionOptions
+  ): Promise<FameEnvelope>;
 
   notifyChannelEstablished?(channelId: string): Promise<void> | void;
 
-  notifyChannelFailed?(channelId: string, reason?: string): Promise<void> | void;
+  notifyChannelFailed?(
+    channelId: string,
+    reason?: string
+  ): Promise<void> | void;
 }

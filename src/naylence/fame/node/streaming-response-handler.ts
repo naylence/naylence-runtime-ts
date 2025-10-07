@@ -5,13 +5,16 @@ import {
   FameEnvelope,
   FameMessageResponse,
   makeResponse,
-} from "naylence-core";
-import { getLogger } from "../util/logging.js";
-import { ResponseContextManager } from "./response-context-manager.js";
+} from 'naylence-core';
+import { getLogger } from '../util/logging.js';
+import { ResponseContextManager } from './response-context-manager.js';
 
-const logger = getLogger("streaming-response-handler");
+const logger = getLogger('streaming-response-handler');
 
-type DeliverFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<void>;
+type DeliverFn = (
+  envelope: FameEnvelope,
+  context?: FameDeliveryContext
+) => Promise<void>;
 
 type AsyncMaybeIterable<T> = AsyncIterable<T> | AsyncIterator<T>;
 
@@ -21,7 +24,7 @@ type AsyncIteratorCandidate<T> = Partial<AsyncIterator<T>> & {
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 interface ErrorPayload {
@@ -43,15 +46,21 @@ function isErrorPayload(value: unknown): value is ErrorPayload {
   }
 
   const errorRecord = potentialError as Record<string, unknown>;
-  return typeof errorRecord.code === "number" && typeof errorRecord.message === "string";
+  return (
+    typeof errorRecord.code === 'number' &&
+    typeof errorRecord.message === 'string'
+  );
 }
 
 function isAsyncIterable<T>(value: unknown): value is AsyncIterable<T> {
-  return !!value && typeof (value as AsyncIterable<T>)[Symbol.asyncIterator] === "function";
+  return (
+    !!value &&
+    typeof (value as AsyncIterable<T>)[Symbol.asyncIterator] === 'function'
+  );
 }
 
 function isAsyncIterator<T>(value: unknown): value is AsyncIterator<T> {
-  return !!value && typeof (value as AsyncIterator<T>).next === "function";
+  return !!value && typeof (value as AsyncIterator<T>).next === 'function';
 }
 
 function toAsyncIterable<T>(value: AsyncMaybeIterable<T>): AsyncIterable<T> {
@@ -65,7 +74,7 @@ function toAsyncIterable<T>(value: AsyncMaybeIterable<T>): AsyncIterable<T> {
       },
     };
   }
-  throw new TypeError("Value is not async iterable");
+  throw new TypeError('Value is not async iterable');
 }
 
 export class StreamingResponseHandler {
@@ -75,7 +84,9 @@ export class StreamingResponseHandler {
     private readonly responseContextManager: ResponseContextManager
   ) {}
 
-  isStreamingResult<T = unknown>(result: unknown): result is AsyncMaybeIterable<T> {
+  isStreamingResult<T = unknown>(
+    result: unknown
+  ): result is AsyncMaybeIterable<T> {
     if (!isObject(result)) {
       return false;
     }
@@ -83,8 +94,8 @@ export class StreamingResponseHandler {
     const candidate = result as AsyncIteratorCandidate<T>;
 
     return (
-      typeof candidate[Symbol.asyncIterator] === "function" ||
-      typeof candidate.__anext__ === "function" ||
+      typeof candidate[Symbol.asyncIterator] === 'function' ||
+      typeof candidate.__anext__ === 'function' ||
       isAsyncIterator(candidate as AsyncIterator<T>)
     );
   }
@@ -102,13 +113,13 @@ export class StreamingResponseHandler {
   ): Promise<void> {
     const asyncResponses = toAsyncIterable(responses);
 
-    logger.debug("handling_streaming_fame_message_responses", {
+    logger.debug('handling_streaming_fame_message_responses', {
       request_id: requestEnvelope.id,
     });
 
     for await (const response of asyncResponses) {
       if (!response?.envelope) {
-        logger.warning("invalid_streaming_response_type", {
+        logger.warning('invalid_streaming_response_type', {
           request_id: requestEnvelope.id,
           actual_type: typeof response,
         });
@@ -117,7 +128,10 @@ export class StreamingResponseHandler {
 
       const responseContext =
         response.context ??
-        this.responseContextManager.createResponseContext(requestEnvelope, requestContext);
+        this.responseContextManager.createResponseContext(
+          requestEnvelope,
+          requestContext
+        );
 
       this.responseContextManager.ensureResponseMetadata(
         response.envelope,
@@ -138,18 +152,30 @@ export class StreamingResponseHandler {
   ): Promise<void> {
     const iterable = toAsyncIterable(result);
 
-    logger.debug("handling_streaming_response", {
+    logger.debug('handling_streaming_response', {
       request_id: requestId,
       reply_to: replyTo,
     });
 
     try {
       for await (const item of iterable) {
-        await this.sendRpcResponse(item, requestEnvelope, requestContext, replyTo, requestId);
+        await this.sendRpcResponse(
+          item,
+          requestEnvelope,
+          requestContext,
+          replyTo,
+          requestId
+        );
       }
-      await this.sendRpcResponse(null, requestEnvelope, requestContext, replyTo, requestId);
+      await this.sendRpcResponse(
+        null,
+        requestEnvelope,
+        requestContext,
+        replyTo,
+        requestId
+      );
     } catch (error) {
-      logger.error("streaming_response_handler_error", {
+      logger.error('streaming_response_handler_error', {
         request_id: requestId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -182,7 +208,7 @@ export class StreamingResponseHandler {
     const responseEnvelope = this.envelopeFactory.createEnvelope({
       ...(requestEnvelope.traceId ? { traceId: requestEnvelope.traceId } : {}),
       frame: {
-        type: "Data",
+        type: 'Data',
         payload: responsePayload,
       } as DataFrame,
       to: replyTo,
@@ -200,7 +226,7 @@ export class StreamingResponseHandler {
       responseContext
     );
 
-    logger.debug("sending_streaming_rpc_response", {
+    logger.debug('sending_streaming_rpc_response', {
       request_id: requestId,
       response_envelope_id: responseEnvelope.id,
       reply_to: replyTo,

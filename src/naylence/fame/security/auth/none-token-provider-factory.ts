@@ -1,22 +1,22 @@
-import type { TokenProvider } from "./token-provider.js";
+import type { TokenProvider } from './token-provider.js';
 import {
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
   TokenProviderFactory,
   type TokenProviderConfig,
-} from "./token-provider-factory.js";
-import { NoneTokenProvider } from "./none-token-provider.js";
+} from './token-provider-factory.js';
+import { NoneTokenProvider } from './none-token-provider.js';
 
 export interface NoneTokenProviderConfig extends TokenProviderConfig {
-  type: "NoneTokenProvider";
+  type: 'NoneTokenProvider';
 }
 
 export const FACTORY_META = {
   base: TOKEN_PROVIDER_FACTORY_BASE_TYPE,
-  key: "NoneTokenProvider",
+  key: 'NoneTokenProvider',
 } as const;
 
 export class NoneTokenProviderFactory extends TokenProviderFactory<NoneTokenProviderConfig> {
-  public readonly type = "NoneTokenProvider";
+  public readonly type = 'NoneTokenProvider';
   public readonly isDefault = true;
 
   public async create(): Promise<TokenProvider> {

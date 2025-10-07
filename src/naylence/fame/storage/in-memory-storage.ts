@@ -1,5 +1,5 @@
-import type { KeyValueStore } from "./key-value-store.js";
-import type { StorageProvider } from "./storage-provider.js";
+import type { KeyValueStore } from './key-value-store.js';
+import type { StorageProvider } from './storage-provider.js';
 
 class InMemoryKeyValueStore<V> implements KeyValueStore<V> {
   private readonly store = new Map<string, V>();

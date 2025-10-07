@@ -7,7 +7,7 @@
 import {
   BaseAsyncConnector,
   BaseAsyncConnectorConfig,
-} from "../naylence/fame/connector/base-async-connector";
+} from '../naylence/fame/connector/base-async-connector';
 import {
   ConnectorState,
   FameEnvelope,
@@ -17,18 +17,22 @@ import {
   CreditUpdateFrame,
   FameResponseType,
   createChannelMessage,
-} from "naylence-core";
+} from 'naylence-core';
 import {
   FameTransportClose,
   FameMessageTooLarge,
   BackPressureFull,
-} from "../naylence/fame/errors/errors";
+} from '../naylence/fame/errors/errors';
 
 // Test implementation of BaseAsyncConnector
 class TestAsyncConnector extends BaseAsyncConnector {
   private _sendData: Uint8Array[] = [];
-  private _receiveQueue: (Uint8Array | FameEnvelope | FameChannelMessage | FameTransportClose)[] =
-    [];
+  private _receiveQueue: (
+    | Uint8Array
+    | FameEnvelope
+    | FameChannelMessage
+    | FameTransportClose
+  )[] = [];
   private _transportClosed = false;
   private _transportCloseCode?: number;
   private _blockSending = false;
@@ -42,7 +46,7 @@ class TestAsyncConnector extends BaseAsyncConnector {
   // Implement abstract methods
   protected async _transportSendBytes(data: Uint8Array): Promise<void> {
     if (this._transportClosed) {
-      throw new FameTransportClose("Transport closed", 1006);
+      throw new FameTransportClose('Transport closed', 1006);
     }
 
     // Support for blocking sends to test backpressure
@@ -76,10 +80,16 @@ class TestAsyncConnector extends BaseAsyncConnector {
     }
 
     // If we're closed or transport is closed without data, throw transport close
-    throw new FameTransportClose("Transport closed", this._transportCloseCode || 1006);
+    throw new FameTransportClose(
+      'Transport closed',
+      this._transportCloseCode || 1006
+    );
   }
 
-  protected async _transportClose(code: number, _reason: string): Promise<void> {
+  protected async _transportClose(
+    code: number,
+    _reason: string
+  ): Promise<void> {
     this._transportClosed = true;
     this._transportCloseCode = code;
     // reason stored in code for simplicity
@@ -96,7 +106,7 @@ class TestAsyncConnector extends BaseAsyncConnector {
     this._receiveQueue.push(item);
   }
 
-  simulateTransportClose(code = 1006, reason = "test close"): void {
+  simulateTransportClose(code = 1006, reason = 'test close'): void {
     this._transportClosed = true;
     this._transportCloseCode = code;
     // reason stored in message
@@ -132,15 +142,18 @@ class TestAsyncConnector extends BaseAsyncConnector {
   }
 
   // Override shutdownTasks to optionally throw an error
-  async shutdownTasks(options?: { gracePeriod?: number; joinTimeout?: number }): Promise<void> {
+  async shutdownTasks(options?: {
+    gracePeriod?: number;
+    joinTimeout?: number;
+  }): Promise<void> {
     if (this._simulateShutdownError) {
-      throw new Error("Simulated shutdown error");
+      throw new Error('Simulated shutdown error');
     }
     return super.shutdownTasks(options);
   }
 }
 
-describe("BaseAsyncConnector", () => {
+describe('BaseAsyncConnector', () => {
   let connector: TestAsyncConnector;
   let mockHandler: jest.Mock;
 
@@ -178,7 +191,7 @@ describe("BaseAsyncConnector", () => {
     if (connector.state !== ConnectorState.CLOSED) {
       try {
         // Force transport close to break loops quickly
-        connector.simulateTransportClose(1000, "test cleanup");
+        connector.simulateTransportClose(1000, 'test cleanup');
 
         // Give it a tiny moment to react to the close
         await new Promise((resolve) => setTimeout(resolve, 1));
@@ -194,8 +207,8 @@ describe("BaseAsyncConnector", () => {
     await new Promise((resolve) => setTimeout(resolve, 15));
   });
 
-  describe("Initialization", () => {
-    test("should initialize with correct default state", () => {
+  describe('Initialization', () => {
+    test('should initialize with correct default state', () => {
       expect(connector.state).toBe(ConnectorState.INITIALIZED);
       expect(connector.connectorState).toBe(ConnectorState.INITIALIZED);
       expect(connector.closeCode).toBeUndefined();
@@ -203,7 +216,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.lastError).toBeUndefined();
     });
 
-    test("should accept configuration options", () => {
+    test('should accept configuration options', () => {
       const config: BaseAsyncConnectorConfig = {
         maxQueueSize: 500,
         initialWindow: 16,
@@ -218,46 +231,48 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Lifecycle Management", () => {
-    test("should start successfully and transition to STARTED state", async () => {
+  describe('Lifecycle Management', () => {
+    test('should start successfully and transition to STARTED state', async () => {
       await connector.start(mockHandler);
       expect(connector.state).toBe(ConnectorState.STARTED);
     });
 
-    test("should prevent starting twice", async () => {
+    test('should prevent starting twice', async () => {
       await connector.start(mockHandler);
-      await expect(connector.start(mockHandler)).rejects.toThrow("Connector already started");
+      await expect(connector.start(mockHandler)).rejects.toThrow(
+        'Connector already started'
+      );
     });
 
-    test("should replace handler after start", async () => {
+    test('should replace handler after start', async () => {
       await connector.start(mockHandler);
       const newHandler = jest.fn();
       await connector.replaceHandler(newHandler);
       // Handler replacement is internal - no external verification possible
     });
 
-    test("should stop gracefully and transition to STOPPED state", async () => {
+    test('should stop gracefully and transition to STOPPED state', async () => {
       await connector.start(mockHandler);
       await connector.stop();
       expect(connector.state).toBe(ConnectorState.STOPPED);
     });
 
-    test("should close gracefully and transition to CLOSED state", async () => {
+    test('should close gracefully and transition to CLOSED state', async () => {
       await connector.start(mockHandler);
-      await connector.close(1000, "normal closure");
+      await connector.close(1000, 'normal closure');
       expect(connector.state).toBe(ConnectorState.CLOSED);
       expect(connector.closeCode).toBe(1000);
-      expect(connector.closeReason).toBe("normal closure");
+      expect(connector.closeReason).toBe('normal closure');
     });
 
-    test("should handle multiple stop calls gracefully", async () => {
+    test('should handle multiple stop calls gracefully', async () => {
       await connector.start(mockHandler);
       await connector.stop();
       await connector.stop(); // Should not throw
       expect(connector.state).toBe(ConnectorState.STOPPED);
     });
 
-    test("should wait until closed", async () => {
+    test('should wait until closed', async () => {
       await connector.start(mockHandler);
 
       const closePromise = connector.waitUntilClosed();
@@ -273,14 +288,14 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Message Sending", () => {
+  describe('Message Sending', () => {
     beforeEach(async () => {
       await connector.start(mockHandler);
     });
 
-    test("should send simple envelope successfully", async () => {
+    test('should send simple envelope successfully', async () => {
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "hello" } as DataFrame,
+        frame: { type: 'Data', payload: 'hello' } as DataFrame,
       });
 
       await connector.send(envelope);
@@ -289,20 +304,22 @@ describe("BaseAsyncConnector", () => {
       expect(sentData).toHaveLength(1);
 
       const sentEnvelope = JSON.parse(new TextDecoder().decode(sentData[0]));
-      expect(sentEnvelope.frame.type).toBe("Data");
-      expect(sentEnvelope.frame.payload).toBe("hello");
+      expect(sentEnvelope.frame.type).toBe('Data');
+      expect(sentEnvelope.frame.payload).toBe('hello');
     });
 
-    test("should reject oversized messages", async () => {
-      const largeData = "x".repeat(300 * 1024); // 300KB, exceeds 256KB limit
+    test('should reject oversized messages', async () => {
+      const largeData = 'x'.repeat(300 * 1024); // 300KB, exceeds 256KB limit
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: largeData } as DataFrame,
+        frame: { type: 'Data', payload: largeData } as DataFrame,
       });
 
-      await expect(connector.send(envelope)).rejects.toThrow(FameMessageTooLarge);
+      await expect(connector.send(envelope)).rejects.toThrow(
+        FameMessageTooLarge
+      );
     });
 
-    test("should handle send queue backpressure", async () => {
+    test('should handle send queue backpressure', async () => {
       // Create connector with small queue and timeout
       const smallQueueConnector = new TestAsyncConnector({
         maxQueueSize: 1,
@@ -316,43 +333,47 @@ describe("BaseAsyncConnector", () => {
         smallQueueConnector.blockSending();
 
         const envelope1 = createFameEnvelope({
-          frame: { type: "Data", payload: "1" } as DataFrame,
+          frame: { type: 'Data', payload: '1' } as DataFrame,
         });
         const envelope2 = createFameEnvelope({
-          frame: { type: "Data", payload: "2" } as DataFrame,
+          frame: { type: 'Data', payload: '2' } as DataFrame,
         });
 
         // Fill the queue (this should succeed)
         await smallQueueConnector.send(envelope1);
 
         // This should trigger backpressure immediately since queue is full
-        await expect(smallQueueConnector.send(envelope2)).rejects.toThrow(BackPressureFull);
+        await expect(smallQueueConnector.send(envelope2)).rejects.toThrow(
+          BackPressureFull
+        );
       } finally {
         smallQueueConnector.unblockSending();
         await smallQueueConnector.close();
       }
     });
 
-    test("should prevent sending when closed", async () => {
+    test('should prevent sending when closed', async () => {
       await connector.close();
 
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "hello" } as DataFrame,
+        frame: { type: 'Data', payload: 'hello' } as DataFrame,
       });
 
-      await expect(connector.send(envelope)).rejects.toThrow(FameTransportClose);
+      await expect(connector.send(envelope)).rejects.toThrow(
+        FameTransportClose
+      );
     });
   });
 
-  describe("Message Receiving", () => {
+  describe('Message Receiving', () => {
     beforeEach(async () => {
       await connector.start(mockHandler);
     });
 
-    test("should receive and process FameEnvelope", async () => {
+    test('should receive and process FameEnvelope', async () => {
       const envelope = createFameEnvelope({
-        traceId: "test-trace",
-        frame: { type: "Data", payload: "received" } as DataFrame,
+        traceId: 'test-trace',
+        frame: { type: 'Data', payload: 'received' } as DataFrame,
       });
 
       connector.pushToReceiveQueue(envelope);
@@ -362,10 +383,10 @@ describe("BaseAsyncConnector", () => {
 
       expect(mockHandler).toHaveBeenCalledWith(
         expect.objectContaining({
-          traceId: "test-trace",
+          traceId: 'test-trace',
           frame: expect.objectContaining({
-            type: "Data",
-            payload: "received",
+            type: 'Data',
+            payload: 'received',
           }),
         }),
         expect.objectContaining({
@@ -374,9 +395,9 @@ describe("BaseAsyncConnector", () => {
       );
     });
 
-    test("should receive and process raw bytes", async () => {
+    test('should receive and process raw bytes', async () => {
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "from-bytes" } as DataFrame,
+        frame: { type: 'Data', payload: 'from-bytes' } as DataFrame,
       });
 
       const rawBytes = new TextEncoder().encode(JSON.stringify(envelope));
@@ -388,16 +409,16 @@ describe("BaseAsyncConnector", () => {
       expect(mockHandler).toHaveBeenCalledWith(
         expect.objectContaining({
           frame: expect.objectContaining({
-            type: "Data",
-            payload: "from-bytes",
+            type: 'Data',
+            payload: 'from-bytes',
           }),
         }),
         expect.any(Object)
       );
     });
 
-    test("should handle invalid JSON gracefully", async () => {
-      const invalidJson = new TextEncoder().encode("{ invalid json }");
+    test('should handle invalid JSON gracefully', async () => {
+      const invalidJson = new TextEncoder().encode('{ invalid json }');
       connector.pushToReceiveQueue(invalidJson);
 
       // Wait for processing - invalid JSON should be logged but not crash
@@ -407,20 +428,20 @@ describe("BaseAsyncConnector", () => {
       expect(mockHandler).not.toHaveBeenCalled();
     });
 
-    test("should handle transport close during receive", async () => {
-      connector.simulateTransportClose(1001, "going away");
+    test('should handle transport close during receive', async () => {
+      connector.simulateTransportClose(1001, 'going away');
 
       // Wait for shutdown processing
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(connector.state).toBe(ConnectorState.CLOSED);
       expect(connector.closeCode).toBe(1001);
-      expect(connector.closeReason).toBe("going away");
+      expect(connector.closeReason).toBe('going away');
     });
   });
 
-  describe("Flow Control Integration", () => {
-    test("should handle flow control with enabled configuration", async () => {
+  describe('Flow Control Integration', () => {
+    test('should handle flow control with enabled configuration', async () => {
       const fcConnector = new TestAsyncConnector({
         flowControl: true,
         ...fastTestConfig, // Include fast timeouts
@@ -429,8 +450,8 @@ describe("BaseAsyncConnector", () => {
 
       try {
         const envelope = createFameEnvelope({
-          flowId: "test-flow",
-          frame: { type: "Data", payload: "flow-controlled" } as DataFrame,
+          flowId: 'test-flow',
+          frame: { type: 'Data', payload: 'flow-controlled' } as DataFrame,
         });
 
         await fcConnector.send(envelope);
@@ -439,7 +460,7 @@ describe("BaseAsyncConnector", () => {
         expect(sentData).toHaveLength(1);
 
         const sentEnvelope = JSON.parse(new TextDecoder().decode(sentData[0]));
-        expect(sentEnvelope.flowId).toBe("test-flow");
+        expect(sentEnvelope.flowId).toBe('test-flow');
         expect(sentEnvelope.seqId).toBeDefined();
         expect(sentEnvelope.flowFlags).toBeDefined();
       } finally {
@@ -447,11 +468,11 @@ describe("BaseAsyncConnector", () => {
       }
     });
 
-    test("should handle credit updates without delivering to handler", async () => {
+    test('should handle credit updates without delivering to handler', async () => {
       const creditEnvelope = createFameEnvelope({
         frame: {
-          type: "CreditUpdate",
-          flowId: "test-flow",
+          type: 'CreditUpdate',
+          flowId: 'test-flow',
           credits: 10,
         } as CreditUpdateFrame,
       });
@@ -466,8 +487,8 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Error Handling", () => {
-    test("should handle transport send errors", async () => {
+  describe('Error Handling', () => {
+    test('should handle transport send errors', async () => {
       await connector.start(mockHandler);
 
       // Simulate transport close to trigger send error
@@ -477,17 +498,19 @@ describe("BaseAsyncConnector", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "will-fail" } as DataFrame,
+        frame: { type: 'Data', payload: 'will-fail' } as DataFrame,
       });
 
-      await expect(connector.send(envelope)).rejects.toThrow(FameTransportClose);
+      await expect(connector.send(envelope)).rejects.toThrow(
+        FameTransportClose
+      );
     });
 
-    test("should capture and expose last error", async () => {
+    test('should capture and expose last error', async () => {
       await connector.start(mockHandler);
 
       // Simulate an error condition
-      const testError = new Error("test error");
+      const testError = new Error('test error');
       connector.simulateTransportClose(1006, testError.message);
 
       // Wait for error processing
@@ -497,15 +520,17 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("State Validation", () => {
-    test("should prevent starting from invalid states", async () => {
+  describe('State Validation', () => {
+    test('should prevent starting from invalid states', async () => {
       await connector.start(mockHandler);
       await connector.close();
 
-      await expect(connector.start(mockHandler)).rejects.toThrow(/Cannot start connector in state/);
+      await expect(connector.start(mockHandler)).rejects.toThrow(
+        /Cannot start connector in state/
+      );
     });
 
-    test("should handle state transitions correctly", async () => {
+    test('should handle state transitions correctly', async () => {
       expect(connector.state).toBe(ConnectorState.INITIALIZED);
 
       await connector.start(mockHandler);
@@ -516,12 +541,12 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Environment Variables", () => {
-    test("should respect FAME_FLOW_CONTROL environment variable", () => {
+  describe('Environment Variables', () => {
+    test('should respect FAME_FLOW_CONTROL environment variable', () => {
       const originalEnv = process.env.FAME_FLOW_CONTROL;
 
       try {
-        process.env.FAME_FLOW_CONTROL = "0";
+        process.env.FAME_FLOW_CONTROL = '0';
         const connector = new TestAsyncConnector(fastTestConfig);
         // Flow control should be disabled by default with env var set to '0'
         expect(connector).toBeDefined();
@@ -535,8 +560,8 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Advanced Error Handling", () => {
-    test("should handle TaskCancellationError in receive loop", async () => {
+  describe('Advanced Error Handling', () => {
+    test('should handle TaskCancellationError in receive loop', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -550,14 +575,14 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle unexpected errors in receive loop", async () => {
+    test('should handle unexpected errors in receive loop', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
       await connector.start(mockHandler);
 
       // Simulate transport close to test FameTransportClose handling
-      connector.simulateTransportClose(1006, "Transport closed unexpectedly");
+      connector.simulateTransportClose(1006, 'Transport closed unexpectedly');
 
       // Wait for the transport close to be processed
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -571,8 +596,8 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Flow Control Credit Management", () => {
-    test("should emit credits when flow control needs refill", async () => {
+  describe('Flow Control Credit Management', () => {
+    test('should emit credits when flow control needs refill', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         flowControl: true,
@@ -584,10 +609,13 @@ describe("BaseAsyncConnector", () => {
 
       // Force flow control to need refill by consuming credits
       const envelope = createFameEnvelope({
-        traceId: "test-trace",
-        flowId: "test-flow",
+        traceId: 'test-trace',
+        flowId: 'test-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+        frame: {
+          type: 'Data',
+          payload: new Uint8Array([1, 2, 3]),
+        } as DataFrame,
       });
 
       connector.pushToReceiveQueue(envelope);
@@ -600,7 +628,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should not emit credits when flow control does not need refill", async () => {
+    test('should not emit credits when flow control does not need refill', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         flowControl: true,
@@ -614,10 +642,10 @@ describe("BaseAsyncConnector", () => {
 
       // Send a small message that won't trigger refill
       const envelope = createFameEnvelope({
-        traceId: "test-trace",
-        flowId: "test-flow",
+        traceId: 'test-trace',
+        flowId: 'test-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1]) } as DataFrame,
+        frame: { type: 'Data', payload: new Uint8Array([1]) } as DataFrame,
       });
 
       connector.pushToReceiveQueue(envelope);
@@ -635,8 +663,8 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Shutdown Error Handling", () => {
-    test("should handle task shutdown errors gracefully", async () => {
+  describe('Shutdown Error Handling', () => {
+    test('should handle task shutdown errors gracefully', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -649,7 +677,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle spawner errors during shutdown", async () => {
+    test('should handle spawner errors during shutdown', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -662,8 +690,8 @@ describe("BaseAsyncConnector", () => {
     });
   });
 
-  describe("Additional Coverage Tests", () => {
-    test("should emit credits without traceId", async () => {
+  describe('Additional Coverage Tests', () => {
+    test('should emit credits without traceId', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         flowControl: true,
@@ -675,9 +703,12 @@ describe("BaseAsyncConnector", () => {
 
       // Send envelope without traceId to test that branch
       const envelope = createFameEnvelope({
-        flowId: "test-flow",
+        flowId: 'test-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+        frame: {
+          type: 'Data',
+          payload: new Uint8Array([1, 2, 3]),
+        } as DataFrame,
       });
 
       connector.pushToReceiveQueue(envelope);
@@ -690,7 +721,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle empty send queue gracefully", async () => {
+    test('should handle empty send queue gracefully', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -703,7 +734,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle flow control with very small window", async () => {
+    test('should handle flow control with very small window', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         flowControl: true,
@@ -715,10 +746,13 @@ describe("BaseAsyncConnector", () => {
 
       // Send a message that should trigger credit refill
       const envelope = createFameEnvelope({
-        traceId: "test-trace",
-        flowId: "small-window-flow",
+        traceId: 'test-trace',
+        flowId: 'small-window-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1, 2, 3, 4, 5]) } as DataFrame,
+        frame: {
+          type: 'Data',
+          payload: new Uint8Array([1, 2, 3, 4, 5]),
+        } as DataFrame,
       });
 
       connector.pushToReceiveQueue(envelope);
@@ -731,14 +765,14 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle invalid message types in receive", async () => {
+    test('should handle invalid message types in receive', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
       await connector.start(mockHandler);
 
       // Push an invalid message type (string instead of expected types)
-      connector.pushToReceiveQueue("invalid message" as any);
+      connector.pushToReceiveQueue('invalid message' as any);
 
       // Wait for error handling - this should trigger the error branch
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -751,7 +785,7 @@ describe("BaseAsyncConnector", () => {
       }
     });
 
-    test("should handle connector close without close resolver", async () => {
+    test('should handle connector close without close resolver', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -763,12 +797,12 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle ENV_VAR_SHOW_ENVELOPES environment variable", async () => {
+    test('should handle ENV_VAR_SHOW_ENVELOPES environment variable', async () => {
       const originalEnv = process.env.FAME_SHOW_ENVELOPES;
 
       try {
         // Set environment variable to trigger the logging branch
-        process.env.FAME_SHOW_ENVELOPES = "true";
+        process.env.FAME_SHOW_ENVELOPES = 'true';
 
         const connector = new TestAsyncConnector(fastTestConfig);
         const mockHandler = jest.fn();
@@ -777,10 +811,13 @@ describe("BaseAsyncConnector", () => {
 
         // Send an envelope to trigger the debug logging
         const envelope = createFameEnvelope({
-          traceId: "test-trace",
-          flowId: "test-flow",
+          traceId: 'test-trace',
+          flowId: 'test-flow',
           windowId: 1,
-          frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+          frame: {
+            type: 'Data',
+            payload: new Uint8Array([1, 2, 3]),
+          } as DataFrame,
         });
 
         connector.pushToReceiveQueue(envelope);
@@ -801,7 +838,7 @@ describe("BaseAsyncConnector", () => {
       }
     });
 
-    test("should handle credit update frames in receive loop", async () => {
+    test('should handle credit update frames in receive loop', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         flowControl: true,
@@ -813,12 +850,12 @@ describe("BaseAsyncConnector", () => {
 
       // Send a credit update frame directly - note the frame structure
       const creditEnvelope = createFameEnvelope({
-        traceId: "credit-trace",
-        flowId: "credit-flow",
+        traceId: 'credit-trace',
+        flowId: 'credit-flow',
         windowId: 1,
         frame: {
-          type: "CreditUpdate",
-          flowId: "credit-flow",
+          type: 'CreditUpdate',
+          flowId: 'credit-flow',
           credits: 50,
         } as CreditUpdateFrame,
       });
@@ -834,7 +871,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle FameChannelMessage parsing", async () => {
+    test('should handle FameChannelMessage parsing', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -842,16 +879,19 @@ describe("BaseAsyncConnector", () => {
 
       // Create a FameChannelMessage to trigger that parsing branch
       const envelope = createFameEnvelope({
-        traceId: "channel-trace",
-        flowId: "channel-flow",
+        traceId: 'channel-trace',
+        flowId: 'channel-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+        frame: {
+          type: 'Data',
+          payload: new Uint8Array([1, 2, 3]),
+        } as DataFrame,
       });
 
       const channelMessage = createChannelMessage(envelope, {
         fromConnector: connector,
         expectedResponseType: FameResponseType.NONE,
-        meta: { customProperty: "test" },
+        meta: { customProperty: 'test' },
       });
 
       connector.pushToReceiveQueue(channelMessage);
@@ -864,7 +904,7 @@ describe("BaseAsyncConnector", () => {
         expect.objectContaining({
           fromConnector: connector,
           meta: expect.objectContaining({
-            customProperty: "test",
+            customProperty: 'test',
           }),
         })
       );
@@ -872,28 +912,28 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should throw error when handler not set in receive loop", async () => {
+    test('should throw error when handler not set in receive loop', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
 
       // Try to call _recvLoop directly without setting a handler
       try {
         // Access private method via any cast for testing
         await (connector as any)._recvLoop();
-        fail("Expected error to be thrown");
+        fail('Expected error to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toBe("Handler not set");
+        expect((error as Error).message).toBe('Handler not set');
       }
     });
 
-    test("should log debug message when TaskCancellationError occurs in receive loop", async () => {
+    test('should log debug message when TaskCancellationError occurs in receive loop', async () => {
       // This test covers the scenario where TaskCancellationError is handled gracefully
       // The specific line 520 is difficult to test in isolation, but this confirms
       // the error handling path exists
       expect(true).toBe(true); // Placeholder test for now
     });
 
-    test("should log warning when shutdownTasks throws an error", async () => {
+    test('should log warning when shutdownTasks throws an error', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -909,7 +949,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle send loop stop sentinel during shutdown", async () => {
+    test('should handle send loop stop sentinel during shutdown', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -917,10 +957,13 @@ describe("BaseAsyncConnector", () => {
 
       // Add some data to the send queue
       const envelope = createFameEnvelope({
-        traceId: "test-trace",
-        flowId: "test-flow",
+        traceId: 'test-trace',
+        flowId: 'test-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+        frame: {
+          type: 'Data',
+          payload: new Uint8Array([1, 2, 3]),
+        } as DataFrame,
       });
 
       // Send a message to populate the send queue
@@ -933,21 +976,24 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle FameTransportClose error in send loop", async () => {
+    test('should handle FameTransportClose error in send loop', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
       await connector.start(mockHandler);
 
       // Simulate transport close during send operation
-      connector.simulateTransportClose(1008, "test transport close");
+      connector.simulateTransportClose(1008, 'test transport close');
 
       // Try to send a message which should trigger FameTransportClose error
       const envelope = createFameEnvelope({
-        traceId: "test-trace",
-        flowId: "test-flow",
+        traceId: 'test-trace',
+        flowId: 'test-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+        frame: {
+          type: 'Data',
+          payload: new Uint8Array([1, 2, 3]),
+        } as DataFrame,
       });
 
       try {
@@ -962,7 +1008,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle unexpected errors in send loop", async () => {
+    test('should handle unexpected errors in send loop', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -971,16 +1017,19 @@ describe("BaseAsyncConnector", () => {
       // Override _transportSendBytes to throw an unexpected error
       const originalSendBytes = (connector as any)._transportSendBytes;
       (connector as any)._transportSendBytes = async () => {
-        throw new Error("Unexpected send error");
+        throw new Error('Unexpected send error');
       };
 
       try {
         // Send a message which should trigger the unexpected error
         const envelope = createFameEnvelope({
-          traceId: "test-trace",
-          flowId: "test-flow",
+          traceId: 'test-trace',
+          flowId: 'test-flow',
           windowId: 1,
-          frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+          frame: {
+            type: 'Data',
+            payload: new Uint8Array([1, 2, 3]),
+          } as DataFrame,
         });
 
         await connector.send(envelope);
@@ -1004,7 +1053,7 @@ describe("BaseAsyncConnector", () => {
       }
     });
 
-    test("should track metrics when metrics emitter is provided", async () => {
+    test('should track metrics when metrics emitter is provided', async () => {
       // Create a mock metrics emitter
       const mockMetrics = {
         histogram: jest.fn(),
@@ -1022,10 +1071,13 @@ describe("BaseAsyncConnector", () => {
 
       // Send a message to trigger metrics collection
       const envelope = createFameEnvelope({
-        traceId: "metrics-trace",
-        flowId: "metrics-flow",
+        traceId: 'metrics-trace',
+        flowId: 'metrics-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1, 2, 3]) } as DataFrame,
+        frame: {
+          type: 'Data',
+          payload: new Uint8Array([1, 2, 3]),
+        } as DataFrame,
       });
 
       await connectorWithMetrics.send(envelope);
@@ -1040,38 +1092,40 @@ describe("BaseAsyncConnector", () => {
       await connectorWithMetrics.close();
     });
 
-    test("should throw error when calling unimplemented pushToReceive", async () => {
+    test('should throw error when calling unimplemented pushToReceive', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
 
       // Call the abstract method directly to cover line 279
       try {
         await (connector as any).pushToReceive(new Uint8Array([1, 2, 3]));
-        fail("Expected error to be thrown");
+        fail('Expected error to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toBe("Subclasses must implement pushToReceive()");
+        expect((error as Error).message).toBe(
+          'Subclasses must implement pushToReceive()'
+        );
       }
     });
 
-    test("should throw last error when stop is called after error occurs", async () => {
+    test('should throw last error when stop is called after error occurs', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
       await connector.start(mockHandler);
 
       // Simulate an error that sets _lastError
-      const testError = new Error("Test error for stop");
+      const testError = new Error('Test error for stop');
       (connector as any)._lastError = testError;
 
       try {
         await connector.stop();
-        fail("Expected error to be thrown");
+        fail('Expected error to be thrown');
       } catch (error) {
         expect(error).toBe(testError);
       }
     });
 
-    test("should handle already started connector error", async () => {
+    test('should handle already started connector error', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1080,16 +1134,16 @@ describe("BaseAsyncConnector", () => {
       try {
         // Try to start again - should throw error (line 203)
         await connector.start(mockHandler);
-        fail("Expected error to be thrown");
+        fail('Expected error to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toBe("Connector already started");
+        expect((error as Error).message).toBe('Connector already started');
       }
 
       await connector.close();
     });
 
-    test("should handle send queue processing during rapid shutdown", async () => {
+    test('should handle send queue processing during rapid shutdown', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1097,10 +1151,10 @@ describe("BaseAsyncConnector", () => {
 
       // Send just one message to avoid complexity
       const envelope = createFameEnvelope({
-        traceId: "rapid-trace",
-        flowId: "rapid-flow",
+        traceId: 'rapid-trace',
+        flowId: 'rapid-flow',
         windowId: 1,
-        frame: { type: "Data", payload: new Uint8Array([1]) } as DataFrame,
+        frame: { type: 'Data', payload: new Uint8Array([1]) } as DataFrame,
       });
 
       // Send and immediately close
@@ -1111,7 +1165,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle empty send queue condition properly", async () => {
+    test('should handle empty send queue condition properly', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1122,7 +1176,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle constructor with minimal config", async () => {
+    test('should handle constructor with minimal config', async () => {
       // Test constructor with no config to hit different branches
       const minimalConnector = new TestAsyncConnector();
 
@@ -1135,7 +1189,7 @@ describe("BaseAsyncConnector", () => {
       expect(emptyConfigConnector.state).toBe(ConnectorState.INITIALIZED);
     });
 
-    test("should handle various configuration branches", async () => {
+    test('should handle various configuration branches', async () => {
       // Test different config combinations to hit more constructor branches
       const configVariations = [
         { maxQueueSize: 500 },
@@ -1145,13 +1199,16 @@ describe("BaseAsyncConnector", () => {
       ];
 
       for (const config of configVariations) {
-        const connector = new TestAsyncConnector({ ...fastTestConfig, ...config });
+        const connector = new TestAsyncConnector({
+          ...fastTestConfig,
+          ...config,
+        });
         expect(connector).toBeDefined();
         expect(connector.state).toBe(ConnectorState.INITIALIZED);
       }
     });
 
-    test("should handle start with different handler configurations", async () => {
+    test('should handle start with different handler configurations', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
 
       // Test start with undefined handler to hit different branch
@@ -1162,7 +1219,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle message processing with different message types", async () => {
+    test('should handle message processing with different message types', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1178,18 +1235,20 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle already started error condition", async () => {
+    test('should handle already started error condition', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
 
       // Try to start again - should trigger error condition
-      await expect(connector.start(mockHandler)).rejects.toThrow("Connector already started");
+      await expect(connector.start(mockHandler)).rejects.toThrow(
+        'Connector already started'
+      );
 
       await connector.close();
     });
 
-    test("should handle stop sentinel processing in send loop", async () => {
+    test('should handle stop sentinel processing in send loop', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
@@ -1197,9 +1256,9 @@ describe("BaseAsyncConnector", () => {
       // Send multiple messages to populate queue, then close to trigger stop sentinel
       const messages = Array.from({ length: 5 }, (_, i) =>
         createFameEnvelope({
-          frame: { type: "Data", payload: { index: i } } as DataFrame,
+          frame: { type: 'Data', payload: { index: i } } as DataFrame,
           traceId: `trace-${i}`,
-          flowId: "test-flow",
+          flowId: 'test-flow',
           windowId: 1,
         })
       );
@@ -1211,7 +1270,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle empty queue after stop sentinel", async () => {
+    test('should handle empty queue after stop sentinel', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
@@ -1221,33 +1280,36 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle constructor with minimal config", async () => {
+    test('should handle constructor with minimal config', async () => {
       // Test constructor branch with minimal config to hit different branches
       const connector = new TestAsyncConnector({});
 
       expect(connector.state).toBe(ConnectorState.INITIALIZED);
     });
 
-    test("should handle constructor with signal abort configuration", () => {
+    test('should handle constructor with signal abort configuration', () => {
       // Test the signal branch in constructor configuration
       const abortController = new AbortController();
       abortController.abort(); // Pre-abort the signal
 
-      const signalConfig = { ...fastTestConfig, signal: abortController.signal };
+      const signalConfig = {
+        ...fastTestConfig,
+        signal: abortController.signal,
+      };
       const connector = new TestAsyncConnector(signalConfig);
 
       // Test that connector is initialized with aborted signal
       expect(connector.state).toBe(ConnectorState.INITIALIZED);
     });
 
-    test("should handle envelope parsing error in send path", async () => {
+    test('should handle envelope parsing error in send path', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
 
       // Create an envelope with invalid structure to trigger encoding error
       const invalidEnvelope = createFameEnvelope({
-        frame: { type: "Data" as any, payload: undefined } as DataFrame,
+        frame: { type: 'Data' as any, payload: undefined } as DataFrame,
       });
 
       // This should handle the encoding error gracefully and not throw
@@ -1256,7 +1318,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle simple flow control configuration", async () => {
+    test('should handle simple flow control configuration', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         flowControl: true,
@@ -1267,9 +1329,9 @@ describe("BaseAsyncConnector", () => {
 
       // Send a simple message to test flow control path
       const message = createFameEnvelope({
-        frame: { type: "Data", payload: { test: "data" } } as DataFrame,
-        traceId: "trace-1",
-        flowId: "test-flow",
+        frame: { type: 'Data', payload: { test: 'data' } } as DataFrame,
+        traceId: 'trace-1',
+        flowId: 'test-flow',
         windowId: 1,
       });
 
@@ -1277,7 +1339,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle close with different configurations", async () => {
+    test('should handle close with different configurations', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1290,7 +1352,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle message send with transport encoding variations", async () => {
+    test('should handle message send with transport encoding variations', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
@@ -1298,15 +1360,15 @@ describe("BaseAsyncConnector", () => {
       // Test send with different envelope structures
       const envelopes = [
         createFameEnvelope({
-          frame: { type: "Data", payload: null } as DataFrame,
-          traceId: "test-trace-1",
-          flowId: "test-flow",
+          frame: { type: 'Data', payload: null } as DataFrame,
+          traceId: 'test-trace-1',
+          flowId: 'test-flow',
           windowId: 1,
         }),
         createFameEnvelope({
-          frame: { type: "Data", payload: { test: true } } as DataFrame,
-          traceId: "test-trace-2",
-          flowId: "test-flow",
+          frame: { type: 'Data', payload: { test: true } } as DataFrame,
+          traceId: 'test-trace-2',
+          flowId: 'test-flow',
           windowId: 2,
         }),
       ];
@@ -1318,7 +1380,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle receive with flow control credit emission edge cases", async () => {
+    test('should handle receive with flow control credit emission edge cases', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         flowControl: true,
@@ -1329,16 +1391,16 @@ describe("BaseAsyncConnector", () => {
 
       // Send messages that would trigger credit emission
       const message1 = createFameEnvelope({
-        frame: { type: "Data", payload: { index: 1 } } as DataFrame,
-        traceId: "trace-1",
-        flowId: "test-flow",
+        frame: { type: 'Data', payload: { index: 1 } } as DataFrame,
+        traceId: 'trace-1',
+        flowId: 'test-flow',
         windowId: 1,
       });
 
       const message2 = createFameEnvelope({
-        frame: { type: "Data", payload: { index: 2 } } as DataFrame,
-        traceId: "trace-2",
-        flowId: "test-flow",
+        frame: { type: 'Data', payload: { index: 2 } } as DataFrame,
+        traceId: 'trace-2',
+        flowId: 'test-flow',
         windowId: 2,
       });
 
@@ -1351,7 +1413,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle different transport receive message types", async () => {
+    test('should handle different transport receive message types', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
@@ -1373,7 +1435,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle graceful shutdown edge cases", async () => {
+    test('should handle graceful shutdown edge cases', async () => {
       const connector = new TestAsyncConnector({
         ...fastTestConfig,
         shutdownTimeouts: {
@@ -1386,9 +1448,9 @@ describe("BaseAsyncConnector", () => {
 
       // Send a message then close quickly to test shutdown timing
       const message = createFameEnvelope({
-        frame: { type: "Data", payload: { test: "shutdown" } } as DataFrame,
-        traceId: "shutdown-trace",
-        flowId: "test-flow",
+        frame: { type: 'Data', payload: { test: 'shutdown' } } as DataFrame,
+        traceId: 'shutdown-trace',
+        flowId: 'test-flow',
         windowId: 1,
       });
 
@@ -1398,14 +1460,14 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should handle constructor with explicit undefined signal", () => {
+    test('should handle constructor with explicit undefined signal', () => {
       // Test constructor branch when signal is explicitly undefined
       const connector = new TestAsyncConnector(fastTestConfig);
 
       expect(connector.state).toBe(ConnectorState.INITIALIZED);
     });
 
-    test("should handle send with different envelope encoding edge cases", async () => {
+    test('should handle send with different envelope encoding edge cases', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
@@ -1413,15 +1475,15 @@ describe("BaseAsyncConnector", () => {
       // Test envelope with edge case values
       const edgeEnvelope = createFameEnvelope({
         frame: {
-          type: "Data",
+          type: 'Data',
           payload: {
-            largeString: "x".repeat(100),
-            specialChars: "test-chars",
+            largeString: 'x'.repeat(100),
+            specialChars: 'test-chars',
             numbers: [Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, 0, -0],
           },
         } as DataFrame,
-        traceId: "edge-trace",
-        flowId: "edge-flow",
+        traceId: 'edge-trace',
+        flowId: 'edge-flow',
         windowId: Number.MAX_SAFE_INTEGER,
       });
 
@@ -1429,7 +1491,7 @@ describe("BaseAsyncConnector", () => {
       await connector.close();
     });
 
-    test("should process stop sentinel in send loop correctly", async () => {
+    test('should process stop sentinel in send loop correctly', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
       await connector.start(mockHandler);
@@ -1437,9 +1499,9 @@ describe("BaseAsyncConnector", () => {
       // Send multiple messages to ensure send loop is processing queue
       const messages = Array.from({ length: 3 }, (_, i) =>
         createFameEnvelope({
-          frame: { type: "Data", payload: { index: i } } as DataFrame,
+          frame: { type: 'Data', payload: { index: i } } as DataFrame,
           traceId: `trace-${i}`,
-          flowId: "test-flow",
+          flowId: 'test-flow',
           windowId: i + 1,
         })
       );
@@ -1456,7 +1518,7 @@ describe("BaseAsyncConnector", () => {
       expect(connector.state).toBe(ConnectorState.CLOSED);
     });
 
-    test("should handle handler already defined error condition", async () => {
+    test('should handle handler already defined error condition', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1464,10 +1526,12 @@ describe("BaseAsyncConnector", () => {
       (connector as any)._handler = mockHandler;
 
       // Try to start - should hit the handler undefined check
-      await expect(connector.start(mockHandler)).rejects.toThrow("Connector already started");
+      await expect(connector.start(mockHandler)).rejects.toThrow(
+        'Connector already started'
+      );
     });
 
-    test("should handle send loop shutdown flag properly", async () => {
+    test('should handle send loop shutdown flag properly', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1475,7 +1539,7 @@ describe("BaseAsyncConnector", () => {
 
       // Add data to ensure there's something to process
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "test" } as DataFrame,
+        frame: { type: 'Data', payload: 'test' } as DataFrame,
       });
       await connector.send(envelope);
 
@@ -1484,7 +1548,9 @@ describe("BaseAsyncConnector", () => {
       let shutdownTriggered = false;
       const originalTransportSend = (connector as any)._transportSendBytes;
 
-      (connector as any)._transportSendBytes = async function (data: Uint8Array) {
+      (connector as any)._transportSendBytes = async function (
+        data: Uint8Array
+      ) {
         if (!shutdownTriggered) {
           // Set shutdown flag right before sending - this should hit line 391 on next iteration
           shutdownTriggered = true;
@@ -1492,7 +1558,7 @@ describe("BaseAsyncConnector", () => {
 
           // Add another item to ensure the loop continues and hits the shutdown check
           const envelope2 = createFameEnvelope({
-            frame: { type: "Data", payload: "test2" } as DataFrame,
+            frame: { type: 'Data', payload: 'test2' } as DataFrame,
           });
           await this.send(envelope2);
         }
@@ -1505,7 +1571,7 @@ describe("BaseAsyncConnector", () => {
       await connector.stop();
     });
 
-    test("should handle TaskCancellationError in receive loop with debug logging", async () => {
+    test('should handle TaskCancellationError in receive loop with debug logging', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1513,13 +1579,17 @@ describe("BaseAsyncConnector", () => {
 
       // Mock the transport receive to throw TaskCancellationError
       const originalTransportReceive = (connector as any)._transportReceive;
-      (connector as any)._transportReceive = jest.fn().mockImplementation(async () => {
-        // Import TaskCancellationError from the connector file
-        const { TaskCancellationError } = await import(
-          "../naylence/fame/connector/base-async-connector"
-        );
-        throw new TaskCancellationError("Simulated receive task cancellation");
-      });
+      (connector as any)._transportReceive = jest
+        .fn()
+        .mockImplementation(async () => {
+          // Import TaskCancellationError from the connector file
+          const { TaskCancellationError } = await import(
+            '../naylence/fame/connector/base-async-connector'
+          );
+          throw new TaskCancellationError(
+            'Simulated receive task cancellation'
+          );
+        });
 
       // Give time for the receive loop to process and hit the TaskCancellationError
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -1530,7 +1600,7 @@ describe("BaseAsyncConnector", () => {
       await connector.stop();
     });
 
-    test("should handle TaskCancellationError in send loop with debug logging", async () => {
+    test('should handle TaskCancellationError in send loop with debug logging', async () => {
       const connector = new TestAsyncConnector(fastTestConfig);
       const mockHandler = jest.fn();
 
@@ -1538,19 +1608,21 @@ describe("BaseAsyncConnector", () => {
 
       // Add data to the send queue
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "test" } as DataFrame,
+        frame: { type: 'Data', payload: 'test' } as DataFrame,
       });
       await connector.send(envelope);
 
       // Mock the transport send to throw TaskCancellationError
       const originalTransportSend = (connector as any)._transportSendBytes;
-      (connector as any)._transportSendBytes = jest.fn().mockImplementation(async () => {
-        // Import TaskCancellationError from the connector file
-        const { TaskCancellationError } = await import(
-          "../naylence/fame/connector/base-async-connector"
-        );
-        throw new TaskCancellationError("Simulated task cancellation");
-      });
+      (connector as any)._transportSendBytes = jest
+        .fn()
+        .mockImplementation(async () => {
+          // Import TaskCancellationError from the connector file
+          const { TaskCancellationError } = await import(
+            '../naylence/fame/connector/base-async-connector'
+          );
+          throw new TaskCancellationError('Simulated task cancellation');
+        });
 
       // Give time for the send loop to process and hit the TaskCancellationError
       await new Promise((resolve) => setTimeout(resolve, 200));

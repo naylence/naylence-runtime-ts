@@ -1,4 +1,4 @@
-import type { AdmissionClient } from "../node/admission/admission-client.js";
+import type { AdmissionClient } from '../node/admission/admission-client.js';
 
 export interface PeerOptions {
   admissionClient: AdmissionClient;

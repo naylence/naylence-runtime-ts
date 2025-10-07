@@ -1,7 +1,10 @@
-import "./load-balancer-stickiness-manager-factory.js";
-export * from "./load-balancer-stickiness-manager.js";
-export * from "./simple-load-balancer-stickiness-manager.js";
-export * from "./simple-load-balancer-stickiness-manager-factory.js";
-export { LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE } from "./load-balancer-stickiness-manager-factory.js";
-export type * from "./load-balancer-stickiness-manager-factory.js";
-
+import './load-balancer-stickiness-manager-factory.js';
+import './replica-stickiness-manager-factory.js';
+export * from './load-balancer-stickiness-manager.js';
+export * from './simple-load-balancer-stickiness-manager.js';
+export * from './simple-load-balancer-stickiness-manager-factory.js';
+export { LOAD_BALANCER_STICKINESS_MANAGER_FACTORY_BASE_TYPE } from './load-balancer-stickiness-manager-factory.js';
+export * from './load-balancer-stickiness-manager-factory.js';
+export * from './replica-stickiness-manager.js';
+export * from './replica-stickiness-manager-factory.js';
+export { REPLICA_STICKINESS_MANAGER_FACTORY_BASE_TYPE } from './replica-stickiness-manager-factory.js';

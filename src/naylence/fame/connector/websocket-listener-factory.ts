@@ -1,36 +1,39 @@
-import type { TransportListener } from "./transport-listener.js";
+import type { TransportListener } from './transport-listener.js';
 import {
   TransportListenerFactory,
   TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
-} from "./transport-listener-factory.js";
-import type { TransportListenerConfig } from "./transport-listener-config.js";
-import type { Authorizer } from "../security/auth/authorizer.js";
-import { AuthorizerFactory } from "../security/auth/authorizer-factory.js";
-import { safeImport } from "../util/lazy-import.js";
+} from './transport-listener-factory.js';
+import type { TransportListenerConfig } from './transport-listener-config.js';
+import type { Authorizer } from '../security/auth/authorizer.js';
+import { AuthorizerFactory } from '../security/auth/authorizer-factory.js';
+import { safeImport } from '../util/lazy-import.js';
 
-export interface WebSocketListenerFactoryConfig extends TransportListenerConfig {
-  type: "WebSocketListener";
+export interface WebSocketListenerFactoryConfig
+  extends TransportListenerConfig {
+  type: 'WebSocketListener';
   host?: string;
   port?: number;
   authorizer?: Record<string, unknown> | null;
 }
 
-const ENV_WEBSOCKET_LISTENER_PORT = "FAME_WEBSOCKET_LISTENER_PORT";
+const ENV_WEBSOCKET_LISTENER_PORT = 'FAME_WEBSOCKET_LISTENER_PORT';
 
-type DefaultHttpServerModule = typeof import("./default-http-server.js");
-type WebSocketListenerModule = typeof import("./websocket-listener.js");
+type DefaultHttpServerModule = typeof import('./default-http-server.js');
+type WebSocketListenerModule = typeof import('./websocket-listener.js');
 
-let defaultHttpServerModulePromise: Promise<DefaultHttpServerModule> | null = null;
-let webSocketListenerModulePromise: Promise<WebSocketListenerModule> | null = null;
+let defaultHttpServerModulePromise: Promise<DefaultHttpServerModule> | null =
+  null;
+let webSocketListenerModulePromise: Promise<WebSocketListenerModule> | null =
+  null;
 
 function getWebSocketListenerModule(): Promise<WebSocketListenerModule> {
   if (!webSocketListenerModulePromise) {
     webSocketListenerModulePromise = safeImport(
-      () => import("./websocket-listener.js"),
-      "websocket listener implementation",
+      () => import('./websocket-listener.js'),
+      'websocket listener implementation',
       {
         helpMessage:
-          "Failed to load the WebSocket listener implementation. Install optional transport dependencies.",
+          'Failed to load the WebSocket listener implementation. Install optional transport dependencies.',
       }
     );
   }
@@ -40,8 +43,8 @@ function getWebSocketListenerModule(): Promise<WebSocketListenerModule> {
 function getDefaultHttpServerModule(): Promise<DefaultHttpServerModule> {
   if (!defaultHttpServerModulePromise) {
     defaultHttpServerModulePromise = safeImport(
-      () => import("./default-http-server.js"),
-      "fastify/@fastify/websocket"
+      () => import('./default-http-server.js'),
+      'fastify/@fastify/websocket'
     );
   }
   return defaultHttpServerModulePromise;
@@ -49,33 +52,39 @@ function getDefaultHttpServerModule(): Promise<DefaultHttpServerModule> {
 
 function normalizeConfig(
   config?: WebSocketListenerFactoryConfig | Record<string, unknown> | null
-): Required<Pick<WebSocketListenerFactoryConfig, "host" | "port">> & {
-  type: "WebSocketListener";
+): Required<Pick<WebSocketListenerFactoryConfig, 'host' | 'port'>> & {
+  type: 'WebSocketListener';
   authorizer: Record<string, unknown> | null;
 } {
   const record = (config ?? {}) as Record<string, unknown>;
 
   const hostValue =
-    typeof record.host === "string" && record.host.trim().length > 0 ? record.host : "0.0.0.0";
+    typeof record.host === 'string' && record.host.trim().length > 0
+      ? record.host
+      : '0.0.0.0';
 
   let portValue: number | undefined;
-  if (typeof record.port === "number" && Number.isFinite(record.port)) {
+  if (typeof record.port === 'number' && Number.isFinite(record.port)) {
     portValue = record.port;
   } else {
     const envPort =
-      typeof process !== "undefined" ? process.env?.[ENV_WEBSOCKET_LISTENER_PORT] : undefined;
+      typeof process !== 'undefined'
+        ? process.env?.[ENV_WEBSOCKET_LISTENER_PORT]
+        : undefined;
     const parsedEnvPort = envPort ? Number(envPort) : NaN;
     portValue = Number.isFinite(parsedEnvPort) ? parsedEnvPort : 0;
   }
 
   const rawAuthorizer = record.authorizer ?? null;
   const authorizerValue =
-    rawAuthorizer && typeof rawAuthorizer === "object" && !Array.isArray(rawAuthorizer)
+    rawAuthorizer &&
+    typeof rawAuthorizer === 'object' &&
+    !Array.isArray(rawAuthorizer)
       ? (rawAuthorizer as Record<string, unknown>)
       : null;
 
   return {
-    type: "WebSocketListener",
+    type: 'WebSocketListener',
     host: hostValue,
     port: portValue ?? 0,
     authorizer: authorizerValue,
@@ -84,11 +93,11 @@ function normalizeConfig(
 
 export const FACTORY_META = {
   base: TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
-  key: "WebSocketListener",
+  key: 'WebSocketListener',
 } as const;
 
 export class WebSocketListenerFactory extends TransportListenerFactory<WebSocketListenerFactoryConfig> {
-  public readonly type = "WebSocketListener";
+  public readonly type = 'WebSocketListener';
   public readonly isDefault = true;
   public readonly priority = 900;
 
@@ -103,14 +112,17 @@ export class WebSocketListenerFactory extends TransportListenerFactory<WebSocket
       getDefaultHttpServerModule(),
     ]);
 
-    const options = (factoryArgs[0] ?? null) as { authorizer?: Authorizer } | null;
+    const options = (factoryArgs[0] ?? null) as {
+      authorizer?: Authorizer;
+    } | null;
     const providedAuthorizer = options?.authorizer ?? null;
 
     let authorizer = providedAuthorizer ?? null;
     if (!authorizer && normalized.authorizer) {
       authorizer =
-        (await AuthorizerFactory.createAuthorizer(normalized.authorizer, { validate: false })) ??
-        null;
+        (await AuthorizerFactory.createAuthorizer(normalized.authorizer, {
+          validate: false,
+        })) ?? null;
     }
 
     const httpServer = await DefaultHttpServer.getOrCreate({
@@ -118,7 +130,10 @@ export class WebSocketListenerFactory extends TransportListenerFactory<WebSocket
       port: normalized.port,
     });
 
-    return new WebSocketListener({ httpServer, authorizer: authorizer ?? undefined });
+    return new WebSocketListener({
+      httpServer,
+      authorizer: authorizer ?? undefined,
+    });
   }
 }
 

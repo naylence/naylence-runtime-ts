@@ -6,8 +6,8 @@
  * • Used by connector factories to configure connectors in this process
  */
 
-import type { ResourceConfig } from "naylence-factory";
-export type { ResourceConfig } from "naylence-factory";
+import type { ResourceConfig } from 'naylence-factory';
+export type { ResourceConfig } from 'naylence-factory';
 
 /**
  * Base class for connector configurations.
@@ -34,19 +34,19 @@ export const ConnectorConfigDefaults = {
  * Type guard to check if an object is a valid ConnectorConfig
  */
 export function isConnectorConfig(obj: unknown): obj is ConnectorConfig {
-  if (!obj || typeof obj !== "object") {
+  if (!obj || typeof obj !== 'object') {
     return false;
   }
 
   const config = obj as Record<string, unknown>;
-  return typeof config.type === "string";
+  return typeof config.type === 'string';
 }
 
 /**
  * Utility function to create a connector config with defaults applied
  */
 export function createConnectorConfig<T extends ConnectorConfig>(
-  config: Partial<T> & Pick<T, "type">
+  config: Partial<T> & Pick<T, 'type'>
 ): T {
   return {
     ...ConnectorConfigDefaults,

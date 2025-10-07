@@ -1,8 +1,12 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
-import type { TokenProvider } from "./token-provider.js";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
+import type { TokenProvider } from './token-provider.js';
 
-export const TOKEN_PROVIDER_FACTORY_BASE_TYPE = "TokenProviderFactory";
+export const TOKEN_PROVIDER_FACTORY_BASE_TYPE = 'TokenProviderFactory';
 
 export interface TokenProviderConfig extends ResourceConfig {
   type: string;
@@ -17,7 +21,9 @@ export abstract class TokenProviderFactory<
     ...factoryArgs: unknown[]
   ): Promise<TokenProvider>;
 
-  public static async createTokenProvider<C extends TokenProviderConfig = TokenProviderConfig>(
+  public static async createTokenProvider<
+    C extends TokenProviderConfig = TokenProviderConfig,
+  >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<TokenProvider> {
@@ -29,7 +35,7 @@ export abstract class TokenProviderFactory<
       );
 
       if (!provider) {
-        throw new Error("Failed to create token provider from configuration");
+        throw new Error('Failed to create token provider from configuration');
       }
 
       return provider;
@@ -44,13 +50,13 @@ export abstract class TokenProviderFactory<
       );
     } catch (error) {
       const message =
-        "Failed to create default token provider" +
-        (error instanceof Error && error.message ? `: ${error.message}` : "");
+        'Failed to create default token provider' +
+        (error instanceof Error && error.message ? `: ${error.message}` : '');
       throw new Error(message);
     }
 
     if (!provider) {
-      throw new Error("Failed to create default token provider");
+      throw new Error('Failed to create default token provider');
     }
 
     return provider;

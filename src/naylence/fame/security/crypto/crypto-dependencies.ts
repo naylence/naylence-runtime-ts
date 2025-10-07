@@ -6,17 +6,19 @@ function detectWebCrypto(): boolean {
   }
 
   webCryptoAvailable =
-    typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.subtle !== "undefined";
+    typeof globalThis.crypto !== 'undefined' &&
+    typeof globalThis.crypto.subtle !== 'undefined';
   return webCryptoAvailable;
 }
 
 function detectNativeNodeCrypto(): boolean {
-  if (typeof globalThis.process === "undefined") {
+  if (typeof globalThis.process === 'undefined') {
     return false;
   }
 
   try {
-    const { webcrypto } = require("node:crypto") as typeof import("node:crypto");
+    const { webcrypto } =
+      require('node:crypto') as typeof import('node:crypto');
     return Boolean(webcrypto?.subtle);
   } catch {
     return false;

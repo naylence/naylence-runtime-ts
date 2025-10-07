@@ -61,24 +61,31 @@ export class NoOpMetricsEmitter implements MetricsEmitter {
  * Logs all metrics to the console in a structured format.
  */
 export class ConsoleMetricsEmitter implements MetricsEmitter {
-  constructor(private readonly prefix: string = "[METRICS]") {}
+  constructor(private readonly prefix: string = '[METRICS]') {}
 
   counter(name: string, value: number, tags?: MetricTags): void {
-    this.logMetric("COUNTER", name, value, tags);
+    this.logMetric('COUNTER', name, value, tags);
   }
 
   gauge(name: string, value: number, tags?: MetricTags): void {
-    this.logMetric("GAUGE", name, value, tags);
+    this.logMetric('GAUGE', name, value, tags);
   }
 
   histogram(name: string, value: number, tags?: MetricTags): void {
-    this.logMetric("HISTOGRAM", name, value, tags);
+    this.logMetric('HISTOGRAM', name, value, tags);
   }
 
-  private logMetric(type: string, name: string, value: number, tags?: MetricTags): void {
+  private logMetric(
+    type: string,
+    name: string,
+    value: number,
+    tags?: MetricTags
+  ): void {
     const timestamp = new Date().toISOString();
-    const tagsStr = tags ? ` tags=${JSON.stringify(tags)}` : "";
-    console.log(`${this.prefix} ${timestamp} ${type} ${name}=${value}${tagsStr}`);
+    const tagsStr = tags ? ` tags=${JSON.stringify(tags)}` : '';
+    console.log(
+      `${this.prefix} ${timestamp} ${type} ${name}=${value}${tagsStr}`
+    );
   }
 }
 
@@ -88,7 +95,7 @@ export class ConsoleMetricsEmitter implements MetricsEmitter {
  */
 export class MemoryMetricsEmitter implements MetricsEmitter {
   private readonly metrics: Array<{
-    type: "counter" | "gauge" | "histogram";
+    type: 'counter' | 'gauge' | 'histogram';
     name: string;
     value: number;
     tags?: MetricTags;
@@ -96,19 +103,19 @@ export class MemoryMetricsEmitter implements MetricsEmitter {
   }> = [];
 
   counter(name: string, value: number, tags?: MetricTags): void {
-    this.recordMetric("counter", name, value, tags);
+    this.recordMetric('counter', name, value, tags);
   }
 
   gauge(name: string, value: number, tags?: MetricTags): void {
-    this.recordMetric("gauge", name, value, tags);
+    this.recordMetric('gauge', name, value, tags);
   }
 
   histogram(name: string, value: number, tags?: MetricTags): void {
-    this.recordMetric("histogram", name, value, tags);
+    this.recordMetric('histogram', name, value, tags);
   }
 
   private recordMetric(
-    type: "counter" | "gauge" | "histogram",
+    type: 'counter' | 'gauge' | 'histogram',
     name: string,
     value: number,
     tags?: MetricTags
@@ -132,7 +139,7 @@ export class MemoryMetricsEmitter implements MetricsEmitter {
   /**
    * Get metrics filtered by type.
    */
-  getMetricsByType(type: "counter" | "gauge" | "histogram") {
+  getMetricsByType(type: 'counter' | 'gauge' | 'histogram') {
     return this.metrics.filter((m) => m.type === type);
   }
 

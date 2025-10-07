@@ -15,27 +15,30 @@ import {
   localDeliveryContext,
   parseAddress,
   parseAddressComponents,
-} from "naylence-core";
+} from 'naylence-core';
 import type {
   AddressBindAckFrame,
   AddressUnbindAckFrame,
   CapabilityAdvertiseAckFrame,
   CapabilityWithdrawAckFrame,
-} from "naylence-core";
-import { InMemoryReadWriteChannel } from "../channel/in-memory/in-memory-channel.js";
-import type { KeyValueStore } from "../storage/key-value-store.js";
-import { InMemoryKeyValueStore } from "../storage/in-memory-storage.js";
-import type { EnvelopeFactory } from "naylence-core";
-import { currentTraceId } from "../util/envelope-context.js";
-import { getLogger } from "../util/logging.js";
-import { isPoolLogical, matchesPoolLogical } from "../util/logicals.js";
+} from 'naylence-core';
+import { InMemoryReadWriteChannel } from '../channel/in-memory/in-memory-channel.js';
+import type { KeyValueStore } from '../storage/key-value-store.js';
+import { InMemoryKeyValueStore } from '../storage/in-memory-storage.js';
+import type { EnvelopeFactory } from 'naylence-core';
+import { currentTraceId } from '../util/envelope-context.js';
+import { getLogger } from '../util/logging.js';
+import { isPoolLogical, matchesPoolLogical } from '../util/logicals.js';
 
-const logger = getLogger("binding-manager");
+const logger = getLogger('binding-manager');
 
-const SYSTEM_INBOX = "__sys__";
+const SYSTEM_INBOX = '__sys__';
 const DEFAULT_ACK_TIMEOUT_MS = 20_000;
 
-type ForwardUpstreamFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<void>;
+type ForwardUpstreamFn = (
+  envelope: FameEnvelope,
+  context?: FameDeliveryContext
+) => Promise<void>;
 
 type BindingFactory = (address: FameAddress) => Binding;
 
@@ -82,7 +85,9 @@ export class BindingManager {
   private readonly getPhysicalPath: () => string;
   private readonly getAcceptedLogicalsFn: () => Iterable<string>;
   private readonly forwardUpstream: ForwardUpstreamFn;
-  private readonly getEncryptionKeyId: (() => string | null | undefined) | undefined;
+  private readonly getEncryptionKeyId:
+    | (() => string | null | undefined)
+    | undefined;
   private readonly bindingStore: KeyValueStore<BindingStoreEntry>;
   private readonly bindingFactory: BindingFactory;
   private readonly envelopeFactory: EnvelopeFactory;
@@ -99,7 +104,8 @@ export class BindingManager {
     this.getAcceptedLogicalsFn = options.getAcceptedLogicals;
     this.forwardUpstream = options.forwardUpstream;
     this.getEncryptionKeyId = options.getEncryptionKeyId;
-    this.bindingStore = options.bindingStore ?? new InMemoryKeyValueStore<BindingStoreEntry>();
+    this.bindingStore =
+      options.bindingStore ?? new InMemoryKeyValueStore<BindingStoreEntry>();
     this.bindingFactory = options.bindingFactory ?? this.defaultBindingFactory;
     this.envelopeFactory = options.envelopeFactory;
     this.deliveryTracker = options.deliveryTracker;
@@ -133,7 +139,7 @@ export class BindingManager {
       if (!this.bindings.has(key)) {
         const binding = this.bindingFactory(new FameAddress(key));
         this.bindings.set(key, binding);
-        logger.debug("restored_binding", { address: key });
+        logger.debug('restored_binding', { address: key });
       }
     }
 
@@ -145,8 +151,11 @@ export class BindingManager {
     await this.readvertiseCapabilitiesUpstream();
   }
 
-  async bind(participant: string, capabilities?: string[] | null): Promise<Binding> {
-    logger.debug("binding_participant", { participant });
+  async bind(
+    participant: string,
+    capabilities?: string[] | null
+  ): Promise<Binding> {
+    logger.debug('binding_participant', { participant });
 
     const { prefixAddress, addresses, propagateAddress, capabilityAddress } =
       this.computeBindingAddresses(participant);
@@ -155,7 +164,7 @@ export class BindingManager {
       if (!this.bindings.has(address)) {
         const binding = this.bindingFactory(new FameAddress(address));
         this.bindings.set(address, binding);
-        logger.debug("bound_address", { address, participant });
+        logger.debug('bound_address', { address, participant });
       }
     }
 
@@ -172,7 +181,12 @@ export class BindingManager {
       }
     }
 
-    if (capabilities && capabilities.length && this.hasUpstream && capabilityAddress) {
+    if (
+      capabilities &&
+      capabilities.length &&
+      this.hasUpstream &&
+      capabilityAddress
+    ) {
       try {
         await this.advertiseCapabilities(capabilityAddress, capabilities);
       } catch (error) {
@@ -180,7 +194,7 @@ export class BindingManager {
           try {
             await this.unbindAddressUpstream(propagatedAddress);
           } catch (rollbackError) {
-            logger.error("bind_rollback_failed", {
+            logger.error('bind_rollback_failed', {
               address: propagatedAddress.toString(),
               error: (rollbackError as Error).message,
             });
@@ -197,7 +211,7 @@ export class BindingManager {
       await this.bindingStore.set(address, { address });
     }
 
-    logger.debug("bind_success", {
+    logger.debug('bind_success', {
       participant,
       address: prefixAddress.toString(),
       capabilities,
@@ -206,7 +220,7 @@ export class BindingManager {
 
     const binding = this.bindings.get(prefixAddress.toString());
     if (!binding) {
-      throw new Error("Binding was not created");
+      throw new Error('Binding was not created');
     }
 
     if (capabilities && capabilities.length && capabilityAddress) {
@@ -220,8 +234,13 @@ export class BindingManager {
   }
 
   async unbind(participant: string): Promise<void> {
-    const { prefixAddress, instanceAddress, addresses, propagateAddress, capabilityAddress } =
-      this.computeBindingAddresses(participant, { requireExisting: true });
+    const {
+      prefixAddress,
+      instanceAddress,
+      addresses,
+      propagateAddress,
+      capabilityAddress,
+    } = this.computeBindingAddresses(participant, { requireExisting: true });
 
     if (this.hasUpstream && capabilityAddress) {
       const key = capabilityAddress.toString();
@@ -242,7 +261,7 @@ export class BindingManager {
       }
     }
 
-    logger.debug("unbind_success", {
+    logger.debug('unbind_success', {
       participant,
       address: prefixAddress.toString(),
       totalBindings: this.bindings.size,
@@ -257,11 +276,20 @@ export class BindingManager {
     this.bindings.clear();
     this.capabilitiesByAddress.clear();
     const entries = await this.bindingStore.list();
-    await Promise.all(Object.keys(entries).map((key) => this.bindingStore.delete(key)));
+    await Promise.all(
+      Object.keys(entries).map((key) => this.bindingStore.delete(key))
+    );
   }
 
-  async handleAck(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
-    await this.deliveryTracker.onEnvelopeDelivered(SYSTEM_INBOX, envelope, context);
+  async handleAck(
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<void> {
+    await this.deliveryTracker.onEnvelopeDelivered(
+      SYSTEM_INBOX,
+      envelope,
+      context
+    );
   }
 
   async rebindAddressesUpstream(): Promise<void> {
@@ -276,7 +304,7 @@ export class BindingManager {
       try {
         await this.bindAddressUpstream(new FameAddress(address));
       } catch (error) {
-        logger.error("rebind_failed", {
+        logger.error('rebind_failed', {
           address,
           error: (error as Error).message,
         });
@@ -289,14 +317,20 @@ export class BindingManager {
       return;
     }
 
-    for (const [address, capabilities] of this.capabilitiesByAddress.entries()) {
+    for (const [
+      address,
+      capabilities,
+    ] of this.capabilitiesByAddress.entries()) {
       if (!capabilities.size) {
         continue;
       }
       try {
-        await this.advertiseCapabilities(new FameAddress(address), Array.from(capabilities));
+        await this.advertiseCapabilities(
+          new FameAddress(address),
+          Array.from(capabilities)
+        );
       } catch (error) {
-        logger.error("capability_replay_failed", {
+        logger.error('capability_replay_failed', {
           address,
           error: (error as Error).message,
         });
@@ -329,7 +363,7 @@ export class BindingManager {
         if (!matchesPoolLogical(host, storedHost)) {
           continue;
         }
-        const specificity = storedHost.split(".").length;
+        const specificity = storedHost.split('.').length;
         candidates.push({ specificity, binding });
       } catch {
         continue;
@@ -350,7 +384,7 @@ export class BindingManager {
   ) {
     let name: string;
     let location: string;
-    if (participant.includes("@")) {
+    if (participant.includes('@')) {
       [name, location] = parseAddress(participant);
     } else {
       name = participant;
@@ -374,10 +408,19 @@ export class BindingManager {
 
     let poolClaim: string | null = null;
     let logical: string | null = null;
+
     if (isHostBased && host) {
+      // For host-based addresses (e.g., "svc@api.service"), check the host portion
       logical = host;
       if (!this.isAcceptedLogicalHost(logical, acceptedLogicals)) {
         poolClaim = this.findHostPoolClaim(acceptedLogicals, host);
+        logical = null; // Not a logical, might be a pool
+      }
+    } else {
+      // For path-based addresses (e.g., "svc@/path"), check the name portion
+      // This allows binding like bind("svc") to work when "svc" is in requestedLogicals
+      if (this.isAcceptedLogicalHost(name, acceptedLogicals)) {
+        logical = name;
       }
     }
 
@@ -386,17 +429,22 @@ export class BindingManager {
     if (poolClaim) {
       prefixAddress = formatAddressFromComponents(name, poolClaim);
       const targetHost =
-        host && host.includes("*")
-          ? host.replace("*", this.getId())
-          : poolClaim.replace("*", this.getId());
+        host && host.includes('*')
+          ? host.replace('*', this.getId())
+          : poolClaim.replace('*', this.getId());
       instanceAddress = formatAddressFromComponents(name, targetHost);
-    } else if (logical && this.isAcceptedLogicalHost(logical, acceptedLogicals)) {
+    } else if (
+      logical &&
+      this.isAcceptedLogicalHost(logical, acceptedLogicals)
+    ) {
       prefixAddress = baseAddress;
     } else if (location === this.getPhysicalPath()) {
       prefixAddress = baseAddress;
     } else {
       if (options.requireExisting !== true) {
-        throw new Error(`Cannot bind '${participant}': location '${location}' not permitted`);
+        throw new Error(
+          `Cannot bind '${participant}': location '${location}' not permitted`
+        );
       }
       prefixAddress = baseAddress;
     }
@@ -408,7 +456,7 @@ export class BindingManager {
     }
 
     const propagateAddress = this.hasUpstream
-      ? this.computePropagateAddress(prefixAddress, poolClaim)
+      ? this.computePropagateAddress(prefixAddress, poolClaim, logical)
       : null;
 
     const capabilityAddress = instanceAddress ?? prefixAddress;
@@ -424,21 +472,35 @@ export class BindingManager {
 
   private computePropagateAddress(
     prefixAddress: FameAddress,
-    poolClaim: string | null
+    poolClaim: string | null,
+    logical: string | null
   ): FameAddress | null {
     if (!this.hasUpstream) {
       return null;
     }
+
+    // Only propagate pool claims or accepted logical addresses upstream
+    // Physical addresses are NEVER propagated (matches Python implementation)
     if (poolClaim) {
       const [name] = parseAddress(prefixAddress.toString());
       return formatAddressFromComponents(name, poolClaim);
     }
-    return prefixAddress;
+
+    // Check if this is an accepted logical address (non-pool)
+    if (
+      logical &&
+      this.isAcceptedLogicalHost(logical, this.getAcceptedLogicalsSnapshot())
+    ) {
+      return prefixAddress;
+    }
+
+    // Physical addresses or non-accepted logicals are not propagated
+    return null;
   }
 
   private async bindAddressUpstream(address: FameAddress): Promise<void> {
     const frame: AddressBindFrame = {
-      type: "AddressBind",
+      type: 'AddressBind',
       address: address.toString(),
       physicalPath: this.getPhysicalPath(),
       encryptionKeyId: this.getEncryptionKeyId
@@ -455,7 +517,7 @@ export class BindingManager {
 
   private async unbindAddressUpstream(address: FameAddress): Promise<void> {
     const frame: AddressUnbindFrame = {
-      type: "AddressUnbind",
+      type: 'AddressUnbind',
       address: address.toString(),
     };
 
@@ -466,13 +528,16 @@ export class BindingManager {
     }
   }
 
-  private async advertiseCapabilities(address: FameAddress, capabilities: string[]): Promise<void> {
+  private async advertiseCapabilities(
+    address: FameAddress,
+    capabilities: string[]
+  ): Promise<void> {
     if (!capabilities.length) {
       return;
     }
 
     const frame: CapabilityAdvertiseFrame = {
-      type: "CapabilityAdvertise",
+      type: 'CapabilityAdvertise',
       address: address.toString(),
       capabilities,
     };
@@ -480,17 +545,22 @@ export class BindingManager {
     const ackEnvelope = await this.sendAndWaitForAck(frame);
     const ack = ackEnvelope.frame as CapabilityAdvertiseAckFrame;
     if (!ack.ok) {
-      throw new Error(`Capability advertise rejected: ${capabilities.join(", ")}`);
+      throw new Error(
+        `Capability advertise rejected: ${capabilities.join(', ')}`
+      );
     }
   }
 
-  async withdrawCapabilities(address: FameAddress, capabilities: string[]): Promise<void> {
+  async withdrawCapabilities(
+    address: FameAddress,
+    capabilities: string[]
+  ): Promise<void> {
     if (!capabilities.length) {
       return;
     }
 
     const frame: CapabilityWithdrawFrame = {
-      type: "CapabilityWithdraw",
+      type: 'CapabilityWithdraw',
       address: address.toString(),
       capabilities,
     };
@@ -498,7 +568,9 @@ export class BindingManager {
     const ackEnvelope = await this.sendAndWaitForAck(frame);
     const ack = ackEnvelope.frame as CapabilityWithdrawAckFrame;
     if (!ack.ok) {
-      throw new Error(`Capability withdraw rejected: ${capabilities.join(", ")}`);
+      throw new Error(
+        `Capability withdraw rejected: ${capabilities.join(', ')}`
+      );
     }
 
     const key = address.toString();
@@ -545,7 +617,10 @@ export class BindingManager {
     return ackPromise;
   }
 
-  private findHostPoolClaim(acceptedLogicals: Set<string>, logical: string): string | null {
+  private findHostPoolClaim(
+    acceptedLogicals: Set<string>,
+    logical: string
+  ): string | null {
     for (const pattern of acceptedLogicals) {
       if (isPoolLogical(pattern) && matchesPoolLogical(logical, pattern)) {
         return pattern;
@@ -554,7 +629,10 @@ export class BindingManager {
     return null;
   }
 
-  private isAcceptedLogicalHost(logical: string, acceptedLogicals: Set<string>): boolean {
+  private isAcceptedLogicalHost(
+    logical: string,
+    acceptedLogicals: Set<string>
+  ): boolean {
     return acceptedLogicals.has(logical) && !isPoolLogical(logical);
   }
 
@@ -575,7 +653,9 @@ export class BindingManager {
 
   private getAcceptedLogicalsSnapshot(): Set<string> {
     const values = this.getAcceptedLogicalsFn();
-    return values instanceof Set ? new Set(values) : new Set(Array.from(values));
+    return values instanceof Set
+      ? new Set(values)
+      : new Set(Array.from(values));
   }
 
   private defaultBindingFactory(address: FameAddress): Binding {

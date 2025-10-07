@@ -1,14 +1,15 @@
-import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
+import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
 import {
   LOAD_BALANCING_STRATEGY_FACTORY_BASE,
   LoadBalancingStrategyFactory,
   type LoadBalancingStrategyConfig,
-} from "./load-balancing-strategy-factory.js";
-import { StickyLoadBalancingStrategy } from "./sticky-load-balancing-strategy.js";
-import type { LoadBalancerStickinessManager } from "../../stickiness/load-balancer-stickiness-manager.js";
+} from './load-balancing-strategy-factory.js';
+import { StickyLoadBalancingStrategy } from './sticky-load-balancing-strategy.js';
+import type { LoadBalancerStickinessManager } from '../../stickiness/load-balancer-stickiness-manager.js';
 
-export interface StickyLoadBalancingStrategyConfig extends LoadBalancingStrategyConfig {
-  type: "StickyLoadBalancingStrategy";
+export interface StickyLoadBalancingStrategyConfig
+  extends LoadBalancingStrategyConfig {
+  type: 'StickyLoadBalancingStrategy';
 }
 
 interface StickyStrategyDependencies {
@@ -17,11 +18,11 @@ interface StickyStrategyDependencies {
 
 export const FACTORY_META = {
   base: LOAD_BALANCING_STRATEGY_FACTORY_BASE,
-  key: "StickyLoadBalancingStrategy",
+  key: 'StickyLoadBalancingStrategy',
 } as const;
 
 export class StickyLoadBalancingStrategyFactory extends LoadBalancingStrategyFactory {
-  public readonly type = "StickyLoadBalancingStrategy";
+  public readonly type = 'StickyLoadBalancingStrategy';
 
   public async create(
     config?: StickyLoadBalancingStrategyConfig | Record<string, unknown> | null,
@@ -31,7 +32,9 @@ export class StickyLoadBalancingStrategyFactory extends LoadBalancingStrategyFac
 
     const dependencies = this.extractDependencies(factoryArgs);
     if (!dependencies.stickinessManager) {
-      throw new Error("StickyLoadBalancingStrategy requires a stickinessManager dependency");
+      throw new Error(
+        'StickyLoadBalancingStrategy requires a stickinessManager dependency'
+      );
     }
 
     return new StickyLoadBalancingStrategy(dependencies.stickinessManager);
@@ -41,11 +44,16 @@ export class StickyLoadBalancingStrategyFactory extends LoadBalancingStrategyFac
     config?: StickyLoadBalancingStrategyConfig | Record<string, unknown> | null
   ): StickyLoadBalancingStrategyConfig {
     if (!config) {
-      throw new Error("StickyLoadBalancingStrategy requires configuration");
+      throw new Error('StickyLoadBalancingStrategy requires configuration');
     }
 
-    if ((config as { type?: unknown }).type && (config as { type?: unknown }).type !== this.type) {
-      throw new Error("StickyLoadBalancingStrategyFactory only supports sticky configurations");
+    if (
+      (config as { type?: unknown }).type &&
+      (config as { type?: unknown }).type !== this.type
+    ) {
+      throw new Error(
+        'StickyLoadBalancingStrategyFactory only supports sticky configurations'
+      );
     }
 
     return { type: this.type };
@@ -55,8 +63,8 @@ export class StickyLoadBalancingStrategyFactory extends LoadBalancingStrategyFac
     for (const arg of args) {
       if (
         arg &&
-        typeof arg === "object" &&
-        "stickinessManager" in (arg as Record<string, unknown>)
+        typeof arg === 'object' &&
+        'stickinessManager' in (arg as Record<string, unknown>)
       ) {
         return arg as StickyStrategyDependencies;
       }

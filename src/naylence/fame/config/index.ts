@@ -1,1 +1,1 @@
-export * from "./extended-fame-config.js";
+export * from './extended-fame-config.js';

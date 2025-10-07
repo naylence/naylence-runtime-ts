@@ -1,8 +1,13 @@
-import type { FameEnvelope } from "naylence-core";
-import { EncryptionResult, type EncryptionManager } from "./encryption-manager.js";
+import type { FameEnvelope } from 'naylence-core';
+import {
+  EncryptionResult,
+  type EncryptionManager,
+} from './encryption-manager.js';
 
 export class NoopEncryptionManager implements EncryptionManager {
-  public async encryptEnvelope(envelope: FameEnvelope): Promise<EncryptionResult> {
+  public async encryptEnvelope(
+    envelope: FameEnvelope
+  ): Promise<EncryptionResult> {
     return EncryptionResult.skipped(envelope);
   }
 

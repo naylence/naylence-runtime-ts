@@ -1,14 +1,15 @@
-import type { AuthInjectionStrategy } from "./auth-injection-strategy.js";
+import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
 import {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
   AuthInjectionStrategyFactory,
   type AuthInjectionStrategyConfig,
-} from "./auth-injection-strategy-factory.js";
-import { BearerTokenHeaderAuthInjectionStrategy } from "./bearer-token-header-auth-injection-strategy.js";
-import type { TokenProviderConfig } from "./token-provider-factory.js";
+} from './auth-injection-strategy-factory.js';
+import { BearerTokenHeaderAuthInjectionStrategy } from './bearer-token-header-auth-injection-strategy.js';
+import type { TokenProviderConfig } from './token-provider-factory.js';
 
-export interface BearerTokenHeaderAuthInjectionStrategyConfig extends AuthInjectionStrategyConfig {
-  type: "BearerTokenHeaderAuth";
+export interface BearerTokenHeaderAuthInjectionStrategyConfig
+  extends AuthInjectionStrategyConfig {
+  type: 'BearerTokenHeaderAuth';
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   token_provider?: TokenProviderConfig | Record<string, unknown>;
   headerName?: string;
@@ -17,21 +18,24 @@ export interface BearerTokenHeaderAuthInjectionStrategyConfig extends AuthInject
 }
 
 interface NormalizedBearerConfig {
-  type: "BearerTokenHeaderAuth";
+  type: 'BearerTokenHeaderAuth';
   tokenProvider: TokenProviderConfig | Record<string, unknown>;
   headerName: string;
 }
 
 export const FACTORY_META = {
   base: AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
-  key: "BearerTokenHeaderAuth",
+  key: 'BearerTokenHeaderAuth',
 } as const;
 
 export class BearerTokenHeaderAuthInjectionStrategyFactory extends AuthInjectionStrategyFactory<BearerTokenHeaderAuthInjectionStrategyConfig> {
-  public readonly type = "BearerTokenHeaderAuth";
+  public readonly type = 'BearerTokenHeaderAuth';
 
   public async create(
-    config?: BearerTokenHeaderAuthInjectionStrategyConfig | Record<string, unknown> | null
+    config?:
+      | BearerTokenHeaderAuthInjectionStrategyConfig
+      | Record<string, unknown>
+      | null
   ): Promise<AuthInjectionStrategy> {
     const normalized = normalizeConfig(config);
     return new BearerTokenHeaderAuthInjectionStrategy(normalized);
@@ -39,36 +43,42 @@ export class BearerTokenHeaderAuthInjectionStrategyFactory extends AuthInjection
 }
 
 function normalizeConfig(
-  config?: BearerTokenHeaderAuthInjectionStrategyConfig | Record<string, unknown> | null
+  config?:
+    | BearerTokenHeaderAuthInjectionStrategyConfig
+    | Record<string, unknown>
+    | null
 ): NormalizedBearerConfig {
   if (!config) {
-    throw new Error("BearerTokenHeaderAuthInjectionStrategy requires configuration");
+    throw new Error(
+      'BearerTokenHeaderAuthInjectionStrategy requires configuration'
+    );
   }
 
   const candidate = config as BearerTokenHeaderAuthInjectionStrategyConfig &
     Record<string, unknown>;
-  const type = typeof candidate.type === "string" ? candidate.type : undefined;
-  if (type !== "BearerTokenHeaderAuth") {
+  const type = typeof candidate.type === 'string' ? candidate.type : undefined;
+  if (type !== 'BearerTokenHeaderAuth') {
     throw new Error(
-      `BearerTokenHeaderAuthInjectionStrategyFactory expects type "BearerTokenHeaderAuth", got "${type ?? "undefined"}"`
+      `BearerTokenHeaderAuthInjectionStrategyFactory expects type "BearerTokenHeaderAuth", got "${type ?? 'undefined'}"`
     );
   }
 
   const tokenProvider = candidate.tokenProvider ?? candidate.token_provider;
   if (!tokenProvider) {
     throw new Error(
-      "BearerTokenHeaderAuthInjectionStrategy requires a tokenProvider configuration"
+      'BearerTokenHeaderAuthInjectionStrategy requires a tokenProvider configuration'
     );
   }
 
-  const headerCandidate = candidate.headerName ?? candidate.header_name ?? candidate.param;
+  const headerCandidate =
+    candidate.headerName ?? candidate.header_name ?? candidate.param;
   const headerName =
-    typeof headerCandidate === "string" && headerCandidate.trim().length > 0
+    typeof headerCandidate === 'string' && headerCandidate.trim().length > 0
       ? headerCandidate.trim()
-      : "Authorization";
+      : 'Authorization';
 
   return {
-    type: "BearerTokenHeaderAuth",
+    type: 'BearerTokenHeaderAuth',
     tokenProvider,
     headerName,
   };

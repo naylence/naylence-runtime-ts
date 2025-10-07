@@ -1,7 +1,7 @@
-import type { AddressInfo } from "node:net";
-import type { FastifyPluginAsync } from "fastify";
+import type { AddressInfo } from 'node:net';
+import type { FastifyPluginAsync } from 'fastify';
 
-jest.mock("@fastify/websocket", () => jest.fn());
+jest.mock('@fastify/websocket', () => jest.fn());
 
 type MockRegistration = {
   plugin: unknown;
@@ -20,7 +20,9 @@ type MockFastifyInstance = {
   };
 };
 
-type FastifyMockWithControls = jest.MockedFunction<() => MockFastifyInstance> & {
+type FastifyMockWithControls = jest.MockedFunction<
+  () => MockFastifyInstance
+> & {
   prepare(instance: MockFastifyInstance): void;
   resetMock(): void;
 };
@@ -31,12 +33,12 @@ type FastifyInstanceConfig = {
   includeUnref?: boolean;
 };
 
-jest.mock("fastify", () => {
+jest.mock('fastify', () => {
   const instances: MockFastifyInstance[] = [];
   const fastifyFn = jest.fn(() => {
     const next = instances.shift();
     if (!next) {
-      throw new Error("No mock Fastify instance prepared");
+      throw new Error('No mock Fastify instance prepared');
     }
     return next;
   }) as unknown as FastifyMockWithControls;
@@ -53,22 +55,24 @@ jest.mock("fastify", () => {
   };
 });
 
-const websocketPluginMock = jest.requireMock("@fastify/websocket") as jest.Mock;
-const { default: fastifyMock } = jest.requireMock("fastify") as {
+const websocketPluginMock = jest.requireMock('@fastify/websocket') as jest.Mock;
+const { default: fastifyMock } = jest.requireMock('fastify') as {
   default: FastifyMockWithControls;
 };
 
-const createFastifyInstance = (config: FastifyInstanceConfig = {}): MockFastifyInstance => {
+const createFastifyInstance = (
+  config: FastifyInstanceConfig = {}
+): MockFastifyInstance => {
   const registrations: MockRegistration[] = [];
-  const server: MockFastifyInstance["server"] = {
+  const server: MockFastifyInstance['server'] = {
     address: jest.fn(() => {
-      if (typeof config.addressValue === "function") {
+      if (typeof config.addressValue === 'function') {
         return (config.addressValue as () => unknown)();
       }
       if (config.addressValue !== undefined) {
         return config.addressValue;
       }
-      return { address: "::", port: 3210 } as AddressInfo;
+      return { address: '::', port: 3210 } as AddressInfo;
     }),
   };
 
@@ -78,13 +82,17 @@ const createFastifyInstance = (config: FastifyInstanceConfig = {}): MockFastifyI
 
   return {
     registrations,
-    register: jest.fn(async (plugin: unknown, options?: Record<string, unknown>) => {
-      registrations.push({ plugin, options });
-    }),
+    register: jest.fn(
+      async (plugin: unknown, options?: Record<string, unknown>) => {
+        registrations.push({ plugin, options });
+      }
+    ),
     listen: jest.fn(async ({ host, port }: { host: string; port: number }) => {
       void host;
       void port;
-      return config.listenResult !== undefined ? config.listenResult : "http://0.0.0.0:0";
+      return config.listenResult !== undefined
+        ? config.listenResult
+        : 'http://0.0.0.0:0';
     }),
     close: jest.fn(async () => {}),
     ready: jest.fn(async () => {}),
@@ -95,9 +103,9 @@ const createFastifyInstance = (config: FastifyInstanceConfig = {}): MockFastifyI
 const getRegistrationPlugins = (instance: MockFastifyInstance) =>
   instance.registrations.map((entry) => entry.plugin);
 
-import { DefaultHttpServer } from "../default-http-server.js";
+import { DefaultHttpServer } from '../default-http-server.js';
 
-describe("DefaultHttpServer", () => {
+describe('DefaultHttpServer', () => {
   beforeEach(async () => {
     websocketPluginMock.mockReset();
     fastifyMock.resetMock();
@@ -109,15 +117,22 @@ describe("DefaultHttpServer", () => {
     fastifyMock.resetMock();
   });
 
-  it("starts once, loads core plugins, and tracks actual base url", async () => {
+  it('starts once, loads core plugins, and tracks actual base url', async () => {
     const instance = createFastifyInstance({
-      addressValue: { address: "::", port: 4444, family: "IPv6" } as AddressInfo,
+      addressValue: {
+        address: '::',
+        port: 4444,
+        family: 'IPv6',
+      } as AddressInfo,
     });
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "127.0.0.1", port: 8080 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '127.0.0.1',
+      port: 8080,
+    });
 
-    expect(server.host).toBe("127.0.0.1");
+    expect(server.host).toBe('127.0.0.1');
     expect(server.port).toBe(8080);
     expect(server.fastifyInstance).toBe(instance);
     expect(server.isRunning).toBe(false);
@@ -126,12 +141,15 @@ describe("DefaultHttpServer", () => {
     await server.start();
 
     expect(instance.listen).toHaveBeenCalledTimes(1);
-    expect(instance.listen).toHaveBeenCalledWith({ host: "127.0.0.1", port: 8080 });
+    expect(instance.listen).toHaveBeenCalledWith({
+      host: '127.0.0.1',
+      port: 8080,
+    });
     expect(getRegistrationPlugins(instance)[0]).toBe(websocketPluginMock);
     expect(instance.registrations[0]?.options).toEqual({
       options: { maxPayload: 1024 * 1024, perMessageDeflate: false },
     });
-    expect(server.actualBaseUrl).toBe("http://127.0.0.1:4444");
+    expect(server.actualBaseUrl).toBe('http://127.0.0.1:4444');
     expect(server.isRunning).toBe(true);
 
     await server.start();
@@ -139,84 +157,101 @@ describe("DefaultHttpServer", () => {
     expect(instance.server.unref).toHaveBeenCalledTimes(1);
   });
 
-  it("derives actual address from listen return when server address is missing", async () => {
+  it('derives actual address from listen return when server address is missing', async () => {
     const instance = createFastifyInstance({
       addressValue: null,
-      listenResult: "http://service.local:4321",
+      listenResult: 'http://service.local:4321',
     });
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "0.0.0.0", port: 0 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '0.0.0.0',
+      port: 0,
+    });
 
     await server.start();
 
-    expect(server.actualHost).toBe("service.local");
+    expect(server.actualHost).toBe('service.local');
     expect(server.actualPort).toBe(4321);
-    expect(server.actualBaseUrl).toBe("http://service.local:4321");
+    expect(server.actualBaseUrl).toBe('http://service.local:4321');
   });
 
-  it("derives address when listen returns a URL object", async () => {
+  it('derives address when listen returns a URL object', async () => {
     const instance = createFastifyInstance({
       addressValue: null,
-      listenResult: new URL("http://object.local:6543"),
+      listenResult: new URL('http://object.local:6543'),
     });
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "0.0.0.0", port: 0 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '0.0.0.0',
+      port: 0,
+    });
 
     await server.start();
 
-    expect(server.actualHost).toBe("object.local");
+    expect(server.actualHost).toBe('object.local');
     expect(server.actualPort).toBe(6543);
   });
 
-  it("falls back to configured host and port when address resolution fails", async () => {
+  it('falls back to configured host and port when address resolution fails', async () => {
     const instance = createFastifyInstance({
-      addressValue: "not-a-url",
-      listenResult: "bogus",
+      addressValue: 'not-a-url',
+      listenResult: 'bogus',
       includeUnref: false,
     });
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "0.0.0.0", port: 9001 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '0.0.0.0',
+      port: 9001,
+    });
     await server.start();
 
-    expect(server.actualHost).toBe("0.0.0.0");
+    expect(server.actualHost).toBe('0.0.0.0');
     expect(server.actualPort).toBe(9001);
-    expect(server.actualBaseUrl).toBe("http://0.0.0.0:9001");
+    expect(server.actualBaseUrl).toBe('http://0.0.0.0:9001');
     expect(instance.server.unref).toBeUndefined();
   });
 
-  it("returns null base url when host is known but port is missing", async () => {
+  it('returns null base url when host is known but port is missing', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "2.2.2.2", port: 8800 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '2.2.2.2',
+      port: 8800,
+    });
 
     const internal = server as unknown as {
       _actualHost: string | null;
       _actualPort: number | null;
     };
-    internal._actualHost = "resolved";
+    internal._actualHost = 'resolved';
     internal._actualPort = null;
 
     expect(server.actualBaseUrl).toBeNull();
   });
 
-  it("includes routers with options without starting automatically", async () => {
+  it('includes routers with options without starting automatically', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "1.2.3.4", port: 7000 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '1.2.3.4',
+      port: 7000,
+    });
 
     const router: FastifyPluginAsync = jest.fn(async () => {});
 
-    await server.includeRouter(router, { prefix: "/api" });
+    await server.includeRouter(router, { prefix: '/api' });
 
     expect(instance.listen).not.toHaveBeenCalled();
     expect(instance.register).toHaveBeenCalledTimes(2);
     expect(getRegistrationPlugins(instance)[0]).toBe(websocketPluginMock);
-    expect(instance.register).toHaveBeenNthCalledWith(2, router, { prefix: "/api" });
+    expect(instance.register).toHaveBeenNthCalledWith(2, router, {
+      prefix: '/api',
+    });
     expect(server.isRunning).toBe(false);
 
     await server.start();
@@ -224,11 +259,14 @@ describe("DefaultHttpServer", () => {
     expect(server.isRunning).toBe(true);
   });
 
-  it("throws when including routers after start", async () => {
+  it('throws when including routers after start', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "5.6.7.8", port: 7100 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '5.6.7.8',
+      port: 7100,
+    });
     await server.start();
 
     instance.register.mockClear();
@@ -237,24 +275,29 @@ describe("DefaultHttpServer", () => {
     const router: FastifyPluginAsync = jest.fn(async () => {});
 
     await expect(server.includeRouter(router)).rejects.toThrow(
-      "Cannot include router after HTTP server has started"
+      'Cannot include router after HTTP server has started'
     );
     expect(websocketPluginMock).not.toHaveBeenCalled();
     expect(instance.register).not.toHaveBeenCalled();
   });
 
-  it("supports including Fastify plugins before start", async () => {
+  it('supports including Fastify plugins before start', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "9.9.9.9", port: 7200 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '9.9.9.9',
+      port: 7200,
+    });
 
     const pluginWithOptions: FastifyPluginAsync = jest.fn(async () => {});
     const pluginWithoutOptions: FastifyPluginAsync = jest.fn(async () => {});
 
     await server.includeFastifyPlugin(pluginWithOptions, { feature: true });
 
-    expect(instance.register).toHaveBeenNthCalledWith(2, pluginWithOptions, { feature: true });
+    expect(instance.register).toHaveBeenNthCalledWith(2, pluginWithOptions, {
+      feature: true,
+    });
     expect(instance.listen).not.toHaveBeenCalled();
 
     instance.register.mockClear();
@@ -268,11 +311,14 @@ describe("DefaultHttpServer", () => {
     expect(instance.listen).toHaveBeenCalledTimes(1);
   });
 
-  it("throws when including Fastify plugins after start", async () => {
+  it('throws when including Fastify plugins after start', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
-    const server = await DefaultHttpServer.getOrCreate({ host: "12.0.0.1", port: 7250 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '12.0.0.1',
+      port: 7250,
+    });
     await server.start();
 
     instance.register.mockClear();
@@ -281,68 +327,71 @@ describe("DefaultHttpServer", () => {
     const plugin: FastifyPluginAsync = jest.fn(async () => {});
 
     await expect(server.includeFastifyPlugin(plugin)).rejects.toThrow(
-      "Cannot include plugin after HTTP server has started"
+      'Cannot include plugin after HTTP server has started'
     );
     expect(instance.register).not.toHaveBeenCalled();
   });
 
-  it("returns the same server instance for identical host and port", async () => {
+  it('returns the same server instance for identical host and port', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
     const [first, second] = await Promise.all([
-      DefaultHttpServer.getOrCreate({ host: "10.0.0.1", port: 7300 }),
-      DefaultHttpServer.getOrCreate({ host: "10.0.0.1", port: 7300 }),
+      DefaultHttpServer.getOrCreate({ host: '10.0.0.1', port: 7300 }),
+      DefaultHttpServer.getOrCreate({ host: '10.0.0.1', port: 7300 }),
     ]);
 
     expect(first).toBe(second);
     expect(fastifyMock).toHaveBeenCalledTimes(1);
   });
 
-  it("decrements references and stops when the last reference is released", async () => {
+  it('decrements references and stops when the last reference is released', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
-    await DefaultHttpServer.getOrCreate({ host: "11.0.0.1", port: 7400 });
-    const server = await DefaultHttpServer.getOrCreate({ host: "11.0.0.1", port: 7400 });
+    await DefaultHttpServer.getOrCreate({ host: '11.0.0.1', port: 7400 });
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '11.0.0.1',
+      port: 7400,
+    });
     await server.start();
 
-    await DefaultHttpServer.release({ host: "11.0.0.1", port: 7400 });
+    await DefaultHttpServer.release({ host: '11.0.0.1', port: 7400 });
     expect(instance.close).not.toHaveBeenCalled();
 
-    await DefaultHttpServer.release({ host: "11.0.0.1", port: 7400 });
+    await DefaultHttpServer.release({ host: '11.0.0.1', port: 7400 });
     expect(instance.close).toHaveBeenCalledTimes(1);
     expect(server.isRunning).toBe(false);
   });
 
-  it("ignores release requests for unknown servers", async () => {
+  it('ignores release requests for unknown servers', async () => {
     await expect(
-      DefaultHttpServer.release({ host: "127.99.0.1", port: 7500 })
+      DefaultHttpServer.release({ host: '127.99.0.1', port: 7500 })
     ).resolves.toBeUndefined();
   });
 
-  it("handles missing server entries when releasing references", async () => {
+  it('handles missing server entries when releasing references', async () => {
     const internal = DefaultHttpServer as unknown as {
       registry: Map<string, DefaultHttpServer>;
       referenceCounts: Map<string, number>;
     };
 
-    const key = "ghost:0";
+    const key = 'ghost:0';
     internal.referenceCounts.set(key, 1);
 
-    await DefaultHttpServer.release({ host: "ghost", port: 0 });
+    await DefaultHttpServer.release({ host: 'ghost', port: 0 });
 
     expect(internal.referenceCounts.has(key)).toBe(false);
     expect(internal.registry.has(key)).toBe(false);
   });
 
-  it("uses default host and port when params are omitted", async () => {
+  it('uses default host and port when params are omitted', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
     const server = await DefaultHttpServer.getOrCreate();
 
-    expect(server.host).toBe("0.0.0.0");
+    expect(server.host).toBe('0.0.0.0');
     expect(server.port).toBe(0);
 
     await DefaultHttpServer.release();
@@ -350,34 +399,46 @@ describe("DefaultHttpServer", () => {
     const internal = DefaultHttpServer as unknown as {
       referenceCounts: Map<string, number>;
     };
-    expect(internal.referenceCounts.has("0.0.0.0:0")).toBe(false);
+    expect(internal.referenceCounts.has('0.0.0.0:0')).toBe(false);
   });
 
-  it("recreates reference counts when entries are missing", async () => {
+  it('recreates reference counts when entries are missing', async () => {
     const instance = createFastifyInstance();
     fastifyMock.prepare(instance);
 
-    const first = await DefaultHttpServer.getOrCreate({ host: "ref.test", port: 8300 });
+    const first = await DefaultHttpServer.getOrCreate({
+      host: 'ref.test',
+      port: 8300,
+    });
 
     const internal = DefaultHttpServer as unknown as {
       referenceCounts: Map<string, number>;
     };
-    internal.referenceCounts.delete("ref.test:8300");
+    internal.referenceCounts.delete('ref.test:8300');
 
-    const second = await DefaultHttpServer.getOrCreate({ host: "ref.test", port: 8300 });
+    const second = await DefaultHttpServer.getOrCreate({
+      host: 'ref.test',
+      port: 8300,
+    });
 
     expect(second).toBe(first);
-    expect(internal.referenceCounts.get("ref.test:8300")).toBe(1);
+    expect(internal.referenceCounts.get('ref.test:8300')).toBe(1);
   });
 
-  it("shuts down all active servers", async () => {
+  it('shuts down all active servers', async () => {
     const firstInstance = createFastifyInstance();
     const secondInstance = createFastifyInstance();
     fastifyMock.prepare(firstInstance);
     fastifyMock.prepare(secondInstance);
 
-    const first = await DefaultHttpServer.getOrCreate({ host: "12.0.0.1", port: 7600 });
-    const second = await DefaultHttpServer.getOrCreate({ host: "13.0.0.1", port: 7700 });
+    const first = await DefaultHttpServer.getOrCreate({
+      host: '12.0.0.1',
+      port: 7600,
+    });
+    const second = await DefaultHttpServer.getOrCreate({
+      host: '13.0.0.1',
+      port: 7700,
+    });
 
     await first.start();
     await second.start();

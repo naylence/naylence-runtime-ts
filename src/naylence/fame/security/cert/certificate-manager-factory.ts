@@ -1,11 +1,15 @@
-import type { SecuritySettings } from "naylence-core";
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource } from "naylence-factory";
+import type { SecuritySettings } from 'naylence-core';
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+} from 'naylence-factory';
 
-import type { SigningConfig } from "../signing/signing-config.js";
-import type { CertificateManager } from "./certificate-manager.js";
+import type { SigningConfig } from '../signing/signing-config.js';
+import type { CertificateManager } from './certificate-manager.js';
 
-export const CERTIFICATE_MANAGER_FACTORY_BASE_TYPE = "CertificateManagerFactory";
+export const CERTIFICATE_MANAGER_FACTORY_BASE_TYPE =
+  'CertificateManagerFactory';
 
 export interface CertificateManagerConfig extends ResourceConfig {
   type: string;
@@ -15,7 +19,7 @@ export interface CertificateManagerConfig extends ResourceConfig {
 }
 
 export interface CreateCertificateManagerOptions
-  extends Omit<CreateResourceOptions, "factoryArgs"> {
+  extends Omit<CreateResourceOptions, 'factoryArgs'> {
   securitySettings?: SecuritySettings | null;
   signing?: SigningConfig | null;
   factoryArgs?: unknown[];
@@ -37,7 +41,12 @@ export abstract class CertificateManagerFactory<
     cfg?: C | Record<string, unknown> | null,
     opts: CreateCertificateManagerOptions = {}
   ): Promise<CertificateManager | null> {
-    const { securitySettings = null, signing = null, factoryArgs = [], ...rest } = opts;
+    const {
+      securitySettings = null,
+      signing = null,
+      factoryArgs = [],
+      ...rest
+    } = opts;
     const args = [securitySettings, signing, ...factoryArgs];
 
     return await createDefaultResource<CertificateManager>(

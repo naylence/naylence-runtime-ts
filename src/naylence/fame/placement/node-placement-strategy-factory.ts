@@ -1,14 +1,15 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
   registerFactory,
-} from "naylence-factory";
+} from 'naylence-factory';
 
-import type { NodePlacementStrategy } from "./node-placement-strategy.js";
+import type { NodePlacementStrategy } from './node-placement-strategy.js';
 
-export const NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE = "NodePlacementStrategyFactory" as const;
+export const NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE =
+  'NodePlacementStrategyFactory' as const;
 
 export interface NodePlacementConfig extends ResourceConfig {
   type: string;
@@ -37,7 +38,9 @@ export abstract class NodePlacementStrategyFactory<
       );
 
       if (!strategy) {
-        throw new Error("Failed to create node placement strategy from configuration");
+        throw new Error(
+          'Failed to create node placement strategy from configuration'
+        );
       }
 
       return strategy;
@@ -52,13 +55,13 @@ export abstract class NodePlacementStrategyFactory<
       );
     } catch (error) {
       const message =
-        "Failed to create default node placement strategy" +
-        (error instanceof Error && error.message ? `: ${error.message}` : "");
+        'Failed to create default node placement strategy' +
+        (error instanceof Error && error.message ? `: ${error.message}` : '');
       throw new Error(message);
     }
 
     if (!strategy) {
-      throw new Error("Failed to create default node placement strategy");
+      throw new Error('Failed to create default node placement strategy');
     }
 
     return strategy;
@@ -75,5 +78,10 @@ export function registerNodePlacementStrategyFactory(
     [key: string]: unknown;
   }
 ): void {
-  registerFactory(NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE, type, factory, metadata);
+  registerFactory(
+    NODE_PLACEMENT_STRATEGY_FACTORY_BASE_TYPE,
+    type,
+    factory,
+    metadata
+  );
 }

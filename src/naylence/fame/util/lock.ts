@@ -23,6 +23,9 @@ export class AsyncLock {
   }
 }
 
-export async function withLock<T>(lock: AsyncLock, operation: () => Promise<T> | T): Promise<T> {
+export async function withLock<T>(
+  lock: AsyncLock,
+  operation: () => Promise<T> | T
+): Promise<T> {
   return await lock.runExclusive(operation);
 }

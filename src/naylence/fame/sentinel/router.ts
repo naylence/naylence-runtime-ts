@@ -10,19 +10,21 @@ import {
   type SecureOpenFrame,
   type SecureAcceptFrame,
   type EnvelopeFactory,
-} from "naylence-core";
+} from 'naylence-core';
 
-import { FameTransportClose } from "../errors/errors.js";
-import type { RoutingNodeLike } from "../node/routing-node-like.js";
-import { getLogger, summarizeEnvelope } from "../util/logging.js";
+import { FameTransportClose } from '../errors/errors.js';
+import type { RoutingNodeLike } from '../node/routing-node-like.js';
+import { getLogger, summarizeEnvelope } from '../util/logging.js';
 
-const logger = getLogger("router");
+const logger = getLogger('router');
 
-const ZERO_EPH_PUB_BASE64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+const ZERO_EPH_PUB_BASE64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 export type PoolKey = readonly [string, string];
 
-export type ResolveAddressByCapability = (capabilities: string[]) => Promise<FameAddress | null>;
+export type ResolveAddressByCapability = (
+  capabilities: string[]
+) => Promise<FameAddress | null>;
 
 export interface RoutingAction {
   execute(
@@ -40,10 +42,16 @@ export class Drop implements RoutingAction {
     state: RouterState,
     context?: FameDeliveryContext | null
   ): Promise<void> {
-    await emitDeliveryNack(envelope, router, state, "NO_ROUTE", context ?? undefined);
+    await emitDeliveryNack(
+      envelope,
+      router,
+      state,
+      'NO_ROUTE',
+      context ?? undefined
+    );
     logger.debug(
-      "dropped_envelope",
-      Object.assign(summarizeEnvelope(envelope, ""), {
+      'dropped_envelope',
+      Object.assign(summarizeEnvelope(envelope, ''), {
         localAddresses: Array.from(state.local.values()),
         downstreamRoutes: Array.from(state.downstreamAddressRoutes.entries()),
         peerRoutes: Array.from(state.peerAddressRoutes.entries()),
@@ -86,10 +94,14 @@ export class ForwardChild implements RoutingAction {
     context?: FameDeliveryContext | null
   ): Promise<void> {
     try {
-      await router.forwardToRoute?.(this.segment, envelope, context ?? undefined);
+      await router.forwardToRoute?.(
+        this.segment,
+        envelope,
+        context ?? undefined
+      );
     } catch (error) {
       if (error instanceof FameTransportClose) {
-        logger.error("transport_closed_forward_child", {
+        logger.error('transport_closed_forward_child', {
           segment: this.segment,
           error: error.message,
         });
@@ -99,7 +111,7 @@ export class ForwardChild implements RoutingAction {
             envelope,
             router,
             state,
-            "ROUTE_CONNECTOR_CLOSED",
+            'ROUTE_CONNECTOR_CLOSED',
             context ?? undefined
           );
         }
@@ -120,10 +132,14 @@ export class ForwardPeer implements RoutingAction {
     context?: FameDeliveryContext | null
   ): Promise<void> {
     try {
-      await router.forwardToPeer?.(this.segment, envelope, context ?? undefined);
+      await router.forwardToPeer?.(
+        this.segment,
+        envelope,
+        context ?? undefined
+      );
     } catch (error) {
       if (error instanceof FameTransportClose) {
-        logger.error("transport_closed_forward_peer", {
+        logger.error('transport_closed_forward_peer', {
           segment: this.segment,
           error: error.message,
         });
@@ -133,7 +149,7 @@ export class ForwardPeer implements RoutingAction {
             envelope,
             router,
             state,
-            "ROUTE_CONNECTOR_CLOSED",
+            'ROUTE_CONNECTOR_CLOSED',
             context ?? undefined
           );
         }
@@ -165,8 +181,12 @@ export class RouterState {
   constructor(options: {
     nodeId: string;
     local: Iterable<FameAddress | string>;
-    downstreamAddressRoutes: Map<FameAddress | string, string> | Record<string, string>;
-    peerAddressRoutes?: Map<FameAddress | string, string> | Record<string, string>;
+    downstreamAddressRoutes:
+      | Map<FameAddress | string, string>
+      | Record<string, string>;
+    peerAddressRoutes?:
+      | Map<FameAddress | string, string>
+      | Record<string, string>;
     childSegments: Iterable<string>;
     peerSegments: Iterable<string>;
     hasParent: boolean;
@@ -177,8 +197,12 @@ export class RouterState {
     envelopeFactory?: EnvelopeFactory;
   }) {
     this.nodeId = options.nodeId;
-    this.local = new Set(Array.from(options.local, (address) => normalizeAddressKey(address)));
-    this.downstreamAddressRoutes = toReadOnlyMap(options.downstreamAddressRoutes);
+    this.local = new Set(
+      Array.from(options.local, (address) => normalizeAddressKey(address))
+    );
+    this.downstreamAddressRoutes = toReadOnlyMap(
+      options.downstreamAddressRoutes
+    );
     this.peerAddressRoutes = toReadOnlyMap(
       options.peerAddressRoutes ?? new Map<FameAddress | string, string>()
     );
@@ -188,7 +212,8 @@ export class RouterState {
     this.physicalSegments = [...options.physicalSegments];
     this.pools = toPoolMap(options.pools);
     this.capabilities = options.capabilities ?? {};
-    this.resolveAddressByCapability = options.resolveAddressByCapability ?? null;
+    this.resolveAddressByCapability =
+      options.resolveAddressByCapability ?? null;
     this.envelopeFactory = options.envelopeFactory ?? null;
   }
 
@@ -212,7 +237,10 @@ export async function emitDeliveryNack(
   }
 
   if (!state.envelopeFactory) {
-    logger.warning("router_missing_envelope_factory", summarizeEnvelope(envelope));
+    logger.warning(
+      'router_missing_envelope_factory',
+      summarizeEnvelope(envelope)
+    );
     return;
   }
 
@@ -239,14 +267,22 @@ export async function emitDeliveryNack(
     const deliveryContext = localDeliveryContext(state.nodeId);
 
     if (firstSegment && state.childSegments.has(firstSegment)) {
-      await routingNode.forwardToRoute?.(firstSegment, nackEnvelope, deliveryContext);
+      await routingNode.forwardToRoute?.(
+        firstSegment,
+        nackEnvelope,
+        deliveryContext
+      );
     } else if (firstSegment && state.peerSegments.has(firstSegment)) {
-      await routingNode.forwardToPeer?.(firstSegment, nackEnvelope, deliveryContext);
+      await routingNode.forwardToPeer?.(
+        firstSegment,
+        nackEnvelope,
+        deliveryContext
+      );
     } else {
       await routingNode.forwardUpstream(nackEnvelope, deliveryContext);
     }
   } catch (error) {
-    logger.warning("nack_forward_failed", {
+    logger.warning('nack_forward_failed', {
       error: error instanceof Error ? error.message : String(error),
       ...summarizeEnvelope(envelope),
     });
@@ -268,7 +304,7 @@ function createNackFrame(
 ): DeliveryAckFrame | SecureAcceptFrame {
   if (isSecureOpenFrame(envelope.frame)) {
     return {
-      type: "SecureAccept",
+      type: 'SecureAccept',
       cid: envelope.frame.cid,
       ephPub: ZERO_EPH_PUB_BASE64,
       ok: false,
@@ -279,17 +315,22 @@ function createNackFrame(
   }
 
   return {
-    type: "DeliveryAck",
+    type: 'DeliveryAck',
     ok: false,
     code,
     refId: envelope.id!,
-    reason: `Unroutable to ${String(envelope.to ?? envelope.replyTo ?? "")}`,
+    reason: `Unroutable to ${String(envelope.to ?? envelope.replyTo ?? '')}`,
   } satisfies DeliveryAckFrame;
 }
 
-function stripSelfPrefix(path: string, selfSegments: readonly string[]): string[] {
-  const segments = path.replace(/^\/+/, "").split("/").filter(Boolean);
-  if (segments.slice(0, selfSegments.length).join("/") === selfSegments.join("/")) {
+function stripSelfPrefix(
+  path: string,
+  selfSegments: readonly string[]
+): string[] {
+  const segments = path.replace(/^\/+/, '').split('/').filter(Boolean);
+  if (
+    segments.slice(0, selfSegments.length).join('/') === selfSegments.join('/')
+  ) {
     return segments.slice(selfSegments.length);
   }
   return segments;
@@ -326,24 +367,28 @@ function toPoolMap(
   }
 
   for (const [key, value] of Object.entries(source)) {
-    const [name, pattern] = key.split("::");
+    const [name, pattern] = key.split('::');
     map.set([name, pattern], new Set(value));
   }
   return map;
 }
 
-function isDeliveryAck(frame: FameEnvelope["frame"]): frame is DeliveryAckFrame {
-  return frame?.type === "DeliveryAck";
+function isDeliveryAck(
+  frame: FameEnvelope['frame']
+): frame is DeliveryAckFrame {
+  return frame?.type === 'DeliveryAck';
 }
 
-function isDataFrame(frame: FameEnvelope["frame"]): frame is DataFrame {
-  return frame?.type === "Data";
+function isDataFrame(frame: FameEnvelope['frame']): frame is DataFrame {
+  return frame?.type === 'Data';
 }
 
-function isSecureOpenFrame(frame: FameEnvelope["frame"]): frame is SecureOpenFrame {
-  return frame?.type === "SecureOpen";
+function isSecureOpenFrame(
+  frame: FameEnvelope['frame']
+): frame is SecureOpenFrame {
+  return frame?.type === 'SecureOpen';
 }
 
 function normalizeAddressKey(address: FameAddress | string): string {
-  return typeof address === "string" ? address : address.toString();
+  return typeof address === 'string' ? address : address.toString();
 }

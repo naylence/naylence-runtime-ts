@@ -1,14 +1,16 @@
-import type { KeyValueStore } from "./key-value-store.js";
-import type { StorageProvider } from "./storage-provider.js";
-import type { CredentialProvider } from "../security/credential/credential-provider.js";
-import { BrowserAutoKeyCredentialProvider } from "../security/credential/browser-auto-key-credential-provider.js";
+import type { KeyValueStore } from './key-value-store.js';
+import type { StorageProvider } from './storage-provider.js';
+import type { CredentialProvider } from '../security/credential/credential-provider.js';
+import { BrowserAutoKeyCredentialProvider } from '../security/credential/browser-auto-key-credential-provider.js';
 
-const DEFAULT_KEY_ID = "default";
-const DEFAULT_ALGORITHM = "AES-GCM";
+const DEFAULT_KEY_ID = 'default';
+const DEFAULT_ALGORITHM = 'AES-GCM';
 const GCM_IV_LENGTH = 12;
 
 function isBrowserEnvironment(): boolean {
-  return typeof indexedDB !== "undefined" && typeof globalThis.crypto !== "undefined";
+  return (
+    typeof indexedDB !== 'undefined' && typeof globalThis.crypto !== 'undefined'
+  );
 }
 
 function tryCreateBrowserAutoKeyCredentialProvider(): CredentialProvider | null {
@@ -23,16 +25,16 @@ function tryCreateBrowserAutoKeyCredentialProvider(): CredentialProvider | null 
   }
 }
 
-let cachedNodeCrypto: typeof import("node:crypto") | null | undefined;
+let cachedNodeCrypto: typeof import('node:crypto') | null | undefined;
 let cachedSubtle: SubtleCrypto | undefined;
 
-async function loadNodeCrypto(): Promise<typeof import("node:crypto") | null> {
+async function loadNodeCrypto(): Promise<typeof import('node:crypto') | null> {
   if (cachedNodeCrypto !== undefined) {
     return cachedNodeCrypto;
   }
 
   try {
-    cachedNodeCrypto = await import("node:crypto");
+    cachedNodeCrypto = await import('node:crypto');
     return cachedNodeCrypto;
   } catch {
     cachedNodeCrypto = null;
@@ -45,7 +47,7 @@ async function getSubtleCrypto(): Promise<SubtleCrypto> {
     return cachedSubtle;
   }
 
-  if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.subtle) {
+  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
     cachedSubtle = globalThis.crypto.subtle;
     return cachedSubtle;
   }
@@ -56,13 +58,13 @@ async function getSubtleCrypto(): Promise<SubtleCrypto> {
     return cachedSubtle;
   }
 
-  throw new Error("Web Crypto API is not available in this environment");
+  throw new Error('Web Crypto API is not available in this environment');
 }
 
 async function getRandomBytes(length: number): Promise<Uint8Array> {
   if (
-    typeof globalThis.crypto !== "undefined" &&
-    typeof globalThis.crypto.getRandomValues === "function"
+    typeof globalThis.crypto !== 'undefined' &&
+    typeof globalThis.crypto.getRandomValues === 'function'
   ) {
     const buffer = new Uint8Array(length);
     globalThis.crypto.getRandomValues(buffer);
@@ -75,7 +77,7 @@ async function getRandomBytes(length: number): Promise<Uint8Array> {
     return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   }
 
-  throw new Error("Unable to generate secure random bytes in this environment");
+  throw new Error('Unable to generate secure random bytes in this environment');
 }
 
 function normalizeKey(key: Uint8Array): Uint8Array {
@@ -105,18 +107,21 @@ function utf8Decode(buffer: Uint8Array): string {
 
 function toHex(data: Uint8Array): string {
   return Array.from(data)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 function toArrayBuffer(view: Uint8Array): ArrayBuffer {
-  const slice = view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+  const slice = view.buffer.slice(
+    view.byteOffset,
+    view.byteOffset + view.byteLength
+  );
   return slice as ArrayBuffer;
 }
 
 function fromHex(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) {
-    throw new Error("Invalid hex string");
+    throw new Error('Invalid hex string');
   }
 
   const result = new Uint8Array(hex.length / 2);
@@ -127,15 +132,15 @@ function fromHex(hex: string): Uint8Array {
 }
 
 function isEncryptedValue(candidate: unknown): candidate is EncryptedValue {
-  if (!candidate || typeof candidate !== "object") {
+  if (!candidate || typeof candidate !== 'object') {
     return false;
   }
 
   const record = candidate as Record<string, unknown>;
   return (
-    typeof record.keyId === "string" &&
-    typeof record.ciphertext === "string" &&
-    typeof record.algorithm === "string"
+    typeof record.keyId === 'string' &&
+    typeof record.ciphertext === 'string' &&
+    typeof record.algorithm === 'string'
   );
 }
 
@@ -149,13 +154,17 @@ export class StorageAESEncryptionManager implements StorageEncryptionManager {
     const subtle = await getSubtleCrypto();
     const normalizedKey = normalizeKey(key);
     const keyBuffer = toArrayBuffer(normalizedKey);
-    const cryptoKey = await subtle.importKey("raw", keyBuffer, { name: "AES-GCM" }, false, [
-      "encrypt",
-    ]);
+    const cryptoKey = await subtle.importKey(
+      'raw',
+      keyBuffer,
+      { name: 'AES-GCM' },
+      false,
+      ['encrypt']
+    );
     const iv = await getRandomBytes(GCM_IV_LENGTH);
     const ivBuffer = toArrayBuffer(iv);
     const ciphertextBuffer = await subtle.encrypt(
-      { name: "AES-GCM", iv: ivBuffer },
+      { name: 'AES-GCM', iv: ivBuffer },
       cryptoKey,
       toArrayBuffer(plaintext)
     );
@@ -169,15 +178,19 @@ export class StorageAESEncryptionManager implements StorageEncryptionManager {
 
   async decrypt(ciphertext: Uint8Array, key: Uint8Array): Promise<Uint8Array> {
     if (ciphertext.length <= GCM_IV_LENGTH) {
-      throw new Error("Ciphertext too short to contain IV");
+      throw new Error('Ciphertext too short to contain IV');
     }
 
     const subtle = await getSubtleCrypto();
     const normalizedKey = normalizeKey(key);
     const keyBuffer = toArrayBuffer(normalizedKey);
-    const cryptoKey = await subtle.importKey("raw", keyBuffer, { name: "AES-GCM" }, false, [
-      "decrypt",
-    ]);
+    const cryptoKey = await subtle.importKey(
+      'raw',
+      keyBuffer,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
 
     const iv = ciphertext.slice(0, GCM_IV_LENGTH);
     const actualCiphertext = ciphertext.slice(GCM_IV_LENGTH);
@@ -185,7 +198,7 @@ export class StorageAESEncryptionManager implements StorageEncryptionManager {
     const cipherBuffer = toArrayBuffer(actualCiphertext);
 
     const plaintextBuffer = await subtle.decrypt(
-      { name: "AES-GCM", iv: ivBuffer },
+      { name: 'AES-GCM', iv: ivBuffer },
       cryptoKey,
       cipherBuffer
     );
@@ -198,7 +211,11 @@ export class EncryptedValue {
   public readonly ciphertext: string;
   public readonly algorithm: string;
 
-  constructor(params: { keyId: string; ciphertext: string; algorithm: string }) {
+  constructor(params: {
+    keyId: string;
+    ciphertext: string;
+    algorithm: string;
+  }) {
     this.keyId = params.keyId;
     this.ciphertext = params.ciphertext;
     this.algorithm = params.algorithm;
@@ -237,7 +254,7 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
   private async getRawMasterKey(): Promise<Uint8Array> {
     const key = await this.masterKeyProvider.get();
     if (!key) {
-      throw new Error("Master key provider must return a valid key");
+      throw new Error('Master key provider must return a valid key');
     }
 
     if (key instanceof Uint8Array) {
@@ -249,7 +266,7 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
 
   private serialize(value: V): string {
     const candidate = value as unknown as { toJSON?: () => unknown };
-    if (candidate && typeof candidate.toJSON === "function") {
+    if (candidate && typeof candidate.toJSON === 'function') {
       return JSON.stringify(candidate.toJSON());
     }
 
@@ -265,13 +282,13 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
       deserialize?: (input: unknown) => V;
     };
 
-    if (typeof ctorAsAny.fromJSON === "function") {
+    if (typeof ctorAsAny.fromJSON === 'function') {
       return ctorAsAny.fromJSON(data);
     }
-    if (typeof ctorAsAny.fromJson === "function") {
+    if (typeof ctorAsAny.fromJson === 'function') {
       return ctorAsAny.fromJson(data);
     }
-    if (typeof ctorAsAny.deserialize === "function") {
+    if (typeof ctorAsAny.deserialize === 'function') {
       return ctorAsAny.deserialize(data);
     }
 
@@ -298,7 +315,10 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
     const serialized = this.serialize(value);
     const plaintext = utf8Encode(serialized);
     const masterKey = await this.getRawMasterKey();
-    const ciphertext = await this.encryptionManager.encrypt(plaintext, masterKey);
+    const ciphertext = await this.encryptionManager.encrypt(
+      plaintext,
+      masterKey
+    );
 
     const encryptedValue = new EncryptedValue({
       keyId: this.keyId,
@@ -314,7 +334,10 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
     const serialized = this.serialize(value);
     const plaintext = utf8Encode(serialized);
     const masterKey = await this.getRawMasterKey();
-    const ciphertext = await this.encryptionManager.encrypt(plaintext, masterKey);
+    const ciphertext = await this.encryptionManager.encrypt(
+      plaintext,
+      masterKey
+    );
 
     const encryptedValue = new EncryptedValue({
       keyId: this.keyId,
@@ -343,7 +366,10 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
 
     const masterKey = await this.getRawMasterKey();
     const ciphertext = fromHex(encryptedValue.ciphertext);
-    const plaintext = await this.encryptionManager.decrypt(ciphertext, masterKey);
+    const plaintext = await this.encryptionManager.decrypt(
+      ciphertext,
+      masterKey
+    );
     const json = utf8Decode(plaintext);
     const value = this.deserialize(json);
     this.cacheSet(key, value);
@@ -373,7 +399,10 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
 
       try {
         const ciphertext = fromHex(encrypted.ciphertext);
-        const plaintext = await this.encryptionManager.decrypt(ciphertext, masterKey);
+        const plaintext = await this.encryptionManager.decrypt(
+          ciphertext,
+          masterKey
+        );
         const json = utf8Decode(plaintext);
         const value = this.deserialize(json);
         result[key] = value;
@@ -416,14 +445,18 @@ export abstract class EncryptedStorageProviderBase implements StorageProvider {
     this.enableCaching = enableCaching;
 
     if (isEncrypted) {
-      const resolvedProvider = masterKeyProvider ?? tryCreateBrowserAutoKeyCredentialProvider();
+      const resolvedProvider =
+        masterKeyProvider ?? tryCreateBrowserAutoKeyCredentialProvider();
 
       if (!resolvedProvider) {
-        throw new Error("masterKeyProvider is required when encryption is enabled");
+        throw new Error(
+          'masterKeyProvider is required when encryption is enabled'
+        );
       }
 
       this.masterKeyProvider = resolvedProvider;
-      this.encryptionManager = encryptionManager ?? new StorageAESEncryptionManager();
+      this.encryptionManager =
+        encryptionManager ?? new StorageAESEncryptionManager();
     } else {
       this.masterKeyProvider = null;
       this.encryptionManager = null;
@@ -440,11 +473,14 @@ export abstract class EncryptedStorageProviderBase implements StorageProvider {
 
     if (!this.masterKeyProvider || !this.encryptionManager) {
       throw new Error(
-        "Encryption is enabled but master key provider or encryption manager is missing"
+        'Encryption is enabled but master key provider or encryption manager is missing'
       );
     }
 
-    const underlyingStore = await this.getUnderlyingKeyValueStore(EncryptedValue, namespace);
+    const underlyingStore = await this.getUnderlyingKeyValueStore(
+      EncryptedValue,
+      namespace
+    );
 
     return new EncryptedKeyValueStore<V>({
       underlyingStore,

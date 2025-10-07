@@ -1,13 +1,14 @@
-import type { ConnectorConfig } from "../connector/connector-config.js";
-import type { AuthInjectionStrategyConfig } from "../security/auth/auth-injection-strategy-factory.js";
+import type { ConnectorConfig } from '../connector/connector-config.js';
+import type { AuthInjectionStrategyConfig } from '../security/auth/auth-injection-strategy-factory.js';
 import {
   assertConnectionGrant,
   type ConnectionGrant,
   type ConnectionGrantLike,
   isConnectionGrant,
-} from "./connection-grant.js";
+} from './connection-grant.js';
 
-export const WEBSOCKET_CONNECTION_GRANT_TYPE = "WebSocketConnectionGrant" as const;
+export const WEBSOCKET_CONNECTION_GRANT_TYPE =
+  'WebSocketConnectionGrant' as const;
 
 export type WebSocketConnectionGrantAuth =
   | AuthInjectionStrategyConfig
@@ -27,7 +28,7 @@ export type WebSocketConnectionGrantLike = ConnectionGrantLike & {
 };
 
 export type WebSocketConnectorConfigLike = ConnectorConfig & {
-  type: "WebSocketConnector";
+  type: 'WebSocketConnector';
   url?: string;
   auth?: WebSocketConnectionGrantAuth;
 };
@@ -37,16 +38,21 @@ export function isWebSocketConnectionGrant(
 ): candidate is WebSocketConnectionGrant {
   return (
     isConnectionGrant(candidate) &&
-    (candidate as Partial<WebSocketConnectionGrant>).type === WEBSOCKET_CONNECTION_GRANT_TYPE &&
-    (typeof (candidate as Partial<WebSocketConnectionGrant>).url === "string" ||
-      typeof (candidate as Partial<WebSocketConnectionGrant>).url === "undefined")
+    (candidate as Partial<WebSocketConnectionGrant>).type ===
+      WEBSOCKET_CONNECTION_GRANT_TYPE &&
+    (typeof (candidate as Partial<WebSocketConnectionGrant>).url === 'string' ||
+      typeof (candidate as Partial<WebSocketConnectionGrant>).url ===
+        'undefined')
   );
 }
 
 export function normalizeWebSocketConnectionGrant(
   candidate: WebSocketConnectionGrantLike
 ): WebSocketConnectionGrant {
-  assertConnectionGrant(candidate, "WebSocketConnectionGrant requires a valid base grant");
+  assertConnectionGrant(
+    candidate,
+    'WebSocketConnectionGrant requires a valid base grant'
+  );
 
   const type = candidate.type ?? WEBSOCKET_CONNECTION_GRANT_TYPE;
   if (type !== WEBSOCKET_CONNECTION_GRANT_TYPE) {
@@ -56,19 +62,24 @@ export function normalizeWebSocketConnectionGrant(
   }
 
   const urlValue = candidate.url;
-  if (urlValue !== undefined && (typeof urlValue !== "string" || urlValue.trim().length === 0)) {
-    throw new TypeError('WebSocketConnectionGrant "url" must be a non-empty string when provided');
+  if (
+    urlValue !== undefined &&
+    (typeof urlValue !== 'string' || urlValue.trim().length === 0)
+  ) {
+    throw new TypeError(
+      'WebSocketConnectionGrant "url" must be a non-empty string when provided'
+    );
   }
 
   const base: WebSocketConnectionGrant = {
     type,
     purpose:
-      typeof candidate.purpose === "string" && candidate.purpose.length > 0
+      typeof candidate.purpose === 'string' && candidate.purpose.length > 0
         ? candidate.purpose
-        : "connection",
+        : 'connection',
   };
 
-  if (typeof urlValue === "string") {
+  if (typeof urlValue === 'string') {
     base.url = urlValue;
   }
 
@@ -84,7 +95,7 @@ export function websocketGrantToConnectorConfig(
 ): WebSocketConnectorConfigLike {
   const normalized = normalizeWebSocketConnectionGrant(grant);
   const config: WebSocketConnectorConfigLike = {
-    type: "WebSocketConnector",
+    type: 'WebSocketConnector',
   };
 
   if (normalized.url) {

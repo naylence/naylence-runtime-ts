@@ -1,20 +1,23 @@
-import { AbstractResourceFactory, createDefaultResource } from "naylence-factory";
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+} from 'naylence-factory';
 
-import type { SecurityManager } from "./security-manager.js";
-import type { SecurityManagerConfig } from "./security-manager-config.js";
-import type { SecurityPolicy } from "./policy/security-policy.js";
-import type { EnvelopeSigner } from "./signing/envelope-signer.js";
-import type { EnvelopeVerifier } from "./signing/envelope-verifier.js";
-import type { EncryptionManager } from "./encryption/encryption-manager.js";
-import type { KeyManager } from "./keys/key-manager.js";
-import type { AttachmentKeyValidator } from "./keys/attachment-key-validator.js";
-import type { Authorizer } from "./auth/authorizer.js";
-import type { CertificateManager } from "./cert/certificate-manager.js";
-import type { SecureChannelManager } from "./encryption/secure-channel-manager.js";
-import type { NodeEventListener } from "../node/node-event-listener.js";
-import type { CryptoProvider } from "./crypto/providers/crypto-provider.js";
+import type { SecurityManager } from './security-manager.js';
+import type { SecurityManagerConfig } from './security-manager-config.js';
+import type { SecurityPolicy } from './policy/security-policy.js';
+import type { EnvelopeSigner } from './signing/envelope-signer.js';
+import type { EnvelopeVerifier } from './signing/envelope-verifier.js';
+import type { EncryptionManager } from './encryption/encryption-manager.js';
+import type { KeyManager } from './keys/key-manager.js';
+import type { AttachmentKeyValidator } from './keys/attachment-key-validator.js';
+import type { Authorizer } from './auth/authorizer.js';
+import type { CertificateManager } from './cert/certificate-manager.js';
+import type { SecureChannelManager } from './encryption/secure-channel-manager.js';
+import type { NodeEventListener } from '../node/node-event-listener.js';
+import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
 
-export const SECURITY_MANAGER_FACTORY_BASE_TYPE = "SecurityManagerFactory";
+export const SECURITY_MANAGER_FACTORY_BASE_TYPE = 'SecurityManagerFactory';
 
 export interface SecurityManagerComponentOverrides {
   policy?: SecurityPolicy | null;
@@ -49,7 +52,7 @@ export abstract class SecurityManagerFactory<
     );
 
     if (!instance) {
-      throw new Error("Failed to create default SecurityManager instance");
+      throw new Error('Failed to create default SecurityManager instance');
     }
 
     return instance;

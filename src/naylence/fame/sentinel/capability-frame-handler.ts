@@ -9,13 +9,13 @@ import {
   type FameConnector,
   type FameDeliveryContext,
   type FameEnvelope,
-} from "naylence-core";
+} from 'naylence-core';
 
-import type { RoutingNodeLike } from "../node/routing-node-like.js";
-import { getLogger } from "../util/logging.js";
-import type { RouteManager } from "./route-manager.js";
+import type { RoutingNodeLike } from '../node/routing-node-like.js';
+import { getLogger } from '../util/logging.js';
+import type { RouteManager } from './route-manager.js';
 
-const logger = getLogger("capability-frame-handler");
+const logger = getLogger('capability-frame-handler');
 
 type CapabilityRoutesMap = Map<string, Map<string, CapabilityRouteEntry>>;
 
@@ -61,13 +61,13 @@ export class CapabilityFrameHandler {
     context: FameDeliveryContext | null | undefined
   ): Promise<void> {
     const frame = envelope.frame as CapabilityAdvertiseFrame | undefined;
-    if (!frame || frame.type !== "CapabilityAdvertise") {
-      throw new Error("Expected CapabilityAdvertiseFrame");
+    if (!frame || frame.type !== 'CapabilityAdvertise') {
+      throw new Error('Expected CapabilityAdvertiseFrame');
     }
 
     const segment = this.getSourceSystemId(context);
     if (!segment || !this.routeManager.downstreamRoutes.has(segment)) {
-      logger.debug("capability_advertise_unknown_segment", { segment });
+      logger.debug('capability_advertise_unknown_segment', { segment });
       return;
     }
 
@@ -85,7 +85,7 @@ export class CapabilityFrameHandler {
 
     const ackContext = this.buildAckContext(context);
     const ackFrame: CapabilityAdvertiseAckFrame = {
-      type: "CapabilityAdvertiseAck",
+      type: 'CapabilityAdvertiseAck',
       capabilities: [...frame.capabilities],
       address: frame.address,
       ok: true,
@@ -104,13 +104,13 @@ export class CapabilityFrameHandler {
     context: FameDeliveryContext | null | undefined
   ): Promise<void> {
     const frame = envelope.frame as CapabilityWithdrawFrame | undefined;
-    if (!frame || frame.type !== "CapabilityWithdraw") {
-      throw new Error("Expected CapabilityWithdrawFrame");
+    if (!frame || frame.type !== 'CapabilityWithdraw') {
+      throw new Error('Expected CapabilityWithdrawFrame');
     }
 
     const segment = this.getSourceSystemId(context);
     if (!segment) {
-      logger.debug("capability_withdraw_missing_segment");
+      logger.debug('capability_withdraw_missing_segment');
       return;
     }
 
@@ -135,7 +135,7 @@ export class CapabilityFrameHandler {
 
     const ackContext = this.buildAckContext(context);
     const ackFrame: CapabilityWithdrawAckFrame = {
-      type: "CapabilityWithdrawAck",
+      type: 'CapabilityWithdrawAck',
       capabilities: [...frame.capabilities],
       address: frame.address,
       ok: true,
@@ -149,7 +149,9 @@ export class CapabilityFrameHandler {
     }
   }
 
-  private ensureCapabilityRoutes(capability: string): Map<string, CapabilityRouteEntry> {
+  private ensureCapabilityRoutes(
+    capability: string
+  ): Map<string, CapabilityRouteEntry> {
     let routes = this.capabilityRoutes.get(capability);
     if (!routes) {
       routes = new Map<string, CapabilityRouteEntry>();
@@ -158,7 +160,9 @@ export class CapabilityFrameHandler {
     return routes;
   }
 
-  private getSourceSystemId(context: FameDeliveryContext | null | undefined): string | null {
+  private getSourceSystemId(
+    context: FameDeliveryContext | null | undefined
+  ): string | null {
     if (context?.fromSystemId) {
       return context.fromSystemId;
     }
@@ -173,7 +177,7 @@ export class CapabilityFrameHandler {
   ): Promise<void> {
     const envelopeFactory = this.routingNode.envelopeFactory;
     if (!envelopeFactory) {
-      logger.warning("missing_envelope_factory_for_capability_ack");
+      logger.warning('missing_envelope_factory_for_capability_ack');
       return;
     }
 
@@ -193,7 +197,9 @@ export class CapabilityFrameHandler {
     }
   }
 
-  private buildAckContext(context: FameDeliveryContext | null | undefined): FameDeliveryContext {
+  private buildAckContext(
+    context: FameDeliveryContext | null | undefined
+  ): FameDeliveryContext {
     return {
       originType: DeliveryOriginType.LOCAL,
       security: context?.security,

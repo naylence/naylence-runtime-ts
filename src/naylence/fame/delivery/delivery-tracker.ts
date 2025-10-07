@@ -1,10 +1,14 @@
-import { FameDeliveryContext, FameEnvelope, FameResponseType } from "naylence-core";
-import type { DeliveryAckFrame } from "naylence-core";
+import {
+  FameDeliveryContext,
+  FameEnvelope,
+  FameResponseType,
+} from 'naylence-core';
+import type { DeliveryAckFrame } from 'naylence-core';
 
 export class AckTimeoutError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "AckTimeoutError";
+    this.name = 'AckTimeoutError';
   }
 }
 
@@ -42,7 +46,9 @@ export class DeliveryTracker {
     pending.timer = setTimeout(() => {
       this.pending.delete(envelope.id);
       pending.reject?.(
-        new AckTimeoutError(`Timeout waiting for response to envelope ${envelope.id}`)
+        new AckTimeoutError(
+          `Timeout waiting for response to envelope ${envelope.id}`
+        )
       );
     }, timeoutMs);
 
@@ -80,7 +86,9 @@ export class DeliveryTracker {
     }
 
     const isAckFrame = Boolean(
-      envelope.frame && typeof envelope.frame === "object" && "type" in envelope.frame
+      envelope.frame &&
+        typeof envelope.frame === 'object' &&
+        'type' in envelope.frame
     );
 
     if (!isAckFrame) {
@@ -88,7 +96,7 @@ export class DeliveryTracker {
     }
 
     const frame = envelope.frame as DeliveryAckFrame;
-    if (!frame.type.endsWith("Ack")) {
+    if (!frame.type.endsWith('Ack')) {
       return;
     }
 
@@ -105,7 +113,9 @@ export class DeliveryTracker {
       if (entry.timer) {
         clearTimeout(entry.timer);
       }
-      entry.reject(new AckTimeoutError("Tracker cleared before response arrived"));
+      entry.reject(
+        new AckTimeoutError('Tracker cleared before response arrived')
+      );
     }
     this.pending.clear();
     this.aliases.clear();
@@ -124,7 +134,7 @@ export class DeliveryTracker {
       candidates.add(envelope.id);
     }
     const frame = envelope.frame as Partial<DeliveryAckFrame> | undefined;
-    if (frame && typeof frame === "object" && frame.refId) {
+    if (frame && typeof frame === 'object' && frame.refId) {
       candidates.add(frame.refId);
     }
 

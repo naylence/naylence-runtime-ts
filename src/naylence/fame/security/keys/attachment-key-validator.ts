@@ -18,11 +18,11 @@ function toDateOrNull(value?: Date | string | number | null): Date | null {
     return value;
   }
 
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     return Number.isFinite(value) ? new Date(value) : null;
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const timestamp = Date.parse(value);
     if (!Number.isNaN(timestamp)) {
       return new Date(timestamp);
@@ -68,7 +68,7 @@ export class KeyValidationError extends Error {
     } = {}
   ) {
     super(message);
-    this.name = "KeyValidationError";
+    this.name = 'KeyValidationError';
     this.code = code;
     this.kid = options.kid ?? null;
     this.details = options.details ? { ...options.details } : {};
@@ -78,7 +78,9 @@ export class KeyValidationError extends Error {
 export abstract class AttachmentKeyValidator {
   public abstract validateKey(key: AttachmentKey): Promise<KeyInfo>;
 
-  public async validateKeys(keys?: Iterable<AttachmentKey> | null): Promise<KeyInfo[]> {
+  public async validateKeys(
+    keys?: Iterable<AttachmentKey> | null
+  ): Promise<KeyInfo[]> {
     const infos: KeyInfo[] = [];
 
     if (!keys) {

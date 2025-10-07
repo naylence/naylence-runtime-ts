@@ -1,10 +1,14 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
 
-import type { KeyManager } from "./key-manager.js";
-import type { KeyStore } from "./key-store.js";
+import type { KeyManager } from './key-manager.js';
+import type { KeyStore } from './key-store.js';
 
-export const KEY_MANAGER_FACTORY_BASE_TYPE = "KeyManagerFactory";
+export const KEY_MANAGER_FACTORY_BASE_TYPE = 'KeyManagerFactory';
 
 export interface KeyManagerConfig extends ResourceConfig {
   type: string;
@@ -19,7 +23,9 @@ export abstract class KeyManagerFactory<
     ...factoryArgs: unknown[]
   ): Promise<KeyManager>;
 
-  public static async createKeyManager<C extends KeyManagerConfig = KeyManagerConfig>(
+  public static async createKeyManager<
+    C extends KeyManagerConfig = KeyManagerConfig,
+  >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions & {
       keyStore?: KeyStore | null;
@@ -38,7 +44,11 @@ export abstract class KeyManagerFactory<
     };
 
     const instance = config
-      ? await createResource<KeyManager>(KEY_MANAGER_FACTORY_BASE_TYPE, config, creationOptions)
+      ? await createResource<KeyManager>(
+          KEY_MANAGER_FACTORY_BASE_TYPE,
+          config,
+          creationOptions
+        )
       : await createDefaultResource<KeyManager>(
           KEY_MANAGER_FACTORY_BASE_TYPE,
           null,
@@ -46,7 +56,7 @@ export abstract class KeyManagerFactory<
         );
 
     if (!instance) {
-      throw new Error("Failed to create key manager from configuration");
+      throw new Error('Failed to create key manager from configuration');
     }
 
     return instance;

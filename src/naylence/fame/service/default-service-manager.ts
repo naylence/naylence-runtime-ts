@@ -10,14 +10,18 @@ import {
   type InvokeProtocol,
   type ServeProtocol,
   type ServeRPCProtocol,
-} from "naylence-core";
-import { createResource, ExtensionManager } from "naylence-factory";
+} from 'naylence-core';
+import { createResource, ExtensionManager } from 'naylence-factory';
 
-import type { ServiceManager } from "./service-manager.js";
+import type { ServiceManager } from './service-manager.js';
 
 type MaybePromise<T> = T | Promise<T>;
 
-type CapabilityMapInput = Map<string, FameAddress> | Record<string, FameAddress> | undefined | null;
+type CapabilityMapInput =
+  | Map<string, FameAddress>
+  | Record<string, FameAddress>
+  | undefined
+  | null;
 
 interface DefaultServiceManagerOptions {
   invoke: InvokeProtocol;
@@ -79,7 +83,7 @@ export class DefaultServiceManager implements ServiceManager {
     await Promise.all(
       Array.from(this.services.values()).map(async ({ service }) => {
         const stopFn = (service as any)?.stop;
-        if (typeof stopFn === "function") {
+        if (typeof stopFn === 'function') {
           await this.resolveMaybePromise(stopFn.call(service));
         }
       })
@@ -88,13 +92,16 @@ export class DefaultServiceManager implements ServiceManager {
     this.started = false;
   }
 
-  async registerService(serviceName: string, service: FameService): Promise<FameAddress> {
+  async registerService(
+    serviceName: string,
+    service: FameService
+  ): Promise<FameAddress> {
     if (!this.started) {
       await this.start();
     }
 
     const startFn = (service as any)?.start;
-    if (typeof startFn === "function") {
+    if (typeof startFn === 'function') {
       await this.resolveMaybePromise(startFn.call(service));
     }
 
@@ -102,17 +109,30 @@ export class DefaultServiceManager implements ServiceManager {
 
     if (isFameMessageService(service)) {
       const options = this.buildServeOptions(service.capabilities);
-      address = await this.serve(serviceName, this.wrapMessageHandler(service), options);
+      address = await this.serve(
+        serviceName,
+        this.wrapMessageHandler(service),
+        options
+      );
     } else if (isFameRPCService(service)) {
       const options = this.buildServeOptions(service.capabilities);
-      address = await this.serveRpc(serviceName, service.handleRpcRequest.bind(service), options);
+      address = await this.serveRpc(
+        serviceName,
+        service.handleRpcRequest.bind(service),
+        options
+      );
     } else {
-      throw new TypeError("Service must implement FameMessageService or FameRPCService");
+      throw new TypeError(
+        'Service must implement FameMessageService or FameRPCService'
+      );
     }
 
     this.services.set(address.toString(), { address, service });
 
-    if ((service as any)?.address === undefined && this.isAddressable(service)) {
+    if (
+      (service as any)?.address === undefined &&
+      this.isAddressable(service)
+    ) {
       (service as any).address = address;
     }
 
@@ -130,21 +150,27 @@ export class DefaultServiceManager implements ServiceManager {
     for (const { address, service } of this.services.values()) {
       const caps = this.extractCapabilities(service);
       if (caps?.includes(capability as string)) {
-        return FameServiceProxy.remoteByAddress(address, { invoke: this.invoke });
+        return FameServiceProxy.remoteByAddress(address, {
+          invoke: this.invoke,
+        });
       }
     }
 
-    if (typeof capability === "string") {
+    if (typeof capability === 'string') {
       const mapped = this.capabilityMap.get(capability);
       if (mapped) {
-        return FameServiceProxy.remoteByAddress(mapped, { invoke: this.invoke });
+        return FameServiceProxy.remoteByAddress(mapped, {
+          invoke: this.invoke,
+        });
       }
     }
 
     throw new Error(`Capability ${String(capability)} not available`);
   }
 
-  async resolveAddressByCapability(capabilities: string[]): Promise<FameAddress | null> {
+  async resolveAddressByCapability(
+    capabilities: string[]
+  ): Promise<FameAddress | null> {
     for (const { address, service } of this.services.values()) {
       const caps = this.extractCapabilities(service) ?? [];
       if (capabilities.every((cap) => caps.includes(cap))) {
@@ -164,19 +190,24 @@ export class DefaultServiceManager implements ServiceManager {
 
   private async registerDefaultServices(): Promise<void> {
     for (const rawConfig of this.defaultServiceConfigs) {
-      if (!rawConfig || typeof rawConfig !== "object") {
+      if (!rawConfig || typeof rawConfig !== 'object') {
         continue;
       }
 
       const config = rawConfig as Record<string, unknown>;
-      const name = typeof config.name === "string" ? (config.name as string) : undefined;
+      const name =
+        typeof config.name === 'string' ? (config.name as string) : undefined;
       if (!name) {
         continue;
       }
 
-      const service = await createResource<FameService>("FameServiceFactory", config, {
-        validate: false,
-      });
+      const service = await createResource<FameService>(
+        'FameServiceFactory',
+        config,
+        {
+          validate: false,
+        }
+      );
 
       if (!service) {
         continue;
@@ -191,7 +222,10 @@ export class DefaultServiceManager implements ServiceManager {
       return;
     }
 
-    ExtensionManager.getExtensionManager("naylence.FameServiceFactory", "FameServiceFactory");
+    ExtensionManager.getExtensionManager(
+      'naylence.FameServiceFactory',
+      'FameServiceFactory'
+    );
     this.extensionManagerInitialized = true;
   }
 
@@ -199,15 +233,21 @@ export class DefaultServiceManager implements ServiceManager {
     if (!service) {
       return undefined;
     }
-    const caps = (service as any).capabilities ?? (service as FameService).capabilities;
+    const caps =
+      (service as any).capabilities ?? (service as FameService).capabilities;
     return Array.isArray(caps) ? caps : undefined;
   }
 
   private isAddressable(service: FameService): boolean {
-    return typeof (service as any)?.address === "undefined" || (service as any)?.address === null;
+    return (
+      typeof (service as any)?.address === 'undefined' ||
+      (service as any)?.address === null
+    );
   }
 
-  private normalizeCapabilityMap(input: CapabilityMapInput): Map<string, FameAddress> {
+  private normalizeCapabilityMap(
+    input: CapabilityMapInput
+  ): Map<string, FameAddress> {
     if (!input) {
       return new Map();
     }
@@ -216,7 +256,9 @@ export class DefaultServiceManager implements ServiceManager {
       return new Map(input);
     }
 
-    const entries = Object.entries(input).map(([key, value]) => [key, value] as const);
+    const entries = Object.entries(input).map(
+      ([key, value]) => [key, value] as const
+    );
     return new Map(entries);
   }
 
@@ -224,8 +266,13 @@ export class DefaultServiceManager implements ServiceManager {
     return await value;
   }
 
-  private wrapMessageHandler(service: FameMessageService): Parameters<ServeProtocol>[1] {
-    return async (envelope: FameEnvelope, context: FameDeliveryContext | undefined) => {
+  private wrapMessageHandler(
+    service: FameMessageService
+  ): Parameters<ServeProtocol>[1] {
+    return async (
+      envelope: FameEnvelope,
+      context: FameDeliveryContext | undefined
+    ) => {
       const result = await service.handleMessage(envelope, context);
       return result === undefined ? null : result;
     };

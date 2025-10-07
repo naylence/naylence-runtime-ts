@@ -5,29 +5,33 @@ import {
   FameEnvelope,
   FameResponseType,
   generateId,
-} from "naylence-core";
-import { DefaultDeliveryTracker } from "../default-delivery-tracker.js";
-import { InMemoryStorageProvider } from "../../storage/in-memory-storage.js";
-import type { NodeLike } from "../../node/node-like.js";
-import { EnvelopeStatus, MailboxType, TrackedEnvelope } from "../tracked-envelope.js";
-import { RetryPolicy } from "../retry-policy.js";
-import { TaskCancelledError } from "../../util/task-types.js";
+} from 'naylence-core';
+import { DefaultDeliveryTracker } from '../default-delivery-tracker.js';
+import { InMemoryStorageProvider } from '../../storage/in-memory-storage.js';
+import type { NodeLike } from '../../node/node-like.js';
+import {
+  EnvelopeStatus,
+  MailboxType,
+  TrackedEnvelope,
+} from '../tracked-envelope.js';
+import { RetryPolicy } from '../retry-policy.js';
+import { TaskCancelledError } from '../../util/task-types.js';
 
-describe("DefaultDeliveryTracker", () => {
+describe('DefaultDeliveryTracker', () => {
   function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
     const storageProvider = new InMemoryStorageProvider();
-    const defaultAddress = new FameAddress("service@/stub");
+    const defaultAddress = new FameAddress('service@/stub');
 
     return {
-      id: "node-1",
-      sid: "sid-1",
-      physicalPath: "/node-1",
+      id: 'node-1',
+      sid: 'sid-1',
+      physicalPath: '/node-1',
       acceptedLogicals: new Set<string>(),
       envelopeFactory: {
         createEnvelope: createFameEnvelope,
       },
       deliveryPolicy: null,
-      defaultBindingPath: "/node-1",
+      defaultBindingPath: '/node-1',
       hasParent: false,
       securityManager: null,
       admissionClient: null,
@@ -74,9 +78,15 @@ describe("DefaultDeliveryTracker", () => {
     return { tracker, provider };
   }
 
-  function createDataEnvelope(overrides: Partial<FameEnvelope> = {}): FameEnvelope {
+  function createDataEnvelope(
+    overrides: Partial<FameEnvelope> = {}
+  ): FameEnvelope {
     const frame =
-      overrides.frame ?? ({ type: "Data", payload: { message: "hello" } } as FameEnvelope["frame"]);
+      overrides.frame ??
+      ({
+        type: 'Data',
+        payload: { message: 'hello' },
+      } as FameEnvelope['frame']);
     const options: Record<string, unknown> = { frame };
     if (overrides.corrId !== undefined) {
       options.corrId = overrides.corrId;
@@ -100,7 +110,7 @@ describe("DefaultDeliveryTracker", () => {
     return {
       ...createFameEnvelope({
         frame: {
-          type: "DeliveryAck",
+          type: 'DeliveryAck',
           ok: overrides.ok ?? true,
           refId,
           reason: overrides.reason,
@@ -125,14 +135,14 @@ describe("DefaultDeliveryTracker", () => {
     await tracker.shutdownTasks();
   }
 
-  it("initializes with default timing options when none provided", () => {
+  it('initializes with default timing options when none provided', () => {
     const tracker = new DefaultDeliveryTracker(new InMemoryStorageProvider());
     const trackerAny = tracker as any;
     expect(trackerAny.futGcGraceSecs).toBe(120);
     expect(trackerAny.futSweepIntervalSecs).toBe(30);
   });
 
-  it("clamps negative timing options to minimums", () => {
+  it('clamps negative timing options to minimums', () => {
     const tracker = new DefaultDeliveryTracker(new InMemoryStorageProvider(), {
       futuresGcGraceSecs: -5,
       futuresSweepIntervalSecs: 0,
@@ -142,7 +152,7 @@ describe("DefaultDeliveryTracker", () => {
     expect(trackerAny.futSweepIntervalSecs).toBe(1);
   });
 
-  it("ignores attempts to track duplicate reply correlations", async () => {
+  it('ignores attempts to track duplicate reply correlations', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
     try {
@@ -170,7 +180,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("resolves ack futures when acknowledgements arrive", async () => {
+  it('resolves ack futures when acknowledgements arrive', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -185,7 +195,7 @@ describe("DefaultDeliveryTracker", () => {
       const ackPromise = tracker.awaitAck(envelope.id);
       const ackEnvelope = createAckEnvelope(envelope.id, envelope.corrId!);
 
-      await tracker.onEnvelopeDelivered("outbox", ackEnvelope);
+      await tracker.onEnvelopeDelivered('outbox', ackEnvelope);
 
       await expect(ackPromise).resolves.toMatchObject({
         id: ackEnvelope.id,
@@ -200,7 +210,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("resolves reply futures and auto-acks when a reply arrives", async () => {
+  it('resolves reply futures and auto-acks when a reply arrives', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -220,11 +230,13 @@ describe("DefaultDeliveryTracker", () => {
         rtype: FameResponseType.REPLY,
       });
 
-      await tracker.onEnvelopeDelivered("outbox", replyEnvelope);
+      await tracker.onEnvelopeDelivered('outbox', replyEnvelope);
 
-      await expect(replyPromise).resolves.toMatchObject({ id: replyEnvelope.id });
+      await expect(replyPromise).resolves.toMatchObject({
+        id: replyEnvelope.id,
+      });
       await expect(ackPromise).resolves.toMatchObject({
-        frame: { type: "DeliveryAck", ok: true, refId: envelope.id },
+        frame: { type: 'DeliveryAck', ok: true, refId: envelope.id },
       });
 
       const stored = await tracker.getTrackedEnvelope(envelope.id);
@@ -235,7 +247,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("streams responses and completes when onStreamEnd is called", async () => {
+  it('streams responses and completes when onStreamEnd is called', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -260,7 +272,7 @@ describe("DefaultDeliveryTracker", () => {
         rtype: FameResponseType.STREAM,
       });
 
-      await tracker.onEnvelopeDelivered("outbox", streamChunk);
+      await tracker.onEnvelopeDelivered('outbox', streamChunk);
       await tracker.onStreamEnd(envelope.id);
 
       await expect(iterator).resolves.toEqual([streamChunk]);
@@ -270,7 +282,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("rejects ack futures and terminates streams when a nack arrives", async () => {
+  it('rejects ack futures and terminates streams when a nack arrives', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -292,11 +304,11 @@ describe("DefaultDeliveryTracker", () => {
 
       const nackEnvelope = createAckEnvelope(envelope.id, envelope.corrId!, {
         ok: false,
-        reason: "stream-failed",
-        code: "STREAM_FAILED",
+        reason: 'stream-failed',
+        code: 'STREAM_FAILED',
       });
 
-      await tracker.onEnvelopeDelivered("outbox", nackEnvelope);
+      await tracker.onEnvelopeDelivered('outbox', nackEnvelope);
 
       await expect(ackPromise).rejects.toThrow(
         "Message delivery failed with code 'STREAM_FAILED': stream-failed"
@@ -308,7 +320,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("sends failed envelopes to the DLQ and purges them", async () => {
+  it('sends failed envelopes to the DLQ and purges them', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -319,21 +331,24 @@ describe("DefaultDeliveryTracker", () => {
         rtype: FameResponseType.ACK,
       });
 
-      const trackedInbound = await tracker.onEnvelopeDelivered("inbox-service", inbound);
+      const trackedInbound = await tracker.onEnvelopeDelivered(
+        'inbox-service',
+        inbound
+      );
       expect(trackedInbound).not.toBeNull();
 
       await tracker.onEnvelopeHandleFailed(
-        "inbox-service",
+        'inbox-service',
         trackedInbound!,
         undefined,
-        new Error("boom"),
+        new Error('boom'),
         true
       );
 
       const items = await tracker.listInboxDlq();
       expect(items).toHaveLength(1);
-      expect(items[0].meta["dlq"]).toBe(true);
-      expect(items[0].meta["dlq_reason"]).toBe("boom");
+      expect(items[0].meta['dlq']).toBe(true);
+      expect(items[0].meta['dlq_reason']).toBe('boom');
 
       const purged = await tracker.purgeInboxDlq();
       expect(purged).toBe(1);
@@ -345,7 +360,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("rejects pending futures during cleanup", async () => {
+  it('rejects pending futures during cleanup', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -362,7 +377,9 @@ describe("DefaultDeliveryTracker", () => {
 
       const cleanupPromise = tracker.cleanup();
 
-      await expect(ackFuture?.promise).rejects.toThrow("Tracker cleaned up before ACK received");
+      await expect(ackFuture?.promise).rejects.toThrow(
+        'Tracker cleaned up before ACK received'
+      );
       await cleanupPromise;
     } finally {
       await tracker.shutdownTasks();
@@ -370,7 +387,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("ignores duplicate ack resolutions and same envelope ack ids", async () => {
+  it('ignores duplicate ack resolutions and same envelope ack ids', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -384,11 +401,11 @@ describe("DefaultDeliveryTracker", () => {
       const ackPromise = tracker.awaitAck(envelope.id);
       const ackEnvelope = createAckEnvelope(envelope.id, envelope.corrId!);
 
-      await tracker.onEnvelopeDelivered("outbox", ackEnvelope);
+      await tracker.onEnvelopeDelivered('outbox', ackEnvelope);
       await expect(ackPromise).resolves.toBeDefined();
 
       const dupAck = { ...ackEnvelope, id: envelope.id };
-      await tracker.onEnvelopeDelivered("outbox", dupAck);
+      await tracker.onEnvelopeDelivered('outbox', dupAck);
       const stored = await tracker.getTrackedEnvelope(envelope.id);
       expect(stored?.status).toBe(EnvelopeStatus.ACKED);
     } finally {
@@ -397,7 +414,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("ack on stream-enabled envelopes keeps status pending", async () => {
+  it('ack on stream-enabled envelopes keeps status pending', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -409,7 +426,7 @@ describe("DefaultDeliveryTracker", () => {
       });
 
       const ackEnvelope = createAckEnvelope(envelope.id, envelope.corrId!);
-      await tracker.onEnvelopeDelivered("outbox", ackEnvelope);
+      await tracker.onEnvelopeDelivered('outbox', ackEnvelope);
 
       const tracked = await tracker.getTrackedEnvelope(envelope.id);
       expect(tracked?.status).toBe(EnvelopeStatus.PENDING);
@@ -419,7 +436,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("records nack metadata even when reason missing", async () => {
+  it('records nack metadata even when reason missing', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -431,19 +448,21 @@ describe("DefaultDeliveryTracker", () => {
       });
       void tracker.awaitAck(envelope.id).catch(() => undefined);
 
-      const nackEnvelope = createAckEnvelope(envelope.id, envelope.corrId!, { ok: false });
-      await tracker.onEnvelopeDelivered("outbox", nackEnvelope);
+      const nackEnvelope = createAckEnvelope(envelope.id, envelope.corrId!, {
+        ok: false,
+      });
+      await tracker.onEnvelopeDelivered('outbox', nackEnvelope);
 
       const tracked = await tracker.getTrackedEnvelope(envelope.id);
       expect(tracked?.status).toBe(EnvelopeStatus.NACKED);
-      expect(tracked?.meta["nack_reason"]).toBeUndefined();
+      expect(tracked?.meta['nack_reason']).toBeUndefined();
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("treats expired pending acks as immediate timeouts during shutdown wait", async () => {
+  it('treats expired pending acks as immediate timeouts during shutdown wait', async () => {
     jest.useFakeTimers();
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
@@ -468,7 +487,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("does not recreate futures sweeper when node start repeats", async () => {
+  it('does not recreate futures sweeper when node start repeats', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -482,7 +501,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("returns null when tracking the same envelope twice", async () => {
+  it('returns null when tracking the same envelope twice', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -506,14 +525,14 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("handles retry policy failures while preserving metadata", async () => {
+  it('handles retry policy failures while preserving metadata', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
     try {
       class ThrowingPolicy extends RetryPolicy {
         override nextDelayMs(): number {
-          throw new Error("boom");
+          throw new Error('boom');
         }
       }
 
@@ -527,19 +546,19 @@ describe("DefaultDeliveryTracker", () => {
       void tracker.awaitAck(envelope.id).catch(() => undefined);
 
       const stored = await tracker.getTrackedEnvelope(envelope.id);
-      expect(stored?.meta["attempt"]).toBe(1);
+      expect(stored?.meta['attempt']).toBe(1);
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("logs retry policy warnings for non-error reasons and preserves tracking", async () => {
+  it('logs retry policy warnings for non-error reasons and preserves tracking', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
     try {
-      const thrownValue = "string-policy-failure";
+      const thrownValue = 'string-policy-failure';
       const policy = {
         maxRetries: 1,
         nextDelayMs: jest.fn(() => {
@@ -548,7 +567,7 @@ describe("DefaultDeliveryTracker", () => {
       } as unknown as RetryPolicy;
 
       const envelope = createDataEnvelope({
-        to: new FameAddress("dest@/service"),
+        to: new FameAddress('dest@/service'),
       });
 
       const tracked = await tracker.track(envelope, {
@@ -567,13 +586,17 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("throws when awaiting ack or reply that was never tracked", async () => {
+  it('throws when awaiting ack or reply that was never tracked', async () => {
     const { tracker } = createTracker();
-    await expect(tracker.awaitAck("missing")).rejects.toThrow("No ack expected");
-    await expect(tracker.awaitReply("missing")).rejects.toThrow("No reply expected");
+    await expect(tracker.awaitAck('missing')).rejects.toThrow(
+      'No ack expected'
+    );
+    await expect(tracker.awaitReply('missing')).rejects.toThrow(
+      'No reply expected'
+    );
   });
 
-  it("gracefully handles list and dlq operations before initialization", async () => {
+  it('gracefully handles list and dlq operations before initialization', async () => {
     const tracker = new DefaultDeliveryTracker(new InMemoryStorageProvider());
     const tracked = new TrackedEnvelope({
       timeoutAtMs: Date.now(),
@@ -587,10 +610,10 @@ describe("DefaultDeliveryTracker", () => {
     expect(await tracker.listInbound()).toEqual([]);
     expect(await tracker.listInboxDlq()).toEqual([]);
     expect(await tracker.purgeInboxDlq()).toBe(0);
-    await tracker.addToInboxDlq(tracked, "pre-init");
+    await tracker.addToInboxDlq(tracked, 'pre-init');
   });
 
-  it("classifies terminal statuses correctly", () => {
+  it('classifies terminal statuses correctly', () => {
     const { tracker } = createTracker();
     const trackerAny = tracker as any;
     expect(trackerAny.statusIsTerminal(EnvelopeStatus.ACKED)).toBe(true);
@@ -600,7 +623,7 @@ describe("DefaultDeliveryTracker", () => {
     expect(trackerAny.statusIsTerminal(EnvelopeStatus.PENDING)).toBe(false);
   });
 
-  it("handles sendAck validation failures gracefully", async () => {
+  it('handles sendAck validation failures gracefully', async () => {
     const { tracker } = createTracker();
     const trackerAny = tracker as any;
 
@@ -608,14 +631,20 @@ describe("DefaultDeliveryTracker", () => {
     await expect(trackerAny.sendAck(envelope)).resolves.toBeUndefined();
 
     trackerAny.node = createNodeStub();
-    await expect(trackerAny.sendAck({ ...envelope, replyTo: undefined })).resolves.toBeUndefined();
+    await expect(
+      trackerAny.sendAck({ ...envelope, replyTo: undefined })
+    ).resolves.toBeUndefined();
 
     await expect(
-      trackerAny.sendAck({ ...envelope, replyTo: new FameAddress("dest@/svc"), corrId: undefined })
+      trackerAny.sendAck({
+        ...envelope,
+        replyTo: new FameAddress('dest@/svc'),
+        corrId: undefined,
+      })
     ).resolves.toBeUndefined();
   });
 
-  it("delay and await helpers honour timeout and abort semantics", async () => {
+  it('delay and await helpers honour timeout and abort semantics', async () => {
     jest.useFakeTimers();
     const { tracker } = createTracker();
     const trackerAny = tracker as any;
@@ -627,31 +656,35 @@ describe("DefaultDeliveryTracker", () => {
     abortController.abort();
     await expect(delayPromise).rejects.toThrow(TaskCancelledError);
 
-    const futurePromise = Promise.resolve("ok");
-    await expect(trackerAny.awaitWithTimeout(futurePromise, 0)).resolves.toBe("ok");
+    const futurePromise = Promise.resolve('ok');
+    await expect(trackerAny.awaitWithTimeout(futurePromise, 0)).resolves.toBe(
+      'ok'
+    );
 
     const slowPromise = new Promise(() => undefined);
     const timeoutPromise = trackerAny.awaitWithTimeout(slowPromise, 10);
     jest.advanceTimersByTime(20);
-    await expect(timeoutPromise).rejects.toThrow("TimeoutError");
+    await expect(timeoutPromise).rejects.toThrow('TimeoutError');
 
     const pendingQueue = {
       dequeue: jest.fn(() => new Promise(() => undefined)),
     };
     const dequeuePromise = trackerAny.dequeueWithTimeout(pendingQueue, 10);
     jest.advanceTimersByTime(20);
-    await expect(dequeuePromise).rejects.toThrow("stream timeout waiting for next item");
+    await expect(dequeuePromise).rejects.toThrow(
+      'stream timeout waiting for next item'
+    );
 
     const successQueue = {
-      dequeue: jest.fn(() => Promise.resolve("value")),
+      dequeue: jest.fn(() => Promise.resolve('value')),
     };
     const successPromise = trackerAny.dequeueWithTimeout(successQueue, 20);
-    await expect(successPromise).resolves.toBe("value");
+    await expect(successPromise).resolves.toBe('value');
 
     jest.useRealTimers();
   });
 
-  it("sweeps completed futures after grace period", async () => {
+  it('sweeps completed futures after grace period', async () => {
     const provider = new InMemoryStorageProvider();
     const { tracker } = createTracker(provider);
     const node = await startTracker(tracker);
@@ -672,8 +705,11 @@ describe("DefaultDeliveryTracker", () => {
         rtype: FameResponseType.REPLY,
       });
 
-      await tracker.onEnvelopeDelivered("outbox", replyEnvelope);
-      await tracker.onEnvelopeDelivered("outbox", createAckEnvelope(envelope.id, envelope.corrId!));
+      await tracker.onEnvelopeDelivered('outbox', replyEnvelope);
+      await tracker.onEnvelopeDelivered(
+        'outbox',
+        createAckEnvelope(envelope.id, envelope.corrId!)
+      );
 
       await ackPromise;
       await replyPromise;
@@ -681,7 +717,9 @@ describe("DefaultDeliveryTracker", () => {
       const trackerAny = tracker as any;
       trackerAny.futGcGraceSecs = 0;
 
-      const delaySpy = jest.spyOn(trackerAny, "delay").mockImplementation(async () => undefined);
+      const delaySpy = jest
+        .spyOn(trackerAny, 'delay')
+        .mockImplementation(async () => undefined);
       try {
         const sweepPromise = trackerAny.sweepFuturesLoop();
         await Promise.resolve();
@@ -698,7 +736,7 @@ describe("DefaultDeliveryTracker", () => {
       await node.stop();
     }
   });
-  it("rebuilds pending futures during recovery", async () => {
+  it('rebuilds pending futures during recovery', async () => {
     jest.useFakeTimers();
     const provider = new InMemoryStorageProvider();
     const { tracker: firstTracker } = createTracker(provider);
@@ -717,7 +755,9 @@ describe("DefaultDeliveryTracker", () => {
 
       const ackPromise = recoveredTracker.awaitAck(envelope.id, 5);
       jest.advanceTimersByTime(10);
-      await expect(ackPromise).rejects.toThrow("Timeout waiting for response_type");
+      await expect(ackPromise).rejects.toThrow(
+        'Timeout waiting for response_type'
+      );
 
       await disposeTracker(recoveredTracker);
       await recoveredNode.stop();
@@ -728,14 +768,17 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("does not attempt to send ack when correlation id is missing", async () => {
+  it('does not attempt to send ack when correlation id is missing', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
     try {
       const inbound = createDataEnvelope();
       inbound.corrId = undefined;
 
-      const result = await tracker.onEnvelopeDelivered("inbox-service", inbound);
+      const result = await tracker.onEnvelopeDelivered(
+        'inbox-service',
+        inbound
+      );
       expect(result).toBeNull();
       expect(node.send).not.toHaveBeenCalled();
     } finally {
@@ -744,7 +787,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("ignores ack envelopes without ref id", async () => {
+  it('ignores ack envelopes without ref id', async () => {
     jest.useFakeTimers();
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
@@ -758,17 +801,19 @@ describe("DefaultDeliveryTracker", () => {
       const ackPromise = tracker.awaitAck(envelope.id, 5);
       const malformedAck = createFameEnvelope({
         frame: {
-          type: "DeliveryAck",
+          type: 'DeliveryAck',
           ok: true,
         } satisfies DeliveryAckFrame,
         corrId: envelope.corrId!,
         responseType: FameResponseType.ACK,
       });
 
-      await tracker.onEnvelopeDelivered("outbox", malformedAck);
+      await tracker.onEnvelopeDelivered('outbox', malformedAck);
 
       jest.advanceTimersByTime(10);
-      await expect(ackPromise).rejects.toThrow("Timeout waiting for response_type");
+      await expect(ackPromise).rejects.toThrow(
+        'Timeout waiting for response_type'
+      );
     } finally {
       await disposeTracker(tracker);
       await node.stop();
@@ -776,7 +821,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("ignores ack envelopes with mismatched correlation id", async () => {
+  it('ignores ack envelopes with mismatched correlation id', async () => {
     jest.useFakeTimers();
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
@@ -790,10 +835,12 @@ describe("DefaultDeliveryTracker", () => {
       const ackPromise = tracker.awaitAck(envelope.id, 5);
       const mismatchedAck = createAckEnvelope(envelope.id, generateId());
 
-      await tracker.onEnvelopeDelivered("outbox", mismatchedAck);
+      await tracker.onEnvelopeDelivered('outbox', mismatchedAck);
 
       jest.advanceTimersByTime(10);
-      await expect(ackPromise).rejects.toThrow("Timeout waiting for response_type");
+      await expect(ackPromise).rejects.toThrow(
+        'Timeout waiting for response_type'
+      );
     } finally {
       await disposeTracker(tracker);
       await node.stop();
@@ -801,9 +848,11 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("sends ack for inbound envelopes requesting acknowledgements", async () => {
+  it('sends ack for inbound envelopes requesting acknowledgements', async () => {
     const sendMock = jest.fn(async () => undefined);
-    const node = createNodeStub({ send: sendMock as unknown as NodeLike["send"] });
+    const node = createNodeStub({
+      send: sendMock as unknown as NodeLike['send'],
+    });
     const { tracker } = createTracker();
     await tracker.onNodeInitialized(node);
     await tracker.onNodeStarted(node);
@@ -812,16 +861,16 @@ describe("DefaultDeliveryTracker", () => {
       const inbound = createDataEnvelope({
         corrId: generateId(),
         rtype: FameResponseType.ACK,
-        replyTo: new FameAddress("other@/node"),
+        replyTo: new FameAddress('other@/node'),
       });
 
-      await tracker.onEnvelopeDelivered("inbox-service", inbound);
+      await tracker.onEnvelopeDelivered('inbox-service', inbound);
 
       expect(sendMock).toHaveBeenCalledTimes(1);
       expect(sendMock).toHaveBeenCalledWith(
         expect.objectContaining({
           frame: expect.objectContaining({
-            type: "DeliveryAck",
+            type: 'DeliveryAck',
             ok: true,
             refId: inbound.id,
           }),
@@ -833,7 +882,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("waits for pending acknowledgements when stopping a node", async () => {
+  it('waits for pending acknowledgements when stopping a node', async () => {
     jest.useFakeTimers();
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
@@ -859,7 +908,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("schedules retries and transitions to timeout when overall deadline passes", async () => {
+  it('schedules retries and transitions to timeout when overall deadline passes', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
     try {
@@ -887,10 +936,12 @@ describe("DefaultDeliveryTracker", () => {
       const ackFuture = trackerAny.ackFutures.get(envelope.id);
       expect(ackFuture).toBeDefined();
 
-      const ackResult = ackFuture.promise.catch((error: Error) => error.message);
+      const ackResult = ackFuture.promise.catch(
+        (error: Error) => error.message
+      );
 
       await new Promise((resolve) => setTimeout(resolve, 60));
-      await expect(ackResult).resolves.toBe("Timeout waiting for ACK");
+      await expect(ackResult).resolves.toBe('Timeout waiting for ACK');
 
       expect(ackFuture.done).toBe(true);
 
@@ -907,7 +958,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("rejects updates to outbox tracked envelopes", async () => {
+  it('rejects updates to outbox tracked envelopes', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
     try {
@@ -919,11 +970,13 @@ describe("DefaultDeliveryTracker", () => {
 
       void tracker.awaitAck(envelope.id).catch(() => undefined);
 
-      const tracked = (await tracker.getTrackedEnvelope(envelope.id)) as TrackedEnvelope;
+      const tracked = (await tracker.getTrackedEnvelope(
+        envelope.id
+      )) as TrackedEnvelope;
       expect(tracked.mailboxType).toBe(MailboxType.OUTBOX);
 
       await expect(tracker.updateTrackedEnvelope(tracked)).rejects.toThrow(
-        "Updating tracked envelopes"
+        'Updating tracked envelopes'
       );
     } finally {
       await disposeTracker(tracker);
@@ -931,26 +984,30 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("validates ack envelopes before processing", async () => {
+  it('validates ack envelopes before processing', async () => {
     const { tracker } = createTracker();
     const node = createNodeStub();
     await tracker.onNodeInitialized(node);
 
     const malformed = createDataEnvelope();
-    await expect(tracker.onAck(malformed)).rejects.toThrow("Ack must be from a DeliveryAckFrame");
+    await expect(tracker.onAck(malformed)).rejects.toThrow(
+      'Ack must be from a DeliveryAckFrame'
+    );
 
     const ackWithoutCorr = createAckEnvelope(malformed.id, generateId());
     (ackWithoutCorr as any).corrId = undefined;
     await expect(tracker.onAck(ackWithoutCorr)).rejects.toThrow(
-      "Ack envelope must have a correlation ID"
+      'Ack envelope must have a correlation ID'
     );
 
     const ackWithoutRef = createAckEnvelope(malformed.id, generateId());
     (ackWithoutRef.frame as DeliveryAckFrame).refId = undefined as any;
-    await expect(tracker.onAck(ackWithoutRef)).rejects.toThrow("Ack frame must include refId");
+    await expect(tracker.onAck(ackWithoutRef)).rejects.toThrow(
+      'Ack frame must include refId'
+    );
   });
 
-  it("ignores ack for envelopes that are no longer tracked", async () => {
+  it('ignores ack for envelopes that are no longer tracked', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
     try {
@@ -962,26 +1019,34 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("validates nack envelopes before processing", async () => {
+  it('validates nack envelopes before processing', async () => {
     const { tracker } = createTracker();
     const node = createNodeStub();
     await tracker.onNodeInitialized(node);
 
     const malformed = createDataEnvelope();
-    await expect(tracker.onNack(malformed)).rejects.toThrow("Nack must be from a DeliveryAckFrame");
-
-    const nackWithoutCorr = createAckEnvelope(generateId(), generateId(), { ok: false });
-    (nackWithoutCorr as any).corrId = undefined;
-    await expect(tracker.onNack(nackWithoutCorr)).rejects.toThrow(
-      "Nack envelope must have a correlation ID"
+    await expect(tracker.onNack(malformed)).rejects.toThrow(
+      'Nack must be from a DeliveryAckFrame'
     );
 
-    const nackWithoutRef = createAckEnvelope(generateId(), generateId(), { ok: false });
+    const nackWithoutCorr = createAckEnvelope(generateId(), generateId(), {
+      ok: false,
+    });
+    (nackWithoutCorr as any).corrId = undefined;
+    await expect(tracker.onNack(nackWithoutCorr)).rejects.toThrow(
+      'Nack envelope must have a correlation ID'
+    );
+
+    const nackWithoutRef = createAckEnvelope(generateId(), generateId(), {
+      ok: false,
+    });
     (nackWithoutRef.frame as DeliveryAckFrame).refId = undefined as any;
-    await expect(tracker.onNack(nackWithoutRef)).rejects.toThrow("Ack frame must include refId");
+    await expect(tracker.onNack(nackWithoutRef)).rejects.toThrow(
+      'Ack frame must include refId'
+    );
   });
 
-  it("handles nack correlation mismatches and stream queues", async () => {
+  it('handles nack correlation mismatches and stream queues', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -992,9 +1057,13 @@ describe("DefaultDeliveryTracker", () => {
         timeoutMs: 200,
       });
 
-      const ackPromise = tracker.awaitAck(envelope.id).catch((error: Error) => error.message);
+      const ackPromise = tracker
+        .awaitAck(envelope.id)
+        .catch((error: Error) => error.message);
 
-      const mismatched = createAckEnvelope(envelope.id, generateId(), { ok: false });
+      const mismatched = createAckEnvelope(envelope.id, generateId(), {
+        ok: false,
+      });
       await tracker.onNack(mismatched);
 
       const queue = (tracker as any).streamQueues.get(envelope.id);
@@ -1002,19 +1071,21 @@ describe("DefaultDeliveryTracker", () => {
 
       const validNack = createAckEnvelope(envelope.id, envelope.corrId!, {
         ok: false,
-        reason: "fail",
-        code: "FAILURE",
+        reason: 'fail',
+        code: 'FAILURE',
       });
       await tracker.onNack(validNack);
 
-      await expect(ackPromise).resolves.toBe("Message delivery failed with code 'FAILURE': fail");
+      await expect(ackPromise).resolves.toBe(
+        "Message delivery failed with code 'FAILURE': fail"
+      );
 
       const first = await queue.dequeue();
       expect(first).toMatchObject({
-        frame: expect.objectContaining({ type: "DeliveryAck", ok: false }),
+        frame: expect.objectContaining({ type: 'DeliveryAck', ok: false }),
       });
       const second = await queue.dequeue();
-      expect(typeof second).toBe("symbol");
+      expect(typeof second).toBe('symbol');
 
       const done = (tracker as any).streamDone.get(envelope.id);
       await expect(done.promise).resolves.toBeUndefined();
@@ -1024,20 +1095,23 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("reuses existing inbound records without overwriting handled status", async () => {
+  it('reuses existing inbound records without overwriting handled status', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
     try {
-      const inbound = createDataEnvelope({ corrId: generateId(), rtype: FameResponseType.NONE });
-      await tracker.onEnvelopeDelivered("service", inbound);
+      const inbound = createDataEnvelope({
+        corrId: generateId(),
+        rtype: FameResponseType.NONE,
+      });
+      await tracker.onEnvelopeDelivered('service', inbound);
 
       const inbox = (tracker as any).inbox;
       const tracked = await inbox.get(inbound.id);
       tracked.status = EnvelopeStatus.HANDLED;
       await inbox.set(inbound.id, tracked);
 
-      const second = await tracker.onEnvelopeDelivered("service", inbound);
+      const second = await tracker.onEnvelopeDelivered('service', inbound);
       expect(second?.status).toBe(EnvelopeStatus.HANDLED);
     } finally {
       await disposeTracker(tracker);
@@ -1045,7 +1119,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("supports dlq operations when stores are initialized", async () => {
+  it('supports dlq operations when stores are initialized', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1058,13 +1132,13 @@ describe("DefaultDeliveryTracker", () => {
         mailboxType: MailboxType.INBOX,
         status: EnvelopeStatus.RECEIVED,
         originalEnvelope: createDataEnvelope({ id: generateId() }),
-        serviceName: "svc",
+        serviceName: 'svc',
       });
 
-      await tracker.addToInboxDlq(inbound, "failure");
+      await tracker.addToInboxDlq(inbound, 'failure');
       const stored = await tracker.getFromInboxDlq(inbound.originalEnvelope.id);
-      expect(stored?.meta["dlq"]).toBe(true);
-      expect(stored?.meta["dlq_reason"]).toBe("failure");
+      expect(stored?.meta['dlq']).toBe(true);
+      expect(stored?.meta['dlq_reason']).toBe('failure');
 
       const purged = await tracker.purgeInboxDlq();
       expect(purged).toBe(1);
@@ -1074,13 +1148,13 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("iterates stream queues with timeouts and propagates errors", async () => {
+  it('iterates stream queues with timeouts and propagates errors', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
     try {
       const empty: unknown[] = [];
-      for await (const item of tracker.iterStream("missing-id", 5)) {
+      for await (const item of tracker.iterStream('missing-id', 5)) {
         empty.push(item);
       }
       expect(empty).toHaveLength(0);
@@ -1091,8 +1165,8 @@ describe("DefaultDeliveryTracker", () => {
         timeoutMs: 200,
       });
 
-      await tracker.onStreamItem("unknown-id", createDataEnvelope());
-      await tracker.onStreamEnd("unknown-id");
+      await tracker.onStreamItem('unknown-id', createDataEnvelope());
+      await tracker.onStreamEnd('unknown-id');
 
       const received: FameEnvelope[] = [];
       let caught: Error | null = null;
@@ -1106,25 +1180,28 @@ describe("DefaultDeliveryTracker", () => {
         }
       })();
 
-      const response = createDataEnvelope({ id: generateId(), corrId: envelope.corrId });
+      const response = createDataEnvelope({
+        id: generateId(),
+        corrId: envelope.corrId,
+      });
       await tracker.onStreamItem(envelope.id, response);
       await tracker.onStreamItem(
         envelope.id,
-        new Error("stream failure") as unknown as FameEnvelope
+        new Error('stream failure') as unknown as FameEnvelope
       );
       await tracker.onStreamEnd(envelope.id);
 
       await reader;
 
       expect(received).toEqual([response]);
-      expect((caught as Error | null)?.message).toBe("stream failure");
+      expect((caught as Error | null)?.message).toBe('stream failure');
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("requires a node when processing replies", async () => {
+  it('requires a node when processing replies', async () => {
     const { tracker } = createTracker();
     const tracked = new TrackedEnvelope({
       timeoutAtMs: Date.now(),
@@ -1136,12 +1213,12 @@ describe("DefaultDeliveryTracker", () => {
       originalEnvelope: createDataEnvelope(),
     });
 
-    await expect(tracker.onReply(createDataEnvelope(), tracked)).rejects.toThrow(
-      "Node is required to process replies"
-    );
+    await expect(
+      tracker.onReply(createDataEnvelope(), tracked)
+    ).rejects.toThrow('Node is required to process replies');
   });
 
-  it("records failure metadata and moves envelopes to the inbox DLQ on final failure", async () => {
+  it('records failure metadata and moves envelopes to the inbox DLQ on final failure', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1154,21 +1231,35 @@ describe("DefaultDeliveryTracker", () => {
         status: EnvelopeStatus.RECEIVED,
         mailboxType: MailboxType.INBOX,
         originalEnvelope: createDataEnvelope({ id: generateId() }),
-        serviceName: "svc",
+        serviceName: 'svc',
         meta: {},
       });
 
       const inbox = (tracker as any).inbox;
       await inbox.set(tracked.originalEnvelope.id, tracked);
 
-      const error = new Error("boom");
-      await tracker.onEnvelopeHandleFailed("svc", tracked, undefined, error, false);
+      const error = new Error('boom');
+      await tracker.onEnvelopeHandleFailed(
+        'svc',
+        tracked,
+        undefined,
+        error,
+        false
+      );
       const afterRetry = await inbox.get(tracked.originalEnvelope.id);
-      expect(afterRetry?.meta["last_failure_reason"]).toBe("boom");
+      expect(afterRetry?.meta['last_failure_reason']).toBe('boom');
       expect(afterRetry?.status).toBe(EnvelopeStatus.RECEIVED);
 
-      await tracker.onEnvelopeHandleFailed("svc", tracked, undefined, error, true);
-      const dlqEntry = await tracker.getFromInboxDlq(tracked.originalEnvelope.id);
+      await tracker.onEnvelopeHandleFailed(
+        'svc',
+        tracked,
+        undefined,
+        error,
+        true
+      );
+      const dlqEntry = await tracker.getFromInboxDlq(
+        tracked.originalEnvelope.id
+      );
       expect(dlqEntry?.status).toBe(EnvelopeStatus.FAILED_TO_HANDLE);
     } finally {
       await disposeTracker(tracker);
@@ -1176,7 +1267,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("moves envelopes to DLQ with unknown reason when failures lack messages", async () => {
+  it('moves envelopes to DLQ with unknown reason when failures lack messages', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1189,7 +1280,7 @@ describe("DefaultDeliveryTracker", () => {
         status: EnvelopeStatus.RECEIVED,
         mailboxType: MailboxType.INBOX,
         originalEnvelope: createDataEnvelope({ id: generateId() }),
-        serviceName: "svc",
+        serviceName: 'svc',
         meta: {},
       });
 
@@ -1197,24 +1288,26 @@ describe("DefaultDeliveryTracker", () => {
       await inbox.set(tracked.originalEnvelope.id, tracked);
 
       await tracker.onEnvelopeHandleFailed(
-        "svc",
+        'svc',
         tracked,
         undefined,
         null as unknown as Error,
         true
       );
 
-      const dlqEntry = await tracker.getFromInboxDlq(tracked.originalEnvelope.id);
+      const dlqEntry = await tracker.getFromInboxDlq(
+        tracked.originalEnvelope.id
+      );
       expect(dlqEntry?.status).toBe(EnvelopeStatus.FAILED_TO_HANDLE);
-      expect(dlqEntry?.meta["dlq"]).toBe(true);
-      expect(dlqEntry?.meta["dlq_reason"]).toBeUndefined();
+      expect(dlqEntry?.meta['dlq']).toBe(true);
+      expect(dlqEntry?.meta['dlq_reason']).toBeUndefined();
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("updates inbound tracked envelopes in place", async () => {
+  it('updates inbound tracked envelopes in place', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1233,18 +1326,18 @@ describe("DefaultDeliveryTracker", () => {
       const inbox = (tracker as any).inbox;
       await inbox.set(tracked.originalEnvelope.id, tracked);
 
-      tracked.meta["updated"] = true;
+      tracked.meta['updated'] = true;
       await tracker.updateTrackedEnvelope(tracked);
 
       const stored = await inbox.get(tracked.originalEnvelope.id);
-      expect(stored?.meta["updated"]).toBe(true);
+      expect(stored?.meta['updated']).toBe(true);
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("ignores nack frames for envelopes that are no longer tracked", async () => {
+  it('ignores nack frames for envelopes that are no longer tracked', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
     try {
@@ -1256,7 +1349,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("waits for pending acknowledgements across missing entries and timeout errors", async () => {
+  it('waits for pending acknowledgements across missing entries and timeout errors', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1280,7 +1373,9 @@ describe("DefaultDeliveryTracker", () => {
         expectedResponseType: FameResponseType.ACK,
         timeoutMs: 100,
       });
-      const missingFuture = trackerAny.ackFutures.get(missingEnvelope.id) as any;
+      const missingFuture = trackerAny.ackFutures.get(
+        missingEnvelope.id
+      ) as any;
       missingFuture.promise = new Promise(() => undefined);
       await outbox.delete(missingEnvelope.id);
 
@@ -1289,15 +1384,21 @@ describe("DefaultDeliveryTracker", () => {
         expectedResponseType: FameResponseType.ACK,
         timeoutMs: 100,
       });
-      const timeoutFuture = trackerAny.ackFutures.get(timeoutEnvelope.id) as any;
+      const timeoutFuture = trackerAny.ackFutures.get(
+        timeoutEnvelope.id
+      ) as any;
       timeoutFuture.promise = new Promise(() => undefined);
       const timeoutTracked = await outbox.get(timeoutEnvelope.id);
       timeoutTracked.overallTimeoutAtMs = Date.now() + 50;
       await outbox.set(timeoutEnvelope.id, timeoutTracked);
 
-      const timeoutSpy = jest.spyOn(trackerAny, "awaitWithTimeout").mockImplementation(async () => {
-        throw Object.assign(new Error("TimeoutError"), { name: "TimeoutError" });
-      });
+      const timeoutSpy = jest
+        .spyOn(trackerAny, 'awaitWithTimeout')
+        .mockImplementation(async () => {
+          throw Object.assign(new Error('TimeoutError'), {
+            name: 'TimeoutError',
+          });
+        });
 
       await trackerAny.waitForPendingAcks();
 
@@ -1310,7 +1411,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("rejects outstanding futures when timers reach the overall timeout", async () => {
+  it('rejects outstanding futures when timers reach the overall timeout', async () => {
     jest.useFakeTimers();
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
@@ -1322,8 +1423,12 @@ describe("DefaultDeliveryTracker", () => {
         timeoutMs: 40,
       });
 
-      const ackPromise = tracker.awaitAck(envelope.id).catch((error: Error) => error.message);
-      const replyPromise = tracker.awaitReply(envelope.id).catch((error: Error) => error.message);
+      const ackPromise = tracker
+        .awaitAck(envelope.id)
+        .catch((error: Error) => error.message);
+      const replyPromise = tracker
+        .awaitReply(envelope.id)
+        .catch((error: Error) => error.message);
 
       const trackerAny = tracker as any;
       const outbox = trackerAny.outbox;
@@ -1335,8 +1440,8 @@ describe("DefaultDeliveryTracker", () => {
       await trackerAny.scheduleTimer(tracked, null, null);
       jest.advanceTimersByTime(20);
 
-      await expect(ackPromise).resolves.toBe("Timeout waiting for ACK");
-      await expect(replyPromise).resolves.toBe("Timeout waiting for reply");
+      await expect(ackPromise).resolves.toBe('Timeout waiting for ACK');
+      await expect(replyPromise).resolves.toBe('Timeout waiting for reply');
     } finally {
       jest.useRealTimers();
       await disposeTracker(tracker);
@@ -1344,13 +1449,15 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("handles timer errors when delay fails unexpectedly", async () => {
+  it('handles timer errors when delay fails unexpectedly', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
     const trackerAny = tracker as any;
-    const delayMock = jest.spyOn(trackerAny, "delay").mockImplementation(async () => {
-      throw new Error("forced delay failure");
-    });
+    const delayMock = jest
+      .spyOn(trackerAny, 'delay')
+      .mockImplementation(async () => {
+        throw new Error('forced delay failure');
+      });
 
     try {
       const envelope = createDataEnvelope();
@@ -1370,7 +1477,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("handles delivery failures without explicit error details", async () => {
+  it('handles delivery failures without explicit error details', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1383,29 +1490,36 @@ describe("DefaultDeliveryTracker", () => {
         status: EnvelopeStatus.RECEIVED,
         mailboxType: MailboxType.INBOX,
         originalEnvelope: createDataEnvelope({ id: generateId() }),
-        serviceName: "svc",
+        serviceName: 'svc',
         meta: {},
       });
 
       const inbox = (tracker as any).inbox;
       await inbox.set(tracked.originalEnvelope.id, tracked);
 
-      await tracker.onEnvelopeHandleFailed("svc", tracked, undefined, undefined, false);
+      await tracker.onEnvelopeHandleFailed(
+        'svc',
+        tracked,
+        undefined,
+        undefined,
+        false
+      );
       const stored = await inbox.get(tracked.originalEnvelope.id);
-      expect(stored?.meta["last_failure_reason"]).toBeUndefined();
+      expect(stored?.meta['last_failure_reason']).toBeUndefined();
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("rebuilds reply and stream futures during recovery", async () => {
+  it('rebuilds reply and stream futures during recovery', async () => {
     const provider = new InMemoryStorageProvider();
     const envelope = createDataEnvelope();
     const tracked = new TrackedEnvelope({
       timeoutAtMs: Date.now() + 1_000,
       overallTimeoutAtMs: Date.now() + 5_000,
-      expectedResponseType: FameResponseType.ACK | FameResponseType.REPLY | FameResponseType.STREAM,
+      expectedResponseType:
+        FameResponseType.ACK | FameResponseType.REPLY | FameResponseType.STREAM,
       createdAtMs: Date.now(),
       status: EnvelopeStatus.PENDING,
       mailboxType: MailboxType.OUTBOX,
@@ -1413,7 +1527,10 @@ describe("DefaultDeliveryTracker", () => {
       meta: {},
     });
 
-    const outbox = await provider.getKeyValueStore(TrackedEnvelope, "__delivery_outbox");
+    const outbox = await provider.getKeyValueStore(
+      TrackedEnvelope,
+      '__delivery_outbox'
+    );
     await outbox.set(envelope.id, tracked);
 
     const { tracker: recovered } = createTracker(provider);
@@ -1431,22 +1548,26 @@ describe("DefaultDeliveryTracker", () => {
     await node.stop();
   });
 
-  it("throws when accessing delivery stores before initialization", () => {
+  it('throws when accessing delivery stores before initialization', () => {
     const tracker = new DefaultDeliveryTracker(new InMemoryStorageProvider());
     const trackerAny = tracker as any;
-    expect(() => trackerAny.ensureOutbox()).toThrow("Outbox is not initialized");
-    expect(() => trackerAny.ensureInbox()).toThrow("Inbox is not initialized");
+    expect(() => trackerAny.ensureOutbox()).toThrow(
+      'Outbox is not initialized'
+    );
+    expect(() => trackerAny.ensureInbox()).toThrow('Inbox is not initialized');
   });
 
-  it("applies predicates when listing inbound envelopes", async () => {
+  it('applies predicates when listing inbound envelopes', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
     try {
       const inbound = createDataEnvelope();
-      await tracker.onEnvelopeDelivered("svc", inbound);
+      await tracker.onEnvelopeDelivered('svc', inbound);
 
-      const handled = await tracker.listInbound((entry) => entry.status === EnvelopeStatus.HANDLED);
+      const handled = await tracker.listInbound(
+        (entry) => entry.status === EnvelopeStatus.HANDLED
+      );
       expect(handled).toHaveLength(0);
     } finally {
       await disposeTracker(tracker);
@@ -1454,7 +1575,7 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("purges dlq entries using predicates", async () => {
+  it('purges dlq entries using predicates', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1467,7 +1588,7 @@ describe("DefaultDeliveryTracker", () => {
         status: EnvelopeStatus.RECEIVED,
         mailboxType: MailboxType.INBOX,
         originalEnvelope: createDataEnvelope({ id: generateId() }),
-        serviceName: "svc1",
+        serviceName: 'svc1',
         meta: {},
       });
       const second = new TrackedEnvelope({
@@ -1478,25 +1599,27 @@ describe("DefaultDeliveryTracker", () => {
         status: EnvelopeStatus.RECEIVED,
         mailboxType: MailboxType.INBOX,
         originalEnvelope: createDataEnvelope({ id: generateId() }),
-        serviceName: "svc2",
+        serviceName: 'svc2',
         meta: { keep: true },
       });
 
-      await tracker.addToInboxDlq(first, "purge-me");
-      await tracker.addToInboxDlq(second, "keep-me");
+      await tracker.addToInboxDlq(first, 'purge-me');
+      await tracker.addToInboxDlq(second, 'keep-me');
 
-      const removed = await tracker.purgeInboxDlq((entry) => entry.meta["keep"] !== true);
+      const removed = await tracker.purgeInboxDlq(
+        (entry) => entry.meta['keep'] !== true
+      );
       expect(removed).toBe(1);
       const remaining = await tracker.listInboxDlq();
       expect(remaining).toHaveLength(1);
-      expect(remaining[0].meta["keep"]).toBe(true);
+      expect(remaining[0].meta['keep']).toBe(true);
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("invokes nack event handlers when envelopes are rejected", async () => {
+  it('invokes nack event handlers when envelopes are rejected', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1511,17 +1634,23 @@ describe("DefaultDeliveryTracker", () => {
       });
       void tracker.awaitAck(envelope.id).catch(() => undefined);
 
-      const nack = createAckEnvelope(envelope.id, envelope.corrId!, { ok: false, reason: "fail" });
-      await tracker.onEnvelopeDelivered("outbox", nack);
+      const nack = createAckEnvelope(envelope.id, envelope.corrId!, {
+        ok: false,
+        reason: 'fail',
+      });
+      await tracker.onEnvelopeDelivered('outbox', nack);
 
-      expect(handler.onEnvelopeNacked).toHaveBeenCalledWith(expect.any(TrackedEnvelope), "fail");
+      expect(handler.onEnvelopeNacked).toHaveBeenCalledWith(
+        expect.any(TrackedEnvelope),
+        'fail'
+      );
     } finally {
       await disposeTracker(tracker);
       await node.stop();
     }
   });
 
-  it("resolves ack and reply futures when onReply is invoked directly", async () => {
+  it('resolves ack and reply futures when onReply is invoked directly', async () => {
     const { tracker } = createTracker();
     const node = await startTracker(tracker);
 
@@ -1554,11 +1683,13 @@ describe("DefaultDeliveryTracker", () => {
     }
   });
 
-  it("aborts delays immediately when the signal is already cancelled", async () => {
+  it('aborts delays immediately when the signal is already cancelled', async () => {
     const { tracker } = createTracker();
     const trackerAny = tracker as any;
     const controller = new AbortController();
     controller.abort();
-    await expect(trackerAny.delay(100, controller.signal)).rejects.toThrow(TaskCancelledError);
+    await expect(trackerAny.delay(100, controller.signal)).rejects.toThrow(
+      TaskCancelledError
+    );
   });
 });

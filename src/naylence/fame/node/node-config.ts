@@ -1,21 +1,23 @@
-import { z } from "zod";
-import type { AdmissionConfig } from "./admission/admission-client-factory.js";
-import type { NodeLikeConfig } from "./node-like-factory.js";
-import type { DeliveryPolicyConfig } from "../delivery/delivery-policy-config.js";
-import type { TransportListenerConfig } from "../connector/transport-listener-config.js";
-import type { SecurityManagerConfig } from "../security/security-manager-config.js";
-import type { KeyStoreConfig } from "../security/keys/key-store-factory.js";
-import type { AttachmentKeyValidatorConfig } from "../security/keys/attachment-key-validator-factory.js";
-import type { StorageProviderConfig } from "../storage/storage-provider-factory.js";
-import type { TraceEmitterConfig } from "../telemetry/trace-emitter-config.js";
+import { z } from 'zod';
+import type { AdmissionConfig } from './admission/admission-client-factory.js';
+import type { NodeLikeConfig } from './node-like-factory.js';
+import type { DeliveryPolicyConfig } from '../delivery/delivery-policy-config.js';
+import type { TransportListenerConfig } from '../connector/transport-listener-config.js';
+import type { SecurityManagerConfig } from '../security/security-manager-config.js';
+import type { KeyStoreConfig } from '../security/keys/key-store-factory.js';
+import type { AttachmentKeyValidatorConfig } from '../security/keys/attachment-key-validator-factory.js';
+import type { StorageProviderConfig } from '../storage/storage-provider-factory.js';
+import type { TraceEmitterConfig } from '../telemetry/trace-emitter-config.js';
 
-export type FameNodeMode = "dev" | "prod";
+export type FameNodeMode = 'dev' | 'prod';
 
-const FameNodeModeSchema = z.union([z.literal("dev"), z.literal("prod")]).default("prod");
+const FameNodeModeSchema = z
+  .union([z.literal('dev'), z.literal('prod')])
+  .default('prod');
 
 const FameNodeConfigSchemaInternal = z
   .object({
-    type: z.literal("Node").default("Node"),
+    type: z.literal('Node').default('Node'),
     mode: FameNodeModeSchema,
     id: z.string().optional().nullable(),
     directParentUrl: z.string().optional().nullable(),
@@ -37,7 +39,7 @@ const FameNodeConfigSchemaInternal = z
   .passthrough();
 
 export type FameNodeConfig = NodeLikeConfig & {
-  type: "Node";
+  type: 'Node';
   mode: FameNodeMode;
   id?: string | null;
   directParentUrl?: string | null;
@@ -52,7 +54,10 @@ export type FameNodeConfig = NodeLikeConfig & {
   publicUrl?: string | null;
   keyStore?: KeyStoreConfig | Record<string, unknown> | null;
   storage?: StorageProviderConfig | Record<string, unknown> | null;
-  attachmentKeyValidator?: AttachmentKeyValidatorConfig | Record<string, unknown> | null;
+  attachmentKeyValidator?:
+    | AttachmentKeyValidatorConfig
+    | Record<string, unknown>
+    | null;
   telemetry?: TraceEmitterConfig | Record<string, unknown> | null;
   requestedCapabilities?: string[];
 };
@@ -63,26 +68,37 @@ export function normalizeFameNodeConfig(
   const parsed = FameNodeConfigSchemaInternal.parse(input ?? {});
 
   const normalized: FameNodeConfig = {
-    type: "Node",
-    mode: (parsed.mode ?? "prod") as FameNodeMode,
+    type: 'Node',
+    mode: (parsed.mode ?? 'prod') as FameNodeMode,
     id: parsed.id ?? null,
     directParentUrl: parsed.directParentUrl ?? null,
     admission:
       parsed.admission === undefined
         ? null
-        : (parsed.admission as AdmissionConfig | Record<string, unknown> | null),
+        : (parsed.admission as
+            | AdmissionConfig
+            | Record<string, unknown>
+            | null),
     requestedLogicals: coerceStringArray(parsed.requestedLogicals),
     delivery:
       parsed.delivery === undefined
         ? null
-        : (parsed.delivery as DeliveryPolicyConfig | Record<string, unknown> | null),
-    envContext: isPlainRecord(parsed.envContext) ? { ...parsed.envContext } : {},
+        : (parsed.delivery as
+            | DeliveryPolicyConfig
+            | Record<string, unknown>
+            | null),
+    envContext: isPlainRecord(parsed.envContext)
+      ? { ...parsed.envContext }
+      : {},
     services: Array.isArray(parsed.services) ? [...parsed.services] : [],
     hasParent: Boolean(parsed.hasParent),
     security:
       parsed.security === undefined
         ? null
-        : (parsed.security as SecurityManagerConfig | Record<string, unknown> | null),
+        : (parsed.security as
+            | SecurityManagerConfig
+            | Record<string, unknown>
+            | null),
     listeners: coerceTransportListeners(parsed.listeners),
     publicUrl: parsed.publicUrl ?? null,
     keyStore:
@@ -92,7 +108,10 @@ export function normalizeFameNodeConfig(
     storage:
       parsed.storage === undefined
         ? null
-        : (parsed.storage as StorageProviderConfig | Record<string, unknown> | null),
+        : (parsed.storage as
+            | StorageProviderConfig
+            | Record<string, unknown>
+            | null),
     attachmentKeyValidator:
       parsed.attachmentKeyValidator === undefined
         ? null
@@ -103,11 +122,16 @@ export function normalizeFameNodeConfig(
     telemetry:
       parsed.telemetry === undefined
         ? null
-        : (parsed.telemetry as TraceEmitterConfig | Record<string, unknown> | null),
+        : (parsed.telemetry as
+            | TraceEmitterConfig
+            | Record<string, unknown>
+            | null),
   };
 
   if (parsed.requestedCapabilities) {
-    normalized.requestedCapabilities = coerceStringArray(parsed.requestedCapabilities);
+    normalized.requestedCapabilities = coerceStringArray(
+      parsed.requestedCapabilities
+    );
   }
 
   return normalized;
@@ -117,7 +141,7 @@ function coerceStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.filter((item): item is string => typeof item === "string");
+  return value.filter((item): item is string => typeof item === 'string');
 }
 
 function coerceTransportListeners(value: unknown): TransportListenerConfig[] {
@@ -128,12 +152,14 @@ function coerceTransportListeners(value: unknown): TransportListenerConfig[] {
   return value
     .filter((item): item is TransportListenerConfig =>
       Boolean(
-        item && typeof item === "object" && typeof (item as { type?: unknown }).type === "string"
+        item &&
+          typeof item === 'object' &&
+          typeof (item as { type?: unknown }).type === 'string'
       )
     )
     .map((listener) => ({ ...(listener as TransportListenerConfig) }));
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }

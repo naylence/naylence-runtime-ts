@@ -1,49 +1,55 @@
-import fs from "node:fs";
-import fsPromises from "node:fs/promises";
-import path from "node:path";
+import fs from 'node:fs';
+import fsPromises from 'node:fs/promises';
+import path from 'node:path';
 
-import type { KeyValueStore } from "./key-value-store.js";
-import { EncryptedStorageProviderBase } from "./encrypted-storage-provider-base.js";
-import type { CredentialProvider } from "../security/credential/credential-provider.js";
-import { camelToSnakeCase } from "../util/util.js";
-import { getLogger } from "../util/logging.js";
-import { AsyncLock } from "../util/lock.js";
+import type { KeyValueStore } from './key-value-store.js';
+import { EncryptedStorageProviderBase } from './encrypted-storage-provider-base.js';
+import type { CredentialProvider } from '../security/credential/credential-provider.js';
+import { camelToSnakeCase } from '../util/util.js';
+import { getLogger } from '../util/logging.js';
+import { AsyncLock } from '../util/lock.js';
 
-type BetterSqlite3Constructor = typeof import("better-sqlite3");
-type BetterSqlite3Database = import("better-sqlite3").Database;
+type BetterSqlite3Constructor = typeof import('better-sqlite3');
+type BetterSqlite3Database = import('better-sqlite3').Database;
 
-const logger = getLogger("sqlite-storage-provider");
+const logger = getLogger('sqlite-storage-provider');
 
 let cachedSqliteCtor: BetterSqlite3Constructor | null | undefined;
 
 async function loadSqliteConstructor(): Promise<BetterSqlite3Constructor> {
   if (cachedSqliteCtor !== undefined) {
     if (cachedSqliteCtor === null) {
-      throw new Error("better-sqlite3 is not available. Install it to use SQLiteStorageProvider.");
+      throw new Error(
+        'better-sqlite3 is not available. Install it to use SQLiteStorageProvider.'
+      );
     }
     return cachedSqliteCtor;
   }
 
-  if (typeof process === "undefined" || !process.versions?.node) {
+  if (typeof process === 'undefined' || !process.versions?.node) {
     cachedSqliteCtor = null;
-    throw new Error("SQLiteStorageProvider is only supported in Node.js environments");
+    throw new Error(
+      'SQLiteStorageProvider is only supported in Node.js environments'
+    );
   }
 
   try {
-    const imported = await import("better-sqlite3");
+    const imported = await import('better-sqlite3');
     const candidate = (imported as { default?: unknown }).default ?? imported;
-    if (typeof candidate !== "function") {
-      throw new Error("Unexpected better-sqlite3 module format");
+    if (typeof candidate !== 'function') {
+      throw new Error('Unexpected better-sqlite3 module format');
     }
 
     cachedSqliteCtor = candidate as BetterSqlite3Constructor;
     return cachedSqliteCtor;
   } catch (error) {
     cachedSqliteCtor = null;
-    logger.error("failed-to-load-better-sqlite3", {
+    logger.error('failed-to-load-better-sqlite3', {
       error: error instanceof Error ? error.message : String(error),
     });
-    throw new Error("Failed to load better-sqlite3. Install it to enable SQLite storage support.");
+    throw new Error(
+      'Failed to load better-sqlite3. Install it to enable SQLite storage support.'
+    );
   }
 }
 
@@ -55,12 +61,12 @@ interface SQLiteKeyValueStoreOptions<V> {
 }
 
 function formatTimestampSuffix(date: Date): string {
-  const year = date.getUTCFullYear().toString().padStart(4, "0");
-  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
-  const day = date.getUTCDate().toString().padStart(2, "0");
-  const hours = date.getUTCHours().toString().padStart(2, "0");
-  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
-  const seconds = date.getUTCSeconds().toString().padStart(2, "0");
+  const year = date.getUTCFullYear().toString().padStart(4, '0');
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = date.getUTCDate().toString().padStart(2, '0');
+  const hours = date.getUTCHours().toString().padStart(2, '0');
+  const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+  const seconds = date.getUTCSeconds().toString().padStart(2, '0');
   return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
 }
 
@@ -88,10 +94,10 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
       return await this.openDatabase();
     } catch (error) {
       if (this.autoRecover && this.isCorruptionError(error)) {
-        logger.warning("detected-corrupted-db", { path: this.dbPath });
+        logger.warning('detected-corrupted-db', { path: this.dbPath });
         await this.recoverCorruptedDb();
         if (!this.db) {
-          throw new Error("Failed to recover SQLite database");
+          throw new Error('Failed to recover SQLite database');
         }
         return this.db;
       }
@@ -103,11 +109,13 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
     const DatabaseCtor = await loadSqliteConstructor();
     await fsPromises.mkdir(path.dirname(this.dbPath), { recursive: true });
 
-    const db = new DatabaseCtor(this.dbPath, { timeout: 30_000 }) as BetterSqlite3Database;
+    const db = new DatabaseCtor(this.dbPath, {
+      timeout: 30_000,
+    }) as BetterSqlite3Database;
     try {
-      db.pragma("journal_mode = WAL");
-      db.pragma("synchronous = NORMAL");
-      db.pragma("foreign_keys = ON");
+      db.pragma('journal_mode = WAL');
+      db.pragma('synchronous = NORMAL');
+      db.pragma('foreign_keys = ON');
       this.createSchema(db);
       this.db = db;
       return db;
@@ -143,9 +151,9 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
 
     const message = error.message.toLowerCase();
     return (
-      message.includes("database disk image is malformed") ||
-      message.includes("file is not a database") ||
-      message.includes("file is encrypted or is not a database")
+      message.includes('database disk image is malformed') ||
+      message.includes('file is not a database') ||
+      message.includes('file is encrypted or is not a database')
     );
   }
 
@@ -153,7 +161,7 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
     await this.closeDatabase();
     await this.quarantineCorruptedFiles();
     await this.openDatabase();
-    logger.warning("quarantined-corrupted-db", { path: this.dbPath });
+    logger.warning('quarantined-corrupted-db', { path: this.dbPath });
   }
 
   private async closeDatabase(): Promise<void> {
@@ -161,7 +169,7 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
       try {
         this.db.close();
       } catch (error) {
-        logger.warning("failed-to-close-sqlite-db", {
+        logger.warning('failed-to-close-sqlite-db', {
           path: this.dbPath,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -183,12 +191,15 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
 
         const dirname = path.dirname(candidate);
         const basename = path.basename(candidate);
-        const quarantinedName = path.join(dirname, `${basename}.corrupt.${timestamp}`);
+        const quarantinedName = path.join(
+          dirname,
+          `${basename}.corrupt.${timestamp}`
+        );
 
         try {
           await fsPromises.rename(candidate, quarantinedName);
         } catch (error) {
-          logger.error("failed-to-quarantine-sqlite-file", {
+          logger.error('failed-to-quarantine-sqlite-file', {
             file: candidate,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -217,7 +228,7 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
 
   private serialize(value: V): string {
     const candidate = value as unknown as { toJSON?: () => unknown };
-    if (candidate && typeof candidate.toJSON === "function") {
+    if (candidate && typeof candidate.toJSON === 'function') {
       return JSON.stringify(candidate.toJSON());
     }
 
@@ -233,13 +244,13 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
       deserialize?: (input: unknown) => V;
     };
 
-    if (typeof ctorAsAny.fromJSON === "function") {
+    if (typeof ctorAsAny.fromJSON === 'function') {
       return ctorAsAny.fromJSON(data);
     }
-    if (typeof ctorAsAny.fromJson === "function") {
+    if (typeof ctorAsAny.fromJson === 'function') {
       return ctorAsAny.fromJson(data);
     }
-    if (typeof ctorAsAny.deserialize === "function") {
+    if (typeof ctorAsAny.deserialize === 'function') {
       return ctorAsAny.deserialize(data);
     }
 
@@ -255,10 +266,9 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
 
     await this.lock.runExclusive(async () => {
       await this.executeWithRecovery(async (db) => {
-        db.prepare(`INSERT OR REPLACE INTO ${this.tableName} (key, value) VALUES (?, ?)`).run(
-          key,
-          serialized
-        );
+        db.prepare(
+          `INSERT OR REPLACE INTO ${this.tableName} (key, value) VALUES (?, ?)`
+        ).run(key, serialized);
       });
     });
   }
@@ -272,7 +282,10 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
           .prepare(`UPDATE ${this.tableName} SET value = ? WHERE key = ?`)
           .run(serialized, key);
 
-        if (!result || (typeof result.changes === "number" && result.changes === 0)) {
+        if (
+          !result ||
+          (typeof result.changes === 'number' && result.changes === 0)
+        ) {
           throw new Error(`Key '${key}' not found for update.`);
         }
       });
@@ -282,9 +295,9 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
   public async get(key: string): Promise<V | undefined> {
     return this.lock.runExclusive(async () => {
       return this.executeWithRecovery(async (db) => {
-        const row = db.prepare(`SELECT value FROM ${this.tableName} WHERE key = ?`).get(key) as
-          | { value: string }
-          | undefined;
+        const row = db
+          .prepare(`SELECT value FROM ${this.tableName} WHERE key = ?`)
+          .get(key) as { value: string } | undefined;
 
         if (!row) {
           return undefined;
@@ -306,7 +319,9 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
   public async list(): Promise<Record<string, V>> {
     return this.lock.runExclusive(async () => {
       return this.executeWithRecovery(async (db) => {
-        const rows = db.prepare(`SELECT key, value FROM ${this.tableName}`).all() as Array<{
+        const rows = db
+          .prepare(`SELECT key, value FROM ${this.tableName}`)
+          .all() as Array<{
           key: string;
           value: string;
         }>;
@@ -316,7 +331,7 @@ export class SQLiteKeyValueStore<V> implements KeyValueStore<V> {
           try {
             result[row.key] = this.deserialize(row.value);
           } catch (error) {
-            logger.warning("skipping-corrupted-sqlite-entry", {
+            logger.warning('skipping-corrupted-sqlite-entry', {
               key: row.key,
               error: error instanceof Error ? error.message : String(error),
             });
@@ -352,9 +367,11 @@ export class SQLiteStorageProvider extends EncryptedStorageProviderBase {
   }
 
   private sanitizeNamespace(namespace: string): string {
-    const cleaned = namespace.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^[._-]+|[._-]+$/g, "");
+    const cleaned = namespace
+      .replace(/[^A-Za-z0-9._-]+/g, '_')
+      .replace(/^[._-]+|[._-]+$/g, '');
     if (!cleaned) {
-      return "ns";
+      return 'ns';
     }
     return cleaned.slice(0, 120);
   }

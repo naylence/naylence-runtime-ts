@@ -3,8 +3,8 @@ import type {
   FameEnvelopeHandler,
   NodeWelcomeFrame,
   DeliveryOriginType,
-} from "naylence-core";
-import type { NodeLike } from "../node-like.js";
+} from 'naylence-core';
+import type { NodeLike } from '../node-like.js';
 
 export interface AttachInfo {
   readonly systemId: string;

@@ -1,7 +1,11 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
 
-import type { SecureChannelManager } from "./secure-channel-manager.js";
+import type { SecureChannelManager } from './secure-channel-manager.js';
 
 export interface SecureChannelManagerConfig extends ResourceConfig {
   type: string;
@@ -9,11 +13,12 @@ export interface SecureChannelManagerConfig extends ResourceConfig {
 }
 
 export interface CreateSecureChannelManagerOptions
-  extends Omit<CreateResourceOptions, "factoryArgs"> {
+  extends Omit<CreateResourceOptions, 'factoryArgs'> {
   factoryArgs?: unknown[];
 }
 
-export const SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE = "SecureChannelManagerFactory";
+export const SECURE_CHANNEL_MANAGER_FACTORY_BASE_TYPE =
+  'SecureChannelManagerFactory';
 
 export abstract class SecureChannelManagerFactory<
   C extends SecureChannelManagerConfig = SecureChannelManagerConfig,
@@ -29,7 +34,7 @@ export abstract class SecureChannelManagerFactory<
     config?: C | Record<string, unknown> | null,
     options: CreateSecureChannelManagerOptions = {}
   ): Promise<SecureChannelManager | null> {
-    await import("./noop-secure-channel-manager-factory.js");
+    await import('./noop-secure-channel-manager-factory.js');
 
     const { factoryArgs, ...rest } = options;
     const creationOptions: CreateResourceOptions = {

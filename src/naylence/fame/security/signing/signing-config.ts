@@ -1,4 +1,4 @@
-import { SigningMaterial } from "naylence-core";
+import { SigningMaterial } from 'naylence-core';
 
 export interface SigningConfigOptions {
   signingMaterial?: SigningMaterial;
@@ -15,7 +15,8 @@ export class SigningConfig {
 
   public constructor(options: SigningConfigOptions = {}) {
     this.signingMaterial = options.signingMaterial ?? SigningMaterial.RAW_KEY;
-    this.validateCertNameConstraints = options.validateCertNameConstraints ?? true;
+    this.validateCertNameConstraints =
+      options.validateCertNameConstraints ?? true;
     this.requireCertSidMatch = options.requireCertSidMatch ?? false;
     this.requireCertLogicalMatch = options.requireCertLogicalMatch ?? false;
   }

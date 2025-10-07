@@ -1,12 +1,24 @@
-import { hashes as edHashes, sign } from "@noble/ed25519";
-import { sha512 } from "@noble/hashes/sha2.js";
-import type { FameEnvelope, SecurityHeader, SignatureHeader } from "naylence-core";
-import { SigningMaterial } from "naylence-core";
-import { secureDigest, urlsafeBase64Encode } from "../../util/util.js";
-import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
-import { SigningConfig } from "./signing-config.js";
-import { frameDigest, immutableHeaders, canonicalJson } from "./eddsa-signer-verifier.js";
-import { encodeUtf8, parseEd25519PrivateKey, readStringProperty } from "./eddsa-utils.js";
+import { hashes as edHashes, sign } from '@noble/ed25519';
+import { sha512 } from '@noble/hashes/sha2.js';
+import type {
+  FameEnvelope,
+  SecurityHeader,
+  SignatureHeader,
+} from 'naylence-core';
+import { SigningMaterial } from 'naylence-core';
+import { secureDigest, urlsafeBase64Encode } from '../../util/util.js';
+import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
+import { SigningConfig } from './signing-config.js';
+import {
+  frameDigest,
+  immutableHeaders,
+  canonicalJson,
+} from './eddsa-signer-verifier.js';
+import {
+  encodeUtf8,
+  parseEd25519PrivateKey,
+  readStringProperty,
+} from './eddsa-utils.js';
 
 interface CertificateCapableCryptoProvider extends CryptoProvider {
   nodeJwk?: () => Record<string, unknown> | null | undefined;
@@ -32,7 +44,7 @@ export class EdDSAEnvelopeSigner {
   public constructor(options: EdDSAEnvelopeSignerOptions = {}) {
     const provider = options.cryptoProvider ?? null;
     if (!provider) {
-      throw new Error("No crypto provider is configured for signing");
+      throw new Error('No crypto provider is configured for signing');
     }
     this.crypto = provider;
     this.signingConfig = options.signingConfig ?? new SigningConfig();
@@ -45,15 +57,15 @@ export class EdDSAEnvelopeSigner {
     { physicalPath }: { physicalPath: string }
   ): FameEnvelope {
     if (!envelope.sid) {
-      throw new Error("Envelope missing sid");
+      throw new Error('Envelope missing sid');
     }
 
     const frame = envelope.frame;
-    if ((frame as { type?: string }).type === "Data") {
+    if ((frame as { type?: string }).type === 'Data') {
       const dataFrame = frame as { payload?: unknown; pd?: string | null };
       if (!dataFrame.pd) {
-        const payload = dataFrame.payload ?? "";
-        const payloadString = payload === "" ? "" : canonicalJson(payload);
+        const payload = dataFrame.payload ?? '';
+        const payloadString = payload === '' ? '' : canonicalJson(payload);
         dataFrame.pd = secureDigest(payloadString);
       }
     }
@@ -87,8 +99,8 @@ export class EdDSAEnvelopeSigner {
 
     tbs.set(digBytes, offset);
 
-  const privateKey = this.loadPrivateKey();
-  const signatureBytes = sign(tbs, privateKey);
+    const privateKey = this.loadPrivateKey();
+    const signatureBytes = sign(tbs, privateKey);
     const signature = urlsafeBase64Encode(signatureBytes);
 
     const kid = this.determineKeyId();
@@ -96,7 +108,7 @@ export class EdDSAEnvelopeSigner {
     const signatureHeader: SignatureHeader = {
       kid,
       val: signature,
-      alg: "EdDSA",
+      alg: 'EdDSA',
     };
 
     const secHeader: SecurityHeader = envelope.sec ?? {};
@@ -109,9 +121,13 @@ export class EdDSAEnvelopeSigner {
   private loadPrivateKey(): Uint8Array {
     const pem =
       this.explicitPrivateKey ??
-      readStringProperty(this.crypto, "signingPrivatePem", "signing_private_pem");
+      readStringProperty(
+        this.crypto,
+        'signingPrivatePem',
+        'signing_private_pem'
+      );
     if (!pem) {
-      throw new Error("Crypto provider does not expose a signing private key");
+      throw new Error('Crypto provider does not expose a signing private key');
     }
     return parseEd25519PrivateKey(pem);
   }
@@ -122,19 +138,24 @@ export class EdDSAEnvelopeSigner {
     }
 
     if (this.signingConfig.signingMaterial === SigningMaterial.X509_CHAIN) {
-      const certificateProvider = this.crypto as CertificateCapableCryptoProvider;
+      const certificateProvider = this
+        .crypto as CertificateCapableCryptoProvider;
       const jwk = certificateProvider.nodeJwk?.();
-      if (jwk && typeof jwk === "object" && "kid" in jwk && "x5c" in jwk) {
+      if (jwk && typeof jwk === 'object' && 'kid' in jwk && 'x5c' in jwk) {
         const kid = (jwk as Record<string, unknown>).kid;
-        if (typeof kid === "string" && kid.length > 0) {
+        if (typeof kid === 'string' && kid.length > 0) {
           return kid;
         }
       }
     }
 
-    const fallback = readStringProperty(this.crypto, "signatureKeyId", "signature_key_id");
+    const fallback = readStringProperty(
+      this.crypto,
+      'signatureKeyId',
+      'signature_key_id'
+    );
     if (!fallback) {
-      throw new Error("Crypto provider does not expose a signature key id");
+      throw new Error('Crypto provider does not expose a signature key id');
     }
     return fallback;
   }

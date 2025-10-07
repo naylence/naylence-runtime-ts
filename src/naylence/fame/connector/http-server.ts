@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from 'fastify';
 
 /**
  * Shared interface for HTTP server instances used by transport listeners.
@@ -15,7 +15,10 @@ export interface HttpServer {
   start(): Promise<void>;
   stop(): Promise<void>;
 
-  includeRouter(router: FastifyPluginAsync, options?: { prefix?: string }): Promise<void>;
+  includeRouter(
+    router: FastifyPluginAsync,
+    options?: { prefix?: string }
+  ): Promise<void>;
 }
 
 /**

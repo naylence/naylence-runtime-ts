@@ -1,25 +1,38 @@
-import type { DataFrame, SecureAcceptFrame, SecureCloseFrame, SecureOpenFrame } from "naylence-core";
+import type {
+  DataFrame,
+  SecureAcceptFrame,
+  SecureCloseFrame,
+  SecureOpenFrame,
+} from 'naylence-core';
 
-import type { SecureChannelManager, SecureChannelState } from "./secure-channel-manager.js";
+import type {
+  SecureChannelManager,
+  SecureChannelState,
+} from './secure-channel-manager.js';
 
-const ZERO_EPHEMERAL_KEY_BASE64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+const ZERO_EPHEMERAL_KEY_BASE64 =
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
 function resolveAlgorithm(requested?: string): string {
-  if (requested && requested.trim() !== "") {
+  if (requested && requested.trim() !== '') {
     return requested;
   }
 
-  return "none";
+  return 'none';
 }
 
 export class NoopSecureChannelManager implements SecureChannelManager {
-  public readonly channels: Readonly<Record<string, SecureChannelState>> = Object.freeze({});
+  public readonly channels: Readonly<Record<string, SecureChannelState>> =
+    Object.freeze({});
 
-  public generateOpenFrame(channelId: string, algorithm?: string): SecureOpenFrame {
+  public generateOpenFrame(
+    channelId: string,
+    algorithm?: string
+  ): SecureOpenFrame {
     const resolvedAlg = resolveAlgorithm(algorithm);
 
     return {
-      type: "SecureOpen",
+      type: 'SecureOpen',
       cid: channelId,
       ephPub: ZERO_EPHEMERAL_KEY_BASE64,
       alg: resolvedAlg,
@@ -27,12 +40,14 @@ export class NoopSecureChannelManager implements SecureChannelManager {
     } satisfies SecureOpenFrame;
   }
 
-  public async handleOpenFrame(frame: SecureOpenFrame): Promise<SecureAcceptFrame> {
+  public async handleOpenFrame(
+    frame: SecureOpenFrame
+  ): Promise<SecureAcceptFrame> {
     return {
-      type: "SecureAccept",
+      type: 'SecureAccept',
       cid: frame.cid,
       ok: false,
-      reason: "secure_channel_manager_disabled",
+      reason: 'secure_channel_manager_disabled',
       ephPub: ZERO_EPHEMERAL_KEY_BASE64,
       alg: resolveAlgorithm(frame.alg),
     } satisfies SecureAcceptFrame;
@@ -58,9 +73,12 @@ export class NoopSecureChannelManager implements SecureChannelManager {
     return null;
   }
 
-  public closeChannel(channelId: string, reason = "secure_channel_manager_disabled"): SecureCloseFrame {
+  public closeChannel(
+    channelId: string,
+    reason = 'secure_channel_manager_disabled'
+  ): SecureCloseFrame {
     return {
-      type: "SecureClose",
+      type: 'SecureClose',
       cid: channelId,
       reason,
     } satisfies SecureCloseFrame;
@@ -70,7 +88,10 @@ export class NoopSecureChannelManager implements SecureChannelManager {
     return 0;
   }
 
-  public addChannel(_channelId: string, _channelState: SecureChannelState): void {
+  public addChannel(
+    _channelId: string,
+    _channelState: SecureChannelState
+  ): void {
     // No state tracking for noop manager
   }
 

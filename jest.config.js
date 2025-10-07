@@ -1,42 +1,59 @@
-/** @type {import('jest').Config} */
+/** @type {import('ts-jest').JestConfigWithTsJest} */
 export default {
-  preset: 'ts-jest',
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
-  testMatch: [
-    '**/__tests__/**/*.ts',
-    '**/?(*.)+(spec|test).ts'
+  extensionsToTreatAsEsm: ['.ts'],
+  roots: [
+    '<rootDir>/src',
+  ],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^naylence-core$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
+    '^naylence-core-ts$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
+    '^naylence-factory$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
+    '^naylence-factory-ts$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@noble|yaml|jose)/)',
   ],
   transform: {
-      '^.+\\.[tj]s$': ['ts-jest', {
-      useESM: true
-    }],
+    '^.+\\.(ts|js|mjs)$': [
+      'ts-jest',
+      {
+        useESM: true,
+        tsconfig: {
+          module: 'ESNext',
+          moduleResolution: 'node',
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+          isolatedModules: true,
+          sourceMap: true,
+          inlineSources: true,
+          inlineSourceMap: false, // Use separate source maps for better debugging
+        },
+        diagnostics: {
+          ignoreCodes: [151001],
+        },
+      },
+    ],
   },
+  testMatch: [
+    '**/__tests__/**/*.test.ts',
+    '**/*.test.ts',
+  ],
   collectCoverageFrom: [
     'src/**/*.ts',
-    '!src/**/*.d.ts',
+    '!src/**/*.test.ts',
     '!src/**/__tests__/**',
-    '!src/**/index.ts'
+    '!src/**/index.ts',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: [
-    'text',
-    'lcov',
-    'html'
+  coverageReporters: ['text', 'lcov', 'html'],
+  maxWorkers: 1, // Sequential execution to prevent race conditions
+  testTimeout: 10000,
+  setupFilesAfterEnv: [
+    '<rootDir>/test/setup-crypto.ts',
+    '<rootDir>/test/setup-idb.ts',
+    '<rootDir>/test/setup-runtime.ts',
   ],
-  moduleFileExtensions: ['ts', 'js', 'json', 'node'],
-  extensionsToTreatAsEsm: ['.ts'],
-    transformIgnorePatterns: [
-      'node_modules/(?!(jose|@noble/ciphers|@noble/curves|@noble/ed25519|@noble/hashes)/)',
-      '<rootDir>/../naylence-core-ts/dist/',
-      '<rootDir>/../naylence-factory-ts/dist/'
-    ],
-  setupFiles: ['<rootDir>/test/setup-crypto.ts', '<rootDir>/test/setup-idb.ts'],
-  setupFilesAfterEnv: ['<rootDir>/test/setup-runtime.ts'],
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1'
-  },
-  // Prevent worker timeout race conditions by running sequentially
-  testTimeout: 30000,
-  maxWorkers: 1
 };

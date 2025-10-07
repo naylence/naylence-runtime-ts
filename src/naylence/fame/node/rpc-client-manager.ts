@@ -13,18 +13,21 @@ import {
   makeRequest,
   parseResponse,
   type DeliveryAckFrame,
-} from "naylence-core";
-import { getLogger } from "../util/logging.js";
-import { currentTraceId } from "../util/envelope-context.js";
-import { formatDeliveryErrorMessage } from "../delivery/delivery-error.js";
-import type { DeliveryTracker as BasicDeliveryTracker } from "../delivery/delivery-tracker.js";
-import type { DeliveryTrackerEventHandler } from "../delivery/default-delivery-tracker.js";
-import type { TrackedEnvelope } from "../delivery/tracked-envelope.js";
-import type { FameEnvelopeHandler } from "naylence-core";
+} from 'naylence-core';
+import { getLogger } from '../util/logging.js';
+import { currentTraceId } from '../util/envelope-context.js';
+import { formatDeliveryErrorMessage } from '../delivery/delivery-error.js';
+import type { DeliveryTracker as BasicDeliveryTracker } from '../delivery/delivery-tracker.js';
+import type { DeliveryTrackerEventHandler } from '../delivery/default-delivery-tracker.js';
+import type { TrackedEnvelope } from '../delivery/tracked-envelope.js';
+import type { FameEnvelopeHandler } from 'naylence-core';
 
-const logger = getLogger("rpc-client-manager");
+const logger = getLogger('rpc-client-manager');
 
-type DeliverFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<void>;
+type DeliverFn = (
+  envelope: FameEnvelope,
+  context?: FameDeliveryContext
+) => Promise<void>;
 
 type DeliverWrapper = () => DeliverFn;
 
@@ -34,7 +37,10 @@ type ListenCallback = (
 ) => Promise<FameAddress>;
 
 type StreamCapableDeliveryTracker = BasicDeliveryTracker & {
-  onStreamItem?: (envelopeId: string, envelope: FameEnvelope) => Promise<void> | void;
+  onStreamItem?: (
+    envelopeId: string,
+    envelope: FameEnvelope
+  ) => Promise<void> | void;
   onStreamEnd?: (envelopeId: string) => Promise<void> | void;
 };
 
@@ -50,13 +56,13 @@ interface PendingRequestBase {
 }
 
 interface PendingSingleRequest extends PendingRequestBase {
-  type: "single";
+  type: 'single';
   resolve: (value: any) => void;
   reject: (error: Error) => void;
 }
 
 interface PendingStreamRequest extends PendingRequestBase {
-  type: "stream";
+  type: 'stream';
   push: (value: unknown) => void;
   end: (error?: Error) => void;
   envelopeId: string;
@@ -85,12 +91,12 @@ export class RPCClientManager {
   }
 
   private setupTrackerEventHandler(): void {
-    if (!this.deliveryTracker || typeof this.deliveryTracker !== "object") {
+    if (!this.deliveryTracker || typeof this.deliveryTracker !== 'object') {
       return;
     }
 
     const tracker = this.deliveryTracker as DeliveryTrackerWithEvents;
-    if (typeof tracker.addEventHandler !== "function") {
+    if (typeof tracker.addEventHandler !== 'function') {
       return;
     }
 
@@ -114,10 +120,12 @@ export class RPCClientManager {
     const { targetAddr, capabilities, method, params, timeoutMs } = options;
 
     if (!targetAddr && !capabilities) {
-      throw new Error("Either target address or capabilities must be provided");
+      throw new Error('Either target address or capabilities must be provided');
     }
     if (targetAddr && capabilities) {
-      throw new Error("Provide either target address or capabilities, not both");
+      throw new Error(
+        'Provide either target address or capabilities, not both'
+      );
     }
 
     await this.ensureReplyListener();
@@ -126,7 +134,7 @@ export class RPCClientManager {
     const request = makeRequest(method, params, requestId);
 
     const frame: DataFrame = {
-      type: "Data",
+      type: 'Data',
       payload: request,
     };
 
@@ -159,7 +167,12 @@ export class RPCClientManager {
       expected: FameResponseType.REPLY,
     });
 
-    await this.sendRpcRequest(requestId, envelope, FameResponseType.REPLY, timeoutMs);
+    await this.sendRpcRequest(
+      requestId,
+      envelope,
+      FameResponseType.REPLY,
+      timeoutMs
+    );
 
     return responsePromise;
   }
@@ -174,10 +187,12 @@ export class RPCClientManager {
     const { targetAddr, capabilities, method, params, timeoutMs } = options;
 
     if (!targetAddr && !capabilities) {
-      throw new Error("Either target address or capabilities must be provided");
+      throw new Error('Either target address or capabilities must be provided');
     }
     if (targetAddr && capabilities) {
-      throw new Error("Provide either target address or capabilities, not both");
+      throw new Error(
+        'Provide either target address or capabilities, not both'
+      );
     }
 
     await this.ensureReplyListener();
@@ -186,7 +201,7 @@ export class RPCClientManager {
     const request = makeRequest(method, params, requestId);
 
     const frame: DataFrame = {
-      type: "Data",
+      type: 'Data',
       payload: request,
     };
 
@@ -218,7 +233,12 @@ export class RPCClientManager {
       timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS
     );
 
-    await this.sendRpcRequest(requestId, envelope, FameResponseType.STREAM, timeoutMs);
+    await this.sendRpcRequest(
+      requestId,
+      envelope,
+      FameResponseType.STREAM,
+      timeoutMs
+    );
 
     return iterator;
   }
@@ -241,18 +261,20 @@ export class RPCClientManager {
       pending.timer = null;
     }
 
-    const metaCode = tracked.meta?.["nack_code"];
-    const metaReason = tracked.meta?.["nack_reason"];
+    const metaCode = tracked.meta?.['nack_code'];
+    const metaReason = tracked.meta?.['nack_reason'];
     const formattedMessage = formatDeliveryErrorMessage(
-      typeof metaCode === "string" ? metaCode : "DELIVERY_ERROR",
-      reason ?? (typeof metaReason === "string" ? (metaReason as string) : undefined)
+      typeof metaCode === 'string' ? metaCode : 'DELIVERY_ERROR',
+      reason ??
+        (typeof metaReason === 'string' ? (metaReason as string) : undefined)
     );
 
-    logger.debug("pending_request_rejected_by_delivery_nack", {
+    logger.debug('pending_request_rejected_by_delivery_nack', {
       envelope_id: envelopeId,
       request_id: requestId,
-      code: typeof metaCode === "string" ? metaCode : "DELIVERY_ERROR",
-      reason: reason ?? (typeof metaReason === "string" ? metaReason : undefined),
+      code: typeof metaCode === 'string' ? metaCode : 'DELIVERY_ERROR',
+      reason:
+        reason ?? (typeof metaReason === 'string' ? metaReason : undefined),
       entry_type: pending.type,
     });
 
@@ -260,7 +282,7 @@ export class RPCClientManager {
     this.pendingByEnvelopeId.delete(envelopeId);
 
     const nackError = new Error(formattedMessage);
-    if (pending.type === "single") {
+    if (pending.type === 'single') {
       pending.reject(nackError);
     } else {
       pending.end(nackError);
@@ -272,7 +294,7 @@ export class RPCClientManager {
       try {
         this.trackerWithEvents.removeEventHandler?.(this.trackerEventHandler);
       } catch (error) {
-        logger.debug("rpc_tracker_handler_remove_failed", {
+        logger.debug('rpc_tracker_handler_remove_failed', {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -288,10 +310,10 @@ export class RPCClientManager {
       if (pending.timer) {
         clearTimeout(pending.timer);
       }
-      if (pending.type === "single") {
-        pending.reject(new Error("RPC client cleaned up"));
+      if (pending.type === 'single') {
+        pending.reject(new Error('RPC client cleaned up'));
       } else {
-        pending.end(new Error("RPC client cleaned up"));
+        pending.end(new Error('RPC client cleaned up'));
       }
       this.pendingByEnvelopeId.delete(pending.envelopeId);
       this.pending.delete(requestId);
@@ -306,7 +328,7 @@ export class RPCClientManager {
       return;
     }
 
-    const recipient = "__rpc__";
+    const recipient = '__rpc__';
     this.rpcReplyAddress = formatAddress(recipient, this.getPhysicalPath());
 
     const handler: FameEnvelopeHandler = async (
@@ -320,7 +342,7 @@ export class RPCClientManager {
     this.rpcListenerAddress = await this.listenCallback(recipient, handler);
     this.rpcBound = true;
 
-    logger.debug("rpc_reply_listener_bound", {
+    logger.debug('rpc_reply_listener_bound', {
       reply_recipient: recipient,
       reply_address: this.rpcReplyAddress?.toString(),
       listener_address: this.rpcListenerAddress?.toString(),
@@ -352,7 +374,7 @@ export class RPCClientManager {
       }, timeoutMs);
 
       const entry: PendingSingleRequest = {
-        type: "single",
+        type: 'single',
         expected,
         timer,
         envelopeId,
@@ -388,9 +410,9 @@ export class RPCClientManager {
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     type StreamQueueItem =
-      | { kind: "value"; value: unknown }
-      | { kind: "end" }
-      | { kind: "error"; error: Error };
+      | { kind: 'value'; value: unknown }
+      | { kind: 'end' }
+      | { kind: 'error'; error: Error };
 
     const queue: StreamQueueItem[] = [];
     let pendingResolver: {
@@ -408,13 +430,13 @@ export class RPCClientManager {
       const resolver = pendingResolver;
       pendingResolver = null;
 
-      if (item.kind === "value") {
+      if (item.kind === 'value') {
         resolver.resolve({ value: item.value, done: false });
         return;
       }
 
       completed = true;
-      if (item.kind === "end") {
+      if (item.kind === 'end') {
         resolver.resolve({ value: undefined, done: true });
         return;
       }
@@ -426,7 +448,7 @@ export class RPCClientManager {
       if (completed) {
         return;
       }
-      queue.push({ kind: "value", value });
+      queue.push({ kind: 'value', value });
       deliverNext();
     };
 
@@ -438,9 +460,9 @@ export class RPCClientManager {
         clearTimeout(timer);
       }
       if (error) {
-        queue.push({ kind: "error", error });
+        queue.push({ kind: 'error', error });
       } else {
-        queue.push({ kind: "end" });
+        queue.push({ kind: 'end' });
       }
       deliverNext();
       completed = true;
@@ -449,10 +471,13 @@ export class RPCClientManager {
       const finalizePromise = this.notifyStreamClosed(envelopeId);
       if (finalizePromise) {
         finalizePromise.catch((notifyError) => {
-          logger.debug("stream_tracker_finalize_failed", {
+          logger.debug('stream_tracker_finalize_failed', {
             request_id: requestId,
             envelope_id: envelopeId,
-            error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+            error:
+              notifyError instanceof Error
+                ? notifyError.message
+                : String(notifyError),
           });
         });
       }
@@ -463,7 +488,7 @@ export class RPCClientManager {
     }, timeoutMs);
 
     const entry: PendingStreamRequest = {
-      type: "stream",
+      type: 'stream',
       expected: FameResponseType.STREAM,
       timer,
       push,
@@ -478,12 +503,12 @@ export class RPCClientManager {
       next: (): Promise<IteratorResult<unknown>> => {
         if (queue.length > 0) {
           const item = queue.shift()!;
-          if (item.kind === "value") {
+          if (item.kind === 'value') {
             return Promise.resolve({ value: item.value, done: false });
           }
 
           completed = true;
-          if (item.kind === "end") {
+          if (item.kind === 'end') {
             return Promise.resolve({ value: undefined, done: true });
           }
 
@@ -503,7 +528,10 @@ export class RPCClientManager {
         return Promise.resolve({ value: undefined, done: true });
       },
       throw: (error?: unknown): Promise<IteratorResult<unknown>> => {
-        const err = error instanceof Error ? error : new Error(String(error ?? "Stream aborted"));
+        const err =
+          error instanceof Error
+            ? error
+            : new Error(String(error ?? 'Stream aborted'));
         end(err);
         return Promise.reject(err);
       },
@@ -521,7 +549,7 @@ export class RPCClientManager {
     expectedResponseType: FameResponseType,
     timeoutMs?: number
   ): Promise<void> {
-    logger.debug("sending_rpc_request", {
+    logger.debug('sending_rpc_request', {
       envp_id: envelope.id,
       corr_id: envelope.corrId,
       request_id: requestId,
@@ -530,14 +558,14 @@ export class RPCClientManager {
     });
 
     try {
-      if (this.deliveryTracker && "track" in this.deliveryTracker) {
+      if (this.deliveryTracker && 'track' in this.deliveryTracker) {
         await this.deliveryTracker.track(envelope, {
           timeoutMs: timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS,
           expectedResponseType,
         });
       }
     } catch (error) {
-      logger.warning("delivery_tracker_track_failed", {
+      logger.warning('delivery_tracker_track_failed', {
         request_id: requestId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -552,14 +580,14 @@ export class RPCClientManager {
     await this.deliverWrapper()(envelope, context);
   }
   private async handleReplyEnvelope(envelope: FameEnvelope): Promise<void> {
-    logger.debug("handle_reply_envelope_received", {
+    logger.debug('handle_reply_envelope_received', {
       envelope_id: envelope.id,
       corr_id: envelope.corrId,
-      frame_type: envelope.frame?.["type"],
+      frame_type: envelope.frame?.['type'],
     });
     let requestId = envelope.corrId ?? envelope.id;
     if (!requestId) {
-      logger.warning("reply_envelope_missing_corr_id", {
+      logger.warning('reply_envelope_missing_corr_id', {
         envelope_id: envelope.id,
       });
       return;
@@ -569,7 +597,7 @@ export class RPCClientManager {
     if (
       !entry &&
       envelope.frame &&
-      (envelope.frame as DeliveryAckFrame).type === "DeliveryAck" &&
+      (envelope.frame as DeliveryAckFrame).type === 'DeliveryAck' &&
       (envelope.frame as DeliveryAckFrame).refId
     ) {
       const frame = envelope.frame as DeliveryAckFrame;
@@ -581,27 +609,31 @@ export class RPCClientManager {
     }
 
     if (!entry) {
-      logger.debug("no_pending_request_for_reply", {
+      logger.debug('no_pending_request_for_reply', {
         request_id: requestId,
       });
       return;
     }
 
-    logger.debug("handle_reply_envelope", {
+    logger.debug('handle_reply_envelope', {
       envelope_id: envelope.id,
       request_id: requestId,
       corr_id: envelope.corrId,
-      frame_type: envelope.frame?.["type"],
+      frame_type: envelope.frame?.['type'],
       entry_type: entry.type,
     });
 
-    if (envelope.frame && (envelope.frame as DeliveryAckFrame).type === "DeliveryAck") {
+    if (
+      envelope.frame &&
+      (envelope.frame as DeliveryAckFrame).type === 'DeliveryAck'
+    ) {
       const frame = envelope.frame as DeliveryAckFrame;
       const ackIndicatesSuccess =
-        frame.ok === true || (frame.ok === undefined && !frame.code && !frame.reason);
+        frame.ok === true ||
+        (frame.ok === undefined && !frame.code && !frame.reason);
 
       if (ackIndicatesSuccess) {
-        logger.debug("pending_request_delivery_acknowledged", {
+        logger.debug('pending_request_delivery_acknowledged', {
           request_id: requestId,
           envelope_id: envelope.id,
           ref_id: frame.refId ?? null,
@@ -619,7 +651,7 @@ export class RPCClientManager {
 
       const errorMessage = formatDeliveryErrorMessage(frame.code, frame.reason);
       const error = new Error(errorMessage);
-      if (entry.type === "single") {
+      if (entry.type === 'single') {
         entry.reject(error);
       } else {
         entry.end(error);
@@ -633,18 +665,18 @@ export class RPCClientManager {
     }
 
     if (!this.isDataFrame(envelope.frame)) {
-      logger.warning("unexpected_reply_frame_type", {
+      logger.warning('unexpected_reply_frame_type', {
         request_id: requestId,
-        frame_type: envelope.frame?.["type"],
+        frame_type: envelope.frame?.['type'],
       });
-      if (entry.type === "single") {
+      if (entry.type === 'single') {
         this.pending.delete(requestId);
         this.pendingByEnvelopeId.delete(entry.envelopeId);
-        entry.reject(new Error("Unexpected frame type in reply"));
+        entry.reject(new Error('Unexpected frame type in reply'));
       } else {
         this.pending.delete(requestId);
         this.pendingByEnvelopeId.delete(entry.envelopeId);
-        entry.end(new Error("Unexpected frame type in reply"));
+        entry.end(new Error('Unexpected frame type in reply'));
       }
       return;
     }
@@ -652,8 +684,8 @@ export class RPCClientManager {
     try {
       const response = parseResponse(envelope.frame.payload);
       if (response.error) {
-        const error = new Error(response.error.message ?? "RPC error");
-        if (entry.type === "single") {
+        const error = new Error(response.error.message ?? 'RPC error');
+        if (entry.type === 'single') {
           this.pending.delete(requestId);
           this.pendingByEnvelopeId.delete(entry.envelopeId);
           entry.reject(error);
@@ -665,7 +697,7 @@ export class RPCClientManager {
         return;
       }
 
-      if (entry.type === "single") {
+      if (entry.type === 'single') {
         this.pending.delete(requestId);
         this.pendingByEnvelopeId.delete(entry.envelopeId);
         entry.resolve(response.result);
@@ -682,7 +714,7 @@ export class RPCClientManager {
       this.forwardStreamItem(entry.envelopeId, envelope);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      if (entry.type === "single") {
+      if (entry.type === 'single') {
         this.pending.delete(requestId);
         this.pendingByEnvelopeId.delete(entry.envelopeId);
         entry.reject(err);
@@ -695,11 +727,16 @@ export class RPCClientManager {
   }
 
   private forwardStreamItem(envelopeId: string, envelope: FameEnvelope): void {
-    if (!this.deliveryTracker || typeof this.deliveryTracker.onStreamItem !== "function") {
+    if (
+      !this.deliveryTracker ||
+      typeof this.deliveryTracker.onStreamItem !== 'function'
+    ) {
       return;
     }
-    Promise.resolve(this.deliveryTracker.onStreamItem(envelopeId, envelope)).catch((error) => {
-      logger.debug("stream_tracker_push_failed", {
+    Promise.resolve(
+      this.deliveryTracker.onStreamItem(envelopeId, envelope)
+    ).catch((error) => {
+      logger.debug('stream_tracker_push_failed', {
         envelope_id: envelopeId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -707,13 +744,20 @@ export class RPCClientManager {
   }
 
   private notifyStreamClosed(envelopeId: string): Promise<void> | null {
-    if (!this.deliveryTracker || typeof this.deliveryTracker.onStreamEnd !== "function") {
+    if (
+      !this.deliveryTracker ||
+      typeof this.deliveryTracker.onStreamEnd !== 'function'
+    ) {
       return null;
     }
     return Promise.resolve(this.deliveryTracker.onStreamEnd(envelopeId));
   }
 
   private isDataFrame(frame: unknown): frame is DataFrame {
-    return typeof frame === "object" && frame !== null && (frame as DataFrame).type === "Data";
+    return (
+      typeof frame === 'object' &&
+      frame !== null &&
+      (frame as DataFrame).type === 'Data'
+    );
   }
 }

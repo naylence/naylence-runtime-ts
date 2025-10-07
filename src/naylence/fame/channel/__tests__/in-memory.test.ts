@@ -4,15 +4,15 @@
  * Comprehensive tests to ensure TypeScript functionality matches Python behavior.
  */
 
-import { FameAddress, createFameEnvelope } from "naylence-core";
+import { FameAddress, createFameEnvelope } from 'naylence-core';
 import {
   InMemoryReadWriteChannel,
   InMemoryBinding,
   InMemoryFanoutBroker,
-} from "../in-memory/index.js";
-import { TaskTimeoutError } from "../../util/task-types.js";
+} from '../in-memory/index.js';
+import { TaskTimeoutError } from '../../util/task-types.js';
 
-describe("InMemoryReadWriteChannel", () => {
+describe('InMemoryReadWriteChannel', () => {
   let channel: InMemoryReadWriteChannel;
 
   beforeEach(() => {
@@ -25,9 +25,9 @@ describe("InMemoryReadWriteChannel", () => {
     }
   });
 
-  describe("Basic Operations", () => {
-    it("should send and receive messages", async () => {
-      const message = { id: "test-1", data: "Hello World" };
+  describe('Basic Operations', () => {
+    it('should send and receive messages', async () => {
+      const message = { id: 'test-1', data: 'Hello World' };
 
       await channel.send(message);
       const received = await channel.receive();
@@ -35,11 +35,11 @@ describe("InMemoryReadWriteChannel", () => {
       expect(received).toEqual(message);
     });
 
-    it("should handle multiple messages in queue", async () => {
+    it('should handle multiple messages in queue', async () => {
       const messages = [
-        { id: "msg-1", data: "First" },
-        { id: "msg-2", data: "Second" },
-        { id: "msg-3", data: "Third" },
+        { id: 'msg-1', data: 'First' },
+        { id: 'msg-2', data: 'Second' },
+        { id: 'msg-3', data: 'Third' },
       ];
 
       // Send all messages
@@ -56,8 +56,8 @@ describe("InMemoryReadWriteChannel", () => {
       expect(received).toEqual(messages);
     });
 
-    it("should deliver directly to waiting readers", async () => {
-      const message = { id: "direct-1", data: "Direct delivery" };
+    it('should deliver directly to waiting readers', async () => {
+      const message = { id: 'direct-1', data: 'Direct delivery' };
 
       // Start receiving before sending (no queue buffering)
       const receivePromise = channel.receive();
@@ -71,18 +71,20 @@ describe("InMemoryReadWriteChannel", () => {
     });
   });
 
-  describe("Timeout Behavior", () => {
-    it("should timeout when no message is available", async () => {
+  describe('Timeout Behavior', () => {
+    it('should timeout when no message is available', async () => {
       await expect(channel.receive(100)).rejects.toThrow(TaskTimeoutError);
     });
 
-    it("should respect default timeout configuration", async () => {
+    it('should respect default timeout configuration', async () => {
       const channelWithTimeout = new InMemoryReadWriteChannel({
         defaultTimeoutMs: 50,
       });
 
       const start = Date.now();
-      await expect(channelWithTimeout.receive()).rejects.toThrow(TaskTimeoutError);
+      await expect(channelWithTimeout.receive()).rejects.toThrow(
+        TaskTimeoutError
+      );
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeGreaterThanOrEqual(40); // Allow some tolerance
@@ -91,28 +93,34 @@ describe("InMemoryReadWriteChannel", () => {
       await channelWithTimeout.close();
     });
 
-    it("should handle concurrent readers with timeout", async () => {
-      const readers = [channel.receive(100), channel.receive(100), channel.receive(100)];
+    it('should handle concurrent readers with timeout', async () => {
+      const readers = [
+        channel.receive(100),
+        channel.receive(100),
+        channel.receive(100),
+      ];
 
       await expect(Promise.all(readers)).rejects.toThrow(TaskTimeoutError);
     });
   });
 
-  describe("Queue Size Limits", () => {
-    it("should respect maxsize configuration", async () => {
+  describe('Queue Size Limits', () => {
+    it('should respect maxsize configuration', async () => {
       const limitedChannel = new InMemoryReadWriteChannel({ maxsize: 2 });
 
       // Fill up the queue
-      await limitedChannel.send("msg1");
-      await limitedChannel.send("msg2");
+      await limitedChannel.send('msg1');
+      await limitedChannel.send('msg2');
 
       // Third message should fail
-      await expect(limitedChannel.send("msg3")).rejects.toThrow("Channel queue is full");
+      await expect(limitedChannel.send('msg3')).rejects.toThrow(
+        'Channel queue is full'
+      );
 
       await limitedChannel.close();
     });
 
-    it("should allow unlimited queue when maxsize is 0", async () => {
+    it('should allow unlimited queue when maxsize is 0', async () => {
       const unlimitedChannel = new InMemoryReadWriteChannel({ maxsize: 0 });
 
       // Send many messages
@@ -126,16 +134,16 @@ describe("InMemoryReadWriteChannel", () => {
     });
   });
 
-  describe("Channel State", () => {
-    it("should track queue size correctly", async () => {
+  describe('Channel State', () => {
+    it('should track queue size correctly', async () => {
       expect(channel.queueSize).toBe(0);
       expect(channel.isEmpty).toBe(true);
 
-      await channel.send("msg1");
+      await channel.send('msg1');
       expect(channel.queueSize).toBe(1);
       expect(channel.isEmpty).toBe(false);
 
-      await channel.send("msg2");
+      await channel.send('msg2');
       expect(channel.queueSize).toBe(2);
 
       await channel.receive();
@@ -146,7 +154,7 @@ describe("InMemoryReadWriteChannel", () => {
       expect(channel.isEmpty).toBe(true);
     });
 
-    it("should track waiting readers", async () => {
+    it('should track waiting readers', async () => {
       expect(channel.waitingReaders).toBe(0);
 
       const readers = [channel.receive(), channel.receive()];
@@ -156,48 +164,50 @@ describe("InMemoryReadWriteChannel", () => {
       expect(channel.waitingReaders).toBe(2);
 
       // Send messages to wake up readers
-      await channel.send("msg1");
-      await channel.send("msg2");
+      await channel.send('msg1');
+      await channel.send('msg2');
 
       await Promise.all(readers);
       expect(channel.waitingReaders).toBe(0);
     });
   });
 
-  describe("Channel Lifecycle", () => {
-    it("should close and reject pending operations", async () => {
+  describe('Channel Lifecycle', () => {
+    it('should close and reject pending operations', async () => {
       const readers = [channel.receive(), channel.receive()];
 
       await channel.close();
 
       expect(channel.isClosed).toBe(true);
-      await expect(Promise.all(readers)).rejects.toThrow("Channel is closed");
+      await expect(Promise.all(readers)).rejects.toThrow('Channel is closed');
     });
 
-    it("should reject operations on closed channel", async () => {
+    it('should reject operations on closed channel', async () => {
       await channel.close();
 
-      await expect(channel.send("msg")).rejects.toThrow("Channel is closed");
-      await expect(channel.receive()).rejects.toThrow("Channel is closed");
-      await expect(channel.acknowledge("id")).rejects.toThrow("Channel is closed");
+      await expect(channel.send('msg')).rejects.toThrow('Channel is closed');
+      await expect(channel.receive()).rejects.toThrow('Channel is closed');
+      await expect(channel.acknowledge('id')).rejects.toThrow(
+        'Channel is closed'
+      );
     });
 
-    it("should handle double close gracefully", async () => {
+    it('should handle double close gracefully', async () => {
       await channel.close();
       await expect(channel.close()).resolves.not.toThrow();
     });
   });
 
-  describe("Acknowledgment", () => {
-    it("should handle acknowledge as no-op", async () => {
-      await expect(channel.acknowledge("test-id")).resolves.not.toThrow();
+  describe('Acknowledgment', () => {
+    it('should handle acknowledge as no-op', async () => {
+      await expect(channel.acknowledge('test-id')).resolves.not.toThrow();
     });
   });
 });
 
-describe("InMemoryBinding", () => {
+describe('InMemoryBinding', () => {
   let binding: InMemoryBinding;
-  const testAddress = new FameAddress("test@example.com");
+  const testAddress = new FameAddress('test@example.com');
 
   beforeEach(() => {
     binding = new InMemoryBinding(testAddress);
@@ -209,24 +219,27 @@ describe("InMemoryBinding", () => {
     }
   });
 
-  describe("Construction", () => {
-    it("should create binding with FameAddress", () => {
+  describe('Construction', () => {
+    it('should create binding with FameAddress', () => {
       expect(binding.address).toBe(testAddress);
       expect(binding.channel).toBeInstanceOf(InMemoryReadWriteChannel);
     });
 
-    it("should create binding from string address", () => {
-      const stringBinding = InMemoryBinding.fromAddress("user@service.com");
+    it('should create binding from string address', () => {
+      const stringBinding = InMemoryBinding.fromAddress('user@service.com');
 
-      expect(stringBinding.address.toString()).toBe("user@service.com");
+      expect(stringBinding.address.toString()).toBe('user@service.com');
       expect(stringBinding.channel).toBeInstanceOf(InMemoryReadWriteChannel);
 
       stringBinding.close();
     });
 
-    it("should create binding with custom channel", () => {
+    it('should create binding with custom channel', () => {
       const customChannel = new InMemoryReadWriteChannel({ maxsize: 10 });
-      const customBinding = InMemoryBinding.withChannel(testAddress, customChannel);
+      const customBinding = InMemoryBinding.withChannel(
+        testAddress,
+        customChannel
+      );
 
       expect(customBinding.channel).toBe(customChannel);
 
@@ -234,10 +247,10 @@ describe("InMemoryBinding", () => {
     });
   });
 
-  describe("Operations", () => {
-    it("should send and receive through binding", async () => {
+  describe('Operations', () => {
+    it('should send and receive through binding', async () => {
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "test message" },
+        frame: { type: 'Data', payload: 'test message' },
       });
 
       await binding.send(envelope);
@@ -246,13 +259,13 @@ describe("InMemoryBinding", () => {
       expect(received).toEqual(envelope);
     });
 
-    it("should handle acknowledgment", async () => {
-      await expect(binding.acknowledge("test-id")).resolves.not.toThrow();
+    it('should handle acknowledgment', async () => {
+      await expect(binding.acknowledge('test-id')).resolves.not.toThrow();
     });
   });
 
-  describe("State", () => {
-    it("should track closed state", async () => {
+  describe('State', () => {
+    it('should track closed state', async () => {
       expect(binding.isClosed).toBe(false);
 
       await binding.close();
@@ -260,7 +273,7 @@ describe("InMemoryBinding", () => {
       expect(binding.isClosed).toBe(true);
     });
 
-    it("should provide serializable object representation", () => {
+    it('should provide serializable object representation', () => {
       const obj = binding.toObject();
 
       expect(obj).toEqual({
@@ -272,16 +285,16 @@ describe("InMemoryBinding", () => {
       });
     });
 
-    it("should provide string representation", () => {
+    it('should provide string representation', () => {
       const str = binding.toString();
 
-      expect(str).toContain("InMemoryBinding");
+      expect(str).toContain('InMemoryBinding');
       expect(str).toContain(testAddress.toString());
     });
   });
 });
 
-describe("InMemoryFanoutBroker", () => {
+describe('InMemoryFanoutBroker', () => {
   let sinkChannel: InMemoryReadWriteChannel;
   let broker: InMemoryFanoutBroker;
   let subscriber1: InMemoryReadWriteChannel;
@@ -298,11 +311,15 @@ describe("InMemoryFanoutBroker", () => {
     if (broker.isRunning) {
       await broker.stop();
     }
-    await Promise.all([sinkChannel.close(), subscriber1.close(), subscriber2.close()]);
+    await Promise.all([
+      sinkChannel.close(),
+      subscriber1.close(),
+      subscriber2.close(),
+    ]);
   });
 
-  describe("Subscriber Management", () => {
-    it("should add and remove subscribers", () => {
+  describe('Subscriber Management', () => {
+    it('should add and remove subscribers', () => {
       expect(broker.subscriberCount).toBe(0);
 
       broker.addSubscriber(subscriber1);
@@ -318,14 +335,14 @@ describe("InMemoryFanoutBroker", () => {
       expect(broker.subscriberCount).toBe(0);
     });
 
-    it("should handle duplicate subscriber addition", () => {
+    it('should handle duplicate subscriber addition', () => {
       broker.addSubscriber(subscriber1);
       broker.addSubscriber(subscriber1); // Duplicate
 
       expect(broker.subscriberCount).toBe(1);
     });
 
-    it("should provide readonly subscriber access", () => {
+    it('should provide readonly subscriber access', () => {
       broker.addSubscriber(subscriber1);
       broker.addSubscriber(subscriber2);
 
@@ -340,8 +357,8 @@ describe("InMemoryFanoutBroker", () => {
     });
   });
 
-  describe("Broker Lifecycle", () => {
-    it("should start and stop broker", async () => {
+  describe('Broker Lifecycle', () => {
+    it('should start and stop broker', async () => {
       expect(broker.isRunning).toBe(false);
 
       await broker.start();
@@ -351,7 +368,7 @@ describe("InMemoryFanoutBroker", () => {
       expect(broker.isRunning).toBe(false);
     });
 
-    it("should handle multiple start calls", async () => {
+    it('should handle multiple start calls', async () => {
       await broker.start();
       await broker.start(); // Should not throw
 
@@ -359,16 +376,16 @@ describe("InMemoryFanoutBroker", () => {
     });
   });
 
-  describe("Message Distribution", () => {
+  describe('Message Distribution', () => {
     beforeEach(async () => {
       broker.addSubscriber(subscriber1);
       broker.addSubscriber(subscriber2);
       await broker.start();
     });
 
-    it("should distribute messages to all subscribers", async () => {
+    it('should distribute messages to all subscribers', async () => {
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "fanout message" },
+        frame: { type: 'Data', payload: 'fanout message' },
       });
 
       // Send message to sink
@@ -385,12 +402,12 @@ describe("InMemoryFanoutBroker", () => {
       expect(received2).toEqual(envelope);
     });
 
-    it("should remove failed subscribers", async () => {
+    it('should remove failed subscribers', async () => {
       // Close one subscriber to simulate failure
       await subscriber1.close();
 
       const envelope = createFameEnvelope({
-        frame: { type: "Data", payload: "test message" },
+        frame: { type: 'Data', payload: 'test message' },
       });
 
       await sinkChannel.send(envelope);
@@ -405,8 +422,8 @@ describe("InMemoryFanoutBroker", () => {
     });
   });
 
-  describe("Configuration", () => {
-    it("should use custom poll timeout", () => {
+  describe('Configuration', () => {
+    it('should use custom poll timeout', () => {
       const customBroker = new InMemoryFanoutBroker(sinkChannel, {
         pollTimeoutMs: 500,
       });
@@ -418,15 +435,15 @@ describe("InMemoryFanoutBroker", () => {
   });
 });
 
-describe("Integration Tests", () => {
-  describe("Binding with Fanout Broker", () => {
-    it("should work together in a complete flow", async () => {
+describe('Integration Tests', () => {
+  describe('Binding with Fanout Broker', () => {
+    it('should work together in a complete flow', async () => {
       // Set up components
       const sinkChannel = new InMemoryReadWriteChannel();
       const broker = new InMemoryFanoutBroker(sinkChannel);
 
-      const binding1 = InMemoryBinding.fromAddress("service1@example.com");
-      const binding2 = InMemoryBinding.fromAddress("service2@example.com");
+      const binding1 = InMemoryBinding.fromAddress('service1@example.com');
+      const binding2 = InMemoryBinding.fromAddress('service2@example.com');
 
       // Connect bindings to broker
       broker.addSubscriber(binding1.channel);
@@ -437,7 +454,7 @@ describe("Integration Tests", () => {
       try {
         // Send message through sink
         const envelope = createFameEnvelope({
-          frame: { type: "Data", payload: "integration test" },
+          frame: { type: 'Data', payload: 'integration test' },
         });
 
         await sinkChannel.send(envelope);

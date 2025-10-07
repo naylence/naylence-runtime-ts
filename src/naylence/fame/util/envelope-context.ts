@@ -5,7 +5,7 @@
  * and a simple context stack in browsers.
  */
 
-import { EnvelopeSnapshot } from "./logging-types.js";
+import { EnvelopeSnapshot } from './logging-types.js';
 
 // Cross-platform context storage
 class EnvelopeContextManager {
@@ -19,12 +19,15 @@ class EnvelopeContextManager {
 
   private initializeStorage(): void {
     // Only try to load AsyncLocalStorage in Node.js environments
-    if (typeof globalThis !== "undefined" && (globalThis as any).process?.versions?.node) {
+    if (
+      typeof globalThis !== 'undefined' &&
+      (globalThis as any).process?.versions?.node
+    ) {
       try {
         // Try to require async_hooks synchronously - this will only work in Node.js
         // The bundler will handle this gracefully for browser builds
-        if (typeof require !== "undefined") {
-          const { AsyncLocalStorage } = require("async_hooks");
+        if (typeof require !== 'undefined') {
+          const { AsyncLocalStorage } = require('async_hooks');
           this.nodeStorage = new AsyncLocalStorage();
         }
       } catch {
@@ -66,7 +69,10 @@ class EnvelopeContextManager {
   /**
    * Run an async function with envelope context
    */
-  async runWithContextAsync<T>(context: EnvelopeSnapshot, fn: () => Promise<T>): Promise<T> {
+  async runWithContextAsync<T>(
+    context: EnvelopeSnapshot,
+    fn: () => Promise<T>
+  ): Promise<T> {
     if (this.nodeStorage) {
       return this.nodeStorage.run(context, fn);
     }
@@ -127,7 +133,9 @@ export async function withEnvelopeContextAsync<T>(
  * Class-based context manager (similar to Python's context manager protocol)
  */
 export class EnvelopeContext {
-  constructor(private envelope: { trace_id?: string; id?: string; flow_id?: string }) {}
+  constructor(
+    private envelope: { trace_id?: string; id?: string; flow_id?: string }
+  ) {}
 
   run<T>(fn: () => T): T {
     return withEnvelopeContext(this.envelope, fn);

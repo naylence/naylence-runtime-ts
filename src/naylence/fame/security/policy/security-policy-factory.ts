@@ -1,10 +1,14 @@
-import type { CreateResourceOptions } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { CreateResourceOptions } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
 
-import type { SecurityPolicy } from "./security-policy.js";
-import type { SecurityPolicyConfig } from "./security-policy.js";
+import type { SecurityPolicy } from './security-policy.js';
+import type { SecurityPolicyConfig } from './security-policy.js';
 
-export const SECURITY_POLICY_FACTORY_BASE_TYPE = "SecurityPolicyFactory";
+export const SECURITY_POLICY_FACTORY_BASE_TYPE = 'SecurityPolicyFactory';
 
 export abstract class SecurityPolicyFactory<
   C extends SecurityPolicyConfig = SecurityPolicyConfig,
@@ -14,7 +18,9 @@ export abstract class SecurityPolicyFactory<
     ...factoryArgs: unknown[]
   ): Promise<SecurityPolicy>;
 
-  public static async createSecurityPolicy<C extends SecurityPolicyConfig = SecurityPolicyConfig>(
+  public static async createSecurityPolicy<
+    C extends SecurityPolicyConfig = SecurityPolicyConfig,
+  >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<SecurityPolicy | null> {

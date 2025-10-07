@@ -1,6 +1,6 @@
-import type { ConnectorConfig } from "../../connector/connector-config.js";
-import { InMemoryKeyValueStore } from "../../storage/in-memory-storage.js";
-import type { KeyValueStore } from "../../storage/key-value-store.js";
+import type { ConnectorConfig } from '../../connector/connector-config.js';
+import { InMemoryKeyValueStore } from '../../storage/in-memory-storage.js';
+import type { KeyValueStore } from '../../storage/key-value-store.js';
 
 export interface RouteEntry {
   systemId?: string;
@@ -46,16 +46,22 @@ export {
   RouteStoreFactory,
   type RouteStoreConfig,
   ROUTE_STORE_FACTORY_BASE_TYPE,
-} from "./route-store-factory.js";
+} from './route-store-factory.js';
 
 export function normalizeRouteEntry(entry: RouteEntry): NormalizedRouteEntry {
-  const systemId = pickString(entry.systemId ?? entry.system_id) ?? "";
+  const systemId = pickString(entry.systemId ?? entry.system_id) ?? '';
   const assignedPath = pickString(entry.assignedPath ?? entry.assigned_path);
   const instanceId = pickString(entry.instanceId ?? entry.instance_id);
-  const connectorConfig = pickConnectorConfig(entry.connectorConfig ?? entry.connector_config);
-  const attachExpiresAt = pickDate(entry.attachExpiresAt ?? entry.attach_expires_at);
+  const connectorConfig = pickConnectorConfig(
+    entry.connectorConfig ?? entry.connector_config
+  );
+  const attachExpiresAt = pickDate(
+    entry.attachExpiresAt ?? entry.attach_expires_at
+  );
   const metadata = pickRecord(entry.metadata);
-  const callbackGrants = pickRecordArray(entry.callbackGrants ?? entry.callback_grants);
+  const callbackGrants = pickRecordArray(
+    entry.callbackGrants ?? entry.callback_grants
+  );
   const durable = Boolean(entry.durable);
 
   return {
@@ -71,7 +77,7 @@ export function normalizeRouteEntry(entry: RouteEntry): NormalizedRouteEntry {
 }
 
 function pickString(value: unknown): string | null {
-  if (typeof value === "string" && value.length) {
+  if (typeof value === 'string' && value.length) {
     return value;
   }
   return null;
@@ -80,9 +86,9 @@ function pickString(value: unknown): string | null {
 function pickConnectorConfig(value: unknown): ConnectorConfig | null {
   if (
     value &&
-    typeof value === "object" &&
-    "type" in value &&
-    typeof (value as { type?: unknown }).type === "string"
+    typeof value === 'object' &&
+    'type' in value &&
+    typeof (value as { type?: unknown }).type === 'string'
   ) {
     return value as ConnectorConfig;
   }
@@ -98,7 +104,7 @@ function pickDate(value: unknown): Date | null {
     return Number.isNaN(value.getTime()) ? null : value;
   }
 
-  if (typeof value === "string" || typeof value === "number") {
+  if (typeof value === 'string' || typeof value === 'number') {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
   }
@@ -107,20 +113,22 @@ function pickDate(value: unknown): Date | null {
 }
 
 function pickRecord(value: unknown): Record<string, unknown> | null {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value as Record<string, unknown>;
   }
   return null;
 }
 
-function pickRecordArray(value: unknown): Array<Record<string, unknown>> | null {
+function pickRecordArray(
+  value: unknown
+): Array<Record<string, unknown>> | null {
   if (!Array.isArray(value)) {
     return null;
   }
 
   const records: Array<Record<string, unknown>> = [];
   for (const item of value) {
-    if (item && typeof item === "object" && !Array.isArray(item)) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
       records.push(item as Record<string, unknown>);
     }
   }

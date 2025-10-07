@@ -1,24 +1,24 @@
-import { InMemoryKeyStore } from "./in-memory-key-store.js";
+import { InMemoryKeyStore } from './in-memory-key-store.js';
 import {
   KEY_STORE_FACTORY_BASE_TYPE,
   KeyStoreFactory,
   type KeyStoreConfig,
-} from "./key-store-factory.js";
-import type { KeyRecord } from "./key-store.js";
+} from './key-store-factory.js';
+import type { KeyRecord } from './key-store.js';
 
 export interface InMemoryKeyStoreConfig extends KeyStoreConfig {
-  type: "InMemoryKeyStore";
+  type: 'InMemoryKeyStore';
   initialKeys?: Record<string, KeyRecord> | Map<string, KeyRecord> | null;
   initial_keys?: Record<string, KeyRecord> | null;
 }
 
 export const FACTORY_META = {
   base: KEY_STORE_FACTORY_BASE_TYPE,
-  key: "InMemoryKeyStore",
+  key: 'InMemoryKeyStore',
 } as const;
 
 export class InMemoryKeyStoreFactory extends KeyStoreFactory<InMemoryKeyStoreConfig> {
-  public readonly type = "InMemoryKeyStore";
+  public readonly type = 'InMemoryKeyStore';
   public readonly isDefault = true;
   public readonly priority = 100;
 
@@ -32,7 +32,7 @@ export class InMemoryKeyStoreFactory extends KeyStoreFactory<InMemoryKeyStoreCon
   private resolveInitialKeys(
     config?: InMemoryKeyStoreConfig | Record<string, unknown> | null
   ): Record<string, KeyRecord> | Map<string, KeyRecord> | null {
-    if (!config || typeof config !== "object") {
+    if (!config || typeof config !== 'object') {
       return null;
     }
 
@@ -42,11 +42,11 @@ export class InMemoryKeyStoreFactory extends KeyStoreFactory<InMemoryKeyStoreCon
       return candidate.initialKeys;
     }
 
-    if (candidate.initialKeys && typeof candidate.initialKeys === "object") {
+    if (candidate.initialKeys && typeof candidate.initialKeys === 'object') {
       return candidate.initialKeys as Record<string, KeyRecord>;
     }
 
-    if (candidate.initial_keys && typeof candidate.initial_keys === "object") {
+    if (candidate.initial_keys && typeof candidate.initial_keys === 'object') {
       return candidate.initial_keys as Record<string, KeyRecord>;
     }
 

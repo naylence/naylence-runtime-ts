@@ -7,18 +7,21 @@ import {
   extractEnvelopeAndContext,
   isFameMessageResponse,
   type FameBindingChannelMessage,
-} from "naylence-core";
-import { getLogger } from "../util/logging.js";
-import { withEnvelopeContextAsync } from "../util/envelope-context.js";
-import { FameTransportClose } from "../errors/errors.js";
-import type { ReadWriteChannel } from "naylence-core";
-import type { ResponseContextManager } from "./response-context-manager.js";
-import { StreamingResponseHandler } from "./streaming-response-handler.js";
-import { TaskTimeoutError } from "../util/task-types.js";
+} from 'naylence-core';
+import { getLogger } from '../util/logging.js';
+import { withEnvelopeContextAsync } from '../util/envelope-context.js';
+import { FameTransportClose } from '../errors/errors.js';
+import type { ReadWriteChannel } from 'naylence-core';
+import type { ResponseContextManager } from './response-context-manager.js';
+import { StreamingResponseHandler } from './streaming-response-handler.js';
+import { TaskTimeoutError } from '../util/task-types.js';
 
-const logger = getLogger("channel-polling-manager");
+const logger = getLogger('channel-polling-manager');
 
-type DeliverFn = (envelope: FameEnvelope, context?: FameDeliveryContext) => Promise<void>;
+type DeliverFn = (
+  envelope: FameEnvelope,
+  context?: FameDeliveryContext
+) => Promise<void>;
 
 type DeliverWrapper = () => DeliverFn;
 
@@ -40,7 +43,7 @@ export class ChannelPollingManager {
     stopState: StopState,
     pollTimeoutMs: number | undefined = DEFAULT_POLLING_TIMEOUT_MS
   ): Promise<void> {
-    logger.debug("poll_loop_started", {
+    logger.debug('poll_loop_started', {
       recipient: serviceName,
     });
 
@@ -50,17 +53,19 @@ export class ChannelPollingManager {
       while (true) {
         if (stopState.stopped && !draining) {
           draining = true;
-          logger.debug("poll_loop_draining_pending_messages", {
+          logger.debug('poll_loop_draining_pending_messages', {
             recipient: serviceName,
           });
         }
 
         let message: unknown;
         try {
-          message = await channel.receive(pollTimeoutMs ?? DEFAULT_POLLING_TIMEOUT_MS);
+          message = await channel.receive(
+            pollTimeoutMs ?? DEFAULT_POLLING_TIMEOUT_MS
+          );
         } catch (error) {
           if (error instanceof FameTransportClose) {
-            logger.debug("channel_closed", {
+            logger.debug('channel_closed', {
               recipient: serviceName,
               message: error.message,
             });
@@ -74,49 +79,49 @@ export class ChannelPollingManager {
             continue;
           }
 
-          if (error instanceof Error && error.name === "AbortError") {
-            logger.debug("listener_cancelled", {
+          if (error instanceof Error && error.name === 'AbortError') {
+            logger.debug('listener_cancelled', {
               recipient: serviceName,
             });
             throw error;
           }
 
-          if (error instanceof Error && error.name === "TimeoutError") {
+          if (error instanceof Error && error.name === 'TimeoutError') {
             if (stopState.stopped) {
               break;
             }
             continue;
           }
 
-          if (error instanceof Error && error.message === "Channel is closed") {
-            logger.debug("channel_closed", {
+          if (error instanceof Error && error.message === 'Channel is closed') {
+            logger.debug('channel_closed', {
               recipient: serviceName,
             });
             break;
           }
 
-          if (error instanceof Error && error.name === "TaskCancelledError") {
-            logger.debug("listener_cancelled", {
+          if (error instanceof Error && error.name === 'TaskCancelledError') {
+            logger.debug('listener_cancelled', {
               recipient: serviceName,
             });
             throw error;
           }
 
-          if (error instanceof Error && error.message.includes("Timeout")) {
+          if (error instanceof Error && error.message.includes('Timeout')) {
             if (stopState.stopped) {
               break;
             }
             continue;
           }
 
-          if (error instanceof Error && error.message.includes("closed")) {
-            logger.debug("channel_closed", {
+          if (error instanceof Error && error.message.includes('closed')) {
+            logger.debug('channel_closed', {
               recipient: serviceName,
             });
             break;
           }
 
-          logger.error("transport_error", {
+          logger.error('transport_error', {
             recipient: serviceName,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -134,7 +139,7 @@ export class ChannelPollingManager {
         await this.processChannelMessage(message, handler, serviceName);
       }
     } finally {
-      logger.debug("poll_loop_exiting", {
+      logger.debug('poll_loop_exiting', {
         recipient: serviceName,
       });
     }
@@ -152,9 +157,14 @@ export class ChannelPollingManager {
     await withEnvelopeContextAsync(envelope, async () => {
       try {
         const result = await handler(envelope, deliveryContext);
-        await this.processHandlerResult(result, envelope, deliveryContext, serviceName);
+        await this.processHandlerResult(
+          result,
+          envelope,
+          deliveryContext,
+          serviceName
+        );
       } catch (error) {
-        logger.error("handler_crashed", {
+        logger.error('handler_crashed', {
           recipient: serviceName,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -175,7 +185,7 @@ export class ChannelPollingManager {
     }
 
     if (this.streamingResponseHandler.isStreamingFameMessageResponse(result)) {
-      logger.debug("handling_streaming_fame_message_responses", {
+      logger.debug('handling_streaming_fame_message_responses', {
         service_name: serviceName,
         envelope_id: envelope.id,
       });
@@ -193,14 +203,17 @@ export class ChannelPollingManager {
     requestContext: FameDeliveryContext | undefined,
     serviceName: string
   ): Promise<void> {
-    logger.debug("delivering_envelope_response_message", {
+    logger.debug('delivering_envelope_response_message', {
       service_name: serviceName,
       response_envelope_id: response.envelope.id,
     });
 
     const responseContext =
       response.context ??
-      this.responseContextManager.createResponseContext(requestEnvelope, requestContext);
+      this.responseContextManager.createResponseContext(
+        requestEnvelope,
+        requestContext
+      );
 
     this.responseContextManager.ensureResponseMetadata(
       response.envelope,

@@ -1,9 +1,9 @@
-import { DEFAULT_KEY_CORRELATION_TTL_SEC } from "../constants/ttl-constants.js";
-import { getLogger } from "../util/logging.js";
-import { delay } from "../util/task-utils.js";
-import { validateKeyCorrelationTtlSec } from "../util/ttl-validation.js";
+import { DEFAULT_KEY_CORRELATION_TTL_SEC } from '../constants/ttl-constants.js';
+import { getLogger } from '../util/logging.js';
+import { delay } from '../util/task-utils.js';
+import { validateKeyCorrelationTtlSec } from '../util/ttl-validation.js';
 
-const logger = getLogger("key-correlation-map");
+const logger = getLogger('key-correlation-map');
 
 type CorrelationEntry = {
   route: string;
@@ -34,24 +34,34 @@ export class KeyCorrelationMap {
     this.data.set(correlationId, { route, expiresAt });
     this.evict();
 
-    logger.trace("key_corr_added", { corr_id: correlationId, route, ttl: this.ttlMs / 1000 });
+    logger.trace('key_corr_added', {
+      corr_id: correlationId,
+      route,
+      ttl: this.ttlMs / 1000,
+    });
   }
 
   public pop(correlationId: string): string | null {
     const entry = this.data.get(correlationId);
     if (!entry) {
-      logger.trace("key_corr_not_found", { corr_id: correlationId });
+      logger.trace('key_corr_not_found', { corr_id: correlationId });
       return null;
     }
 
     this.data.delete(correlationId);
 
     if (entry.expiresAt < Date.now()) {
-      logger.trace("key_corr_expired", { corr_id: correlationId, route: entry.route });
+      logger.trace('key_corr_expired', {
+        corr_id: correlationId,
+        route: entry.route,
+      });
       return null;
     }
 
-    logger.trace("key_corr_found", { corr_id: correlationId, route: entry.route });
+    logger.trace('key_corr_found', {
+      corr_id: correlationId,
+      route: entry.route,
+    });
     return entry.route;
   }
 
@@ -63,17 +73,17 @@ export class KeyCorrelationMap {
     intervalMs = 5000,
     signal,
   }: { intervalMs?: number; signal?: AbortSignal } = {}): Promise<void> {
-    logger.debug("key_corr_cleanup_started", { interval: intervalMs / 1000 });
+    logger.debug('key_corr_cleanup_started', { interval: intervalMs / 1000 });
     try {
       while (!signal?.aborted) {
         await delay(intervalMs, signal);
         this.evict();
       }
     } catch (error) {
-      if (error instanceof Error && error.message === "Aborted") {
-        logger.debug("key_corr_cleanup_cancelled");
+      if (error instanceof Error && error.message === 'Aborted') {
+        logger.debug('key_corr_cleanup_cancelled');
       } else {
-        logger.error("key_corr_cleanup_error", {
+        logger.error('key_corr_cleanup_error', {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -87,7 +97,10 @@ export class KeyCorrelationMap {
     for (const [corrId, entry] of this.data) {
       if (entry.expiresAt < now) {
         this.data.delete(corrId);
-        logger.trace("key_corr_ttl_evicted", { corr_id: corrId, route: entry.route });
+        logger.trace('key_corr_ttl_evicted', {
+          corr_id: corrId,
+          route: entry.route,
+        });
       }
     }
 
@@ -100,7 +113,10 @@ export class KeyCorrelationMap {
       const removed = this.data.get(oldestKey);
       this.data.delete(oldestKey);
       if (removed) {
-        logger.trace("key_corr_lru_evicted", { corr_id: oldestKey, route: removed.route });
+        logger.trace('key_corr_lru_evicted', {
+          corr_id: oldestKey,
+          route: removed.route,
+        });
       }
     }
   }

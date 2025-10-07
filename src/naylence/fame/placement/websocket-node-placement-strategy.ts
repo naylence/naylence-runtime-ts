@@ -1,7 +1,10 @@
-import type { NodeHelloFrame } from "naylence-core";
+import type { NodeHelloFrame } from 'naylence-core';
 
-import type { NodePlacementStrategy, PlacementDecision } from "./node-placement-strategy.js";
-import { StaticNodePlacementStrategy } from "./static-node-placement-strategy.js";
+import type {
+  NodePlacementStrategy,
+  PlacementDecision,
+} from './node-placement-strategy.js';
+import { StaticNodePlacementStrategy } from './static-node-placement-strategy.js';
 
 type ParentResolver = () => string;
 

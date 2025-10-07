@@ -4,33 +4,33 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type DeliveryAckFrame,
-} from "naylence-core";
+} from 'naylence-core';
 
-import "../../security/index.js";
-import "../../node/index.js";
-import "../../connector/index.js";
-import "../../sentinel/index.js";
-import "../index.js";
-import "../../stickiness/index.js";
+import '../../security/index.js';
+import '../../node/index.js';
+import '../../connector/index.js';
+import '../../sentinel/index.js';
+import '../index.js';
+import '../../stickiness/index.js';
 
-import { WebSocketConnector } from "../../connector/websocket-connector.js";
-import { getWebsocketListenerInstance } from "../../connector/websocket-listener.js";
-import { DefaultHttpServer } from "../../connector/default-http-server.js";
-import { SentinelFactory } from "../../sentinel/sentinel-factory.js";
-import type { Sentinel } from "../../sentinel/sentinel.js";
-import type { RouteManager } from "../../sentinel/route-manager.js";
-import { NodeFactory } from "../../node/node-factory.js";
-import type { FameNode } from "../../node/node.js";
-import type { NodeEventListener } from "../../node/node-event-listener.js";
-import { basicConfig, LogLevel } from "../../util/logging.js";
-import type { ShutdownOptions } from "../../util/task-types.js";
+import { WebSocketConnector } from '../../connector/websocket-connector.js';
+import { getWebsocketListenerInstance } from '../../connector/websocket-listener.js';
+import { DefaultHttpServer } from '../../connector/default-http-server.js';
+import { SentinelFactory } from '../../sentinel/sentinel-factory.js';
+import type { Sentinel } from '../../sentinel/sentinel.js';
+import type { RouteManager } from '../../sentinel/route-manager.js';
+import { NodeFactory } from '../../node/node-factory.js';
+import type { FameNode } from '../../node/node.js';
+import type { NodeEventListener } from '../../node/node-event-listener.js';
+import { basicConfig, LogLevel } from '../../util/logging.js';
+import type { ShutdownOptions } from '../../util/task-types.js';
 
-jest.mock("fastify", () => {
-  const actual = jest.requireActual("fastify");
+jest.mock('fastify', () => {
+  const actual = jest.requireActual('fastify');
   return (...args: unknown[]) => {
     const instance = actual(...args);
-    Object.defineProperty(instance, "version", {
-      value: actual.version ?? instance.version ?? "5.6.1",
+    Object.defineProperty(instance, 'version', {
+      value: actual.version ?? instance.version ?? '5.6.1',
       configurable: true,
     });
     return instance;
@@ -39,16 +39,16 @@ jest.mock("fastify", () => {
 
 jest.setTimeout(20000);
 
-const SOCKET_HOST = "127.0.0.1";
+const SOCKET_HOST = '127.0.0.1';
 const WAIT_TIMEOUT_MS = 10_000;
 const WAIT_INTERVAL_MS = 50;
 
 function createSecurityConfig(): Record<string, unknown> {
   return {
-    type: "DefaultSecurityManager",
-    authorizer: { type: "NoopAuthorizer" },
+    type: 'DefaultSecurityManager',
+    authorizer: { type: 'NoopAuthorizer' },
     security_policy: {
-      type: "NoSecurityPolicy",
+      type: 'NoSecurityPolicy',
     },
   } satisfies Record<string, unknown>;
 }
@@ -73,7 +73,7 @@ async function waitForCondition(
     });
   }
 
-  throw new Error("Timed out waiting for condition");
+  throw new Error('Timed out waiting for condition');
 }
 
 type CancelableSpawner =
@@ -95,7 +95,7 @@ async function ensureSpawnerShutdown(
   try {
     await spawner.shutdownTasks(options);
   } catch {
-    if (typeof spawner.cancelAllTasks === "function") {
+    if (typeof spawner.cancelAllTasks === 'function') {
       try {
         spawner.cancelAllTasks();
       } catch {
@@ -105,7 +105,7 @@ async function ensureSpawnerShutdown(
   }
 }
 
-describe("Sentinel downstream node integration", () => {
+describe('Sentinel downstream node integration', () => {
   beforeAll(() => {
     basicConfig({ level: LogLevel.ERROR });
   });
@@ -114,7 +114,7 @@ describe("Sentinel downstream node integration", () => {
     await DefaultHttpServer.shutdownAll();
   });
 
-  test("parent sentinel binding receives message from downstream node", async () => {
+  test('parent sentinel binding receives message from downstream node', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -123,22 +123,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel",
+        type: 'Sentinel',
+        id: 'parent-sentinel',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -155,26 +155,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       child = await nodeFactory.create({
-        type: "Node",
-        id: "child-node",
+        type: 'Node',
+        id: 'child-node',
         hasParent: true,
-        requestedLogicals: ["svc"],
+        requestedLogicals: ['svc'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -186,8 +186,11 @@ describe("Sentinel downstream node integration", () => {
 
       await waitForCondition(() => child?.handshakeCompleted === true);
 
-      const routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager.downstreamRoutes.has(child!.id));
+      const routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager.downstreamRoutes.has(child!.id)
+      );
 
       const upstreamConnector = child.upstreamConnector;
       expect(upstreamConnector).toBeInstanceOf(WebSocketConnector);
@@ -208,7 +211,7 @@ describe("Sentinel downstream node integration", () => {
         };
       });
 
-      const listenerAddress = await parent.listen("svc", async (envelope) => {
+      const listenerAddress = await parent.listen('svc', async (envelope) => {
         if (!messageSettled) {
           resolveMessage({ envelope });
         }
@@ -216,11 +219,11 @@ describe("Sentinel downstream node integration", () => {
         return null;
       });
 
-      const payload = { greeting: "hello", count: 1 };
+      const payload = { greeting: 'hello', count: 1 };
       const outboundEnvelope = child.envelopeFactory.createEnvelope({
         frame: {
-          type: "Data",
-          codec: "json",
+          type: 'Data',
+          codec: 'json',
           payload,
         },
         to: listenerAddress,
@@ -234,16 +237,16 @@ describe("Sentinel downstream node integration", () => {
 
       expect(deliveredEnvelope.id).toBe(outboundEnvelope.id);
       expect(deliveredEnvelope.to?.toString()).toBe(listenerAddress.toString());
-      expect(deliveredEnvelope.frame?.type).toBe("Data");
-      expect((deliveredEnvelope.frame as { payload?: unknown } | undefined)?.payload).toEqual(
-        payload
-      );
+      expect(deliveredEnvelope.frame?.type).toBe('Data');
+      expect(
+        (deliveredEnvelope.frame as { payload?: unknown } | undefined)?.payload
+      ).toEqual(payload);
     } finally {
       await Promise.allSettled([child?.stop(), parent?.stop()]);
     }
   });
 
-  test("downstream node receives immediate NACK for unroutable destinations", async () => {
+  test('downstream node receives immediate NACK for unroutable destinations', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -252,22 +255,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel",
+        type: 'Sentinel',
+        id: 'parent-sentinel',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -284,26 +287,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       child = await nodeFactory.create({
-        type: "Node",
-        id: "child-node",
+        type: 'Node',
+        id: 'child-node',
         hasParent: true,
-        requestedLogicals: ["svc"],
+        requestedLogicals: ['svc'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -315,22 +318,25 @@ describe("Sentinel downstream node integration", () => {
 
       await waitForCondition(() => child?.handshakeCompleted === true);
 
-      const routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager.downstreamRoutes.has(child!.id));
+      const routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager.downstreamRoutes.has(child!.id)
+      );
 
       await waitForCondition(() => Boolean(parent?.physicalPath));
       const parentPhysicalPath = parent!.physicalPath;
       expect(parentPhysicalPath).toMatch(/^\//);
 
-      const missingRecipient = "svc-missing";
-      const missingAddress = formatAddress(missingRecipient, "dummy"); //parentPhysicalPath);
+      const missingRecipient = 'svc-missing';
+      const missingAddress = formatAddress(missingRecipient, 'dummy'); //parentPhysicalPath);
 
       const outboundEnvelope = child.envelopeFactory.createEnvelope({
         to: missingAddress,
         frame: {
-          type: "Data",
-          codec: "json",
-          payload: { request: "missing-destination" },
+          type: 'Data',
+          codec: 'json',
+          payload: { request: 'missing-destination' },
         },
       });
 
@@ -338,7 +344,7 @@ describe("Sentinel downstream node integration", () => {
       const nackListener: NodeEventListener = {
         priority: 10,
         async onDeliver(_node, envelope) {
-          if (envelope.frame?.type === "DeliveryAck") {
+          if (envelope.frame?.type === 'DeliveryAck') {
             nackFrames.push(envelope.frame as DeliveryAckFrame);
           }
           return envelope;
@@ -348,27 +354,38 @@ describe("Sentinel downstream node integration", () => {
       child.addEventListener(nackListener);
 
       await expect(
-        child.send(outboundEnvelope, undefined, undefined, undefined, WAIT_TIMEOUT_MS)
+        child.send(
+          outboundEnvelope,
+          undefined,
+          undefined,
+          undefined,
+          WAIT_TIMEOUT_MS
+        )
       ).rejects.toThrow(/Message delivery failed with code 'NO_ROUTE'/);
 
       expect(nackFrames).toHaveLength(1);
       const nack = nackFrames[0];
       expect(nack.ok).toBe(false);
-      expect(nack.code).toBe("NO_ROUTE");
+      expect(nack.code).toBe('NO_ROUTE');
       expect(nack.refId).toBe(outboundEnvelope.id);
-      expect(nack.reason).toContain("Unroutable");
+      expect(nack.reason).toContain('Unroutable');
 
       child.removeEventListener(nackListener);
 
       await expect(
-        child.invoke(missingAddress, `${missingRecipient}.rpc`, { attempt: 1 }, WAIT_TIMEOUT_MS)
+        child.invoke(
+          missingAddress,
+          `${missingRecipient}.rpc`,
+          { attempt: 1 },
+          WAIT_TIMEOUT_MS
+        )
       ).rejects.toThrow(/NO_ROUTE/);
     } finally {
       await Promise.allSettled([child?.stop(), parent?.stop()]);
     }
   });
 
-  test("downstream node invokes RPC service exposed by parent sentinel", async () => {
+  test('downstream node invokes RPC service exposed by parent sentinel', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -377,22 +394,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel",
+        type: 'Sentinel',
+        id: 'parent-sentinel',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -409,26 +426,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       child = await nodeFactory.create({
-        type: "Node",
-        id: "child-node",
+        type: 'Node',
+        id: 'child-node',
         hasParent: true,
-        requestedLogicals: ["svc"],
+        requestedLogicals: ['svc'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -440,25 +457,34 @@ describe("Sentinel downstream node integration", () => {
 
       await waitForCondition(() => child?.handshakeCompleted === true);
 
-      const routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager.downstreamRoutes.has(child!.id));
+      const routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager.downstreamRoutes.has(child!.id)
+      );
 
       const upstreamConnector = child.upstreamConnector;
       expect(upstreamConnector).toBeInstanceOf(WebSocketConnector);
       expect(upstreamConnector?.state).toBe(ConnectorState.STARTED);
 
-      const rpcHandler = jest.fn(async (method: string, params?: Record<string, unknown>) => {
-        expect(method).toBe("svc-rpc.sum");
-        expect(params).toMatchObject({ a: 7, b: 5 });
-        return { result: (params?.a as number) + (params?.b as number) };
-      });
+      const rpcHandler = jest.fn(
+        async (method: string, params?: Record<string, unknown>) => {
+          expect(method).toBe('svc-rpc.sum');
+          expect(params).toMatchObject({ a: 7, b: 5 });
+          return { result: (params?.a as number) + (params?.b as number) };
+        }
+      );
 
-      const serviceAddress = await parent.listenRpc("svc-rpc", rpcHandler, WAIT_TIMEOUT_MS);
-      expect(serviceAddress.toString()).toContain("svc-rpc");
+      const serviceAddress = await parent.listenRpc(
+        'svc-rpc',
+        rpcHandler,
+        WAIT_TIMEOUT_MS
+      );
+      expect(serviceAddress.toString()).toContain('svc-rpc');
 
       const invocationResult = await child.invoke(
         serviceAddress,
-        "svc-rpc.sum",
+        'svc-rpc.sum',
         { a: 7, b: 5 },
         WAIT_TIMEOUT_MS
       );
@@ -471,7 +497,7 @@ describe("Sentinel downstream node integration", () => {
     }
   });
 
-  test("child node invokes RPC service exposed by a sibling through the parent sentinel", async () => {
+  test('child node invokes RPC service exposed by a sibling through the parent sentinel', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -484,22 +510,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel",
+        type: 'Sentinel',
+        id: 'parent-sentinel',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -516,26 +542,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       childServer = await nodeFactory.create({
-        type: "Node",
-        id: "child-server",
+        type: 'Node',
+        id: 'child-server',
         hasParent: true,
-        requestedLogicals: ["svc-server"],
+        requestedLogicals: ['svc-server'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -544,20 +570,20 @@ describe("Sentinel downstream node integration", () => {
       });
 
       childClient = await nodeFactory.create({
-        type: "Node",
-        id: "child-client",
+        type: 'Node',
+        id: 'child-client',
         hasParent: true,
-        requestedLogicals: ["svc-client"],
+        requestedLogicals: ['svc-client'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -570,9 +596,14 @@ describe("Sentinel downstream node integration", () => {
       await waitForCondition(() => childServer?.handshakeCompleted === true);
       await waitForCondition(() => childClient?.handshakeCompleted === true);
 
-      routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager!.downstreamRoutes.has(childServer!.id));
-      await waitForCondition(() => routeManager!.downstreamRoutes.has(childClient!.id));
+      routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager!.downstreamRoutes.has(childServer!.id)
+      );
+      await waitForCondition(() =>
+        routeManager!.downstreamRoutes.has(childClient!.id)
+      );
 
       const clientAcks: DeliveryAckFrame[] = [];
       const serverAcks: DeliveryAckFrame[] = [];
@@ -582,12 +613,12 @@ describe("Sentinel downstream node integration", () => {
       const clientListenerImpl: NodeEventListener = {
         priority: 100,
         async onForwardUpstream(_node, envelope) {
-          if (!requestEnvelopeId && envelope.frame?.type === "Data") {
+          if (!requestEnvelopeId && envelope.frame?.type === 'Data') {
             const payload = (envelope.frame as { payload?: unknown }).payload;
             if (
               payload &&
-              typeof payload === "object" &&
-              (payload as { method?: string }).method === "svc-sibling.mul"
+              typeof payload === 'object' &&
+              (payload as { method?: string }).method === 'svc-server.mul'
             ) {
               requestEnvelopeId = envelope.id;
             }
@@ -595,7 +626,7 @@ describe("Sentinel downstream node integration", () => {
           return envelope;
         },
         async onDeliver(_node, envelope) {
-          if (envelope.frame?.type === "DeliveryAck") {
+          if (envelope.frame?.type === 'DeliveryAck') {
             clientAcks.push(envelope.frame as DeliveryAckFrame);
           }
           return envelope;
@@ -606,12 +637,12 @@ describe("Sentinel downstream node integration", () => {
       const serverListenerImpl: NodeEventListener = {
         priority: 100,
         async onForwardUpstream(_node, envelope) {
-          if (!responseEnvelopeId && envelope.frame?.type === "Data") {
+          if (!responseEnvelopeId && envelope.frame?.type === 'Data') {
             const payload = (envelope.frame as { payload?: unknown }).payload;
             if (
               payload &&
-              typeof payload === "object" &&
-              "result" in (payload as Record<string, unknown>)
+              typeof payload === 'object' &&
+              'result' in (payload as Record<string, unknown>)
             ) {
               responseEnvelopeId = envelope.id;
             }
@@ -619,7 +650,7 @@ describe("Sentinel downstream node integration", () => {
           return envelope;
         },
         async onDeliver(_node, envelope) {
-          if (envelope.frame?.type === "DeliveryAck") {
+          if (envelope.frame?.type === 'DeliveryAck') {
             serverAcks.push(envelope.frame as DeliveryAckFrame);
           }
           return envelope;
@@ -630,26 +661,30 @@ describe("Sentinel downstream node integration", () => {
       childClient.addEventListener(clientListenerImpl);
       childServer.addEventListener(serverListenerImpl);
 
-      const serverRpcHandler = jest.fn(async (method: string, params?: Record<string, unknown>) => {
-        expect(method).toBe("svc-sibling.mul");
-        expect(params).toMatchObject({ a: 3, b: 9 });
-        return { result: (params?.a as number) * (params?.b as number) };
-      });
+      const serverRpcHandler = jest.fn(
+        async (method: string, params?: Record<string, unknown>) => {
+          expect(method).toBe('svc-server.mul');
+          expect(params).toMatchObject({ a: 3, b: 9 });
+          return { result: (params?.a as number) * (params?.b as number) };
+        }
+      );
 
       const serviceAddress = await childServer.listenRpc(
-        "svc-sibling",
+        'svc-server',
         serverRpcHandler,
         WAIT_TIMEOUT_MS
       );
 
       await waitForCondition(() => {
-        const info = routeManager!._downstream_addresses_routes.get(serviceAddress.toString());
+        const info = routeManager!._downstream_addresses_routes.get(
+          serviceAddress.toString()
+        );
         return info?.segment === childServer?.id;
       });
 
       const response = await childClient.invoke(
         serviceAddress,
-        "svc-sibling.mul",
+        'svc-server.mul',
         { a: 3, b: 9 },
         WAIT_TIMEOUT_MS
       );
@@ -658,11 +693,17 @@ describe("Sentinel downstream node integration", () => {
       expect(serverRpcHandler).toHaveBeenCalledTimes(1);
 
       await waitForCondition(() =>
-        Boolean(requestEnvelopeId && clientAcks.some((ack) => ack.refId === requestEnvelopeId))
+        Boolean(
+          requestEnvelopeId &&
+            clientAcks.some((ack) => ack.refId === requestEnvelopeId)
+        )
       );
 
       await waitForCondition(() =>
-        Boolean(responseEnvelopeId && serverAcks.some((ack) => ack.refId === responseEnvelopeId))
+        Boolean(
+          responseEnvelopeId &&
+            serverAcks.some((ack) => ack.refId === responseEnvelopeId)
+        )
       );
     } finally {
       try {
@@ -702,9 +743,11 @@ describe("Sentinel downstream node integration", () => {
         }
       }
 
-      const stopPromises = [childClient?.stop(), childServer?.stop(), parent?.stop()].filter(
-        (promise): promise is Promise<void> => promise !== undefined
-      );
+      const stopPromises = [
+        childClient?.stop(),
+        childServer?.stop(),
+        parent?.stop(),
+      ].filter((promise): promise is Promise<void> => promise !== undefined);
 
       if (stopPromises.length > 0) {
         await Promise.allSettled(stopPromises);
@@ -736,7 +779,7 @@ describe("Sentinel downstream node integration", () => {
     }
   });
 
-  test("sibling nodes exchange streaming RPC responses through the parent sentinel", async () => {
+  test('sibling nodes exchange streaming RPC responses through the parent sentinel', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -747,22 +790,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel-streaming",
+        type: 'Sentinel',
+        id: 'parent-sentinel-streaming',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -779,26 +822,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       producer = await nodeFactory.create({
-        type: "Node",
-        id: "child-stream-producer",
+        type: 'Node',
+        id: 'child-stream-producer',
         hasParent: true,
-        requestedLogicals: ["svc-stream-producer"],
+        requestedLogicals: ['svc-stream-producer'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -807,20 +850,20 @@ describe("Sentinel downstream node integration", () => {
       });
 
       consumer = await nodeFactory.create({
-        type: "Node",
-        id: "child-stream-consumer",
+        type: 'Node',
+        id: 'child-stream-consumer',
         hasParent: true,
-        requestedLogicals: ["svc-stream-consumer"],
+        requestedLogicals: ['svc-stream-consumer'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -833,30 +876,42 @@ describe("Sentinel downstream node integration", () => {
       await waitForCondition(() => producer?.handshakeCompleted === true);
       await waitForCondition(() => consumer?.handshakeCompleted === true);
 
-      routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager!.downstreamRoutes.has(producer!.id));
-      await waitForCondition(() => routeManager!.downstreamRoutes.has(consumer!.id));
+      routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager!.downstreamRoutes.has(producer!.id)
+      );
+      await waitForCondition(() =>
+        routeManager!.downstreamRoutes.has(consumer!.id)
+      );
 
       // Use regular RPC calls to simulate streaming behavior with multiple calls
-      const streamingHandler = jest.fn(async (method: string, params?: Record<string, unknown>) => {
-        expect(method).toBe("svc-sibling.getBatch");
-        expect(params).toMatchObject({ base: 5, batchIndex: expect.any(Number) });
+      const streamingHandler = jest.fn(
+        async (method: string, params?: Record<string, unknown>) => {
+          expect(method).toBe('svc-stream-producer.getBatch');
+          expect(params).toMatchObject({
+            base: 5,
+            batchIndex: expect.any(Number),
+          });
 
-        const base = Number(params?.base ?? 0);
-        const batchIndex = Number(params?.batchIndex ?? 0);
-        const value = base * (batchIndex + 1);
+          const base = Number(params?.base ?? 0);
+          const batchIndex = Number(params?.batchIndex ?? 0);
+          const value = base * (batchIndex + 1);
 
-        return { index: batchIndex, value };
-      });
+          return { index: batchIndex, value };
+        }
+      );
 
       const serviceAddress = await producer.listenRpc(
-        "svc-sibling",
+        'svc-stream-producer',
         streamingHandler,
         WAIT_TIMEOUT_MS
       );
 
       await waitForCondition(() => {
-        const info = routeManager!._downstream_addresses_routes.get(serviceAddress.toString());
+        const info = routeManager!._downstream_addresses_routes.get(
+          serviceAddress.toString()
+        );
         return info?.segment === producer?.id;
       });
 
@@ -867,7 +922,7 @@ describe("Sentinel downstream node integration", () => {
       for (let index = 0; index < expectedCount; index += 1) {
         const response = (await consumer.invoke(
           serviceAddress,
-          "svc-sibling.getBatch",
+          'svc-stream-producer.getBatch',
           { base: 5, batchIndex: index },
           WAIT_TIMEOUT_MS
         )) as { index: number; value: number };

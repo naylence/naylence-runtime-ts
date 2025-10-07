@@ -1,12 +1,19 @@
-import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
-import type { PluginResolver } from "naylence-factory";
-import { loadPlugins } from "naylence-factory";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from '@jest/globals';
+import type { PluginResolver } from 'naylence-factory';
+import { loadPlugins } from 'naylence-factory';
 
-jest.mock("../naylence/fame/util/register-runtime-factories.js", () => ({
+jest.mock('../naylence/fame/util/register-runtime-factories.js', () => ({
   registerRuntimeFactories: jest.fn(() => Promise.resolve()),
 }));
 
-describe("runtime plugin", () => {
+describe('runtime plugin', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
@@ -16,10 +23,10 @@ describe("runtime plugin", () => {
     jest.clearAllMocks();
   });
 
-  test("register() is idempotent", async () => {
-    const pluginModule = await import("../plugin.js");
+  test('register() is idempotent', async () => {
+    const pluginModule = await import('../plugin.js');
     const { registerRuntimeFactories } = await import(
-      "../naylence/fame/util/register-runtime-factories.js"
+      '../naylence/fame/util/register-runtime-factories.js'
     );
     const registerRuntimeFactoriesMock = registerRuntimeFactories as jest.Mock;
 
@@ -29,10 +36,10 @@ describe("runtime plugin", () => {
     expect(registerRuntimeFactoriesMock).toHaveBeenCalledTimes(1);
   });
 
-  test("works with factory loader + resolver", async () => {
-    const pluginModule = await import("../plugin.js");
+  test('works with factory loader + resolver', async () => {
+    const pluginModule = await import('../plugin.js');
     const { registerRuntimeFactories } = await import(
-      "../naylence/fame/util/register-runtime-factories.js"
+      '../naylence/fame/util/register-runtime-factories.js'
     );
     const registerRuntimeFactoriesMock = registerRuntimeFactories as jest.Mock;
 

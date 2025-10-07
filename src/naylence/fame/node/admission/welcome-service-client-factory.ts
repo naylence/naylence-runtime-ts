@@ -1,24 +1,27 @@
-import type { AuthInjectionStrategy } from "../../security/auth/auth-injection-strategy.js";
+import type { AuthInjectionStrategy } from '../../security/auth/auth-injection-strategy.js';
 import {
   AuthInjectionStrategyFactory,
   type AuthInjectionStrategyConfig,
-} from "../../security/auth/auth-injection-strategy-factory.js";
-import "../../security/auth/no-auth-injection-strategy-factory.js";
+} from '../../security/auth/auth-injection-strategy-factory.js';
+import '../../security/auth/no-auth-injection-strategy-factory.js';
 import {
   WelcomeServiceClient,
   type WelcomeServiceClientOptions,
-} from "./welcome-service-client.js";
+} from './welcome-service-client.js';
 import {
   ADMISSION_CLIENT_FACTORY_BASE_TYPE,
   AdmissionClientFactory,
   type AdmissionConfig,
-} from "./admission-client-factory.js";
-import type { AdmissionClient } from "./admission-client.js";
+} from './admission-client-factory.js';
+import type { AdmissionClient } from './admission-client.js';
 
-type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+type FetchLike = (
+  input: RequestInfo | URL,
+  init?: RequestInit
+) => Promise<Response>;
 
 export interface WelcomeServiceClientConfig extends AdmissionConfig {
-  type: "WelcomeServiceClient";
+  type: 'WelcomeServiceClient';
   url: string;
   supportedTransports: string[];
   auth?: AuthInjectionStrategyConfig | null;
@@ -36,17 +39,17 @@ interface NormalizedWelcomeServiceClientConfig {
 
 export const FACTORY_META = {
   base: ADMISSION_CLIENT_FACTORY_BASE_TYPE,
-  key: "WelcomeServiceClient",
+  key: 'WelcomeServiceClient',
 } as const;
 
 export class WelcomeServiceClientFactory extends AdmissionClientFactory<WelcomeServiceClientConfig> {
-  public readonly type = "WelcomeServiceClient";
+  public readonly type = 'WelcomeServiceClient';
 
   public async create(
     config?: WelcomeServiceClientConfig | Record<string, unknown> | null
   ): Promise<AdmissionClient> {
     if (!config) {
-      throw new Error("WelcomeServiceClient configuration is required");
+      throw new Error('WelcomeServiceClient configuration is required');
     }
 
     const normalized = normalizeConfig(config);
@@ -76,26 +79,30 @@ function normalizeConfig(
 ): NormalizedWelcomeServiceClientConfig {
   const source = config as WelcomeServiceClientConfig & Record<string, unknown>;
 
-  const urlCandidate = typeof source.url === "string" ? source.url.trim() : "";
+  const urlCandidate = typeof source.url === 'string' ? source.url.trim() : '';
   if (!urlCandidate) {
-    throw new Error("WelcomeServiceClient configuration requires a non-empty url");
+    throw new Error(
+      'WelcomeServiceClient configuration requires a non-empty url'
+    );
   }
 
   const transports = Array.isArray(source.supportedTransports)
     ? source.supportedTransports.filter(
-        (value) => typeof value === "string" && value.trim().length > 0
+        (value) => typeof value === 'string' && value.trim().length > 0
       )
     : [];
   if (transports.length === 0) {
-    throw new Error("WelcomeServiceClient configuration requires supportedTransports");
+    throw new Error(
+      'WelcomeServiceClient configuration requires supportedTransports'
+    );
   }
 
   const authConfig = source.auth ?? null;
 
   const isRoot =
-    typeof source.isRoot === "boolean"
+    typeof source.isRoot === 'boolean'
       ? source.isRoot
-      : typeof source.is_root === "boolean"
+      : typeof source.is_root === 'boolean'
         ? source.is_root
         : false;
 
@@ -118,7 +125,7 @@ async function createAuthStrategy(
   }
 
   if (!config.type) {
-    throw new Error("Auth injection strategy configuration requires a type");
+    throw new Error('Auth injection strategy configuration requires a type');
   }
 
   return AuthInjectionStrategyFactory.createAuthInjectionStrategy(config);

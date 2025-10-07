@@ -1,4 +1,4 @@
-import type { FameEnvelope } from "naylence-core";
+import type { FameEnvelope } from 'naylence-core';
 
 /**
  * Strategy interface for choosing a downstream segment from a pool.
@@ -7,5 +7,9 @@ import type { FameEnvelope } from "naylence-core";
  * strategy should be attempted.
  */
 export interface LoadBalancingStrategy {
-  choose(poolKey: unknown, segments: readonly string[], envelope: FameEnvelope): string | null;
+  choose(
+    poolKey: unknown,
+    segments: readonly string[],
+    envelope: FameEnvelope
+  ): string | null;
 }

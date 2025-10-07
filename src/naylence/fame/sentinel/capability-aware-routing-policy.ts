@@ -1,9 +1,9 @@
-import type { FameAddress } from "naylence-core";
-import { FameDeliveryContext, FameEnvelope } from "naylence-core";
+import type { FameAddress } from 'naylence-core';
+import { FameDeliveryContext, FameEnvelope } from 'naylence-core';
 
-import { getLogger, summarizeEnvelope } from "../util/logging.js";
-import { HRWLoadBalancingStrategy } from "./load-balancing/hrw-load-balancing-strategy.js";
-import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
+import { getLogger, summarizeEnvelope } from '../util/logging.js';
+import { HRWLoadBalancingStrategy } from './load-balancing/hrw-load-balancing-strategy.js';
+import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';
 import {
   DeliverLocal,
   Drop,
@@ -12,10 +12,10 @@ import {
   type ResolveAddressByCapability,
   type RouterState,
   type RoutingAction,
-} from "./router.js";
-import type { RoutingPolicy } from "./routing-policy.js";
+} from './router.js';
+import type { RoutingPolicy } from './routing-policy.js';
 
-const logger = getLogger("capability-aware-routing-policy");
+const logger = getLogger('capability-aware-routing-policy');
 
 export interface CapabilityAwareRoutingPolicyOptions {
   loadBalancingStrategy?: LoadBalancingStrategy;
@@ -27,7 +27,8 @@ export class CapabilityAwareRoutingPolicy implements RoutingPolicy {
   private readonly resolveAddressOverride: ResolveAddressByCapability | null;
 
   constructor(options: CapabilityAwareRoutingPolicyOptions = {}) {
-    this.loadBalancingStrategy = options.loadBalancingStrategy ?? new HRWLoadBalancingStrategy();
+    this.loadBalancingStrategy =
+      options.loadBalancingStrategy ?? new HRWLoadBalancingStrategy();
     this.resolveAddressOverride = options.resolveAddressByCapability ?? null;
   }
 
@@ -65,7 +66,7 @@ export class CapabilityAwareRoutingPolicy implements RoutingPolicy {
         return new ForwardChild(chosenSegment);
       }
 
-      logger.warning("capability_policy_lb_failed", {
+      logger.warning('capability_policy_lb_failed', {
         segments: providerSegments,
         capabilities,
         ...summarizeEnvelope(envelope),
@@ -80,14 +81,15 @@ export class CapabilityAwareRoutingPolicy implements RoutingPolicy {
   }
 
   private isDataEnvelope(envelope: FameEnvelope): boolean {
-    return envelope.frame?.type === "Data";
+    return envelope.frame?.type === 'Data';
   }
 
   private async tryResolveLocalAddress(
     capabilities: string[],
     state: RouterState
   ): Promise<FameAddress | null> {
-    const resolver = state.resolveAddressByCapability ?? this.resolveAddressOverride;
+    const resolver =
+      state.resolveAddressByCapability ?? this.resolveAddressOverride;
     if (!resolver) {
       return null;
     }
@@ -102,7 +104,7 @@ export class CapabilityAwareRoutingPolicy implements RoutingPolicy {
         return address;
       }
     } catch (error) {
-      logger.warning("capability_policy_resolve_failed", {
+      logger.warning('capability_policy_resolve_failed', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -114,7 +116,10 @@ export class CapabilityAwareRoutingPolicy implements RoutingPolicy {
     return state.local.has(candidate.toString());
   }
 
-  private getProviderSegments(capabilities: string[], state: RouterState): string[] {
+  private getProviderSegments(
+    capabilities: string[],
+    state: RouterState
+  ): string[] {
     let intersectingSegments: Set<string> | null = null;
 
     for (const capability of capabilities) {

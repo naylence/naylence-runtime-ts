@@ -22,7 +22,7 @@ export abstract class FameError extends Error {
  * Maps to WebSocket close event codes.
  */
 export class FameTransportClose extends FameError {
-  constructor(message: string = "Fame transport closed", code?: number) {
+  constructor(message: string = 'Fame transport closed', code?: number) {
     super(message, code);
   }
 }
@@ -31,7 +31,10 @@ export class FameTransportClose extends FameError {
  * Raised when a Fame connection cannot be established.
  */
 export class FameConnectError extends FameError {
-  constructor(message: string = "Failed to connect to Fame service", code?: number) {
+  constructor(
+    message: string = 'Failed to connect to Fame service',
+    code?: number
+  ) {
     super(message, code);
   }
 }
@@ -40,7 +43,7 @@ export class FameConnectError extends FameError {
  * Raised when a Fame message exceeds the maximum allowed size.
  */
 export class FameMessageTooLarge extends FameError {
-  constructor(message: string = "Fame message too large", code?: number) {
+  constructor(message: string = 'Fame message too large', code?: number) {
     super(message, code);
   }
 }
@@ -49,7 +52,7 @@ export class FameMessageTooLarge extends FameError {
  * Raised when a Fame protocol violation occurs.
  */
 export class FameProtocolError extends FameError {
-  constructor(message: string = "Fame protocol error", code?: number) {
+  constructor(message: string = 'Fame protocol error', code?: number) {
     super(message, code);
   }
 }
@@ -58,7 +61,7 @@ export class FameProtocolError extends FameError {
  * Raised when the Fame back pressure buffer is full.
  */
 export class BackPressureFull extends FameError {
-  constructor(message: string = "Back pressure buffer full", code?: number) {
+  constructor(message: string = 'Back pressure buffer full', code?: number) {
     super(message, code);
   }
 }
@@ -67,7 +70,7 @@ export class BackPressureFull extends FameError {
  * Raised when a Fame operation is not authorized.
  */
 export class NotAuthorized extends FameError {
-  constructor(message: string = "Not authorized", code?: number) {
+  constructor(message: string = 'Not authorized', code?: number) {
     super(message, code);
   }
 }
@@ -99,7 +102,8 @@ export const WebSocketCloseCode = {
   BAD_GATEWAY: 1014,
 } as const;
 
-export type WebSocketCloseCode = (typeof WebSocketCloseCode)[keyof typeof WebSocketCloseCode];
+export type WebSocketCloseCode =
+  (typeof WebSocketCloseCode)[keyof typeof WebSocketCloseCode];
 
 /**
  * Check if an error is a Fame-related error.
@@ -121,7 +125,10 @@ export function isFameErrorType<T extends FameError>(
 /**
  * Create a FameTransportClose error from a WebSocket close event.
  */
-export function createTransportCloseError(code: number, reason?: string): FameTransportClose {
+export function createTransportCloseError(
+  code: number,
+  reason?: string
+): FameTransportClose {
   const message = reason || `Transport closed with code ${code}`;
   return new FameTransportClose(message, code);
 }

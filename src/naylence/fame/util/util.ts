@@ -2,13 +2,16 @@
  * General utility functions for JSON handling, string manipulation,
  * path normalization, base64 encoding, hashing, and more.
  */
-import { sha256 } from "@noble/hashes/sha2.js";
-import { color, AnsiColor, formatTimestamp } from "./formatter.js";
+import { sha256 } from '@noble/hashes/sha2.js';
+import { color, AnsiColor, formatTimestamp } from './formatter.js';
 
-export const ENV_VAR_SHOW_ENVELOPES = "FAME_SHOW_ENVELOPES";
+export const ENV_VAR_SHOW_ENVELOPES = 'FAME_SHOW_ENVELOPES';
 
 export function isEnvelopeLoggingEnabled(): boolean {
-  return typeof process !== "undefined" && process.env?.[ENV_VAR_SHOW_ENVELOPES] === "true";
+  return (
+    typeof process !== 'undefined' &&
+    process.env?.[ENV_VAR_SHOW_ENVELOPES] === 'true'
+  );
 }
 
 export const showEnvelopes = isEnvelopeLoggingEnabled();
@@ -30,7 +33,7 @@ export function prettyModel(value: unknown): string {
  */
 export function defaultJsonEncoder(obj: any): any {
   if (obj instanceof Date) {
-    return obj.toISOString().replace(/\.\d{3}Z$/, "Z"); // Remove milliseconds for Python compatibility
+    return obj.toISOString().replace(/\.\d{3}Z$/, 'Z'); // Remove milliseconds for Python compatibility
   }
   throw new TypeError(`Object of type ${typeof obj} is not JSON serializable`);
 }
@@ -66,8 +69,8 @@ export function jsonDumps(value: any): string {
  * Extract an ID from an object (either from object property or 'id' key).
  */
 export function extractId(obj: any): string | null {
-  if (typeof obj === "object" && obj !== null) {
-    if ("id" in obj) {
+  if (typeof obj === 'object' && obj !== null) {
+    if ('id' in obj) {
       return obj.id;
     }
   }
@@ -77,7 +80,9 @@ export function extractId(obj: any): string | null {
 /**
  * Maybe await a value that could be a Promise or regular value.
  */
-export async function maybeAwait<T>(valueOrPromise: T | Promise<T>): Promise<T> {
+export async function maybeAwait<T>(
+  valueOrPromise: T | Promise<T>
+): Promise<T> {
   if (valueOrPromise instanceof Promise) {
     return await valueOrPromise;
   }
@@ -95,8 +100,11 @@ export function objectToBytes(obj: any): Uint8Array {
 /**
  * Decode Fame data payload based on codec.
  */
-export function decodeFameDataPayload(frame: { codec?: string; payload: any }): any {
-  if (frame.codec === "b64") {
+export function decodeFameDataPayload(frame: {
+  codec?: string;
+  payload: any;
+}): any {
+  if (frame.codec === 'b64') {
     // Decode base64 to bytes
     const base64 = frame.payload;
     const binaryString = atob(base64);
@@ -113,7 +121,7 @@ export function decodeFameDataPayload(frame: { codec?: string; payload: any }): 
  * Normalize a path by removing leading slashes.
  */
 export function normalizePath(path: string): string {
-  return path.replace(/^\/+/, "");
+  return path.replace(/^\/+/, '');
 }
 
 /**
@@ -130,9 +138,9 @@ export function compiledPathPattern(pattern: string): RegExp {
   if (!compiled) {
     // Convert shell wildcard to regex
     const regexPattern = pattern
-      .replace(/[.+^${}()|[\]\\]/g, "\\$&") // Escape regex special chars
-      .replace(/\*/g, ".*") // * becomes .*
-      .replace(/\?/g, "."); // ? becomes .
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape regex special chars
+      .replace(/\*/g, '.*') // * becomes .*
+      .replace(/\?/g, '.'); // ? becomes .
     compiled = new RegExp(`^${regexPattern}$`);
 
     // Limit cache size to prevent memory leaks
@@ -145,7 +153,8 @@ export function compiledPathPattern(pattern: string): RegExp {
 }
 
 // Base62 characters: 0–9, a–z, A–Z
-const BASE62_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const BASE62_CHARS =
+  '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const BASE62_BASE = BigInt(BASE62_CHARS.length);
 
 /**
@@ -164,7 +173,7 @@ function toBase62(num: bigint): string {
     value = value / BASE62_BASE;
   }
 
-  return result.reverse().join("");
+  return result.reverse().join('');
 }
 
 /**
@@ -176,7 +185,10 @@ function toBase62(num: bigint): string {
 export function secureDigest(s: string, bits: number = 128): string {
   try {
     const digest = sha256(new TextEncoder().encode(s));
-    const desiredBytes = Math.min(digest.length, Math.max(1, Math.ceil(bits / 8)));
+    const desiredBytes = Math.min(
+      digest.length,
+      Math.max(1, Math.ceil(bits / 8))
+    );
     let value = 0n;
     for (let i = 0; i < desiredBytes; i += 1) {
       value = (value << 8n) | BigInt(digest[i]);
@@ -200,19 +212,22 @@ export function secureDigest(s: string, bits: number = 128): string {
  */
 export function urlsafeBase64Encode(data: Uint8Array): string {
   // Convert Uint8Array to string for btoa
-  let binaryString = "";
+  let binaryString = '';
   for (let i = 0; i < data.length; i++) {
     binaryString += String.fromCharCode(data[i]);
   }
 
-  return btoa(binaryString).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return btoa(binaryString)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
 export function urlsafeBase64Decode(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
 
-  if (typeof atob === "function") {
+  if (typeof atob === 'function') {
     const binary = atob(padded);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
@@ -221,11 +236,11 @@ export function urlsafeBase64Decode(value: string): Uint8Array {
     return bytes;
   }
 
-  if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(padded, "base64"));
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(padded, 'base64'));
   }
 
-  throw new Error("Base64 decoding is not available in this environment");
+  throw new Error('Base64 decoding is not available in this environment');
 }
 
 /**
@@ -233,9 +248,9 @@ export function urlsafeBase64Decode(value: string): Uint8Array {
  */
 export function camelToSnakeCase(name: string): string {
   // Insert underscore before uppercase letters that follow lowercase letters or digits
-  let result = name.replace(/([a-z0-9])([A-Z])/g, "$1_$2");
+  let result = name.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
   // Insert underscore before uppercase letters that are followed by lowercase letters
-  result = result.replace(/([A-Z])([A-Z][a-z])/g, "$1_$2");
+  result = result.replace(/([A-Z])([A-Z][a-z])/g, '$1_$2');
   return result.toLowerCase();
 }
 
@@ -251,17 +266,20 @@ export function snakeToCamelCase(name: string): string {
  */
 export function isPlainObject(value: any): value is Record<string, any> {
   return (
-    typeof value === "object" &&
+    typeof value === 'object' &&
     value !== null &&
     value.constructor === Object &&
-    Object.prototype.toString.call(value) === "[object Object]"
+    Object.prototype.toString.call(value) === '[object Object]'
   );
 }
 
 /**
  * Deep merge two objects.
  */
-export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+export function deepMerge<T extends Record<string, any>>(
+  target: T,
+  source: Partial<T>
+): T {
   const result = { ...target };
 
   for (const key in source) {

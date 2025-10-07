@@ -4,7 +4,7 @@
  * point can expose them without forcing the browser bundle to load optional
  * dependencies.
  */
-import "./sqlite-storage-provider-factory.js";
+import './sqlite-storage-provider-factory.js';
 
-export * from "./sqlite-storage-provider.js";
-export type * from "./sqlite-storage-provider-factory.js";
+export * from './sqlite-storage-provider.js';
+export type * from './sqlite-storage-provider-factory.js';

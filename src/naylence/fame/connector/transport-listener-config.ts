@@ -1,4 +1,4 @@
-import type { ResourceConfig } from "naylence-factory";
+import type { ResourceConfig } from 'naylence-factory';
 
 export interface TransportListenerConfig extends ResourceConfig {
   type: string;

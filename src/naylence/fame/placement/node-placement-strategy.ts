@@ -1,4 +1,4 @@
-import type { NodeHelloFrame } from "naylence-core";
+import type { NodeHelloFrame } from 'naylence-core';
 
 export interface PlacementDecision {
   accept: boolean;
@@ -16,4 +16,3 @@ export interface PlacementDecision {
 export interface NodePlacementStrategy {
   place(helloFrame: NodeHelloFrame): Promise<PlacementDecision>;
 }
-

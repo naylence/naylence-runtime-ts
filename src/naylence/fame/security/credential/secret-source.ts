@@ -1,18 +1,25 @@
-import type { CredentialProviderConfig } from "./credential-provider-factory.js";
-import type { EnvCredentialProviderConfig } from "./env-credential-provider-factory.js";
-import { normalizeEnvConfig } from "./env-credential-provider-factory.js";
-import type { PromptCredentialProviderConfig } from "./prompt-credential-provider-factory.js";
-import { normalizePromptConfig } from "./prompt-credential-provider-factory.js";
-import type { SecretStoreCredentialProviderConfig } from "./secret-store-credential-provider-factory.js";
-import { normalizeSecretStoreConfig } from "./secret-store-credential-provider-factory.js";
-import type { StaticCredentialProviderConfig } from "./static-credential-provider-factory.js";
-import { normalizeStaticConfig } from "./static-credential-provider-factory.js";
+import type { CredentialProviderConfig } from './credential-provider-factory.js';
+import type { EnvCredentialProviderConfig } from './env-credential-provider-factory.js';
+import { normalizeEnvConfig } from './env-credential-provider-factory.js';
+import type { PromptCredentialProviderConfig } from './prompt-credential-provider-factory.js';
+import { normalizePromptConfig } from './prompt-credential-provider-factory.js';
+import type { SecretStoreCredentialProviderConfig } from './secret-store-credential-provider-factory.js';
+import { normalizeSecretStoreConfig } from './secret-store-credential-provider-factory.js';
+import type { StaticCredentialProviderConfig } from './static-credential-provider-factory.js';
+import { normalizeStaticConfig } from './static-credential-provider-factory.js';
 
-export type SecretSourceType = string | Record<string, unknown> | CredentialProviderConfig;
+export type SecretSourceType =
+  | string
+  | Record<string, unknown>
+  | CredentialProviderConfig;
 
-function isCredentialProviderConfig(value: unknown): value is CredentialProviderConfig {
+function isCredentialProviderConfig(
+  value: unknown
+): value is CredentialProviderConfig {
   return Boolean(
-    value && typeof value === "object" && "type" in (value as Record<string, unknown>)
+    value &&
+      typeof value === 'object' &&
+      'type' in (value as Record<string, unknown>)
   );
 }
 
@@ -21,64 +28,70 @@ export class SecretSource {
     value: SecretSourceType
   ): CredentialProviderConfig | Record<string, unknown> {
     if (value === null || value === undefined) {
-      throw new TypeError("Secret source cannot be null or undefined");
+      throw new TypeError('Secret source cannot be null or undefined');
     }
 
     if (isCredentialProviderConfig(value)) {
       switch (value.type) {
-        case "EnvCredentialProvider":
+        case 'EnvCredentialProvider':
           return normalizeEnvConfig(value as EnvCredentialProviderConfig);
-        case "SecretStoreCredentialProvider":
-          return normalizeSecretStoreConfig(value as SecretStoreCredentialProviderConfig);
-        case "StaticCredentialProvider":
+        case 'SecretStoreCredentialProvider':
+          return normalizeSecretStoreConfig(
+            value as SecretStoreCredentialProviderConfig
+          );
+        case 'StaticCredentialProvider':
           return normalizeStaticConfig(value as StaticCredentialProviderConfig);
-        case "PromptCredentialProvider":
+        case 'PromptCredentialProvider':
           return normalizePromptConfig(value as PromptCredentialProviderConfig);
         default:
           return { ...value };
       }
     }
 
-    if (typeof value === "string") {
-      if (value.startsWith("env://")) {
-        const varName = value.slice("env://".length);
+    if (typeof value === 'string') {
+      if (value.startsWith('env://')) {
+        const varName = value.slice('env://'.length);
         if (!varName) {
-          throw new Error("Environment variable name cannot be empty in 'env://' URI");
+          throw new Error(
+            "Environment variable name cannot be empty in 'env://' URI"
+          );
         }
-        return normalizeEnvConfig({ type: "EnvCredentialProvider", varName });
+        return normalizeEnvConfig({ type: 'EnvCredentialProvider', varName });
       }
 
-      if (value.startsWith("secret://")) {
-        const secretName = value.slice("secret://".length);
+      if (value.startsWith('secret://')) {
+        const secretName = value.slice('secret://'.length);
         if (!secretName) {
           throw new Error("Secret name cannot be empty in 'secret://' URI");
         }
         return normalizeSecretStoreConfig({
-          type: "SecretStoreCredentialProvider",
+          type: 'SecretStoreCredentialProvider',
           secretName,
         });
       }
 
       return normalizeStaticConfig({
-        type: "StaticCredentialProvider",
+        type: 'StaticCredentialProvider',
         credentialValue: value,
       });
     }
 
-    if (typeof value === "object") {
+    if (typeof value === 'object') {
       const recordValue = value as Record<string, unknown>;
-      if (!("type" in recordValue) || typeof recordValue.type !== "string") {
-        throw new TypeError("Secret source dict inputs must include a string 'type' field");
+      if (!('type' in recordValue) || typeof recordValue.type !== 'string') {
+        throw new TypeError(
+          "Secret source dict inputs must include a string 'type' field"
+        );
       }
 
       switch (recordValue.type) {
-        case "EnvCredentialProvider":
+        case 'EnvCredentialProvider':
           return normalizeEnvConfig(recordValue);
-        case "SecretStoreCredentialProvider":
+        case 'SecretStoreCredentialProvider':
           return normalizeSecretStoreConfig(recordValue);
-        case "StaticCredentialProvider":
+        case 'StaticCredentialProvider':
           return normalizeStaticConfig(recordValue);
-        case "PromptCredentialProvider":
+        case 'PromptCredentialProvider':
           return normalizePromptConfig(recordValue);
         default:
           return { ...recordValue };

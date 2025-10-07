@@ -1,67 +1,68 @@
-import { Expressions } from "naylence-factory";import { GRANT_PURPOSE_NODE_ATTACH } from "../../grants/grant.js";
-import { getLogger } from "../../util/logging.js";
+import { Expressions } from 'naylence-factory';
+import { GRANT_PURPOSE_NODE_ATTACH } from '../../grants/grant.js';
+import { getLogger } from '../../util/logging.js';
 import {
   ADMISSION_CLIENT_FACTORY_BASE_TYPE,
   AdmissionClientFactory,
   type AdmissionConfig,
-} from "./admission-client-factory.js";
-import type { AdmissionClient } from "./admission-client.js";
+} from './admission-client-factory.js';
+import type { AdmissionClient } from './admission-client.js';
 
-const logger = getLogger("admission-profile-factory");
+const logger = getLogger('admission-profile-factory');
 
 export interface AdmissionProfileConfig extends AdmissionConfig {
-  type: "AdmissionProfile";
+  type: 'AdmissionProfile';
   profile?: string | null;
 }
 
-const ENV_VAR_IS_ROOT = "FAME_ROOT";
-const ENV_VAR_JWT_AUDIENCE = "FAME_JWT_AUDIENCE";
-const ENV_VAR_ADMISSION_TOKEN_URL = "FAME_ADMISSION_TOKEN_URL";
-const ENV_VAR_ADMISSION_CLIENT_ID = "FAME_ADMISSION_CLIENT_ID";
-const ENV_VAR_ADMISSION_CLIENT_SECRET = "FAME_ADMISSION_CLIENT_SECRET";
-const ENV_VAR_DIRECT_ADMISSION_URL = "FAME_DIRECT_ADMISSION_URL";
-const ENV_VAR_ADMISSION_SERVICE_URL = "FAME_ADMISSION_SERVICE_URL";
+const ENV_VAR_IS_ROOT = 'FAME_ROOT';
+const ENV_VAR_JWT_AUDIENCE = 'FAME_JWT_AUDIENCE';
+const ENV_VAR_ADMISSION_TOKEN_URL = 'FAME_ADMISSION_TOKEN_URL';
+const ENV_VAR_ADMISSION_CLIENT_ID = 'FAME_ADMISSION_CLIENT_ID';
+const ENV_VAR_ADMISSION_CLIENT_SECRET = 'FAME_ADMISSION_CLIENT_SECRET';
+const ENV_VAR_DIRECT_ADMISSION_URL = 'FAME_DIRECT_ADMISSION_URL';
+const ENV_VAR_ADMISSION_SERVICE_URL = 'FAME_ADMISSION_SERVICE_URL';
 
-const PROFILE_NAME_WELCOME = "welcome";
-const PROFILE_NAME_DIRECT = "direct";
-const PROFILE_NAME_DIRECT_HTTP = "direct-http";
-const PROFILE_NAME_OPEN = "open";
-const PROFILE_NAME_NOOP = "noop";
-const PROFILE_NAME_NONE = "none";
+const PROFILE_NAME_WELCOME = 'welcome';
+const PROFILE_NAME_DIRECT = 'direct';
+const PROFILE_NAME_DIRECT_HTTP = 'direct-http';
+const PROFILE_NAME_OPEN = 'open';
+const PROFILE_NAME_NOOP = 'noop';
+const PROFILE_NAME_NONE = 'none';
 
 const WELCOME_SERVICE_PROFILE: AdmissionConfig = {
-  type: "WelcomeServiceClient",
-  is_root: Expressions.env(ENV_VAR_IS_ROOT, "false"),
+  type: 'WelcomeServiceClient',
+  is_root: Expressions.env(ENV_VAR_IS_ROOT, 'false'),
   url: Expressions.env(ENV_VAR_ADMISSION_SERVICE_URL),
-  supported_transports: ["websocket"],
+  supported_transports: ['websocket'],
   auth: {
-    type: "BearerTokenHeaderAuth",
+    type: 'BearerTokenHeaderAuth',
     token_provider: {
-      type: "OAuth2ClientCredentialsTokenProvider",
+      type: 'OAuth2ClientCredentialsTokenProvider',
       token_url: Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL),
       client_id: Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID),
       client_secret: Expressions.env(ENV_VAR_ADMISSION_CLIENT_SECRET),
-      scopes: ["node.connect"],
+      scopes: ['node.connect'],
       audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
     },
   },
 };
 
 const DIRECT_PROFILE: AdmissionConfig = {
-  type: "DirectAdmissionClient",
+  type: 'DirectAdmissionClient',
   connection_grants: [
     {
-      type: "WebSocketConnectionGrant",
+      type: 'WebSocketConnectionGrant',
       purpose: GRANT_PURPOSE_NODE_ATTACH,
       url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
       auth: {
-        type: "WebSocketSubprotocolAuth",
+        type: 'WebSocketSubprotocolAuth',
         token_provider: {
-          type: "OAuth2ClientCredentialsTokenProvider",
+          type: 'OAuth2ClientCredentialsTokenProvider',
           token_url: Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL),
           client_id: Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID),
           client_secret: Expressions.env(ENV_VAR_ADMISSION_CLIENT_SECRET),
-          scopes: ["node.connect"],
+          scopes: ['node.connect'],
           audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
         },
       },
@@ -72,20 +73,20 @@ const DIRECT_PROFILE: AdmissionConfig = {
 };
 
 const DIRECT_HTTP_PROFILE: AdmissionConfig = {
-  type: "DirectAdmissionClient",
+  type: 'DirectAdmissionClient',
   connection_grants: [
     {
-      type: "HttpConnectionGrant",
+      type: 'HttpConnectionGrant',
       purpose: GRANT_PURPOSE_NODE_ATTACH,
       url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
       auth: {
-        type: "BearerTokenHeaderAuth",
+        type: 'BearerTokenHeaderAuth',
         token_provider: {
-          type: "OAuth2ClientCredentialsTokenProvider",
+          type: 'OAuth2ClientCredentialsTokenProvider',
           token_url: Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL),
           client_id: Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID),
           client_secret: Expressions.env(ENV_VAR_ADMISSION_CLIENT_SECRET),
-          scopes: ["node.connect"],
+          scopes: ['node.connect'],
           audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
         },
       },
@@ -96,14 +97,14 @@ const DIRECT_HTTP_PROFILE: AdmissionConfig = {
 };
 
 const OPEN_PROFILE: AdmissionConfig = {
-  type: "DirectAdmissionClient",
+  type: 'DirectAdmissionClient',
   connection_grants: [
     {
-      type: "WebSocketConnectionGrant",
+      type: 'WebSocketConnectionGrant',
       purpose: GRANT_PURPOSE_NODE_ATTACH,
       url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
       auth: {
-        type: "NoAuth",
+        type: 'NoAuth',
       },
       ttl: 0,
       durable: false,
@@ -112,7 +113,7 @@ const OPEN_PROFILE: AdmissionConfig = {
 };
 
 const NOOP_PROFILE: AdmissionConfig = {
-  type: "NoopAdmissionClient",
+  type: 'NoopAdmissionClient',
   auto_accept_logicals: true,
 };
 
@@ -127,11 +128,11 @@ const PROFILE_MAP: Record<string, AdmissionConfig> = {
 
 export const FACTORY_META = {
   base: ADMISSION_CLIENT_FACTORY_BASE_TYPE,
-  key: "AdmissionProfile",
+  key: 'AdmissionProfile',
 } as const;
 
 export class AdmissionProfileFactory extends AdmissionClientFactory<AdmissionProfileConfig> {
-  public readonly type = "AdmissionProfile";
+  public readonly type = 'AdmissionProfile';
 
   public async create(
     config?: AdmissionProfileConfig | Record<string, unknown> | null
@@ -139,7 +140,7 @@ export class AdmissionProfileFactory extends AdmissionClientFactory<AdmissionPro
     const normalized = normalizeConfig(config);
     const profileConfig = resolveProfileConfig(normalized.profile);
 
-    logger.debug("enabling_admission_profile", { profile: normalized.profile });
+    logger.debug('enabling_admission_profile', { profile: normalized.profile });
 
     return AdmissionClientFactory.createAdmissionClient(profileConfig);
   }
@@ -158,11 +159,13 @@ function normalizeConfig(
 
   const candidate = config as AdmissionProfileConfig & Record<string, unknown>;
   const profileValue =
-    typeof candidate.profile === "string" && candidate.profile.trim().length > 0
+    typeof candidate.profile === 'string' && candidate.profile.trim().length > 0
       ? candidate.profile
-      : typeof candidate.profile_name === "string" && candidate.profile_name.trim().length > 0
+      : typeof candidate.profile_name === 'string' &&
+          candidate.profile_name.trim().length > 0
         ? candidate.profile_name
-        : typeof candidate.profileName === "string" && candidate.profileName.trim().length > 0
+        : typeof candidate.profileName === 'string' &&
+            candidate.profileName.trim().length > 0
           ? candidate.profileName
           : PROFILE_NAME_DIRECT;
 

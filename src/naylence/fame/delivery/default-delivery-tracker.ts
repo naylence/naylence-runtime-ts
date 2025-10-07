@@ -5,27 +5,35 @@ import {
   FameEnvelope,
   FameResponseType,
   generateId,
-} from "naylence-core";
+} from 'naylence-core';
 
-import { getLogger } from "../util/logging.js";
-import { color, AnsiColor } from "../util/formatter.js";
-import { formatTimestampForConsole, prettyModel, showEnvelopes } from "../util/util.js";
-import { TaskSpawner } from "../util/task-spawner.js";
-import { AsyncLock } from "../util/lock.js";
-import { TaskCancelledError, SpawnedTask } from "../util/task-types.js";
-import type { RetryPolicy } from "./retry-policy.js";
-import type { RetryEventHandler } from "./retry-event-handler.js";
-import { EnvelopeStatus, MailboxType, TrackedEnvelope } from "./tracked-envelope.js";
-import { formatDeliveryErrorMessage } from "./delivery-error.js";
-import type { StorageProvider } from "../storage/storage-provider.js";
-import type { KeyValueStore } from "../storage/key-value-store.js";
-import type { NodeLike } from "../node/node-like.js";
-import type { NodeEventListener } from "../node/node-event-listener.js";
+import { getLogger } from '../util/logging.js';
+import { color, AnsiColor } from '../util/formatter.js';
+import {
+  formatTimestampForConsole,
+  prettyModel,
+  showEnvelopes,
+} from '../util/util.js';
+import { TaskSpawner } from '../util/task-spawner.js';
+import { AsyncLock } from '../util/lock.js';
+import { TaskCancelledError, SpawnedTask } from '../util/task-types.js';
+import type { RetryPolicy } from './retry-policy.js';
+import type { RetryEventHandler } from './retry-event-handler.js';
+import {
+  EnvelopeStatus,
+  MailboxType,
+  TrackedEnvelope,
+} from './tracked-envelope.js';
+import { formatDeliveryErrorMessage } from './delivery-error.js';
+import type { StorageProvider } from '../storage/storage-provider.js';
+import type { KeyValueStore } from '../storage/key-value-store.js';
+import type { NodeLike } from '../node/node-like.js';
+import type { NodeEventListener } from '../node/node-event-listener.js';
 
-const logger = getLogger("default-delivery-tracker");
+const logger = getLogger('default-delivery-tracker');
 
-const STREAM_END = Symbol("stream-end");
-const SWEEPER_TICK = Symbol("tracker-sweeper-tick");
+const STREAM_END = Symbol('stream-end');
+const SWEEPER_TICK = Symbol('tracker-sweeper-tick');
 
 interface Deferred<T> {
   promise: Promise<T>;
@@ -118,8 +126,14 @@ function createEnvelopeFuture(
 export interface DeliveryTrackerEventHandler {
   onEnvelopeTimeout?(envelope: TrackedEnvelope): Promise<void> | void;
   onEnvelopeAcked?(envelope: TrackedEnvelope): Promise<void> | void;
-  onEnvelopeNacked?(envelope: TrackedEnvelope, reason: string | null): Promise<void> | void;
-  onEnvelopeReplied?(envelope: TrackedEnvelope, replyEnvelope: FameEnvelope): Promise<void> | void;
+  onEnvelopeNacked?(
+    envelope: TrackedEnvelope,
+    reason: string | null
+  ): Promise<void> | void;
+  onEnvelopeReplied?(
+    envelope: TrackedEnvelope,
+    replyEnvelope: FameEnvelope
+  ): Promise<void> | void;
 }
 
 export interface TrackOptions {
@@ -130,7 +144,10 @@ export interface TrackOptions {
   meta?: Record<string, unknown> | null;
 }
 
-export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventListener {
+export class DefaultDeliveryTracker
+  extends TaskSpawner
+  implements NodeEventListener
+{
   public readonly priority: number;
 
   private readonly storageProvider: StorageProvider;
@@ -142,7 +159,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   private readonly correlationToEnvelope = new Map<string, string>();
   private readonly timers = new Map<string, SpawnedTask<void>>();
   private readonly ackFutures = new Map<string, EnvelopeFuture<FameEnvelope>>();
-  private readonly replyFutures = new Map<string, EnvelopeFuture<FameEnvelope>>();
+  private readonly replyFutures = new Map<
+    string,
+    EnvelopeFuture<FameEnvelope>
+  >();
   private readonly ackDoneSince = new Map<string, number>();
   private readonly replyDoneSince = new Map<string, number>();
   private futuresSweeper: SpawnedTask<void> | null = null;
@@ -168,8 +188,14 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     super();
     this.storageProvider = storageProvider;
     this.priority = 1000;
-    this.futGcGraceSecs = Math.max(0, Math.trunc(options.futuresGcGraceSecs ?? 120));
-    this.futSweepIntervalSecs = Math.max(1, Math.trunc(options.futuresSweepIntervalSecs ?? 30));
+    this.futGcGraceSecs = Math.max(
+      0,
+      Math.trunc(options.futuresGcGraceSecs ?? 120)
+    );
+    this.futSweepIntervalSecs = Math.max(
+      1,
+      Math.trunc(options.futuresSweepIntervalSecs ?? 30)
+    );
   }
 
   addEventHandler(handler: DeliveryTrackerEventHandler): void {
@@ -182,11 +208,17 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
 
   async onNodeInitialized(node: NodeLike): Promise<void> {
     this.node = node;
-    this.outbox = await this.storageProvider.getKeyValueStore(TrackedEnvelope, "__delivery_outbox");
-    this.inbox = await this.storageProvider.getKeyValueStore(TrackedEnvelope, "__delivery_inbox");
+    this.outbox = await this.storageProvider.getKeyValueStore(
+      TrackedEnvelope,
+      '__delivery_outbox'
+    );
+    this.inbox = await this.storageProvider.getKeyValueStore(
+      TrackedEnvelope,
+      '__delivery_inbox'
+    );
     this.inboxDlq = await this.storageProvider.getKeyValueStore(
       TrackedEnvelope,
-      "__delivery_inbox_dlq"
+      '__delivery_inbox_dlq'
     );
   }
 
@@ -194,9 +226,12 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     this.node = node;
     if (!this.futuresSweeper) {
       this.shutdownSignal = createDeferred<void>();
-      this.futuresSweeper = this.spawn((signal) => this.sweepFuturesLoop(signal), {
-        name: "tracker-futures-sweeper",
-      });
+      this.futuresSweeper = this.spawn(
+        (signal) => this.sweepFuturesLoop(signal),
+        {
+          name: 'tracker-futures-sweeper',
+        }
+      );
     }
     await this.recoverPending();
   }
@@ -223,7 +258,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     void context;
     if (showEnvelopes) {
       console.log(
-        `\n${formatTimestampForConsole()} - ${color("Forwarded envelope to upstream", AnsiColor.BLUE)} 🚀\n${prettyModel(envelope)}`
+        `\n${formatTimestampForConsole()} - ${color('Forwarded envelope to upstream', AnsiColor.BLUE)} 🚀\n${prettyModel(envelope)}`
       );
     }
     return envelope;
@@ -278,21 +313,26 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   async onHeartbeatSent(envelope: FameEnvelope): Promise<void> {
     if (showEnvelopes) {
       console.log(
-        `\n${formatTimestampForConsole()} - ${color("Sent envelope", AnsiColor.BLUE)} 🚀\n${prettyModel(
+        `\n${formatTimestampForConsole()} - ${color('Sent envelope', AnsiColor.BLUE)} 🚀\n${prettyModel(
           envelope
         )}`
       );
     }
   }
 
-  async track(envelope: FameEnvelope, options: TrackOptions): Promise<TrackedEnvelope | null> {
+  async track(
+    envelope: FameEnvelope,
+    options: TrackOptions
+  ): Promise<TrackedEnvelope | null> {
     const outbox = this.ensureOutbox();
     const nowMs = Date.now();
     const expectedResponseType = options.expectedResponseType;
 
     const tracked = await this.lock.runExclusive(async () => {
       if (this.ackFutures.has(envelope.id)) {
-        logger.debug("tracker_envelope_already_tracked", { envp_id: envelope.id });
+        logger.debug('tracker_envelope_already_tracked', {
+          envp_id: envelope.id,
+        });
         return null;
       }
 
@@ -304,7 +344,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
         expectedResponseType & FameResponseType.STREAM
       ) {
         if (existingEnvId && existingEnvId !== envelope.id) {
-          logger.debug("envelope_already_tracked_for_replies", {
+          logger.debug('envelope_already_tracked_for_replies', {
             envp_id: envelope.id,
             corr_id: corrId,
             expected_response_type: expectedResponseType,
@@ -334,7 +374,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       if (options.retryPolicy && options.retryPolicy.maxRetries > 0) {
         let firstDelayMs = overallTimeoutMs;
         try {
-          firstDelayMs = Math.max(0, Math.trunc(options.retryPolicy.nextDelayMs(1)));
+          firstDelayMs = Math.max(
+            0,
+            Math.trunc(options.retryPolicy.nextDelayMs(1))
+          );
         } catch (error) {
           firstDelayMs = 0;
         }
@@ -359,9 +402,13 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       return null;
     }
 
-    await this.scheduleTimer(tracked, options.retryPolicy ?? null, options.retryHandler ?? null);
+    await this.scheduleTimer(
+      tracked,
+      options.retryPolicy ?? null,
+      options.retryHandler ?? null
+    );
 
-    logger.debug("tracker_registered_envelope", {
+    logger.debug('tracker_registered_envelope', {
       envp_id: envelope.id,
       corr_id: tracked.originalEnvelope.corrId,
       expected_response: tracked.expectedResponseType,
@@ -372,15 +419,26 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     return tracked;
   }
 
-  async awaitAck(envelopeId: string, timeoutMs?: number): Promise<FameEnvelope> {
+  async awaitAck(
+    envelopeId: string,
+    timeoutMs?: number
+  ): Promise<FameEnvelope> {
     const future = this.lockedGetFuture(this.ackFutures, envelopeId);
     if (!future) {
       throw new Error(`No ack expected for envelope ${envelopeId}`);
     }
-    return this.awaitEnvelopeFuture(envelopeId, FameResponseType.ACK, future, timeoutMs);
+    return this.awaitEnvelopeFuture(
+      envelopeId,
+      FameResponseType.ACK,
+      future,
+      timeoutMs
+    );
   }
 
-  async awaitReply(envelopeId: string, timeoutMs?: number): Promise<FameEnvelope> {
+  async awaitReply(
+    envelopeId: string,
+    timeoutMs?: number
+  ): Promise<FameEnvelope> {
     const future = this.lockedGetFuture(this.replyFutures, envelopeId);
     if (!future) {
       throw new Error(`No reply expected for envelope ${envelopeId}`);
@@ -398,23 +456,27 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<TrackedEnvelope | null> {
-    logger.debug("envelope_delivered", {
+    logger.debug('envelope_delivered', {
       envp_id: envelope.id,
       corr_id: envelope.corrId,
       rtype: envelope.rtype ?? FameResponseType.NONE,
-      frame_type: envelope.frame?.type ?? "unknown",
+      frame_type: envelope.frame?.type ?? 'unknown',
     });
 
     const outbox = this.ensureOutbox();
 
     if (!envelope.corrId) {
-      logger.debug("envelope_delivered_no_corr_id", { envelope_id: envelope.id });
+      logger.debug('envelope_delivered_no_corr_id', {
+        envelope_id: envelope.id,
+      });
       return null;
     }
 
     if (this.isDeliveryAckFrame(envelope.frame)) {
       if (!envelope.frame.refId) {
-        logger.debug("envelope_delivered_no_ref_id", { envelope_id: envelope.id });
+        logger.debug('envelope_delivered_no_ref_id', {
+          envelope_id: envelope.id,
+        });
         return null;
       }
 
@@ -486,16 +548,16 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       const attempt = envelope.attempt;
       envelope.meta[`failure_attempt_${attempt}_reason`] = error.message;
       envelope.meta[`failure_attempt_${attempt}_type`] = error.name;
-      envelope.meta["last_failure_reason"] = error.message;
-      envelope.meta["last_failure_type"] = error.name;
+      envelope.meta['last_failure_reason'] = error.message;
+      envelope.meta['last_failure_type'] = error.name;
     }
 
     if (isFinalFailure) {
       envelope.status = EnvelopeStatus.FAILED_TO_HANDLE;
-      logger.error("envelope_handle_failed_final", {
+      logger.error('envelope_handle_failed_final', {
         inbox_name: inboxName,
         envp_id: envelope.originalEnvelope.id,
-        error: error?.message ?? "unknown",
+        error: error?.message ?? 'unknown',
         status: envelope.status,
         total_attempts: envelope.attempt,
       });
@@ -504,10 +566,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       return;
     }
 
-    logger.warning("envelope_handle_failed_retry", {
+    logger.warning('envelope_handle_failed_retry', {
       inbox_name: inboxName,
       envp_id: envelope.originalEnvelope.id,
-      error: error?.message ?? "unknown",
+      error: error?.message ?? 'unknown',
       attempt: envelope.attempt,
     });
     await inbox.set(envelope.originalEnvelope.id, envelope);
@@ -528,22 +590,25 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     await inbox.update(envelope.originalEnvelope.id, envelope);
   }
 
-  async onAck(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
+  async onAck(
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<void> {
     void context;
     if (!this.isDeliveryAckFrame(envelope.frame)) {
-      throw new Error("Ack must be from a DeliveryAckFrame");
+      throw new Error('Ack must be from a DeliveryAckFrame');
     }
     if (!envelope.corrId) {
-      throw new Error("Ack envelope must have a correlation ID");
+      throw new Error('Ack envelope must have a correlation ID');
     }
     if (!envelope.frame.refId) {
-      throw new Error("Ack frame must include refId");
+      throw new Error('Ack frame must include refId');
     }
 
     const outbox = this.ensureOutbox();
     const tracked = await outbox.get(envelope.frame.refId);
     if (!tracked) {
-      logger.debug("tracker_ack_for_unknown_envelope", {
+      logger.debug('tracker_ack_for_unknown_envelope', {
         envp_id: envelope.id,
         ref_id: envelope.frame.refId,
         corr_id: envelope.corrId,
@@ -552,7 +617,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     }
 
     if (tracked.originalEnvelope.corrId !== envelope.corrId) {
-      logger.debug("tracker_ack_corr_id_mismatch", {
+      logger.debug('tracker_ack_corr_id_mismatch', {
         envp_id: envelope.id,
         expected_corr_id: tracked.originalEnvelope.corrId,
         actual_corr_id: envelope.corrId,
@@ -576,37 +641,48 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       }
     });
 
-    await this.markDoneSince(this.ackFutures, tracked.originalEnvelope.id, this.ackDoneSince);
+    await this.markDoneSince(
+      this.ackFutures,
+      tracked.originalEnvelope.id,
+      this.ackDoneSince
+    );
     await this.clearTimer(tracked.originalEnvelope.id);
 
     for (const handler of this.eventHandlers) {
       await handler.onEnvelopeAcked?.(tracked);
     }
 
-    logger.debug("tracker_envelope_acked", { envp_id: tracked.originalEnvelope.id });
+    logger.debug('tracker_envelope_acked', {
+      envp_id: tracked.originalEnvelope.id,
+    });
   }
 
-  async onNack(envelope: FameEnvelope, context?: FameDeliveryContext): Promise<void> {
+  async onNack(
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<void> {
     void context;
     if (!this.isDeliveryAckFrame(envelope.frame)) {
-      throw new Error("Nack must be from a DeliveryAckFrame");
+      throw new Error('Nack must be from a DeliveryAckFrame');
     }
     if (!envelope.corrId) {
-      throw new Error("Nack envelope must have a correlation ID");
+      throw new Error('Nack envelope must have a correlation ID');
     }
     if (!envelope.frame.refId) {
-      throw new Error("Ack frame must include refId");
+      throw new Error('Ack frame must include refId');
     }
 
     const outbox = this.ensureOutbox();
     const tracked = await outbox.get(envelope.frame.refId);
     if (!tracked) {
-      logger.debug("tracker_nack_for_unknown_envelope", { envp_id: envelope.id });
+      logger.debug('tracker_nack_for_unknown_envelope', {
+        envp_id: envelope.id,
+      });
       return;
     }
 
     if (tracked.originalEnvelope.corrId !== envelope.corrId) {
-      logger.debug("tracker_nack_corr_id_mismatch", {
+      logger.debug('tracker_nack_corr_id_mismatch', {
         envp_id: envelope.id,
         expected_corr_id: tracked.originalEnvelope.corrId,
         actual_corr_id: envelope.corrId,
@@ -617,16 +693,19 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     const ackFrame = envelope.frame;
 
     tracked.status = EnvelopeStatus.NACKED;
-    tracked.meta["nack_code"] = ackFrame.code;
+    tracked.meta['nack_code'] = ackFrame.code;
     if (ackFrame.reason) {
-      tracked.meta["nack_reason"] = ackFrame.reason;
+      tracked.meta['nack_reason'] = ackFrame.reason;
     } else {
-      delete tracked.meta["nack_reason"];
+      delete tracked.meta['nack_reason'];
     }
     await outbox.set(tracked.originalEnvelope.id, tracked);
 
     await this.lock.runExclusive(async () => {
-      const message = formatDeliveryErrorMessage(ackFrame.code, ackFrame.reason ?? undefined);
+      const message = formatDeliveryErrorMessage(
+        ackFrame.code,
+        ackFrame.reason ?? undefined
+      );
       const nackError = new Error(message);
 
       const ackFuture = this.ackFutures.get(tracked.originalEnvelope.id);
@@ -640,8 +719,16 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       }
     });
 
-    await this.markDoneSince(this.ackFutures, tracked.originalEnvelope.id, this.ackDoneSince);
-    await this.markDoneSince(this.replyFutures, tracked.originalEnvelope.id, this.replyDoneSince);
+    await this.markDoneSince(
+      this.ackFutures,
+      tracked.originalEnvelope.id,
+      this.ackDoneSince
+    );
+    await this.markDoneSince(
+      this.replyFutures,
+      tracked.originalEnvelope.id,
+      this.replyDoneSince
+    );
 
     const queue = this.streamQueues.get(tracked.originalEnvelope.id);
     if (queue) {
@@ -657,7 +744,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       await handler.onEnvelopeNacked?.(tracked, ackFrame.reason ?? null);
     }
 
-    logger.debug("tracker_envelope_nacked", {
+    logger.debug('tracker_envelope_nacked', {
       envp_id: tracked.originalEnvelope.id,
       reason: ackFrame.reason,
     });
@@ -670,7 +757,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   ): Promise<TrackedEnvelope> {
     void context;
     if (!this.node) {
-      throw new Error("Node is required to process replies");
+      throw new Error('Node is required to process replies');
     }
 
     const outbox = this.ensureOutbox();
@@ -686,19 +773,23 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     await this.clearTimer(trackedEnvelope.originalEnvelope.id);
 
     await this.lock.runExclusive(async () => {
-      const replyFuture = this.replyFutures.get(trackedEnvelope.originalEnvelope.id);
+      const replyFuture = this.replyFutures.get(
+        trackedEnvelope.originalEnvelope.id
+      );
       if (replyFuture && replyFuture.resolve) {
         replyFuture.resolve(envelope);
       }
-      const ackFuture = this.ackFutures.get(trackedEnvelope.originalEnvelope.id);
+      const ackFuture = this.ackFutures.get(
+        trackedEnvelope.originalEnvelope.id
+      );
       if (ackFuture && ackFuture.resolve) {
         const ackEnvelope: FameEnvelope = {
           ...envelope,
           frame: {
-            type: "DeliveryAck",
+            type: 'DeliveryAck',
             ok: true,
             refId: trackedEnvelope.originalEnvelope.id,
-            reason: "Auto-ack for reply",
+            reason: 'Auto-ack for reply',
           } as DeliveryAckFrame,
         };
         ackFuture.resolve(ackEnvelope);
@@ -724,7 +815,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       await handler.onEnvelopeReplied?.(trackedEnvelope, envelope);
     }
 
-    logger.debug("tracked_envelope_replied", {
+    logger.debug('tracked_envelope_replied', {
       envp_id: trackedEnvelope.originalEnvelope.id,
       corr_id: envelope.corrId,
     });
@@ -732,7 +823,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     return trackedEnvelope;
   }
 
-  async *iterStream(envelopeId: string, timeoutMs?: number): AsyncIterable<unknown> {
+  async *iterStream(
+    envelopeId: string,
+    timeoutMs?: number
+  ): AsyncIterable<unknown> {
     const queue = this.streamQueues.get(envelopeId);
     const done = this.streamDone.get(envelopeId);
     if (!queue || !done) {
@@ -758,7 +852,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     await done.promise.catch(() => undefined);
   }
 
-  async onStreamItem(envelopeId: string, responseEnvelope: FameEnvelope): Promise<void> {
+  async onStreamItem(
+    envelopeId: string,
+    responseEnvelope: FameEnvelope
+  ): Promise<void> {
     const queue = this.streamQueues.get(envelopeId);
     if (!queue) {
       return;
@@ -783,7 +880,9 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     }
   }
 
-  async getTrackedEnvelope(envelopeId: string): Promise<TrackedEnvelope | undefined> {
+  async getTrackedEnvelope(
+    envelopeId: string
+  ): Promise<TrackedEnvelope | undefined> {
     const outbox = this.ensureOutbox();
     return outbox.get(envelopeId);
   }
@@ -791,16 +890,22 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   async listPending(): Promise<TrackedEnvelope[]> {
     const outbox = this.ensureOutbox();
     const allEntries = await outbox.list();
-    return Object.values(allEntries).filter((entry) => entry.status === EnvelopeStatus.PENDING);
+    return Object.values(allEntries).filter(
+      (entry) => entry.status === EnvelopeStatus.PENDING
+    );
   }
 
-  async listInbound(filter?: (envelope: TrackedEnvelope) => boolean): Promise<TrackedEnvelope[]> {
+  async listInbound(
+    filter?: (envelope: TrackedEnvelope) => boolean
+  ): Promise<TrackedEnvelope[]> {
     const inbox = this.inbox;
     if (!inbox) {
       return [];
     }
     const allEntries = await inbox.list();
-    return Object.values(allEntries).filter((entry) => (filter ? filter(entry) : true));
+    return Object.values(allEntries).filter((entry) =>
+      filter ? filter(entry) : true
+    );
   }
 
   async addToInboxDlq(
@@ -809,23 +914,27 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   ): Promise<void> {
     const dlq = this.inboxDlq;
     if (!dlq) {
-      logger.error("dlq_not_initialized", { envp_id: trackedEnvelope.originalEnvelope.id });
+      logger.error('dlq_not_initialized', {
+        envp_id: trackedEnvelope.originalEnvelope.id,
+      });
       return;
     }
 
-    trackedEnvelope.meta["dlq"] = true;
+    trackedEnvelope.meta['dlq'] = true;
     if (reason) {
-      trackedEnvelope.meta["dlq_reason"] = reason;
+      trackedEnvelope.meta['dlq_reason'] = reason;
     }
-    trackedEnvelope.meta["dead_lettered_at_ms"] = Date.now();
+    trackedEnvelope.meta['dead_lettered_at_ms'] = Date.now();
     await dlq.set(trackedEnvelope.originalEnvelope.id, trackedEnvelope);
-    logger.warning("envelope_moved_to_dlq", {
+    logger.warning('envelope_moved_to_dlq', {
       envp_id: trackedEnvelope.originalEnvelope.id,
       service_name: trackedEnvelope.serviceName,
     });
   }
 
-  async getFromInboxDlq(envelopeId: string): Promise<TrackedEnvelope | undefined> {
+  async getFromInboxDlq(
+    envelopeId: string
+  ): Promise<TrackedEnvelope | undefined> {
     const dlq = this.inboxDlq;
     if (!dlq) {
       return undefined;
@@ -842,7 +951,9 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     return Object.values(items);
   }
 
-  async purgeInboxDlq(predicate?: (tracked: TrackedEnvelope) => boolean): Promise<number> {
+  async purgeInboxDlq(
+    predicate?: (tracked: TrackedEnvelope) => boolean
+  ): Promise<number> {
     const dlq = this.inboxDlq;
     if (!dlq) {
       return 0;
@@ -853,7 +964,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     );
     await Promise.all(toDelete.map(([key]) => dlq.delete(key)));
     if (toDelete.length) {
-      logger.debug("dlq_purged", { count: toDelete.length });
+      logger.debug('dlq_purged', { count: toDelete.length });
     }
     return toDelete.length;
   }
@@ -866,13 +977,13 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       this.timers.clear();
 
       for (const future of this.ackFutures.values()) {
-        future.reject(new Error("Tracker cleaned up before ACK received"));
+        future.reject(new Error('Tracker cleaned up before ACK received'));
       }
       this.ackFutures.clear();
       this.ackDoneSince.clear();
 
       for (const future of this.replyFutures.values()) {
-        future.reject(new Error("Tracker cleaned up before reply received"));
+        future.reject(new Error('Tracker cleaned up before reply received'));
       }
       this.replyFutures.clear();
       this.replyDoneSince.clear();
@@ -914,12 +1025,12 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       this.futuresSweeper = null;
     }
 
-    logger.debug("tracker_cleanup_completed");
+    logger.debug('tracker_cleanup_completed');
   }
 
   async recoverPending(): Promise<void> {
     const pending = await this.listPending();
-    logger.debug("tracker_recovering_pending", { count: pending.length });
+    logger.debug('tracker_recovering_pending', { count: pending.length });
 
     await this.lock.runExclusive(async () => {
       for (const tracked of pending) {
@@ -945,7 +1056,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
             );
           }
           this.streamQueues.set(tracked.originalEnvelope.id, new AsyncQueue());
-          this.streamDone.set(tracked.originalEnvelope.id, createDeferred<void>());
+          this.streamDone.set(
+            tracked.originalEnvelope.id,
+            createDeferred<void>()
+          );
         }
       }
     });
@@ -954,34 +1068,37 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       await this.scheduleTimer(tracked, null, null);
     }
 
-    logger.debug("tracker_recovery_completed", { count: pending.length });
+    logger.debug('tracker_recovery_completed', { count: pending.length });
   }
 
   private ensureOutbox(): KeyValueStore<TrackedEnvelope> {
     if (!this.outbox) {
-      throw new Error("Outbox is not initialized");
+      throw new Error('Outbox is not initialized');
     }
     return this.outbox;
   }
 
   private ensureInbox(): KeyValueStore<TrackedEnvelope> {
     if (!this.inbox) {
-      throw new Error("Inbox is not initialized");
+      throw new Error('Inbox is not initialized');
     }
     return this.inbox;
   }
 
   private async waitForPendingAcks(): Promise<void> {
-    logger.debug("tracker_node_preparing_to_stop_waiting_for_pending_acks");
+    logger.debug('tracker_node_preparing_to_stop_waiting_for_pending_acks');
     const outbox = this.outbox;
     if (!outbox) {
       return;
     }
 
-    const pending: Array<{ envelopeId: string; future: EnvelopeFuture<FameEnvelope> } | null> = [];
+    const pending: Array<{
+      envelopeId: string;
+      future: EnvelopeFuture<FameEnvelope>;
+    } | null> = [];
     await this.lock.runExclusive(async () => {
       for (const [envelopeId, future] of this.ackFutures.entries()) {
-        if (future.promise && typeof future.promise.then === "function") {
+        if (future.promise && typeof future.promise.then === 'function') {
           const isDone = await Promise.race([
             future.promise.then(
               () => true,
@@ -997,11 +1114,11 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     });
 
     if (!pending.length) {
-      logger.debug("tracker_no_pending_acks_to_wait_for");
+      logger.debug('tracker_no_pending_acks_to_wait_for');
       return;
     }
 
-    logger.debug("tracker_waiting_for_pending_acks", { count: pending.length });
+    logger.debug('tracker_waiting_for_pending_acks', { count: pending.length });
 
     for (const entry of pending) {
       if (!entry) {
@@ -1019,27 +1136,31 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
         }
         try {
           await this.awaitWithTimeout(entry.future.promise, remainingMs);
-          logger.debug("tracker_received_ack", { envelope_id: entry.envelopeId });
+          logger.debug('tracker_received_ack', {
+            envelope_id: entry.envelopeId,
+          });
           await outbox.delete(entry.envelopeId);
         } catch (error) {
-          if (error instanceof Error && error.name === "TimeoutError") {
-            logger.debug("tracker_ack_timeout_expired", { envelope_id: entry.envelopeId });
+          if (error instanceof Error && error.name === 'TimeoutError') {
+            logger.debug('tracker_ack_timeout_expired', {
+              envelope_id: entry.envelopeId,
+            });
           } else {
-            logger.debug("tracker_ack_wait_error", {
+            logger.debug('tracker_ack_wait_error', {
               envelope_id: entry.envelopeId,
               error: error instanceof Error ? error.message : String(error),
             });
           }
         }
       } catch (error) {
-        logger.error("tracker_error_waiting_for_ack", {
+        logger.error('tracker_error_waiting_for_ack', {
           envelope_id: entry.envelopeId,
           error: error instanceof Error ? error.message : String(error),
         });
       }
     }
 
-    logger.debug("tracker_finished_waiting_for_pending_acks");
+    logger.debug('tracker_finished_waiting_for_pending_acks');
   }
 
   private async scheduleTimer(
@@ -1050,7 +1171,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     const outbox = this.ensureOutbox();
     const node = this.node;
     if (!node) {
-      throw new Error("Node is required to schedule timers");
+      throw new Error('Node is required to schedule timers');
     }
 
     await this.lock.runExclusive(async () => {
@@ -1065,7 +1186,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
             const nowMs = Date.now();
             const nextRetryAtMs = tracked.timeoutAtMs;
             const overallTimeoutAtMs = tracked.overallTimeoutAtMs;
-            const delayMs = Math.max(0, Math.min(nextRetryAtMs, overallTimeoutAtMs) - nowMs);
+            const delayMs = Math.max(
+              0,
+              Math.min(nextRetryAtMs, overallTimeoutAtMs) - nowMs
+            );
             if (delayMs > 0) {
               await this.delay(delayMs, signal);
             }
@@ -1087,13 +1211,17 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
               await outbox.set(tracked.originalEnvelope.id, currentTracked);
 
               await this.lock.runExclusive(async () => {
-                const ackFuture = this.ackFutures.get(tracked.originalEnvelope.id);
+                const ackFuture = this.ackFutures.get(
+                  tracked.originalEnvelope.id
+                );
                 if (ackFuture) {
-                  ackFuture.reject(new Error("Timeout waiting for ACK"));
+                  ackFuture.reject(new Error('Timeout waiting for ACK'));
                 }
-                const replyFuture = this.replyFutures.get(tracked.originalEnvelope.id);
+                const replyFuture = this.replyFutures.get(
+                  tracked.originalEnvelope.id
+                );
                 if (replyFuture) {
-                  replyFuture.reject(new Error("Timeout waiting for reply"));
+                  replyFuture.reject(new Error('Timeout waiting for reply'));
                 }
               });
 
@@ -1112,13 +1240,20 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
                 await handler.onEnvelopeTimeout?.(currentTracked);
               }
 
-              logger.debug("tracker_envelope_timed_out", { envp_id: tracked.originalEnvelope.id });
+              logger.debug('tracker_envelope_timed_out', {
+                envp_id: tracked.originalEnvelope.id,
+              });
               return;
             }
 
-            if (retryPolicy && currentTracked.attempt < retryPolicy.maxRetries) {
+            if (
+              retryPolicy &&
+              currentTracked.attempt < retryPolicy.maxRetries
+            ) {
               currentTracked.attempt += 1;
-              const nextDelayMs = retryPolicy.nextDelayMs(currentTracked.attempt);
+              const nextDelayMs = retryPolicy.nextDelayMs(
+                currentTracked.attempt
+              );
               const nextRetryTime = currentNowMs + nextDelayMs;
 
               if (nextRetryTime <= currentTracked.overallTimeoutAtMs) {
@@ -1140,8 +1275,12 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
                 );
               }
 
-              await this.scheduleTimer(currentTracked, retryPolicy, retryHandler);
-              logger.debug("envelope_delivery_retry_scheduled", {
+              await this.scheduleTimer(
+                currentTracked,
+                retryPolicy,
+                retryHandler
+              );
+              logger.debug('envelope_delivery_retry_scheduled', {
                 envp_id: tracked.originalEnvelope.id,
                 attempt: currentTracked.attempt,
                 max_retries: retryPolicy.maxRetries,
@@ -1153,12 +1292,19 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
             if (currentNowMs < currentTracked.overallTimeoutAtMs) {
               currentTracked.timeoutAtMs = currentTracked.overallTimeoutAtMs;
               await outbox.set(tracked.originalEnvelope.id, currentTracked);
-              await this.scheduleTimer(currentTracked, retryPolicy, retryHandler);
-              logger.debug("envelope_retries_exhausted_waiting_until_overall_timeout", {
-                envp_id: tracked.originalEnvelope.id,
-                attempt: currentTracked.attempt,
-                overall_timeout_at_ms: currentTracked.overallTimeoutAtMs,
-              });
+              await this.scheduleTimer(
+                currentTracked,
+                retryPolicy,
+                retryHandler
+              );
+              logger.debug(
+                'envelope_retries_exhausted_waiting_until_overall_timeout',
+                {
+                  envp_id: tracked.originalEnvelope.id,
+                  attempt: currentTracked.attempt,
+                  overall_timeout_at_ms: currentTracked.overallTimeoutAtMs,
+                }
+              );
               return;
             }
 
@@ -1166,10 +1312,14 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
             await outbox.set(tracked.originalEnvelope.id, currentTracked);
 
             await this.lock.runExclusive(async () => {
-              const ackFuture = this.ackFutures.get(tracked.originalEnvelope.id);
-              ackFuture?.reject(new Error("Timeout waiting for ACK"));
-              const replyFuture = this.replyFutures.get(tracked.originalEnvelope.id);
-              replyFuture?.reject(new Error("Timeout waiting for reply"));
+              const ackFuture = this.ackFutures.get(
+                tracked.originalEnvelope.id
+              );
+              ackFuture?.reject(new Error('Timeout waiting for ACK'));
+              const replyFuture = this.replyFutures.get(
+                tracked.originalEnvelope.id
+              );
+              replyFuture?.reject(new Error('Timeout waiting for reply'));
             });
 
             await this.markDoneSince(
@@ -1187,12 +1337,14 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
               await handler.onEnvelopeTimeout?.(currentTracked);
             }
 
-            logger.debug("tracker_envelope_timed_out", { envp_id: tracked.originalEnvelope.id });
+            logger.debug('tracker_envelope_timed_out', {
+              envp_id: tracked.originalEnvelope.id,
+            });
           } catch (error) {
             if (error instanceof TaskCancelledError) {
               return;
             }
-            logger.error("tracker_timer_error", {
+            logger.error('tracker_timer_error', {
               envp_id: tracked.originalEnvelope.id,
               error: error instanceof Error ? error.message : String(error),
             });
@@ -1208,7 +1360,9 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   }
 
   private async clearTimer(envelopeId: string): Promise<void> {
-    const timer = await this.lock.runExclusive(async () => this.timers.get(envelopeId));
+    const timer = await this.lock.runExclusive(async () =>
+      this.timers.get(envelopeId)
+    );
     if (!timer) {
       return;
     }
@@ -1233,7 +1387,12 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
   }
 
   private isDeliveryAckFrame(frame: any): frame is DeliveryAckFrame {
-    return Boolean(frame && typeof frame === "object" && frame.type && frame.type.endsWith("Ack"));
+    return Boolean(
+      frame &&
+        typeof frame === 'object' &&
+        frame.type &&
+        frame.type.endsWith('Ack')
+    );
   }
 
   private async awaitEnvelopeFuture(
@@ -1245,12 +1404,15 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     const outbox = this.ensureOutbox();
     let timeoutSeconds: number | null = null;
 
-    if (typeof timeoutMs === "number") {
+    if (typeof timeoutMs === 'number') {
       timeoutSeconds = timeoutMs;
     } else {
       const tracked = await outbox.get(envelopeId);
       if (tracked) {
-        const remainingMs = Math.max(0, tracked.overallTimeoutAtMs - Date.now());
+        const remainingMs = Math.max(
+          0,
+          tracked.overallTimeoutAtMs - Date.now()
+        );
         timeoutSeconds = remainingMs;
       }
     }
@@ -1259,14 +1421,16 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       if (timeoutSeconds !== null) {
         return await this.awaitWithTimeout(future.promise, timeoutSeconds);
       }
-      logger.debug("await_envelope_no_timeout_wait", { envelope_id: envelopeId });
+      logger.debug('await_envelope_no_timeout_wait', {
+        envelope_id: envelopeId,
+      });
       return await future.promise;
     } catch (error) {
-      if (error instanceof Error && error.name !== "TimeoutError") {
+      if (error instanceof Error && error.name !== 'TimeoutError') {
         throw error;
       }
 
-      logger.error("await_envelope_timeout_error", {
+      logger.error('await_envelope_timeout_error', {
         envelope_id: envelopeId,
         timeout_ms: timeoutSeconds,
         future_done: false,
@@ -1294,7 +1458,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
 
   private async delay(ms: number, signal?: AbortSignal): Promise<void> {
     if (signal?.aborted) {
-      throw new TaskCancelledError("delay-cancelled");
+      throw new TaskCancelledError('delay-cancelled');
     }
 
     if (ms <= 0) {
@@ -1304,7 +1468,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     await new Promise<void>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         if (signal) {
-          signal.removeEventListener("abort", onAbort);
+          signal.removeEventListener('abort', onAbort);
         }
         resolve();
       }, ms);
@@ -1312,13 +1476,13 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       const onAbort = () => {
         clearTimeout(timeoutId);
         if (signal) {
-          signal.removeEventListener("abort", onAbort);
+          signal.removeEventListener('abort', onAbort);
         }
-        reject(new TaskCancelledError("delay-cancelled"));
+        reject(new TaskCancelledError('delay-cancelled'));
       };
 
       if (signal) {
-        signal.addEventListener("abort", onAbort);
+        signal.addEventListener('abort', onAbort);
         if (signal.aborted) {
           onAbort();
         }
@@ -1326,14 +1490,19 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     });
   }
 
-  private async awaitWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  private async awaitWithTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number
+  ): Promise<T> {
     if (timeoutMs <= 0) {
       return promise;
     }
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
-        reject(Object.assign(new Error("TimeoutError"), { name: "TimeoutError" }));
+        reject(
+          Object.assign(new Error('TimeoutError'), { name: 'TimeoutError' })
+        );
       }, timeoutMs);
     });
 
@@ -1353,7 +1522,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(
-        () => reject(new Error("stream timeout waiting for next item")),
+        () => reject(new Error('stream timeout waiting for next item')),
         timeoutMs
       );
     });
@@ -1370,8 +1539,10 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
 
   /* istanbul ignore next -- async sweeper loop paths are not deterministic in unit tests */
   private async sweepFuturesLoop(signal?: AbortSignal): Promise<void> {
-    const shutdownToken = "shutdown" as const;
-    const shutdownPromise = this.shutdownSignal.promise.then(() => shutdownToken);
+    const shutdownToken = 'shutdown' as const;
+    const shutdownPromise = this.shutdownSignal.promise.then(
+      () => shutdownToken
+    );
 
     while (true) {
       const delayController = new AbortController();
@@ -1384,22 +1555,26 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       try {
         if (signal) {
           if (signal.aborted) {
-            throw new TaskCancelledError("sweeper-aborted");
+            throw new TaskCancelledError('sweeper-aborted');
           }
-          signal.addEventListener("abort", externalAbortHandler);
+          signal.addEventListener('abort', externalAbortHandler);
         }
 
-        const waitForTick: Promise<typeof SWEEPER_TICK | typeof shutdownToken> = (async () => {
-          try {
-            await this.delay(this.futSweepIntervalSecs * 1000, delayController.signal);
-            return SWEEPER_TICK;
-          } catch (error) {
-            if (error instanceof TaskCancelledError) {
-              return shutdownToken;
+        const waitForTick: Promise<typeof SWEEPER_TICK | typeof shutdownToken> =
+          (async () => {
+            try {
+              await this.delay(
+                this.futSweepIntervalSecs * 1000,
+                delayController.signal
+              );
+              return SWEEPER_TICK;
+            } catch (error) {
+              if (error instanceof TaskCancelledError) {
+                return shutdownToken;
+              }
+              throw error;
             }
-            throw error;
-          }
-        })();
+          })();
 
         const result = await Promise.race<symbol | typeof shutdownToken>([
           shutdownPromise,
@@ -1460,7 +1635,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
             }
           });
 
-          logger.debug("tracker_swept_completed_futures", {
+          logger.debug('tracker_swept_completed_futures', {
             ack_removed: toRemoveAck.length,
             reply_removed: toRemoveReply.length,
             grace_secs: this.futGcGraceSecs,
@@ -1470,15 +1645,15 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
         if (error instanceof TaskCancelledError) {
           break;
         }
-        if (error instanceof Error && error.name === "TimeoutError") {
+        if (error instanceof Error && error.name === 'TimeoutError') {
           continue;
         }
-        logger.error("tracker_sweeper_error", {
+        logger.error('tracker_sweeper_error', {
           error: error instanceof Error ? error.message : String(error),
         });
       } finally {
         if (signal) {
-          signal.removeEventListener("abort", externalAbortHandler);
+          signal.removeEventListener('abort', externalAbortHandler);
         }
         if (!delayController.signal.aborted) {
           delayController.abort();
@@ -1504,15 +1679,15 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
       return;
     }
     if (!envelope.replyTo) {
-      logger.error("cannot_send_ack_no_reply_to", { envp_id: envelope.id });
+      logger.error('cannot_send_ack_no_reply_to', { envp_id: envelope.id });
       return;
     }
     if (!envelope.corrId) {
-      logger.error("cannot_send_ack_no_corr_id", { envp_id: envelope.id });
+      logger.error('cannot_send_ack_no_corr_id', { envp_id: envelope.id });
       return;
     }
 
-    logger.debug("tracker_sending_ack", {
+    logger.debug('tracker_sending_ack', {
       envp_id: envelope.id,
       ref_id: envelope.id,
       to: envelope.replyTo,
@@ -1522,7 +1697,7 @@ export class DefaultDeliveryTracker extends TaskSpawner implements NodeEventList
     const ackEnvelope = this.node.envelopeFactory.createEnvelope({
       to: envelope.replyTo,
       frame: {
-        type: "DeliveryAck",
+        type: 'DeliveryAck',
         ok: true,
         refId: envelope.id,
       } satisfies DeliveryAckFrame,

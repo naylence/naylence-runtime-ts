@@ -1,11 +1,13 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory,
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
   createDefaultResource,
-  createResource } from "naylence-factory";
-import { InMemoryKeyValueStore } from "../../storage/in-memory-storage.js";
-import type { RouteEntry, RouteStore } from "./route-store.js";
+  createResource,
+} from 'naylence-factory';
+import { InMemoryKeyValueStore } from '../../storage/in-memory-storage.js';
+import type { RouteEntry, RouteStore } from './route-store.js';
 
-export const ROUTE_STORE_FACTORY_BASE_TYPE = "RouteStoreFactory";
+export const ROUTE_STORE_FACTORY_BASE_TYPE = 'RouteStoreFactory';
 
 export interface RouteStoreConfig extends ResourceConfig {
   type: string;
@@ -27,8 +29,16 @@ export abstract class RouteStoreFactory<
     const configRecord = (config ?? null) as Record<string, unknown> | null;
 
     const store = configRecord
-      ? await createResource<RouteStore>(ROUTE_STORE_FACTORY_BASE_TYPE, configRecord, options)
-      : await createDefaultResource<RouteStore>(ROUTE_STORE_FACTORY_BASE_TYPE, null, options);
+      ? await createResource<RouteStore>(
+          ROUTE_STORE_FACTORY_BASE_TYPE,
+          configRecord,
+          options
+        )
+      : await createDefaultResource<RouteStore>(
+          ROUTE_STORE_FACTORY_BASE_TYPE,
+          null,
+          options
+        );
 
     return store ?? null;
   }
@@ -36,11 +46,11 @@ export abstract class RouteStoreFactory<
 
 export const FACTORY_META = {
   base: ROUTE_STORE_FACTORY_BASE_TYPE,
-  key: "InMemoryRouteStore",
+  key: 'InMemoryRouteStore',
 } as const;
 
 export class InMemoryRouteStoreFactory extends RouteStoreFactory {
-  public readonly type = "InMemoryRouteStore";
+  public readonly type = 'InMemoryRouteStore';
   public readonly isDefault = true;
   public readonly priority = 100;
 

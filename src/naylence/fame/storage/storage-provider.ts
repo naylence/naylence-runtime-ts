@@ -1,4 +1,4 @@
-import type { KeyValueStore } from "./key-value-store.js";
+import type { KeyValueStore } from './key-value-store.js';
 
 export interface StorageProvider {
   getKeyValueStore<V>(

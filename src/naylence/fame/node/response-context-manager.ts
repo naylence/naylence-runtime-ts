@@ -4,16 +4,18 @@ import {
   FameEnvelope,
   FameResponseType,
   SecurityContext,
-} from "naylence-core";
-import { getLogger } from "../util/logging.js";
+} from 'naylence-core';
+import { getLogger } from '../util/logging.js';
 
-const logger = getLogger("response-context-manager");
+const logger = getLogger('response-context-manager');
 
 type MaybeSecurityContext = SecurityContext | null | undefined;
 
 type OptionalContext = FameDeliveryContext | null | undefined;
 
-function cloneSecurityContext(source: MaybeSecurityContext): SecurityContext | undefined {
+function cloneSecurityContext(
+  source: MaybeSecurityContext
+): SecurityContext | undefined {
   if (!source) {
     return undefined;
   }
@@ -45,10 +47,11 @@ export class ResponseContextManager {
       originType: DeliveryOriginType.LOCAL,
       fromSystemId: this.getId(),
       security: responseSecurity,
-      expectedResponseType: requestContext?.expectedResponseType ?? FameResponseType.NONE,
+      expectedResponseType:
+        requestContext?.expectedResponseType ?? FameResponseType.NONE,
     };
 
-    logger.debug("created_response_context", {
+    logger.debug('created_response_context', {
       request_id: requestEnvelope.id,
       inherited_crypto_level: responseSecurity?.inboundCryptoLevel ?? null,
       channel_id: responseSecurity?.cryptoChannelId ?? null,
@@ -67,9 +70,9 @@ export class ResponseContextManager {
         responseContext.meta = {};
       }
 
-      responseContext.meta["message-type"] = "response";
+      responseContext.meta['message-type'] = 'response';
       if (requestEnvelope.id) {
-        responseContext.meta["response-to-id"] = requestEnvelope.id;
+        responseContext.meta['response-to-id'] = requestEnvelope.id;
       }
 
       responseContext.originType = DeliveryOriginType.LOCAL;
@@ -77,7 +80,7 @@ export class ResponseContextManager {
     }
 
     // Envelope-level metadata is intentionally omitted to defer to context usage.
-    logger.debug("ensured_response_metadata", {
+    logger.debug('ensured_response_metadata', {
       response_id: responseEnvelope.id,
       request_id: requestEnvelope.id,
     });

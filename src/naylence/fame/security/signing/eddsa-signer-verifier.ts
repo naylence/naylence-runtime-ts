@@ -1,8 +1,8 @@
-import type { AllFramesUnion, DataFrame, FameEnvelope } from "naylence-core";
-import { secureDigest } from "../../util/util.js";
+import type { AllFramesUnion, DataFrame, FameEnvelope } from 'naylence-core';
+import { secureDigest } from '../../util/util.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== "object") {
+  if (value === null || typeof value !== 'object') {
     return false;
   }
 
@@ -19,36 +19,41 @@ function arrayBufferFrom(value: ArrayBufferView | ArrayBuffer): Uint8Array {
     return new Uint8Array(value);
   }
 
-  return new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
+  return new Uint8Array(
+    value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)
+  );
 }
 
 function encodeBinary(value: Uint8Array): string {
-  let binary = "";
+  let binary = '';
   for (let i = 0; i < value.length; i += 1) {
     binary += String.fromCharCode(value[i]);
   }
 
-  if (typeof btoa === "function") {
-    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  if (typeof btoa === 'function') {
+    return btoa(binary)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
   }
 
-  if (typeof Buffer !== "undefined") {
+  if (typeof Buffer !== 'undefined') {
     return Buffer.from(value)
-      .toString("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
   }
 
-  throw new Error("No base64 encoder available in this environment");
+  throw new Error('No base64 encoder available in this environment');
 }
 
 export function decodeBase64Url(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padLength = (4 - (normalized.length % 4)) % 4;
-  const padded = normalized + "=".repeat(padLength);
+  const padded = normalized + '='.repeat(padLength);
 
-  if (typeof atob === "function") {
+  if (typeof atob === 'function') {
     const binary = atob(padded);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i += 1) {
@@ -57,24 +62,24 @@ export function decodeBase64Url(value: string): Uint8Array {
     return bytes;
   }
 
-  if (typeof Buffer !== "undefined") {
-    return Uint8Array.from(Buffer.from(padded, "base64"));
+  if (typeof Buffer !== 'undefined') {
+    return Uint8Array.from(Buffer.from(padded, 'base64'));
   }
 
-  throw new Error("No base64 decoder available in this environment");
+  throw new Error('No base64 decoder available in this environment');
 }
 
 function toSerializable(value: unknown): unknown {
   if (
     value === null ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
   ) {
     return value;
   }
 
-  if (typeof value === "bigint") {
+  if (typeof value === 'bigint') {
     return value.toString();
   }
 
@@ -120,14 +125,14 @@ function toSerializable(value: unknown): unknown {
   }
 
   if (
-    typeof value === "object" &&
+    typeof value === 'object' &&
     value !== null &&
-    "value" in (value as Record<string, unknown>)
+    'value' in (value as Record<string, unknown>)
   ) {
     return toSerializable((value as Record<string, unknown>).value);
   }
 
-  if (typeof value === "symbol" || typeof value === "function") {
+  if (typeof value === 'symbol' || typeof value === 'function') {
     return String(value);
   }
 
@@ -182,13 +187,13 @@ export function removeNullFields<T>(value: T): T {
 }
 
 function isDataFrame(frame: AllFramesUnion): frame is DataFrame {
-  return (frame as DataFrame).type === "Data";
+  return (frame as DataFrame).type === 'Data';
 }
 
 export function frameDigest(frame: AllFramesUnion): string {
   if (isDataFrame(frame)) {
-    const payload = frame.payload ?? "";
-    const payloadString = payload === "" ? "" : canonicalJson(payload);
+    const payload = frame.payload ?? '';
+    const payloadString = payload === '' ? '' : canonicalJson(payload);
     return secureDigest(payloadString);
   }
 
@@ -197,7 +202,9 @@ export function frameDigest(frame: AllFramesUnion): string {
   return secureDigest(canonical);
 }
 
-export function immutableHeaders(envelope: FameEnvelope): Record<string, unknown> {
+export function immutableHeaders(
+  envelope: FameEnvelope
+): Record<string, unknown> {
   return {
     version: envelope.version,
     id: envelope.id,

@@ -1,10 +1,10 @@
-import type { FameEnvelope } from "naylence-core";
+import type { FameEnvelope } from 'naylence-core';
 
-import { getLogger } from "../../util/logging.js";
-import type { LoadBalancerStickinessManager } from "../../stickiness/load-balancer-stickiness-manager.js";
-import type { LoadBalancingStrategy } from "./load-balancing-strategy.js";
+import { getLogger } from '../../util/logging.js';
+import type { LoadBalancerStickinessManager } from '../../stickiness/load-balancer-stickiness-manager.js';
+import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
 
-const logger = getLogger("sticky-load-balancing-strategy");
+const logger = getLogger('sticky-load-balancing-strategy');
 
 type MetricsGetter = () => Record<string, unknown>;
 
@@ -16,7 +16,9 @@ export class StickyLoadBalancingStrategy implements LoadBalancingStrategy {
 
   constructor(stickinessManager: LoadBalancerStickinessManager) {
     if (!stickinessManager) {
-      throw new Error("StickyLoadBalancingStrategy requires a stickiness manager");
+      throw new Error(
+        'StickyLoadBalancingStrategy requires a stickiness manager'
+      );
     }
     this.stickinessManager = stickinessManager;
   }
@@ -30,10 +32,13 @@ export class StickyLoadBalancingStrategy implements LoadBalancingStrategy {
       return null;
     }
 
-    const stickyReplica = this.stickinessManager.getStickyReplicaSegment(envelope, segments);
+    const stickyReplica = this.stickinessManager.getStickyReplicaSegment(
+      envelope,
+      segments
+    );
 
     if (stickyReplica && segments.includes(stickyReplica)) {
-      logger.debug("routing_via_stickiness", {
+      logger.debug('routing_via_stickiness', {
         envelopeId: envelope.id,
         poolKey,
         replicaId: stickyReplica,
@@ -44,7 +49,7 @@ export class StickyLoadBalancingStrategy implements LoadBalancingStrategy {
       return stickyReplica;
     }
 
-    logger.debug("no_stickiness_match_fallback", {
+    logger.debug('no_stickiness_match_fallback', {
       envelopeId: envelope.id,
       poolKey,
       aftPresent: Boolean((envelope as Record<string, unknown>).aft),
@@ -54,16 +59,20 @@ export class StickyLoadBalancingStrategy implements LoadBalancingStrategy {
   }
 
   public getMetrics(): Record<string, unknown> {
-    const candidate = this.stickinessManager as unknown as { getMetrics?: MetricsGetter };
-    if (typeof candidate.getMetrics === "function") {
+    const candidate = this.stickinessManager as unknown as {
+      getMetrics?: MetricsGetter;
+    };
+    if (typeof candidate.getMetrics === 'function') {
       return candidate.getMetrics();
     }
     return {};
   }
 
   public getAssociations(): Record<string, unknown> {
-    const candidate = this.stickinessManager as unknown as { getAssociations?: AssociationsGetter };
-    if (typeof candidate.getAssociations === "function") {
+    const candidate = this.stickinessManager as unknown as {
+      getAssociations?: AssociationsGetter;
+    };
+    if (typeof candidate.getAssociations === 'function') {
       return candidate.getAssociations();
     }
     return {};

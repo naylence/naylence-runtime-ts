@@ -1,10 +1,17 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
 
-import type { CryptoProvider } from "../crypto/providers/crypto-provider.js";
-import type { KeyProvider } from "../keys/key-provider.js";
-import type { SecureChannelManager } from "./secure-channel-manager.js";
-import type { EncryptionManager, EncryptionOptions } from "./encryption-manager.js";
+import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
+import type { KeyProvider } from '../keys/key-provider.js';
+import type { SecureChannelManager } from './secure-channel-manager.js';
+import type {
+  EncryptionManager,
+  EncryptionOptions,
+} from './encryption-manager.js';
 
 export interface EncryptionFactoryDependencies {
   readonly secureChannelManager?: SecureChannelManager | null;
@@ -21,12 +28,13 @@ export interface EncryptionManagerConfig extends ResourceConfig {
   [key: string]: unknown;
 }
 
-export interface CreateEncryptionManagerOptions extends Omit<CreateResourceOptions, "factoryArgs"> {
+export interface CreateEncryptionManagerOptions
+  extends Omit<CreateResourceOptions, 'factoryArgs'> {
   factoryArgs?: unknown[];
   dependencies?: EncryptionFactoryDependencies;
 }
 
-export const ENCRYPTION_MANAGER_FACTORY_BASE_TYPE = "EncryptionManagerFactory";
+export const ENCRYPTION_MANAGER_FACTORY_BASE_TYPE = 'EncryptionManagerFactory';
 
 export abstract class EncryptionManagerFactory<
   C extends EncryptionManagerConfig = EncryptionManagerConfig,
@@ -52,10 +60,13 @@ export abstract class EncryptionManagerFactory<
     config?: C | Record<string, unknown> | null,
     options: CreateEncryptionManagerOptions = {}
   ): Promise<EncryptionManager | null> {
-    await import("./noop-encryption-manager-factory.js");
+    // await import("./noop-encryption-manager-factory.js");
 
     const { dependencies, factoryArgs, ...restOptions } = options;
-    const mergedFactoryArgs = [...(dependencies ? [dependencies] : []), ...(factoryArgs ?? [])];
+    const mergedFactoryArgs = [
+      ...(dependencies ? [dependencies] : []),
+      ...(factoryArgs ?? []),
+    ];
 
     const creationOptions: CreateResourceOptions = {
       ...restOptions,

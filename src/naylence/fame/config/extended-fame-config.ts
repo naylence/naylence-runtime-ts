@@ -1,5 +1,8 @@
-import fs from "fs";
-import { getDefaultFameConfigResolver, setDefaultFameConfigResolver } from "naylence-core";
+import fs from 'fs';
+import {
+  getDefaultFameConfigResolver,
+  setDefaultFameConfigResolver,
+} from 'naylence-core';
 
 import {
   configLogger as logger,
@@ -7,45 +10,45 @@ import {
   parseConfigString,
   parseJson,
   parseYamlContent,
-} from "./extended-fame-config-base.js";
-import type { ExtendedFameConfig } from "./extended-fame-config-base.js";
-import { isNode } from "../util/logging-types.js";
+} from './extended-fame-config-base.js';
+import type { ExtendedFameConfig } from './extended-fame-config-base.js';
+import { isNode } from '../util/logging-types.js';
 
-export { ExtendedFameConfigSchema } from "./extended-fame-config-base.js";
-export { normalizeExtendedFameConfig } from "./extended-fame-config-base.js";
-export type { ExtendedFameConfig } from "./extended-fame-config-base.js";
+export { ExtendedFameConfigSchema } from './extended-fame-config-base.js';
+export { normalizeExtendedFameConfig } from './extended-fame-config-base.js';
+export type { ExtendedFameConfig } from './extended-fame-config-base.js';
 
-export const ENV_VAR_FAME_CONFIG = "FAME_CONFIG";
+export const ENV_VAR_FAME_CONFIG = 'FAME_CONFIG';
 
 const CONFIG_SEARCH_PATHS = [
-  "fame-config.json",
-  "fame-config.yaml",
-  "fame-config.yml",
-  "/etc/fame/fame-config.json",
-  "/etc/fame/fame-config.yaml",
-  "/etc/fame/fame-config.yml",
+  'fame-config.json',
+  'fame-config.yaml',
+  'fame-config.yml',
+  '/etc/fame/fame-config.json',
+  '/etc/fame/fame-config.yaml',
+  '/etc/fame/fame-config.yml',
 ] as const;
 
 function readConfigFile(filePath: string): Record<string, unknown> {
-  if (!isNode || !fs || typeof fs.readFileSync !== "function") {
-    throw new Error("File system access is not available in this environment");
+  if (!isNode || !fs || typeof fs.readFileSync !== 'function') {
+    throw new Error('File system access is not available in this environment');
   }
 
-  const content = fs.readFileSync(filePath, "utf-8");
+  const content = fs.readFileSync(filePath, 'utf-8');
   const lower = filePath.toLowerCase();
 
   try {
-    if (lower.endsWith(".yaml") || lower.endsWith(".yml")) {
+    if (lower.endsWith('.yaml') || lower.endsWith('.yml')) {
       const parsed = parseYamlContent(content);
-      logger.debug("loaded_fame_config_from_file_yaml", { file: filePath });
+      logger.debug('loaded_fame_config_from_file_yaml', { file: filePath });
       return parsed;
     }
 
     const parsed = parseJson(content);
-    logger.debug("loaded_fame_config_from_file_json", { file: filePath });
+    logger.debug('loaded_fame_config_from_file_json', { file: filePath });
     return parsed;
   } catch (error) {
-    logger.error("fame_config_file_parse_error", {
+    logger.error('fame_config_file_parse_error', {
       file: filePath,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -59,7 +62,12 @@ function resolveEnvValue(raw: string): Record<string, unknown> {
     return {};
   }
 
-  if (isNode && fs && typeof fs.existsSync === "function" && fs.existsSync(trimmed)) {
+  if (
+    isNode &&
+    fs &&
+    typeof fs.existsSync === 'function' &&
+    fs.existsSync(trimmed)
+  ) {
     return readConfigFile(trimmed);
   }
 
@@ -67,7 +75,7 @@ function resolveEnvValue(raw: string): Record<string, unknown> {
 }
 
 function loadFromEnv(): Record<string, unknown> | null {
-  if (typeof process === "undefined" || !process.env) {
+  if (typeof process === 'undefined' || !process.env) {
     return null;
   }
 
@@ -79,7 +87,7 @@ function loadFromEnv(): Record<string, unknown> | null {
   try {
     return resolveEnvValue(raw);
   } catch (error) {
-    logger.error("fame_config_env_parse_error", {
+    logger.error('fame_config_env_parse_error', {
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
@@ -87,7 +95,7 @@ function loadFromEnv(): Record<string, unknown> | null {
 }
 
 function loadFromFiles(): Record<string, unknown> {
-  if (!isNode || !fs || typeof fs.existsSync !== "function") {
+  if (!isNode || !fs || typeof fs.existsSync !== 'function') {
     return {};
   }
 
@@ -99,7 +107,7 @@ function loadFromFiles(): Record<string, unknown> {
 
       return readConfigFile(candidate);
     } catch (error) {
-      logger.error("fame_config_file_error", {
+      logger.error('fame_config_file_error', {
         file: candidate,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -132,7 +140,7 @@ export function loadFameConfig(): ExtendedFameConfig {
     cachedConfig = normalized;
     return normalized;
   } catch (error) {
-    logger.error("fame_config_validation_error", {
+    logger.error('fame_config_validation_error', {
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;

@@ -1,13 +1,13 @@
-import type { FameDeliveryContext, FameEnvelope } from "naylence-core";
+import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
 
-import type { NodeLike } from "../../node/node-like.js";
-import type { EncryptionOptions } from "../encryption/encryption-manager.js";
+import type { NodeLike } from '../../node/node-like.js';
+import type { EncryptionOptions } from '../encryption/encryption-manager.js';
 import {
   CryptoLevel,
   SecurityAction,
   SecurityRequirements,
   type SecurityPolicy,
-} from "./security-policy.js";
+} from './security-policy.js';
 
 export class NoSecurityPolicy implements SecurityPolicy {
   public async shouldSignEnvelope(

@@ -1,8 +1,11 @@
-import { createAuthorizationContext } from "naylence-core";
-import type { AuthorizationContext } from "naylence-core";
+import { createAuthorizationContext } from 'naylence-core';
+import type { AuthorizationContext } from 'naylence-core';
 
-import { credentialToString, type CredentialProvider } from "../credential/credential-provider.js";
-import type { TokenVerifier } from "./token-verifier.js";
+import {
+  credentialToString,
+  type CredentialProvider,
+} from '../credential/credential-provider.js';
+import type { TokenVerifier } from './token-verifier.js';
 
 export interface SharedSecretTokenVerifierOptions {
   credentialProvider: CredentialProvider;
@@ -15,25 +18,27 @@ export class SharedSecretTokenVerifier implements TokenVerifier {
 
   constructor(options: SharedSecretTokenVerifierOptions) {
     this.credentialProvider = options.credentialProvider;
-    this.principal = options.principal ?? "*";
+    this.principal = options.principal ?? '*';
   }
 
   public async verify(
     token: string,
     options?: { expectedAudience?: string }
   ): Promise<AuthorizationContext> {
-    const expectedSecret = credentialToString(await this.credentialProvider.get());
+    const expectedSecret = credentialToString(
+      await this.credentialProvider.get()
+    );
     if (!expectedSecret) {
-      throw new Error("Shared secret credential provider returned empty value");
+      throw new Error('Shared secret credential provider returned empty value');
     }
 
     if (token !== expectedSecret) {
-      throw new Error("Invalid shared secret token");
+      throw new Error('Invalid shared secret token');
     }
 
     const claims: Record<string, unknown> = {
       sub: this.principal,
-      mode: "shared-secret",
+      mode: 'shared-secret',
       valid: true,
     };
 
@@ -46,7 +51,7 @@ export class SharedSecretTokenVerifier implements TokenVerifier {
       authorized: true,
       principal: this.principal,
       claims,
-      authMethod: "shared_secret",
+      authMethod: 'shared_secret',
     });
   }
 }

@@ -1,4 +1,4 @@
-import type { CredentialProvider } from "./credential-provider.js";
+import type { CredentialProvider } from './credential-provider.js';
 
 const DEFAULT_KEY_LENGTH = 32;
 
@@ -6,15 +6,15 @@ type CryptoLike = {
   getRandomValues<T extends ArrayBufferView | null>(array: T): T;
 };
 
-let cachedNodeCrypto: typeof import("node:crypto") | null | undefined;
+let cachedNodeCrypto: typeof import('node:crypto') | null | undefined;
 
-async function loadNodeCrypto(): Promise<typeof import("node:crypto") | null> {
+async function loadNodeCrypto(): Promise<typeof import('node:crypto') | null> {
   if (cachedNodeCrypto !== undefined) {
     return cachedNodeCrypto;
   }
 
   try {
-    cachedNodeCrypto = await import("node:crypto");
+    cachedNodeCrypto = await import('node:crypto');
     return cachedNodeCrypto;
   } catch {
     cachedNodeCrypto = null;
@@ -23,9 +23,9 @@ async function loadNodeCrypto(): Promise<typeof import("node:crypto") | null> {
 }
 
 async function getRandomBytes(length: number): Promise<Uint8Array> {
-  if (typeof globalThis.crypto !== "undefined") {
+  if (typeof globalThis.crypto !== 'undefined') {
     const cryptoObject = globalThis.crypto as CryptoLike;
-    if (typeof cryptoObject.getRandomValues === "function") {
+    if (typeof cryptoObject.getRandomValues === 'function') {
       const buffer = new Uint8Array(length);
       cryptoObject.getRandomValues(buffer);
       return buffer;
@@ -38,7 +38,7 @@ async function getRandomBytes(length: number): Promise<Uint8Array> {
     return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   }
 
-  throw new Error("Unable to generate secure random bytes in this environment");
+  throw new Error('Unable to generate secure random bytes in this environment');
 }
 
 export class SessionKeyCredentialProvider implements CredentialProvider {
@@ -47,7 +47,7 @@ export class SessionKeyCredentialProvider implements CredentialProvider {
 
   constructor(length = DEFAULT_KEY_LENGTH) {
     if (!Number.isInteger(length) || length <= 0) {
-      throw new Error("Session key length must be a positive integer");
+      throw new Error('Session key length must be a positive integer');
     }
     this.length = length;
   }

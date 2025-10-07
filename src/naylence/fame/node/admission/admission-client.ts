@@ -1,4 +1,4 @@
-import type { FameEnvelopeWith, NodeWelcomeFrame } from "naylence-core";
+import type { FameEnvelopeWith, NodeWelcomeFrame } from 'naylence-core';
 
 export interface HelloOptions {
   readonly systemId?: string;

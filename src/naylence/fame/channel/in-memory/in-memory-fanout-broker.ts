@@ -11,15 +11,15 @@ import {
   DEFAULT_POLLING_TIMEOUT_MS,
   extractEnvelopeAndContext,
   createChannelMessage,
-} from "naylence-core";
-import { TaskSpawner } from "../../util/task-spawner.js";
-import { withEnvelopeContextAsync } from "../../util/envelope-context.js";
-import { getLogger } from "../../util/logging.js";
+} from 'naylence-core';
+import { TaskSpawner } from '../../util/task-spawner.js';
+import { withEnvelopeContextAsync } from '../../util/envelope-context.js';
+import { getLogger } from '../../util/logging.js';
 
-const logger = getLogger("in-memory-fanout-broker");
+const logger = getLogger('in-memory-fanout-broker');
 
 // Sentinel object for shutdown signaling
-const SENTINEL = Symbol("fanout-broker-sentinel");
+const SENTINEL = Symbol('fanout-broker-sentinel');
 
 /**
  * Interface for closeable resources
@@ -29,7 +29,7 @@ interface Closeable {
 }
 
 function isCloseable(obj: any): obj is Closeable {
-  return obj && typeof obj.close === "function";
+  return obj && typeof obj.close === 'function';
 }
 
 /**
@@ -55,7 +55,8 @@ export class InMemoryFanoutBroker extends TaskSpawner {
   constructor(sink: ReadWriteChannel, config: InMemoryFanoutBrokerConfig = {}) {
     super();
     this._sink = sink;
-    this._pollTimeoutSec = (config.pollTimeoutMs ?? DEFAULT_POLLING_TIMEOUT_MS) / 1000.0;
+    this._pollTimeoutSec =
+      (config.pollTimeoutMs ?? DEFAULT_POLLING_TIMEOUT_MS) / 1000.0;
   }
 
   /**
@@ -68,7 +69,7 @@ export class InMemoryFanoutBroker extends TaskSpawner {
 
     this._running = true;
     this.spawn(async () => await this._listenLoop(), {
-      name: "fanout-broker-listen-loop",
+      name: 'fanout-broker-listen-loop',
     });
   }
 
@@ -84,7 +85,9 @@ export class InMemoryFanoutBroker extends TaskSpawner {
       await this._sink.send(SENTINEL as any);
     } catch (error) {
       // Ignore errors when sending sentinel (sink might be closed)
-      logger.debug("error_sending_sentinel", { error: (error as Error).message });
+      logger.debug('error_sending_sentinel', {
+        error: (error as Error).message,
+      });
     }
 
     // 2) Shutdown spawned tasks with grace period
@@ -97,7 +100,7 @@ export class InMemoryFanoutBroker extends TaskSpawner {
         try {
           await sub.close();
         } catch (error) {
-          logger.error("error_closing_subscriber", {
+          logger.error('error_closing_subscriber', {
             subscriber: sub.toString(),
             error: (error as Error).message,
           });
@@ -140,7 +143,7 @@ export class InMemoryFanoutBroker extends TaskSpawner {
         try {
           [envelope, context] = extractEnvelopeAndContext(msg);
         } catch (error) {
-          logger.debug("failed_to_extract_envelope", {
+          logger.debug('failed_to_extract_envelope', {
             error: (error as Error).message,
           });
           continue;
@@ -154,7 +157,9 @@ export class InMemoryFanoutBroker extends TaskSpawner {
         // Send the original message (with context preserved) if it's a FameChannelMessage,
         // otherwise send the envelope directly
         const messageToSend =
-          context !== undefined ? createChannelMessage(envelope, context) : envelope;
+          context !== undefined
+            ? createChannelMessage(envelope, context)
+            : envelope;
 
         const badSubs: WriteChannel[] = [];
         const subscribersSnapshot = Array.from(this._subscribers);
@@ -164,10 +169,10 @@ export class InMemoryFanoutBroker extends TaskSpawner {
             try {
               await sub.send(messageToSend);
             } catch (error) {
-              logger.error("error_sending_to_subscriber", {
+              logger.error('error_sending_to_subscriber', {
                 subscriber: sub.toString(),
                 error: (error as Error).message,
-                action: "unsubscribing",
+                action: 'unsubscribing',
               });
               badSubs.push(sub);
             }
@@ -180,7 +185,7 @@ export class InMemoryFanoutBroker extends TaskSpawner {
         }
       } catch (error) {
         // Critical broker-level error: log and back off, but keep the loop running
-        logger.critical("receive_loop_failed_unexpectedly", {
+        logger.critical('receive_loop_failed_unexpectedly', {
           error: (error as Error).message,
           stack: (error as Error).stack,
         });

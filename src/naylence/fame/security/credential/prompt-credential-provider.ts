@@ -1,4 +1,4 @@
-import type { CredentialProvider } from "./credential-provider.js";
+import type { CredentialProvider } from './credential-provider.js';
 
 export type PromptResolver = () => Promise<string | null> | string | null;
 
@@ -7,7 +7,7 @@ export class PromptCredentialProvider implements CredentialProvider {
   private readonly resolver: PromptResolver;
   private cachedValue: string | null | undefined = undefined;
 
-  constructor(credentialName = "credential", resolver?: PromptResolver) {
+  constructor(credentialName = 'credential', resolver?: PromptResolver) {
     this.credentialName = credentialName;
     this.resolver = resolver ?? (() => this.promptCredential());
   }
@@ -18,7 +18,8 @@ export class PromptCredentialProvider implements CredentialProvider {
     }
 
     const result = await this.resolvePrompt();
-    const normalized = result && typeof result === "string" ? result.trim() : result;
+    const normalized =
+      result && typeof result === 'string' ? result.trim() : result;
 
     this.cachedValue = normalized && normalized.length > 0 ? normalized : null;
     return this.cachedValue;
@@ -27,7 +28,7 @@ export class PromptCredentialProvider implements CredentialProvider {
   private async resolvePrompt(): Promise<string | null> {
     try {
       const value = await this.resolver();
-      if (typeof value === "string") {
+      if (typeof value === 'string') {
         return value;
       }
       return value ?? null;
@@ -37,9 +38,11 @@ export class PromptCredentialProvider implements CredentialProvider {
   }
 
   private async promptCredential(): Promise<string | null> {
-    if (typeof globalThis.prompt === "function") {
-      const response = globalThis.prompt(`Enter credential '${this.credentialName}': `);
-      if (typeof response === "string") {
+    if (typeof globalThis.prompt === 'function') {
+      const response = globalThis.prompt(
+        `Enter credential '${this.credentialName}': `
+      );
+      if (typeof response === 'string') {
         const trimmed = response.trim();
         return trimmed.length > 0 ? trimmed : null;
       }
@@ -47,25 +50,35 @@ export class PromptCredentialProvider implements CredentialProvider {
     }
 
     const globalObject =
-      typeof globalThis !== "undefined" ? (globalThis as Record<string, unknown>) : {};
+      typeof globalThis !== 'undefined'
+        ? (globalThis as Record<string, unknown>)
+        : {};
     const processObject = globalObject.process as
-      | { stdin?: NodeJS.ReadableStream | null; stdout?: NodeJS.WritableStream | null }
+      | {
+          stdin?: NodeJS.ReadableStream | null;
+          stdout?: NodeJS.WritableStream | null;
+        }
       | undefined;
 
     if (processObject?.stdin && processObject.stdout) {
       try {
-        const readlineModule = (await import("readline")) as typeof import("readline");
+        const readlineModule = (await import(
+          'readline'
+        )) as typeof import('readline');
         return await new Promise<string | null>((resolve) => {
           const rl = readlineModule.createInterface({
             input: processObject.stdin!,
             output: processObject.stdout!,
           });
 
-          rl.question(`Enter credential '${this.credentialName}': `, (answer) => {
-            rl.close();
-            const trimmed = answer.trim();
-            resolve(trimmed.length > 0 ? trimmed : null);
-          });
+          rl.question(
+            `Enter credential '${this.credentialName}': `,
+            (answer) => {
+              rl.close();
+              const trimmed = answer.trim();
+              resolve(trimmed.length > 0 ? trimmed : null);
+            }
+          );
         });
       } catch {
         return null;

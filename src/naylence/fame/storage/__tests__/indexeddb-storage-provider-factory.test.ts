@@ -1,28 +1,30 @@
-import type { CredentialProvider } from "../../security/credential/credential-provider.js";
+import type { CredentialProvider } from '../../security/credential/credential-provider.js';
 
 type FactoryModules = {
-  safeImportMock: jest.MockedFunction<(typeof import("../../util/lazy-import.js"))[("safeImport")]>,
-  IndexedDBStorageProviderFactory: typeof import("../indexeddb-storage-provider-factory.js")["IndexedDBStorageProviderFactory"],
-  CredentialProviderFactory: typeof import("../../security/credential/credential-provider-factory.js")["CredentialProviderFactory"],
+  safeImportMock: jest.MockedFunction<
+    (typeof import('../../util/lazy-import.js'))['safeImport']
+  >;
+  IndexedDBStorageProviderFactory: (typeof import('../indexeddb-storage-provider-factory.js'))['IndexedDBStorageProviderFactory'];
+  CredentialProviderFactory: (typeof import('../../security/credential/credential-provider-factory.js'))['CredentialProviderFactory'];
 };
 
-jest.mock("../../util/lazy-import.js", () => ({
+jest.mock('../../util/lazy-import.js', () => ({
   safeImport: jest.fn(),
 }));
 
 async function loadFactoryModules(): Promise<FactoryModules> {
   jest.resetModules();
-  const lazyImportModule = await import("../../util/lazy-import.js");
+  const lazyImportModule = await import('../../util/lazy-import.js');
   const safeImportMock = lazyImportModule.safeImport as jest.MockedFunction<
-    (typeof lazyImportModule)["safeImport"]
+    (typeof lazyImportModule)['safeImport']
   >;
   safeImportMock.mockReset();
 
   const { IndexedDBStorageProviderFactory } = await import(
-    "../indexeddb-storage-provider-factory.js"
+    '../indexeddb-storage-provider-factory.js'
   );
   const { CredentialProviderFactory } = await import(
-    "../../security/credential/credential-provider-factory.js"
+    '../../security/credential/credential-provider-factory.js'
   );
 
   return {
@@ -32,14 +34,17 @@ async function loadFactoryModules(): Promise<FactoryModules> {
   };
 }
 
-describe("IndexedDBStorageProviderFactory", () => {
-  it("normalizes mixed-case config values and caches the provider import", async () => {
-    const { safeImportMock, IndexedDBStorageProviderFactory, CredentialProviderFactory } =
-      await loadFactoryModules();
+describe('IndexedDBStorageProviderFactory', () => {
+  it('normalizes mixed-case config values and caches the provider import', async () => {
+    const {
+      safeImportMock,
+      IndexedDBStorageProviderFactory,
+      CredentialProviderFactory,
+    } = await loadFactoryModules();
 
-    const mockInstance = { name: "indexeddb" } as unknown as CredentialProvider;
+    const mockInstance = { name: 'indexeddb' } as unknown as CredentialProvider;
     const credentialSpy = jest
-      .spyOn(CredentialProviderFactory, "createCredentialProvider")
+      .spyOn(CredentialProviderFactory, 'createCredentialProvider')
       .mockResolvedValue(mockInstance);
 
     const providerCalls: Array<Record<string, unknown>> = [];
@@ -48,18 +53,20 @@ describe("IndexedDBStorageProviderFactory", () => {
       return { stop: jest.fn() };
     });
 
-    safeImportMock.mockResolvedValue({ IndexedDBStorageProvider: MockProvider });
+    safeImportMock.mockResolvedValue({
+      IndexedDBStorageProvider: MockProvider,
+    });
 
     const factory = new IndexedDBStorageProviderFactory();
 
     const config = {
-      type: "IndexedDBStorageProvider" as const,
-      db_name: "CustomDB",
-      namespace_prefix: "CustomNS",
-      enable_caching: "false",
-      is_encrypted: "true",
-      master_key: "env://MASTER_SECRET",
-      version: "5",
+      type: 'IndexedDBStorageProvider' as const,
+      db_name: 'CustomDB',
+      namespace_prefix: 'CustomNS',
+      enable_caching: 'false',
+      is_encrypted: 'true',
+      master_key: 'env://MASTER_SECRET',
+      version: '5',
     };
 
     await factory.create(config);
@@ -71,8 +78,8 @@ describe("IndexedDBStorageProviderFactory", () => {
 
     const [firstCall] = providerCalls;
     expect(firstCall).toMatchObject({
-      dbName: "CustomDB",
-      namespacePrefix: "CustomNS",
+      dbName: 'CustomDB',
+      namespacePrefix: 'CustomNS',
       enableCaching: false,
       isEncrypted: true,
       version: 5,
@@ -80,35 +87,43 @@ describe("IndexedDBStorageProviderFactory", () => {
     });
 
     expect(credentialSpy).toHaveBeenCalledWith({
-      type: "EnvCredentialProvider",
-      varName: "MASTER_SECRET",
+      type: 'EnvCredentialProvider',
+      varName: 'MASTER_SECRET',
     });
 
     credentialSpy.mockRestore();
   });
 
-  it("defaults caching and encryption based on the selected mode", async () => {
-    const { safeImportMock, IndexedDBStorageProviderFactory, CredentialProviderFactory } =
-      await loadFactoryModules();
+  it('defaults caching and encryption based on the selected mode', async () => {
+    const {
+      safeImportMock,
+      IndexedDBStorageProviderFactory,
+      CredentialProviderFactory,
+    } = await loadFactoryModules();
 
     const MockProvider = jest.fn(() => ({ stop: jest.fn() }));
-    safeImportMock.mockResolvedValue({ IndexedDBStorageProvider: MockProvider });
+    safeImportMock.mockResolvedValue({
+      IndexedDBStorageProvider: MockProvider,
+    });
 
     const credentialSpy = jest
-      .spyOn(CredentialProviderFactory, "createCredentialProvider")
+      .spyOn(CredentialProviderFactory, 'createCredentialProvider')
       .mockResolvedValue({} as CredentialProvider);
 
     const factory = new IndexedDBStorageProviderFactory();
 
-    await factory.create({ type: "IndexedDBStorageProvider" });
+    await factory.create({ type: 'IndexedDBStorageProvider' });
     const dxOptions = getProviderOptions(MockProvider, 0);
     expect(dxOptions.enableCaching).toBe(true);
     expect(dxOptions.isEncrypted).toBe(true);
 
     await factory.create({
-      type: "IndexedDBStorageProvider",
-      mode: "hardened",
-      masterKey: { type: "StaticCredentialProvider", credentialValue: "hard-key" },
+      type: 'IndexedDBStorageProvider',
+      mode: 'hardened',
+      masterKey: {
+        type: 'StaticCredentialProvider',
+        credentialValue: 'hard-key',
+      },
     });
     const hardenedOptions = getProviderOptions(MockProvider, 1);
     expect(hardenedOptions.enableCaching).toBe(false);
@@ -119,47 +134,53 @@ describe("IndexedDBStorageProviderFactory", () => {
     credentialSpy.mockRestore();
   });
 
-  it("rejects boolean fields that cannot be coerced", async () => {
+  it('rejects boolean fields that cannot be coerced', async () => {
     const { IndexedDBStorageProviderFactory } = await loadFactoryModules();
     const factory = new IndexedDBStorageProviderFactory();
 
     await expect(
-      factory.create({ type: "IndexedDBStorageProvider", enableCaching: "not-bool" })
+      factory.create({
+        type: 'IndexedDBStorageProvider',
+        enableCaching: 'not-bool',
+      })
     ).rejects.toThrow("Expected a boolean-like value for 'enableCaching'");
   });
 
-  it("requires supported modes", async () => {
+  it('requires supported modes', async () => {
     const { IndexedDBStorageProviderFactory } = await loadFactoryModules();
     const factory = new IndexedDBStorageProviderFactory();
 
     await expect(
-      factory.create({ type: "IndexedDBStorageProvider", mode: "invalid" })
+      factory.create({ type: 'IndexedDBStorageProvider', mode: 'invalid' })
     ).rejects.toThrow("mode must be either 'dx' or 'hardened'");
   });
 
-  it("validates version values", async () => {
+  it('validates version values', async () => {
     const { IndexedDBStorageProviderFactory } = await loadFactoryModules();
     const factory = new IndexedDBStorageProviderFactory();
 
     await expect(
-      factory.create({ type: "IndexedDBStorageProvider", version: "abc" })
-    ).rejects.toThrow("version must be a positive integer");
+      factory.create({ type: 'IndexedDBStorageProvider', version: 'abc' })
+    ).rejects.toThrow('version must be a positive integer');
   });
 
-  it("enforces master key configuration for hardened mode", async () => {
+  it('enforces master key configuration for hardened mode', async () => {
     const { IndexedDBStorageProviderFactory } = await loadFactoryModules();
     const factory = new IndexedDBStorageProviderFactory();
 
     await expect(
-      factory.create({ type: "IndexedDBStorageProvider", mode: "hardened" })
-    ).rejects.toThrow("hardened mode requires a masterKey configuration");
+      factory.create({ type: 'IndexedDBStorageProvider', mode: 'hardened' })
+    ).rejects.toThrow('hardened mode requires a masterKey configuration');
   });
 });
 
 function getProviderOptions(
   mock: jest.Mock,
   index: number
-): Record<string, unknown> & { enableCaching?: boolean; isEncrypted?: boolean } {
+): Record<string, unknown> & {
+  enableCaching?: boolean;
+  isEncrypted?: boolean;
+} {
   const call = mock.mock.calls[index];
   if (!call) {
     throw new Error(`Expected provider mock to be called at index ${index}`);

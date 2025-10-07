@@ -1,7 +1,7 @@
-import type { FameEnvelope } from "naylence-core";
+import type { FameEnvelope } from 'naylence-core';
 
-import type { DeliveryPolicyOptions } from "./delivery-policy.js";
-import { DeliveryPolicy } from "./delivery-policy.js";
+import type { DeliveryPolicyOptions } from './delivery-policy.js';
+import { DeliveryPolicy } from './delivery-policy.js';
 
 export type AtLeastOnceDeliveryPolicyOptions = DeliveryPolicyOptions;
 
@@ -15,12 +15,12 @@ export class AtLeastOnceDeliveryPolicy extends DeliveryPolicy {
 
   public override isAckRequired(envelope: FameEnvelope): boolean {
     const frame = envelope?.frame as { type?: string } | undefined;
-    const frameType = typeof frame?.type === "string" ? frame.type : null;
+    const frameType = typeof frame?.type === 'string' ? frame.type : null;
 
     if (!frameType) {
       return false;
     }
 
-    return frameType === "Data" || frameType === "DataFrame";
+    return frameType === 'Data' || frameType === 'DataFrame';
   }
 }

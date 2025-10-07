@@ -1,15 +1,15 @@
-import { AtLeastOnceDeliveryPolicyFactory } from "../at-least-once-delivery-policy-factory.js";
-import { AtLeastOnceDeliveryPolicy } from "../at-least-once-delivery-policy.js";
-import { RetryPolicy } from "../retry-policy.js";
+import { AtLeastOnceDeliveryPolicyFactory } from '../at-least-once-delivery-policy-factory.js';
+import { AtLeastOnceDeliveryPolicy } from '../at-least-once-delivery-policy.js';
+import { RetryPolicy } from '../retry-policy.js';
 
-describe("AtLeastOnceDeliveryPolicyFactory", () => {
+describe('AtLeastOnceDeliveryPolicyFactory', () => {
   let factory: AtLeastOnceDeliveryPolicyFactory;
 
   beforeEach(() => {
     factory = new AtLeastOnceDeliveryPolicyFactory();
   });
 
-  it("creates a default policy when no config is provided", async () => {
+  it('creates a default policy when no config is provided', async () => {
     const policy = await factory.create();
 
     expect(factory.isDefault).toBe(true);
@@ -18,15 +18,15 @@ describe("AtLeastOnceDeliveryPolicyFactory", () => {
     expect(policy.receiverRetryPolicy).toBeUndefined();
   });
 
-  it("normalizes retry policies from record configs", async () => {
+  it('normalizes retry policies from record configs', async () => {
     const policy = await factory.create({
-      type: "AtLeastOnceDeliveryPolicy",
+      type: 'AtLeastOnceDeliveryPolicy',
       sender_retry_policy: {
         maxRetries: 3,
-        base_delay_ms: "150",
-        max_delay_ms: "   ",
-        jitter_ms: "abc",
-        backoff_factor: "2.5",
+        base_delay_ms: '150',
+        max_delay_ms: '   ',
+        jitter_ms: 'abc',
+        backoff_factor: '2.5',
       },
       receiverRetryPolicy: null,
     } as Record<string, unknown>);
@@ -41,7 +41,7 @@ describe("AtLeastOnceDeliveryPolicyFactory", () => {
     expect(policy.receiverRetryPolicy).toBeUndefined();
   });
 
-  it("supports alternate property names and reuses existing retry policies", async () => {
+  it('supports alternate property names and reuses existing retry policies', async () => {
     const existing = new RetryPolicy({
       maxRetries: 6,
       baseDelayMs: 25,
@@ -51,14 +51,14 @@ describe("AtLeastOnceDeliveryPolicyFactory", () => {
     });
 
     const policy = await factory.create({
-      type: "AtLeastOnceDeliveryPolicy",
+      type: 'AtLeastOnceDeliveryPolicy',
       sender_retry_policy: undefined,
       sender_retryPolicy: {
-        max_retries: "4",
+        max_retries: '4',
         baseDelayMs: 80,
-        max_delay_ms: "2500",
-        jitter_ms: "17",
-        backoff_factor: "1.5",
+        max_delay_ms: '2500',
+        jitter_ms: '17',
+        backoff_factor: '1.5',
       },
       receiverRetryPolicy: existing,
     } as Record<string, unknown>);

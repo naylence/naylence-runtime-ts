@@ -1,10 +1,10 @@
 const PACKAGE_JSON_RELATIVE_PATHS = [
-  "../../../../../package.json",
-  "../../../../package.json",
-  "../../../package.json",
-  "../../package.json",
-  "../package.json",
-  "./package.json",
+  '../../../../../package.json',
+  '../../../../package.json',
+  '../../../package.json',
+  '../../package.json',
+  '../package.json',
+  './package.json',
 ];
 
 let cachedVersion: string | null | undefined;
@@ -12,13 +12,15 @@ let cachedVersion: string | null | undefined;
 function tryGetImportMetaUrl(): string | undefined {
   try {
     // eslint-disable-next-line no-eval
-    return (0, eval)("import.meta.url") as string;
+    return (0, eval)('import.meta.url') as string;
   } catch {
     return undefined;
   }
 }
 
-function resolveFromEnv(env: Record<string, string | undefined> | undefined): string | null {
+function resolveFromEnv(
+  env: Record<string, string | undefined> | undefined
+): string | null {
   if (!env) {
     return null;
   }
@@ -30,7 +32,7 @@ function resolveFromEnv(env: Record<string, string | undefined> | undefined): st
 
   const npmName = env.npm_package_name;
   const npmVersion = env.npm_package_version;
-  if (npmName === "naylence-runtime" && typeof npmVersion === "string") {
+  if (npmName === 'naylence-runtime' && typeof npmVersion === 'string') {
     return npmVersion;
   }
 
@@ -45,33 +47,36 @@ async function resolveFromPackageJson(): Promise<string | null> {
     }
 
     try {
-      if (typeof require === "function") {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-  const localRequire = require as NodeJS.Require;
-  for (const candidate of PACKAGE_JSON_RELATIVE_PATHS) {
-    try {
-      const result = localRequire(candidate) as { version?: unknown };
-      if (result && typeof result.version === "string") {
-        return result.version;
-      }
-    } catch {
-      // Continue trying remaining candidates
-    }
-  }
+      if (typeof require === 'function') {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+        const localRequire = require as NodeJS.Require;
+        for (const candidate of PACKAGE_JSON_RELATIVE_PATHS) {
+          try {
+            const result = localRequire(candidate) as { version?: unknown };
+            if (result && typeof result.version === 'string') {
+              return result.version;
+            }
+          } catch {
+            // Continue trying remaining candidates
+          }
+        }
       }
     } catch {
       // ignore and fall through to dynamic require resolution
     }
 
-    const { createRequire } = await import("node:module");
+    const { createRequire } = await import('node:module');
     const importMetaUrl = tryGetImportMetaUrl();
     const baseSpecifier =
-      importMetaUrl ?? new URL("./", `file://${processRef.cwd?.() ?? process.cwd()}/`);
+      importMetaUrl ??
+      new URL('./', `file://${processRef.cwd?.() ?? process.cwd()}/`);
     const requireForCurrentModule = createRequire(baseSpecifier);
     for (const candidate of PACKAGE_JSON_RELATIVE_PATHS) {
       try {
-        const result = requireForCurrentModule(candidate) as { version?: unknown };
-        if (result && typeof result.version === "string") {
+        const result = requireForCurrentModule(candidate) as {
+          version?: unknown;
+        };
+        if (result && typeof result.version === 'string') {
           return result.version;
         }
       } catch {

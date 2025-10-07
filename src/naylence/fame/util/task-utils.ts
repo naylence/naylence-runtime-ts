@@ -2,14 +2,14 @@
  * Task utility functions and helpers
  */
 
-import { SpawnedTask } from "./task-types.js";
+import { SpawnedTask } from './task-types.js';
 
 /**
  * Wait for any task to complete (first to finish wins)
  */
 export async function waitForAny<T>(tasks: SpawnedTask<T>[]): Promise<T> {
   if (tasks.length === 0) {
-    throw new Error("Cannot wait for any of zero tasks");
+    throw new Error('Cannot wait for any of zero tasks');
   }
 
   return Promise.race(tasks.map((task) => task.promise));
@@ -37,7 +37,7 @@ export async function waitForAllSettled<T>(
 export function delay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new Error("Aborted"));
+      reject(new Error('Aborted'));
       return;
     }
 
@@ -45,9 +45,9 @@ export function delay(ms: number, signal?: AbortSignal): Promise<void> {
       resolve();
     }, ms);
 
-    signal?.addEventListener("abort", () => {
+    signal?.addEventListener('abort', () => {
       clearTimeout(timeoutId);
-      reject(new Error("Aborted"));
+      reject(new Error('Aborted'));
     });
   });
 }
@@ -64,7 +64,11 @@ export function withTimeout<T>(
     promise,
     new Promise<never>((_, reject) => {
       setTimeout(() => {
-        reject(new Error(timeoutMessage || `Operation timed out after ${timeoutMs}ms`));
+        reject(
+          new Error(
+            timeoutMessage || `Operation timed out after ${timeoutMs}ms`
+          )
+        );
       }, timeoutMs);
     }),
   ]);
@@ -95,7 +99,7 @@ export async function retryWithBackoff<T>(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (signal?.aborted) {
-      throw new Error("Aborted");
+      throw new Error('Aborted');
     }
 
     try {
@@ -108,7 +112,10 @@ export async function retryWithBackoff<T>(
       }
 
       // Calculate delay with exponential backoff
-      const delayMs = Math.min(baseDelayMs * Math.pow(backoffMultiplier, attempt), maxDelayMs);
+      const delayMs = Math.min(
+        baseDelayMs * Math.pow(backoffMultiplier, attempt),
+        maxDelayMs
+      );
 
       await delay(delayMs, signal);
     }

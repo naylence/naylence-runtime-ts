@@ -1,9 +1,16 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
-import type { FameEnvelope } from "naylence-core";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
+import type { FameEnvelope } from 'naylence-core';
 
 export interface EnvelopeSigner {
-  signEnvelope(envelope: FameEnvelope, options: { physicalPath: string }): FameEnvelope;
+  signEnvelope(
+    envelope: FameEnvelope,
+    options: { physicalPath: string }
+  ): FameEnvelope;
 }
 
 export interface EnvelopeSignerConfig extends ResourceConfig {
@@ -11,7 +18,7 @@ export interface EnvelopeSignerConfig extends ResourceConfig {
   [key: string]: unknown;
 }
 
-export const ENVELOPE_SIGNER_FACTORY_BASE_TYPE = "EnvelopeSignerFactory";
+export const ENVELOPE_SIGNER_FACTORY_BASE_TYPE = 'EnvelopeSignerFactory';
 
 export abstract class EnvelopeSignerFactory<
   C extends EnvelopeSignerConfig = EnvelopeSignerConfig,
@@ -21,7 +28,9 @@ export abstract class EnvelopeSignerFactory<
     ...factoryArgs: unknown[]
   ): Promise<EnvelopeSigner>;
 
-  public static async createEnvelopeSigner<C extends EnvelopeSignerConfig = EnvelopeSignerConfig>(
+  public static async createEnvelopeSigner<
+    C extends EnvelopeSignerConfig = EnvelopeSignerConfig,
+  >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<EnvelopeSigner> {
@@ -33,7 +42,7 @@ export abstract class EnvelopeSignerFactory<
       );
 
       if (!instance) {
-        throw new Error("Failed to create envelope signer from configuration");
+        throw new Error('Failed to create envelope signer from configuration');
       }
 
       return instance;
@@ -46,7 +55,7 @@ export abstract class EnvelopeSignerFactory<
     );
 
     if (!instance) {
-      throw new Error("Failed to create default envelope signer");
+      throw new Error('Failed to create default envelope signer');
     }
 
     return instance;

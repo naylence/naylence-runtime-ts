@@ -5,16 +5,16 @@ import {
   type FameEnvelope,
   type KeyAnnounceFrame,
   type KeyRequestFrame,
-} from "naylence-core";
+} from 'naylence-core';
 
-import { KeyCorrelationMap } from "./key-correlation-map.js";
-import type { RoutingNodeLike } from "../node/routing-node-like.js";
-import type { BindingManager } from "../node/binding-manager.js";
-import type { KeyManager } from "../security/keys/key-manager.js";
-import type { KeyRecord } from "../security/keys/key-store.js";
-import { getLogger } from "../util/logging.js";
+import { KeyCorrelationMap } from './key-correlation-map.js';
+import type { RoutingNodeLike } from '../node/routing-node-like.js';
+import type { BindingManager } from '../node/binding-manager.js';
+import type { KeyManager } from '../security/keys/key-manager.js';
+import type { KeyRecord } from '../security/keys/key-store.js';
+import { getLogger } from '../util/logging.js';
 
-const logger = getLogger("key-frame-handler");
+const logger = getLogger('key-frame-handler');
 
 export interface AddressRouteInfo {
   segment?: string | null;
@@ -25,7 +25,9 @@ export interface AddressRouteInfo {
 
 interface RouteManagerLike {
   downstreamRoutes?: Map<string, unknown> | Record<string, unknown>;
-  _downstream_addresses_routes?: Map<string, AddressRouteInfo> | Record<string, AddressRouteInfo>;
+  _downstream_addresses_routes?:
+    | Map<string, AddressRouteInfo>
+    | Record<string, AddressRouteInfo>;
   _peer_routes?: Map<string, unknown> | Record<string, unknown>;
   _peer_addresses_routes?: Map<string, string> | Record<string, string>;
 }
@@ -41,11 +43,14 @@ type SpawnFunction = (
 ) => Promise<unknown> | unknown;
 
 function isPromise<T = unknown>(value: unknown): value is Promise<T> {
-  return Boolean(value) && typeof (value as Promise<T>).then === "function";
+  return Boolean(value) && typeof (value as Promise<T>).then === 'function';
 }
 
 function toRouteMap(
-  mapLike: Map<string, AddressRouteInfo> | Record<string, AddressRouteInfo> | undefined
+  mapLike:
+    | Map<string, AddressRouteInfo>
+    | Record<string, AddressRouteInfo>
+    | undefined
 ): Map<string, AddressRouteInfo> {
   if (!mapLike) {
     return new Map();
@@ -116,11 +121,11 @@ export class KeyFrameHandler {
       async () => {
         await this.correlationMap.runCleanup({ signal: controller.signal });
       },
-      { name: "key-corr-cleanup" }
+      { name: 'key-corr-cleanup' }
     );
 
     this.cleanupTask = isPromise(result) ? result : null;
-    logger.debug("key_frame_handler_started");
+    logger.debug('key_frame_handler_started');
   }
 
   public async stop(): Promise<void> {
@@ -137,15 +142,15 @@ export class KeyFrameHandler {
       try {
         await pending;
       } catch (error) {
-        if (!(error instanceof Error && error.name === "AbortError")) {
-          logger.warning("key_corr_cleanup_stop_error", {
+        if (!(error instanceof Error && error.name === 'AbortError')) {
+          logger.warning('key_corr_cleanup_stop_error', {
             error: error instanceof Error ? error.message : String(error),
           });
         }
       }
     }
 
-    logger.debug("key_frame_handler_stopped");
+    logger.debug('key_frame_handler_stopped');
   }
 
   public async acceptKeyAnnounce(
@@ -153,27 +158,31 @@ export class KeyFrameHandler {
     context?: FameDeliveryContext
   ): Promise<void> {
     if (!context || !context.originType) {
-      throw new Error("KeyAnnounce handling requires delivery context with originType");
+      throw new Error(
+        'KeyAnnounce handling requires delivery context with originType'
+      );
     }
 
     const frame = envelope.frame as KeyAnnounceFrame | undefined;
-    if (!frame || frame.type !== "KeyAnnounce") {
-      logger.warning("unexpected_frame_type_for_key_announce", {
+    if (!frame || frame.type !== 'KeyAnnounce') {
+      logger.warning('unexpected_frame_type_for_key_announce', {
         envp_id: envelope.id,
         frame_type: frame?.type,
       });
       return;
     }
 
-    if (typeof envelope.corrId === "string") {
+    if (typeof envelope.corrId === 'string') {
       const targetRoute = this.correlationMap.pop(envelope.corrId);
       if (targetRoute) {
-        logger.debug("routing_key_announce_to_original_requester", {
+        logger.debug('routing_key_announce_to_original_requester', {
           target_route: targetRoute,
         });
 
         const envelopeFactory = this.routingNode.envelopeFactory;
-        const routedOptions: Parameters<typeof envelopeFactory.createEnvelope>[0] = {
+        const routedOptions: Parameters<
+          typeof envelopeFactory.createEnvelope
+        >[0] = {
           frame,
           corrId: envelope.corrId,
         };
@@ -190,18 +199,22 @@ export class KeyFrameHandler {
         const routedEnvelope = envelopeFactory.createEnvelope(routedOptions);
 
         if (!this.routingNode.forwardToRoute) {
-          throw new Error("Routing node does not support forwardToRoute");
+          throw new Error('Routing node does not support forwardToRoute');
         }
 
-        await this.routingNode.forwardToRoute(targetRoute, routedEnvelope, context);
+        await this.routingNode.forwardToRoute(
+          targetRoute,
+          routedEnvelope,
+          context
+        );
         return;
       }
     }
 
     if (!this.isKnownOrigin(context.originType, context.fromSystemId ?? null)) {
-      const origin = context.fromSystemId ?? "unknown";
+      const origin = context.fromSystemId ?? 'unknown';
       throw new Error(
-        `Cannot accept key announce from unknown ${context.originType?.toLowerCase() ?? "origin"} system ${origin}`
+        `Cannot accept key announce from unknown ${context.originType?.toLowerCase() ?? 'origin'} system ${origin}`
       );
     }
 
@@ -213,26 +226,28 @@ export class KeyFrameHandler {
     context?: FameDeliveryContext
   ): Promise<boolean> {
     if (!context || !context.originType) {
-      throw new Error("KeyRequest handling requires delivery context with originType");
+      throw new Error(
+        'KeyRequest handling requires delivery context with originType'
+      );
     }
 
     if (!this.keyManager) {
-      throw new Error("KeyManager must be set for KeyRequest handling");
+      throw new Error('KeyManager must be set for KeyRequest handling');
     }
 
     const frame = envelope.frame as KeyRequestFrame | undefined;
-    if (!frame || frame.type !== "KeyRequest") {
-      throw new Error("KeyFrameHandler only handles KeyRequest frames");
+    if (!frame || frame.type !== 'KeyRequest') {
+      throw new Error('KeyFrameHandler only handles KeyRequest frames');
     }
 
     const originSegment = this.getSourceSystemId(context);
     if (!originSegment) {
-      throw new Error("Missing origin system id for KeyRequest");
+      throw new Error('Missing origin system id for KeyRequest');
     }
 
-    if (frame.address && typeof envelope.corrId === "string") {
+    if (frame.address && typeof envelope.corrId === 'string') {
       this.correlationMap.add(envelope.corrId, originSegment);
-      logger.debug("stored_key_request_correlation", {
+      logger.debug('stored_key_request_correlation', {
         corr_id: envelope.corrId,
         origin: originSegment,
         address: String(frame.address),
@@ -261,7 +276,7 @@ export class KeyFrameHandler {
       return true;
     }
 
-    throw new Error("KeyRequest must include either kid or address");
+    throw new Error('KeyRequest must include either kid or address');
   }
 
   private async handleKeyRequestById(options: {
@@ -271,28 +286,30 @@ export class KeyFrameHandler {
     originSegment: string;
   }): Promise<void> {
     if (!this.keyManager) {
-      throw new Error("KeyManager must be set for KeyRequest handling");
+      throw new Error('KeyManager must be set for KeyRequest handling');
     }
 
     const { frame, envelope, context, originSegment } = options;
 
     if (frame.physicalPath) {
       try {
-        const keys = toRecordKeys(await this.keyManager.getKeysForPath(frame.physicalPath));
-        const encryptionKeys = keys.filter((key) => key.use === "enc");
+        const keys = toRecordKeys(
+          await this.keyManager.getKeysForPath(frame.physicalPath)
+        );
+        const encryptionKeys = keys.filter((key) => key.use === 'enc');
         if (encryptionKeys.length > 0) {
           context.stickinessRequired = true;
           context.stickySid = envelope.sid ?? undefined;
         }
       } catch (error) {
-        logger.trace("key_lookup_for_physical_path_failed", {
+        logger.trace('key_lookup_for_physical_path_failed', {
           physical_path: frame.physicalPath,
           error: error instanceof Error ? error.message : String(error),
         });
       }
     }
 
-    const request: Parameters<KeyManager["handleKeyRequest"]>[0] = {
+    const request: Parameters<KeyManager['handleKeyRequest']>[0] = {
       kid: frame.kid!,
       fromSegment: originSegment,
       origin: context.originType!,
@@ -319,20 +336,27 @@ export class KeyFrameHandler {
     originalEnvelope?: FameEnvelope;
   }): Promise<boolean> {
     if (!this.keyManager) {
-      throw new Error("KeyManager must be set for KeyRequest handling");
+      throw new Error('KeyManager must be set for KeyRequest handling');
     }
 
-    const { address, fromSegment, physicalPath, context, corrId, originalEnvelope } = options;
+    const {
+      address,
+      fromSegment,
+      physicalPath,
+      context,
+      corrId,
+      originalEnvelope,
+    } = options;
     const addressStr = String(address);
 
-    logger.trace("handling_key_request_by_address", {
+    logger.trace('handling_key_request_by_address', {
       address: addressStr,
       corr_id: corrId,
     });
 
     const routeInfo = this.getAddressRouteInfo(address);
     if (routeInfo?.segment) {
-      logger.debug("key_request_needs_routing", {
+      logger.debug('key_request_needs_routing', {
         address: addressStr,
         segment: routeInfo.segment,
         corr_id: corrId,
@@ -344,11 +368,14 @@ export class KeyFrameHandler {
     if (localBinding) {
       const localPath = this.routingNode.physicalPath;
       try {
-        const keys = toRecordKeys(await this.keyManager.getKeysForPath(localPath));
-        const encryptionKeys = keys.filter((key) => key.use === "enc");
+        const keys = toRecordKeys(
+          await this.keyManager.getKeysForPath(localPath)
+        );
+        const encryptionKeys = keys.filter((key) => key.use === 'enc');
         if (encryptionKeys.length > 0) {
           const selected = encryptionKeys[0];
-          const kid = typeof selected.kid === "string" ? selected.kid : undefined;
+          const kid =
+            typeof selected.kid === 'string' ? selected.kid : undefined;
           if (kid) {
             context.stickinessRequired = true;
             context.stickySid = originalEnvelope?.sid ?? fromSegment;
@@ -365,7 +392,7 @@ export class KeyFrameHandler {
           }
         }
       } catch (error) {
-        logger.trace("key_lookup_for_local_binding_failed", {
+        logger.trace('key_lookup_for_local_binding_failed', {
           path: localPath,
           error: error instanceof Error ? error.message : String(error),
         });
@@ -386,7 +413,7 @@ export class KeyFrameHandler {
         });
         return true;
       } catch (error) {
-        logger.trace("key_lookup_by_encryption_key_id_failed", {
+        logger.trace('key_lookup_by_encryption_key_id_failed', {
           address: addressStr,
           key_id: routeInfo.encryptionKeyId,
           error: error instanceof Error ? error.message : String(error),
@@ -396,11 +423,13 @@ export class KeyFrameHandler {
 
     if (routeInfo?.physicalPath) {
       try {
-        const keys = toRecordKeys(await this.keyManager.getKeysForPath(routeInfo.physicalPath));
-        const encryptionKeys = keys.filter((key) => key.use === "enc");
+        const keys = toRecordKeys(
+          await this.keyManager.getKeysForPath(routeInfo.physicalPath)
+        );
+        const encryptionKeys = keys.filter((key) => key.use === 'enc');
         if (encryptionKeys.length > 0) {
           const kid = encryptionKeys[0]?.kid;
-          if (kid && typeof kid === "string") {
+          if (kid && typeof kid === 'string') {
             context.stickinessRequired = true;
             context.stickySid = originalEnvelope?.sid ?? fromSegment;
             await this.sendKeyRequest({
@@ -415,7 +444,7 @@ export class KeyFrameHandler {
           }
         }
       } catch (error) {
-        logger.trace("key_lookup_by_physical_path_failed", {
+        logger.trace('key_lookup_by_physical_path_failed', {
           address: addressStr,
           path: routeInfo.physicalPath,
           error: error instanceof Error ? error.message : String(error),
@@ -425,11 +454,13 @@ export class KeyFrameHandler {
 
     if (physicalPath) {
       try {
-        const keys = toRecordKeys(await this.keyManager.getKeysForPath(physicalPath));
-        const encryptionKeys = keys.filter((key) => key.use === "enc");
+        const keys = toRecordKeys(
+          await this.keyManager.getKeysForPath(physicalPath)
+        );
+        const encryptionKeys = keys.filter((key) => key.use === 'enc');
         if (encryptionKeys.length > 0) {
           const kid = encryptionKeys[0]?.kid;
-          if (kid && typeof kid === "string") {
+          if (kid && typeof kid === 'string') {
             context.stickinessRequired = true;
             context.stickySid = originalEnvelope?.sid ?? fromSegment;
             await this.sendKeyRequest({
@@ -444,7 +475,7 @@ export class KeyFrameHandler {
           }
         }
       } catch (error) {
-        logger.trace("key_lookup_by_request_physical_path_failed", {
+        logger.trace('key_lookup_by_request_physical_path_failed', {
           address: addressStr,
           path: physicalPath,
           error: error instanceof Error ? error.message : String(error),
@@ -455,11 +486,13 @@ export class KeyFrameHandler {
     const extractedPath = this.extractPhysicalPathFromAddress(addressStr);
     if (extractedPath) {
       try {
-        const keys = toRecordKeys(await this.keyManager.getKeysForPath(extractedPath));
-        const encryptionKeys = keys.filter((key) => key.use === "enc");
+        const keys = toRecordKeys(
+          await this.keyManager.getKeysForPath(extractedPath)
+        );
+        const encryptionKeys = keys.filter((key) => key.use === 'enc');
         if (encryptionKeys.length > 0) {
           const kid = encryptionKeys[0]?.kid;
-          if (kid && typeof kid === "string") {
+          if (kid && typeof kid === 'string') {
             context.stickinessRequired = true;
             context.stickySid = originalEnvelope?.sid ?? fromSegment;
             await this.sendKeyRequest({
@@ -474,7 +507,7 @@ export class KeyFrameHandler {
           }
         }
       } catch (error) {
-        logger.trace("key_lookup_by_extracted_path_failed", {
+        logger.trace('key_lookup_by_extracted_path_failed', {
           address: addressStr,
           path: extractedPath,
           error: error instanceof Error ? error.message : String(error),
@@ -482,16 +515,20 @@ export class KeyFrameHandler {
       }
     }
 
-    logger.trace("delegating_key_request_to_routing_pipeline", {
+    logger.trace('delegating_key_request_to_routing_pipeline', {
       address: addressStr,
       corr_id: corrId,
     });
     return false;
   }
 
-  private getAddressRouteInfo(address: FameAddress | string): AddressRouteInfo | null {
+  private getAddressRouteInfo(
+    address: FameAddress | string
+  ): AddressRouteInfo | null {
     const key = String(address);
-    const downstream = toRouteMap(this.routeManager?._downstream_addresses_routes);
+    const downstream = toRouteMap(
+      this.routeManager?._downstream_addresses_routes
+    );
     if (downstream.has(key)) {
       return downstream.get(key) ?? null;
     }
@@ -516,10 +553,10 @@ export class KeyFrameHandler {
     originalSid?: string | null | undefined;
   }): Promise<void> {
     if (!this.keyManager) {
-      throw new Error("KeyManager must be set for KeyRequest handling");
+      throw new Error('KeyManager must be set for KeyRequest handling');
     }
 
-    const request: Parameters<KeyManager["handleKeyRequest"]>[0] = {
+    const request: Parameters<KeyManager['handleKeyRequest']>[0] = {
       kid: options.kid,
       fromSegment: options.fromSegment,
       origin: options.originType,
@@ -541,18 +578,21 @@ export class KeyFrameHandler {
   }
 
   private extractPhysicalPathFromAddress(address: string): string | null {
-    const atIndex = address.indexOf("@");
+    const atIndex = address.indexOf('@');
     if (atIndex < 0) {
       return null;
     }
     const possiblePath = address.slice(atIndex + 1);
-    if (possiblePath.startsWith("/")) {
+    if (possiblePath.startsWith('/')) {
       return possiblePath;
     }
     return null;
   }
 
-  private isKnownOrigin(origin: DeliveryOriginType, systemId: string | null): boolean {
+  private isKnownOrigin(
+    origin: DeliveryOriginType,
+    systemId: string | null
+  ): boolean {
     if (!systemId) {
       return false;
     }
@@ -578,7 +618,7 @@ export class KeyFrameHandler {
     if (container instanceof Map) {
       return container.has(key);
     }
-    if (typeof container === "object") {
+    if (typeof container === 'object') {
       return Object.prototype.hasOwnProperty.call(container, key);
     }
     return false;

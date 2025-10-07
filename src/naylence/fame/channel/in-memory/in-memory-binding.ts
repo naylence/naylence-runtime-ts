@@ -5,8 +5,11 @@
  * to an InMemoryReadWriteChannel, managing the binding lifecycle.
  */
 
-import { FameAddress } from "naylence-core";
-import { InMemoryReadWriteChannel, InMemoryChannelConfig } from "./in-memory-channel.js";
+import { FameAddress } from 'naylence-core';
+import {
+  InMemoryReadWriteChannel,
+  InMemoryChannelConfig,
+} from './in-memory-channel.js';
 
 /**
  * Binding configuration options
@@ -24,9 +27,13 @@ export class InMemoryBinding {
   public readonly address: FameAddress;
   public readonly channel: InMemoryReadWriteChannel;
 
-  constructor(address: FameAddress | string, config: InMemoryBindingConfig = {}) {
+  constructor(
+    address: FameAddress | string,
+    config: InMemoryBindingConfig = {}
+  ) {
     // Convert string address to FameAddress if needed
-    this.address = typeof address === "string" ? new FameAddress(address) : address;
+    this.address =
+      typeof address === 'string' ? new FameAddress(address) : address;
 
     // Use provided channel or create a new one
     this.channel = config.channel || new InMemoryReadWriteChannel(config);
@@ -35,7 +42,10 @@ export class InMemoryBinding {
   /**
    * Create a binding from an address string
    */
-  static fromAddress(address: string, config: InMemoryBindingConfig = {}): InMemoryBinding {
+  static fromAddress(
+    address: string,
+    config: InMemoryBindingConfig = {}
+  ): InMemoryBinding {
     return new InMemoryBinding(address, config);
   }
 
@@ -73,7 +83,10 @@ export class InMemoryBinding {
   /**
    * Convert the binding to a plain object for serialization
    */
-  toObject(): { address: string; channelState: { queueSize: number; isClosed: boolean } } {
+  toObject(): {
+    address: string;
+    channelState: { queueSize: number; isClosed: boolean };
+  } {
     return {
       address: this.address.toString(),
       channelState: {

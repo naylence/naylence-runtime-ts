@@ -1,30 +1,34 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-import type { CredentialProvider } from "../security/credential/credential-provider.js";
-import type { CredentialProviderConfig } from "../security/credential/credential-provider-factory.js";
-import { CredentialProviderFactory } from "../security/credential/credential-provider-factory.js";
-import type { SecretSourceType } from "../security/credential/secret-source.js";
-import { SecretSource } from "../security/credential/secret-source.js";
-import { safeImport } from "../util/lazy-import.js";
+import type { CredentialProvider } from '../security/credential/credential-provider.js';
+import type { CredentialProviderConfig } from '../security/credential/credential-provider-factory.js';
+import { CredentialProviderFactory } from '../security/credential/credential-provider-factory.js';
+import type { SecretSourceType } from '../security/credential/secret-source.js';
+import { SecretSource } from '../security/credential/secret-source.js';
+import { safeImport } from '../util/lazy-import.js';
 
-import type { SQLiteStorageProvider } from "./sqlite-storage-provider.js";
+import type { SQLiteStorageProvider } from './sqlite-storage-provider.js';
 import {
   StorageProviderConfig,
   StorageProviderFactory,
   registerStorageProviderFactory,
-} from "./storage-provider-factory.js";
+} from './storage-provider-factory.js';
 
 export interface SQLiteStorageProviderConfig extends StorageProviderConfig {
-  type: "SQLiteStorageProvider";
+  type: 'SQLiteStorageProvider';
   dbDirectory?: string;
   isEncrypted?: boolean | string;
   isCached?: boolean | string;
   autoRecover?: boolean | string;
-  masterKey?: SecretSourceType | CredentialProviderConfig | Record<string, unknown> | null;
+  masterKey?:
+    | SecretSourceType
+    | CredentialProviderConfig
+    | Record<string, unknown>
+    | null;
 }
 
 interface NormalizedSQLiteConfig {
-  type: "SQLiteStorageProvider";
+  type: 'SQLiteStorageProvider';
   dbDirectory: string;
   isEncrypted: boolean;
   isCached: boolean;
@@ -32,15 +36,15 @@ interface NormalizedSQLiteConfig {
   masterKey: CredentialProviderConfig | Record<string, unknown> | null;
 }
 
-const TRUE_VALUES = new Set(["true", "1", "yes", "on"]);
-const FALSE_VALUES = new Set(["false", "0", "no", "off", ""]);
+const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
+const FALSE_VALUES = new Set(['false', '0', 'no', 'off', '']);
 
 function coerceBoolean(value: unknown, fieldName: string): boolean {
-  if (typeof value === "boolean") {
+  if (typeof value === 'boolean') {
     return value;
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
     if (TRUE_VALUES.has(normalized)) {
       return true;
@@ -57,8 +61,8 @@ function coerceBoolean(value: unknown, fieldName: string): boolean {
 
 const sqliteConfigSchema = z
   .object({
-    type: z.literal("SQLiteStorageProvider").default("SQLiteStorageProvider"),
-    dbDirectory: z.string().min(1).default("./data/sqlite"),
+    type: z.literal('SQLiteStorageProvider').default('SQLiteStorageProvider'),
+    dbDirectory: z.string().min(1).default('./data/sqlite'),
     isEncrypted: z.union([z.boolean(), z.string()]).default(false),
     isCached: z.union([z.boolean(), z.string()]).default(true),
     autoRecover: z.union([z.boolean(), z.string()]).default(true),
@@ -76,40 +80,52 @@ function normalizeSQLiteConfig(
     ...(config as Record<string, unknown> | undefined),
   };
 
-  if (candidate.dbDirectory === undefined && typeof candidate.db_directory === "string") {
+  if (
+    candidate.dbDirectory === undefined &&
+    typeof candidate.db_directory === 'string'
+  ) {
     candidate.dbDirectory = candidate.db_directory;
   }
-  if (candidate.isEncrypted === undefined && candidate.is_encrypted !== undefined) {
+  if (
+    candidate.isEncrypted === undefined &&
+    candidate.is_encrypted !== undefined
+  ) {
     candidate.isEncrypted = candidate.is_encrypted;
   }
   if (candidate.isCached === undefined && candidate.is_cached !== undefined) {
     candidate.isCached = candidate.is_cached;
   }
-  if (candidate.autoRecover === undefined && candidate.auto_recover !== undefined) {
+  if (
+    candidate.autoRecover === undefined &&
+    candidate.auto_recover !== undefined
+  ) {
     candidate.autoRecover = candidate.auto_recover;
   }
   if (candidate.masterKey === undefined && candidate.master_key !== undefined) {
     candidate.masterKey = candidate.master_key;
   }
 
-  const parsed = sqliteConfigSchema.parse({ ...candidate, type: "SQLiteStorageProvider" });
+  const parsed = sqliteConfigSchema.parse({
+    ...candidate,
+    type: 'SQLiteStorageProvider',
+  });
 
-  const isEncrypted = coerceBoolean(parsed.isEncrypted, "isEncrypted");
-  const isCached = coerceBoolean(parsed.isCached, "isCached");
-  const autoRecover = coerceBoolean(parsed.autoRecover, "autoRecover");
+  const isEncrypted = coerceBoolean(parsed.isEncrypted, 'isEncrypted');
+  const isCached = coerceBoolean(parsed.isCached, 'isCached');
+  const autoRecover = coerceBoolean(parsed.autoRecover, 'autoRecover');
 
   const masterKeyValue = parsed.masterKey;
   const normalizedMasterKey =
-    masterKeyValue === null || masterKeyValue === ""
+    masterKeyValue === null || masterKeyValue === ''
       ? null
       : SecretSource.normalize(masterKeyValue as SecretSourceType);
 
   if (isEncrypted && !normalizedMasterKey) {
-    throw new Error("masterKey is required when isEncrypted is true");
+    throw new Error('masterKey is required when isEncrypted is true');
   }
 
   return {
-    type: "SQLiteStorageProvider",
+    type: 'SQLiteStorageProvider',
     dbDirectory: parsed.dbDirectory,
     isEncrypted,
     isCached,
@@ -119,7 +135,7 @@ function normalizeSQLiteConfig(
 }
 
 export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteStorageProviderConfig> {
-  public readonly type = "SQLiteStorageProvider";
+  public readonly type = 'SQLiteStorageProvider';
 
   public async create(
     config?: SQLiteStorageProviderConfig | Record<string, unknown> | null
@@ -130,12 +146,13 @@ export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteS
 
     let masterKeyProvider: CredentialProvider | null = null;
     if (normalized.isEncrypted) {
-      masterKeyProvider = await CredentialProviderFactory.createCredentialProvider(
-        normalized.masterKey as CredentialProviderConfig
-      );
+      masterKeyProvider =
+        await CredentialProviderFactory.createCredentialProvider(
+          normalized.masterKey as CredentialProviderConfig
+        );
     } else if (normalized.masterKey) {
       console.warn(
-        "SQLiteStorageProvider masterKey provided but isEncrypted=false. The master key will be ignored."
+        'SQLiteStorageProvider masterKey provided but isEncrypted=false. The master key will be ignored.'
       );
     }
 
@@ -149,22 +166,27 @@ export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteS
   }
 }
 
-type SqliteStorageProviderModule = typeof import("./sqlite-storage-provider.js");
+type SqliteStorageProviderModule =
+  typeof import('./sqlite-storage-provider.js');
 
-let sqliteStorageProviderModulePromise: Promise<SqliteStorageProviderModule> | null = null;
+let sqliteStorageProviderModulePromise: Promise<SqliteStorageProviderModule> | null =
+  null;
 
 function getSqliteStorageProviderModule(): Promise<SqliteStorageProviderModule> {
   if (!sqliteStorageProviderModulePromise) {
     sqliteStorageProviderModulePromise = safeImport(
-      () => import("./sqlite-storage-provider.js"),
-      "better-sqlite3",
+      () => import('./sqlite-storage-provider.js'),
+      'better-sqlite3',
       {
         helpMessage:
-          "Missing optional dependency \"better-sqlite3\". Install it to enable the SQLite storage provider.",
+          'Missing optional dependency "better-sqlite3". Install it to enable the SQLite storage provider.',
       }
     );
   }
   return sqliteStorageProviderModulePromise;
 }
 
-registerStorageProviderFactory("SQLiteStorageProvider", SQLiteStorageProviderFactory);
+registerStorageProviderFactory(
+  'SQLiteStorageProvider',
+  SQLiteStorageProviderFactory
+);

@@ -4,11 +4,11 @@ import type {
   FameConnector,
   FameDeliveryContext,
   FameEnvelope,
-} from "naylence-core";
+} from 'naylence-core';
 
-import type { ConnectorConfig } from "../connector/connector-config.js";
-import type { WebSocketLike } from "../connector/websocket-connector.js";
-import type { NodeLike } from "./node-like.js";
+import type { ConnectorConfig } from '../connector/connector-config.js';
+import type { WebSocketLike } from '../connector/websocket-connector.js';
+import type { NodeLike } from './node-like.js';
 
 export interface OriginConnectorOptions {
   originType: DeliveryOriginType;
@@ -20,7 +20,9 @@ export interface OriginConnectorOptions {
 }
 
 export interface RoutingNodeLike extends NodeLike {
-  createOriginConnector(options: OriginConnectorOptions): Promise<FameConnector>;
+  createOriginConnector(
+    options: OriginConnectorOptions
+  ): Promise<FameConnector>;
   forwardToPeers?(
     envelope: FameEnvelope,
     peers?: unknown,

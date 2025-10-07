@@ -11,45 +11,51 @@ import {
   type KeyRequestFrame,
   type NodeAttachFrame,
   type NodeWelcomeFrame,
-} from "naylence-core";
+} from 'naylence-core';
 
-import type { Authorizer } from "./auth/authorizer.js";
-import type { CryptoProvider } from "./crypto/providers/crypto-provider.js";
-import type { EncryptionManager } from "./encryption/encryption-manager.js";
-import type { SecureChannelManager } from "./encryption/secure-channel-manager.js";
-import type { AttachmentKeyValidator } from "./keys/attachment-key-validator.js";
-import type { CertificateManager } from "./cert/certificate-manager.js";
-import type { KeyManager } from "./keys/key-manager.js";
-import { KeyManagementHandler } from "./keys/key-management-handler.js";
-import type { EnvelopeSigner } from "./signing/envelope-signer.js";
-import type { EnvelopeVerifier } from "./signing/envelope-verifier.js";
-import type { SecurityManager } from "./security-manager.js";
-import { SecurityAction, type SecurityPolicy } from "./policy/security-policy.js";
-import type { AttachInfo } from "../node/admission/node-attach-client.js";
-import type { NodeEventListener } from "../node/node-event-listener.js";
-import type { NodeLike } from "../node/node-like.js";
-import type { RoutingNodeLike } from "../node/routing-node-like.js";
-import { EnvelopeSecurityHandler } from "../node/envelope-security-handler.js";
-import { SecureChannelFrameHandler } from "../node/secure-channel-frame-handler.js";
-import { KeyFrameHandler } from "../sentinel/key-frame-handler.js";
-import { getLogger } from "../util/logging.js";
-import { secureDigest } from "../util/util.js";
-import { canonicalJson } from "../security/signing/eddsa-signer-verifier.js";
-import { currentTraceId } from "../util/envelope-context.js";
-import { FameTransportClose } from "../errors/errors.js";
-import type { SecurityContext } from "naylence-core";
+import type { Authorizer } from './auth/authorizer.js';
+import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
+import type { EncryptionManager } from './encryption/encryption-manager.js';
+import type { SecureChannelManager } from './encryption/secure-channel-manager.js';
+import type { AttachmentKeyValidator } from './keys/attachment-key-validator.js';
+import type { CertificateManager } from './cert/certificate-manager.js';
+import type { KeyManager } from './keys/key-manager.js';
+import { KeyManagementHandler } from './keys/key-management-handler.js';
+import type { EnvelopeSigner } from './signing/envelope-signer.js';
+import type { EnvelopeVerifier } from './signing/envelope-verifier.js';
+import type { SecurityManager } from './security-manager.js';
+import {
+  SecurityAction,
+  type SecurityPolicy,
+} from './policy/security-policy.js';
+import type { AttachInfo } from '../node/admission/node-attach-client.js';
+import type { NodeEventListener } from '../node/node-event-listener.js';
+import type { NodeLike } from '../node/node-like.js';
+import type { RoutingNodeLike } from '../node/routing-node-like.js';
+import { EnvelopeSecurityHandler } from '../node/envelope-security-handler.js';
+import { SecureChannelFrameHandler } from '../node/secure-channel-frame-handler.js';
+import { KeyFrameHandler } from '../sentinel/key-frame-handler.js';
+import { getLogger } from '../util/logging.js';
+import { secureDigest } from '../util/util.js';
+import { canonicalJson } from '../security/signing/eddsa-signer-verifier.js';
+import { currentTraceId } from '../util/envelope-context.js';
+import { FameTransportClose } from '../errors/errors.js';
+import type { SecurityContext } from 'naylence-core';
 
 type KeyFrameHandlerOptions = ConstructorParameters<typeof KeyFrameHandler>[0];
-type KeyFrameRouteManager = KeyFrameHandlerOptions["routeManager"];
-type KeyFrameBindingManager = KeyFrameHandlerOptions["bindingManager"];
-type HandleKeyRequestOptions = Parameters<KeyManager["handleKeyRequest"]>[0];
+type KeyFrameRouteManager = KeyFrameHandlerOptions['routeManager'];
+type KeyFrameBindingManager = KeyFrameHandlerOptions['bindingManager'];
+type HandleKeyRequestOptions = Parameters<KeyManager['handleKeyRequest']>[0];
 
 type NodeAttachValidatingAuthorizer = Authorizer & {
   validateNodeAttachRequest?: (
     node: NodeLike,
     frame: NodeAttachFrame,
     authContext?: AuthorizationContext
-  ) => Promise<AuthorizationContext | undefined> | AuthorizationContext | undefined;
+  ) =>
+    | Promise<AuthorizationContext | undefined>
+    | AuthorizationContext
+    | undefined;
 };
 
 function hasNodeAttachValidation(
@@ -57,19 +63,26 @@ function hasNodeAttachValidation(
 ): authorizer is NodeAttachValidatingAuthorizer {
   return Boolean(
     authorizer &&
-      typeof (authorizer as NodeAttachValidatingAuthorizer).validateNodeAttachRequest === "function"
+      typeof (authorizer as NodeAttachValidatingAuthorizer)
+        .validateNodeAttachRequest === 'function'
   );
 }
 
-const logger = getLogger("default-security-manager");
+const logger = getLogger('default-security-manager');
 
-type SendCallback = (envelope: FameEnvelope, context?: FameDeliveryContext | null) => Promise<void>;
+type SendCallback = (
+  envelope: FameEnvelope,
+  context?: FameDeliveryContext | null
+) => Promise<void>;
 
 function hasNodeListenerMethod<T extends keyof NodeEventListener, C>(
   candidate: C | null | undefined,
   method: T
 ): candidate is C & Required<Pick<NodeEventListener, T>> {
-  return Boolean(candidate && typeof (candidate as Record<string, unknown>)[method] === "function");
+  return Boolean(
+    candidate &&
+      typeof (candidate as Record<string, unknown>)[method] === 'function'
+  );
 }
 
 function ensureSecurityContext(context: FameDeliveryContext): SecurityContext {
@@ -79,21 +92,27 @@ function ensureSecurityContext(context: FameDeliveryContext): SecurityContext {
   return context.security;
 }
 
-function isDataFrame(frame: FameEnvelope["frame"]): frame is DataFrame {
-  return typeof (frame as DataFrame).type === "string" && (frame as DataFrame).type === "Data";
-}
-
-function isCriticalFrame(frame: FameEnvelope["frame"]): boolean {
-  const frameType = frame?.type;
+function isDataFrame(frame: FameEnvelope['frame']): frame is DataFrame {
   return (
-    frameType === "KeyRequest" ||
-    frameType === "KeyAnnounce" ||
-    frameType === "SecureOpen" ||
-    frameType === "SecureAccept"
+    typeof (frame as DataFrame).type === 'string' &&
+    (frame as DataFrame).type === 'Data'
   );
 }
 
-function createLocalContext(node: NodeLike, source?: FameDeliveryContext): FameDeliveryContext {
+function isCriticalFrame(frame: FameEnvelope['frame']): boolean {
+  const frameType = frame?.type;
+  return (
+    frameType === 'KeyRequest' ||
+    frameType === 'KeyAnnounce' ||
+    frameType === 'SecureOpen' ||
+    frameType === 'SecureAccept'
+  );
+}
+
+function createLocalContext(
+  node: NodeLike,
+  source?: FameDeliveryContext
+): FameDeliveryContext {
   const context: FameDeliveryContext = {
     originType: DeliveryOriginType.LOCAL,
     fromSystemId: node.id,
@@ -135,7 +154,10 @@ function normalizeDeliveryContext(
   return normalized;
 }
 interface SpawnLike {
-  spawn?: (task: () => Promise<void>, options?: { name?: string }) => Promise<unknown> | unknown;
+  spawn?: (
+    task: () => Promise<void>,
+    options?: { name?: string }
+  ) => Promise<unknown> | unknown;
 }
 
 export class DefaultSecurityManager implements SecurityManager {
@@ -237,18 +259,24 @@ export class DefaultSecurityManager implements SecurityManager {
 
   public get cryptoProvider(): CryptoProvider | null {
     if (!this._node) {
-      logger.debug("crypto_provider_requested_before_node_initialized");
-      throw new Error("DefaultSecurityManager has not been initialized with a node");
+      logger.debug('crypto_provider_requested_before_node_initialized');
+      throw new Error(
+        'DefaultSecurityManager has not been initialized with a node'
+      );
     }
     const provider = this._node.cryptoProvider;
-    logger.debug("crypto_provider_resolved_from_node", {
+    logger.debug('crypto_provider_resolved_from_node', {
       node_id: this._node.id,
       has_provider: Boolean(provider),
-      provider_type: provider ? (provider.constructor?.name ?? "unknown") : null,
+      provider_type: provider
+        ? (provider.constructor?.name ?? 'unknown')
+        : null,
       has_private_key: Boolean(
         provider &&
-          (typeof (provider as { signingPrivatePem?: unknown }).signingPrivatePem === "string" ||
-            typeof (provider as { signing_private_pem?: unknown }).signing_private_pem === "string")
+          (typeof (provider as { signingPrivatePem?: unknown })
+            .signingPrivatePem === 'string' ||
+            typeof (provider as { signing_private_pem?: unknown })
+              .signing_private_pem === 'string')
       ),
     });
     return provider;
@@ -266,7 +294,10 @@ export class DefaultSecurityManager implements SecurityManager {
     return Boolean(this._envelopeSigner || this._envelopeVerifier);
   }
 
-  public getShareableKeys(): Record<string, unknown> | Record<string, unknown>[] | undefined {
+  public getShareableKeys():
+    | Record<string, unknown>
+    | Record<string, unknown>[]
+    | undefined {
     const keys = this._getKeysToProvide();
     if (!keys || keys.length === 0) {
       return undefined;
@@ -285,24 +316,26 @@ export class DefaultSecurityManager implements SecurityManager {
   public async onNodeStarted(node: NodeLike): Promise<void> {
     if (
       this._certificateManager &&
-      hasNodeListenerMethod(this._certificateManager, "onNodeStarted")
+      hasNodeListenerMethod(this._certificateManager, 'onNodeStarted')
     ) {
       await this._certificateManager.onNodeStarted(node);
     }
 
     const encryption = this._encryption;
-    if (encryption && hasNodeListenerMethod(encryption, "onNodeStarted")) {
+    if (encryption && hasNodeListenerMethod(encryption, 'onNodeStarted')) {
       await encryption.onNodeStarted(node);
     }
 
     const keyManager = this._keyManager;
-    if (keyManager && hasNodeListenerMethod(keyManager, "onNodeStarted")) {
+    if (keyManager && hasNodeListenerMethod(keyManager, 'onNodeStarted')) {
       await keyManager.onNodeStarted(node);
     }
 
     if (this._keyManager && this.supportsOverlaySecurity) {
       if (!this._keyValidator) {
-        throw new Error("Key validator must be set when overlay security is enabled");
+        throw new Error(
+          'Key validator must be set when overlay security is enabled'
+        );
       }
 
       this._keyManagementHandler = new KeyManagementHandler({
@@ -350,12 +383,16 @@ export class DefaultSecurityManager implements SecurityManager {
     if (this.supportsOverlaySecurity && this.isRoutingNode(node)) {
       const routingNode = node as RoutingNodeLike;
       const routeManager =
-        (node as { _route_manager?: KeyFrameRouteManager | null })._route_manager ?? null;
+        (node as { _route_manager?: KeyFrameRouteManager | null })
+          ._route_manager ?? null;
       const bindingManager =
-        (node as { _binding_manager?: KeyFrameBindingManager | null })._binding_manager ?? null;
+        (node as { _binding_manager?: KeyFrameBindingManager | null })
+          ._binding_manager ?? null;
 
       if (!bindingManager) {
-        throw new Error("Routing node is missing binding manager for key frame handler");
+        throw new Error(
+          'Routing node is missing binding manager for key frame handler'
+        );
       }
 
       this._keyFrameHandler = new KeyFrameHandler({
@@ -370,15 +407,19 @@ export class DefaultSecurityManager implements SecurityManager {
       if (spawnSource) {
         await this._keyFrameHandler.start(spawnSource);
       } else {
-        logger.warning("no_spawner_available_for_key_frame_handler", { node_id: node.id });
+        logger.warning('no_spawner_available_for_key_frame_handler', {
+          node_id: node.id,
+        });
       }
 
-      logger.debug("key_frame_handler_created_for_sentinel", { node_id: node.id });
+      logger.debug('key_frame_handler_created_for_sentinel', {
+        node_id: node.id,
+      });
     } else {
       this._keyFrameHandler = null;
     }
 
-    logger.debug("security_components_initialized", {
+    logger.debug('security_components_initialized', {
       node_id: node.id,
       has_certificate_manager: Boolean(this._certificateManager),
       has_encryption: Boolean(this._encryption),
@@ -388,11 +429,16 @@ export class DefaultSecurityManager implements SecurityManager {
     });
   }
 
-  public async onNodeAttachToUpstream(node: NodeLike, attachInfo: AttachInfo): Promise<void> {
+  public async onNodeAttachToUpstream(
+    node: NodeLike,
+    attachInfo: AttachInfo
+  ): Promise<void> {
     const attachRecord = attachInfo as Record<string, any>;
     const parentKeys = attachRecord.parent_keys ?? attachInfo.parentKeys;
-    const targetSystemId = attachRecord.target_system_id ?? attachInfo.targetSystemId;
-    const targetPhysicalPath = attachRecord.target_physical_path ?? attachInfo.targetPhysicalPath;
+    const targetSystemId =
+      attachRecord.target_system_id ?? attachInfo.targetSystemId;
+    const targetPhysicalPath =
+      attachRecord.target_physical_path ?? attachInfo.targetPhysicalPath;
 
     if (parentKeys) {
       const validationInput = {
@@ -405,15 +451,19 @@ export class DefaultSecurityManager implements SecurityManager {
         : [true, undefined];
 
       if (!isValid) {
-        logger.error("attach_security_validation_failed", {
+        logger.error('attach_security_validation_failed', {
           reason,
           parent_system_id: targetSystemId,
-          provided_keys_count: Array.isArray(parentKeys) ? parentKeys.length : undefined,
+          provided_keys_count: Array.isArray(parentKeys)
+            ? parentKeys.length
+            : undefined,
         });
       } else {
-        logger.debug("attach_security_validation_passed", {
+        logger.debug('attach_security_validation_passed', {
           parent_system_id: targetSystemId,
-          provided_keys_count: Array.isArray(parentKeys) ? parentKeys.length : undefined,
+          provided_keys_count: Array.isArray(parentKeys)
+            ? parentKeys.length
+            : undefined,
         });
       }
 
@@ -425,12 +475,15 @@ export class DefaultSecurityManager implements SecurityManager {
           origin: DeliveryOriginType.UPSTREAM,
         });
       } else {
-        logger.debug("skipping_parent_keys_no_key_manager");
+        logger.debug('skipping_parent_keys_no_key_manager');
       }
     } else {
       const requirements = this._policy.requirements();
-      if (requirements.requireSigningKeyExchange || requirements.requireEncryptionKeyExchange) {
-        logger.warning("attach_missing_required_keys", {
+      if (
+        requirements.requireSigningKeyExchange ||
+        requirements.requireEncryptionKeyExchange
+      ) {
+        logger.warning('attach_missing_required_keys', {
           require_signing_keys: requirements.requireSigningKeyExchange,
           require_encryption_keys: requirements.requireEncryptionKeyExchange,
           parent_system_id: targetSystemId,
@@ -439,18 +492,21 @@ export class DefaultSecurityManager implements SecurityManager {
     }
 
     const handler =
-      (node as { _key_management_handler?: KeyManagementHandler | null })._key_management_handler ??
-      this._keyManagementHandler;
+      (node as { _key_management_handler?: KeyManagementHandler | null })
+        ._key_management_handler ?? this._keyManagementHandler;
     if (handler) {
       await handler.retryPendingKeyRequestsAfterAttachment();
     }
 
     const encryption = this._encryption;
-    if (encryption && hasNodeListenerMethod(encryption, "onNodeAttachToUpstream")) {
+    if (
+      encryption &&
+      hasNodeListenerMethod(encryption, 'onNodeAttachToUpstream')
+    ) {
       await encryption.onNodeAttachToUpstream(node, attachInfo);
     }
 
-    logger.debug("node_attach_security_processed", {
+    logger.debug('node_attach_security_processed', {
       node_id: node.id,
       parent_system_id: targetSystemId,
       parent_keys_count: Array.isArray(parentKeys) ? parentKeys.length : 0,
@@ -459,40 +515,40 @@ export class DefaultSecurityManager implements SecurityManager {
 
   public async onNodeInitialized(node: NodeLike): Promise<void> {
     this._node = node;
-    logger.debug("security_manager_node_initialized", {
+    logger.debug('security_manager_node_initialized', {
       node_id: node.id,
       has_node_crypto_provider: Boolean(node.cryptoProvider),
       provider_type: node.cryptoProvider
-        ? (node.cryptoProvider.constructor?.name ?? "unknown")
+        ? (node.cryptoProvider.constructor?.name ?? 'unknown')
         : null,
       has_private_key: Boolean(
         node.cryptoProvider &&
-          (typeof (node.cryptoProvider as { signingPrivatePem?: unknown }).signingPrivatePem ===
-            "string" ||
+          (typeof (node.cryptoProvider as { signingPrivatePem?: unknown })
+            .signingPrivatePem === 'string' ||
             typeof (node.cryptoProvider as { signing_private_pem?: unknown })
-              .signing_private_pem === "string")
+              .signing_private_pem === 'string')
       ),
     });
 
     const keyManager = this._keyManager;
-    if (keyManager && hasNodeListenerMethod(keyManager, "onNodeInitialized")) {
+    if (keyManager && hasNodeListenerMethod(keyManager, 'onNodeInitialized')) {
       await keyManager.onNodeInitialized(node);
-      logger.debug("key_manager_initialized", { node_id: node.id });
+      logger.debug('key_manager_initialized', { node_id: node.id });
     }
 
     if (
       this._certificateManager &&
-      hasNodeListenerMethod(this._certificateManager, "onNodeInitialized")
+      hasNodeListenerMethod(this._certificateManager, 'onNodeInitialized')
     ) {
       await this._certificateManager.onNodeInitialized(node);
     }
 
     const encryption = this._encryption;
-    if (encryption && hasNodeListenerMethod(encryption, "onNodeInitialized")) {
+    if (encryption && hasNodeListenerMethod(encryption, 'onNodeInitialized')) {
       await encryption.onNodeInitialized(node);
     }
 
-    logger.debug("node_security_initialization_complete", { node_id: node.id });
+    logger.debug('node_security_initialization_complete', { node_id: node.id });
   }
 
   public async onNodeAttachToPeer(
@@ -502,8 +558,10 @@ export class DefaultSecurityManager implements SecurityManager {
   ): Promise<void> {
     const attachRecord = attachInfo as Record<string, any>;
     const peerKeys = attachRecord.parent_keys ?? attachInfo.parentKeys;
-    const targetSystemId = attachRecord.target_system_id ?? attachInfo.targetSystemId;
-    const targetPhysicalPath = attachRecord.target_physical_path ?? attachInfo.targetPhysicalPath;
+    const targetSystemId =
+      attachRecord.target_system_id ?? attachInfo.targetSystemId;
+    const targetPhysicalPath =
+      attachRecord.target_physical_path ?? attachInfo.targetPhysicalPath;
 
     if (peerKeys && this._keyManager) {
       await this._keyManager.addKeys({
@@ -512,27 +570,31 @@ export class DefaultSecurityManager implements SecurityManager {
         systemId: targetSystemId,
         origin: DeliveryOriginType.PEER,
       });
-      logger.debug("peer_keys_added", {
+      logger.debug('peer_keys_added', {
         peer_system_id: targetSystemId,
         peer_keys_count: Array.isArray(peerKeys) ? peerKeys.length : 0,
       });
     } else if (peerKeys) {
-      logger.debug("skipping_peer_keys_no_key_manager");
+      logger.debug('skipping_peer_keys_no_key_manager');
     } else {
-      logger.debug("no_peer_keys_provided", {
+      logger.debug('no_peer_keys_provided', {
         peer_system_id: targetSystemId,
       });
     }
 
     if (
       this._certificateManager &&
-      hasNodeListenerMethod(this._certificateManager, "onNodeAttachToPeer")
+      hasNodeListenerMethod(this._certificateManager, 'onNodeAttachToPeer')
     ) {
-      await this._certificateManager.onNodeAttachToPeer(node, attachInfo, connector);
+      await this._certificateManager.onNodeAttachToPeer(
+        node,
+        attachInfo,
+        connector
+      );
     }
 
     const encryption = this._encryption;
-    if (encryption && hasNodeListenerMethod(encryption, "onNodeAttachToPeer")) {
+    if (encryption && hasNodeListenerMethod(encryption, 'onNodeAttachToPeer')) {
       await encryption.onNodeAttachToPeer(node, attachInfo, connector);
     }
   }
@@ -547,7 +609,7 @@ export class DefaultSecurityManager implements SecurityManager {
     const securityContext = ensureSecurityContext(localContext);
     const wasEncrypted = Boolean(envelope.sec?.enc);
 
-    logger.debug("deliver_local_security_processing", {
+    logger.debug('deliver_local_security_processing', {
       address: String(address),
       envp_id: envelope.id,
       was_encrypted: wasEncrypted,
@@ -556,22 +618,22 @@ export class DefaultSecurityManager implements SecurityManager {
 
     const frameType = envelope.frame.type;
     const isSystemFrame = new Set([
-      "SecureOpen",
-      "SecureAccept",
-      "SecureClose",
-      "DeliveryAck",
-      "NodeHeartbeat",
-      "NodeHeartbeatAck",
-      "KeyAnnounce",
-      "KeyRequest",
-      "AddressBind",
-      "AddressUnbind",
-      "AddressBindAck",
-      "AddressUnbindAck",
-      "CapabilityAdvertise",
-      "CapabilityWithdraw",
-      "CapabilityAdvertiseAck",
-      "CapabilityWithdrawAck",
+      'SecureOpen',
+      'SecureAccept',
+      'SecureClose',
+      'DeliveryAck',
+      'NodeHeartbeat',
+      'NodeHeartbeatAck',
+      'KeyAnnounce',
+      'KeyRequest',
+      'AddressBind',
+      'AddressUnbind',
+      'AddressBindAck',
+      'AddressUnbindAck',
+      'CapabilityAdvertise',
+      'CapabilityWithdraw',
+      'CapabilityAdvertiseAck',
+      'CapabilityWithdrawAck',
     ]).has(frameType);
 
     if (this._policy && !isSystemFrame) {
@@ -579,19 +641,25 @@ export class DefaultSecurityManager implements SecurityManager {
         securityContext.inboundCryptoLevel ??
         this._policy.classifyMessageCryptoLevel(envelope, undefined);
 
-      logger.debug("inbound_crypto_level_classified", {
+      logger.debug('inbound_crypto_level_classified', {
         envp_id: envelope.id,
         crypto_level: inboundCryptoLevel,
         address: String(address),
       });
 
-      if (!this._policy.isInboundCryptoLevelAllowed(inboundCryptoLevel, envelope, undefined)) {
+      if (
+        !this._policy.isInboundCryptoLevelAllowed(
+          inboundCryptoLevel,
+          envelope,
+          undefined
+        )
+      ) {
         const violationAction = this._policy.getInboundViolationAction(
           inboundCryptoLevel,
           envelope,
           undefined
         );
-        logger.warning("inbound_crypto_level_violation", {
+        logger.warning('inbound_crypto_level_violation', {
           envp_id: envelope.id,
           crypto_level: inboundCryptoLevel,
           action: violationAction,
@@ -599,7 +667,7 @@ export class DefaultSecurityManager implements SecurityManager {
         });
 
         if (violationAction === SecurityAction.REJECT) {
-          logger.error("inbound_message_rejected", {
+          logger.error('inbound_message_rejected', {
             envp_id: envelope.id,
             crypto_level: inboundCryptoLevel,
           });
@@ -607,11 +675,11 @@ export class DefaultSecurityManager implements SecurityManager {
         }
 
         if (violationAction === SecurityAction.NACK) {
-          logger.error("inbound_message_nacked", {
+          logger.error('inbound_message_nacked', {
             envp_id: envelope.id,
             crypto_level: inboundCryptoLevel,
           });
-          await this.sendNack(node, envelope, "crypto_level_violation");
+          await this.sendNack(node, envelope, 'crypto_level_violation');
           return null;
         }
       }
@@ -619,21 +687,28 @@ export class DefaultSecurityManager implements SecurityManager {
       const hasSignature = Boolean(envelope.sec?.sig);
       if (!hasSignature) {
         if (this._policy.isSignatureRequired(envelope, undefined)) {
-          const violationAction = this._policy.getUnsignedViolationAction(envelope, undefined);
-          logger.warning("inbound_signature_violation_unsigned", {
+          const violationAction = this._policy.getUnsignedViolationAction(
+            envelope,
+            undefined
+          );
+          logger.warning('inbound_signature_violation_unsigned', {
             envp_id: envelope.id,
             action: violationAction,
             address: String(address),
           });
 
           if (violationAction === SecurityAction.REJECT) {
-            logger.error("inbound_message_rejected_unsigned", { envp_id: envelope.id });
+            logger.error('inbound_message_rejected_unsigned', {
+              envp_id: envelope.id,
+            });
             return null;
           }
 
           if (violationAction === SecurityAction.NACK) {
-            logger.error("inbound_message_nacked_unsigned", { envp_id: envelope.id });
-            await this.sendNack(node, envelope, "signature_required");
+            logger.error('inbound_message_nacked_unsigned', {
+              envp_id: envelope.id,
+            });
+            await this.sendNack(node, envelope, 'signature_required');
             return null;
           }
         }
@@ -642,17 +717,20 @@ export class DefaultSecurityManager implements SecurityManager {
         (await this._policy.shouldVerifySignature(envelope, undefined))
       ) {
         try {
-          await this._envelopeVerifier.verifyEnvelope(envelope, { checkPayload: false });
-          logger.debug("inbound_signature_verified", {
+          await this._envelopeVerifier.verifyEnvelope(envelope, {
+            checkPayload: false,
+          });
+          logger.debug('inbound_signature_verified', {
             envp_id: envelope.id,
             address: String(address),
           });
         } catch (error) {
-          const violationAction = this._policy.getInvalidSignatureViolationAction(
-            envelope,
-            undefined
-          );
-          logger.warning("inbound_signature_verification_failed", {
+          const violationAction =
+            this._policy.getInvalidSignatureViolationAction(
+              envelope,
+              undefined
+            );
+          logger.warning('inbound_signature_verification_failed', {
             envp_id: envelope.id,
             error: error instanceof Error ? error.message : String(error),
             action: violationAction,
@@ -660,13 +738,21 @@ export class DefaultSecurityManager implements SecurityManager {
           });
 
           if (violationAction === SecurityAction.REJECT) {
-            logger.error("inbound_message_rejected_invalid_signature", { envp_id: envelope.id });
+            logger.error('inbound_message_rejected_invalid_signature', {
+              envp_id: envelope.id,
+            });
             return null;
           }
 
           if (violationAction === SecurityAction.NACK) {
-            logger.error("inbound_message_nacked_invalid_signature", { envp_id: envelope.id });
-            await this.sendNack(node, envelope, "signature_verification_failed");
+            logger.error('inbound_message_nacked_invalid_signature', {
+              envp_id: envelope.id,
+            });
+            await this.sendNack(
+              node,
+              envelope,
+              'signature_verification_failed'
+            );
             return null;
           }
         }
@@ -675,26 +761,38 @@ export class DefaultSecurityManager implements SecurityManager {
 
     if (
       this._envelopeSecurityHandler &&
-      (await this._envelopeSecurityHandler.shouldDecryptEnvelope(envelope, undefined))
+      (await this._envelopeSecurityHandler.shouldDecryptEnvelope(
+        envelope,
+        undefined
+      ))
     ) {
       envelope = await this._envelopeSecurityHandler.decryptEnvelope(envelope);
-      logger.debug("deliver_local_after_decrypt", {
+      logger.debug('deliver_local_after_decrypt', {
         envp_id: envelope.id,
         frame_type: envelope.frame.type,
       });
     }
 
-    if (envelope.frame.type === "SecureAccept" && this._secureChannelFrameHandler) {
+    if (
+      envelope.frame.type === 'SecureAccept' &&
+      this._secureChannelFrameHandler
+    ) {
       await this._secureChannelFrameHandler.handleSecureAccept(envelope, null);
       return null;
     }
 
-    if (envelope.frame.type === "SecureOpen" && this._secureChannelFrameHandler) {
+    if (
+      envelope.frame.type === 'SecureOpen' &&
+      this._secureChannelFrameHandler
+    ) {
       await this._secureChannelFrameHandler.handleSecureOpen(envelope, null);
       return null;
     }
 
-    if (envelope.frame.type === "SecureClose" && this._secureChannelFrameHandler) {
+    if (
+      envelope.frame.type === 'SecureClose' &&
+      this._secureChannelFrameHandler
+    ) {
       await this._secureChannelFrameHandler.handleSecureClose(envelope, null);
       return null;
     }
@@ -702,34 +800,38 @@ export class DefaultSecurityManager implements SecurityManager {
     if (envelope.sec?.sig && isDataFrame(envelope.frame)) {
       if (wasEncrypted) {
         if (!envelope.frame.pd) {
-          logger.warning("deliver_local_missing_payload_digest", { envp_id: envelope.id });
+          logger.warning('deliver_local_missing_payload_digest', {
+            envp_id: envelope.id,
+          });
         }
       } else {
         if (!envelope.frame.pd) {
-          throw new Error("DataFrame missing payload digest (pd field) for final delivery");
+          throw new Error(
+            'DataFrame missing payload digest (pd field) for final delivery'
+          );
         }
 
-        const payload = envelope.frame.payload ?? "";
-        const payloadString = payload === "" ? "" : canonicalJson(payload);
+        const payload = envelope.frame.payload ?? '';
+        const payloadString = payload === '' ? '' : canonicalJson(payload);
         const actualDigest = secureDigest(payloadString);
 
         if (envelope.frame.pd !== actualDigest) {
-          logger.error("payload_digest_mismatch_details", {
+          logger.error('payload_digest_mismatch_details', {
             expected_pd: envelope.frame.pd,
             actual_digest: actualDigest,
             frame_dict: envelope.frame,
           });
-          throw new Error("Payload digest mismatch on final delivery");
+          throw new Error('Payload digest mismatch on final delivery');
         }
 
-        logger.debug("deliver_local_payload_verified", {
+        logger.debug('deliver_local_payload_verified', {
           expected_pd: envelope.frame.pd,
           actual_digest: actualDigest,
         });
       }
     }
 
-    logger.debug("deliver_local_security_processing_complete", {
+    logger.debug('deliver_local_security_processing_complete', {
       envp_id: envelope.id,
       address: String(address),
     });
@@ -741,22 +843,29 @@ export class DefaultSecurityManager implements SecurityManager {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    if (context && context.originType !== DeliveryOriginType.LOCAL && this._policy) {
+    if (
+      context &&
+      context.originType !== DeliveryOriginType.LOCAL &&
+      this._policy
+    ) {
       if (isCriticalFrame(envelope.frame)) {
         const isSigned = Boolean(envelope.sec?.sig);
         if (!isSigned) {
-          logger.error("critical_frame_unsigned_rejected", {
+          logger.error('critical_frame_unsigned_rejected', {
             envp_id: envelope.id,
             frame_type: envelope.frame.type,
-            reason: "critical_frames_must_be_signed",
+            reason: 'critical_frames_must_be_signed',
           });
           return null;
         }
       } else if (this._policy.isSignatureRequired(envelope, context)) {
         const isSigned = Boolean(envelope.sec?.sig);
         if (!isSigned) {
-          const violationAction = this._policy.getUnsignedViolationAction(envelope, context);
-          logger.warning("unsigned_envelope_violation", {
+          const violationAction = this._policy.getUnsignedViolationAction(
+            envelope,
+            context
+          );
+          logger.warning('unsigned_envelope_violation', {
             envp_id: envelope.id,
             frame_type: envelope.frame.type,
             action: violationAction,
@@ -772,14 +881,22 @@ export class DefaultSecurityManager implements SecurityManager {
       }
     }
 
-    if (context && context.originType !== DeliveryOriginType.LOCAL && this._authorizer) {
+    if (
+      context &&
+      context.originType !== DeliveryOriginType.LOCAL &&
+      this._authorizer
+    ) {
       try {
-        const authResult = await this._authorizer.authorize(_node, envelope, context);
+        const authResult = await this._authorizer.authorize(
+          _node,
+          envelope,
+          context
+        );
         if (!authResult) {
-          logger.warning("envelope_authorization_failed", {
+          logger.warning('envelope_authorization_failed', {
             envp_id: envelope.id,
             frame_type: envelope.frame.type,
-            origin_type: context.originType ?? "unknown",
+            origin_type: context.originType ?? 'unknown',
           });
           return null;
         }
@@ -788,7 +905,10 @@ export class DefaultSecurityManager implements SecurityManager {
         let finalAuthResult = authResult;
 
         const authorizer = this._authorizer;
-        if (envelope.frame?.type === "NodeAttach" && hasNodeAttachValidation(authorizer)) {
+        if (
+          envelope.frame?.type === 'NodeAttach' &&
+          hasNodeAttachValidation(authorizer)
+        ) {
           try {
             const validated = await authorizer.validateNodeAttachRequest!(
               _node,
@@ -799,7 +919,7 @@ export class DefaultSecurityManager implements SecurityManager {
               finalAuthResult = validated;
             }
           } catch (error) {
-            logger.error("node_attach_authorization_validation_failed", {
+            logger.error('node_attach_authorization_validation_failed', {
               envp_id: envelope.id,
               frame_type: envelope.frame.type,
               error: error instanceof Error ? error.message : String(error),
@@ -810,13 +930,13 @@ export class DefaultSecurityManager implements SecurityManager {
 
         security.authorization = finalAuthResult;
 
-        logger.debug("envelope_authorization_successful", {
+        logger.debug('envelope_authorization_successful', {
           envp_id: envelope.id,
           frame_type: envelope.frame.type,
           principal: finalAuthResult.principal ?? null,
         });
       } catch (error) {
-        logger.error("envelope_authorization_error", {
+        logger.error('envelope_authorization_error', {
           envp_id: envelope.id,
           frame_type: envelope.frame.type,
           error: error instanceof Error ? error.message : String(error),
@@ -825,7 +945,7 @@ export class DefaultSecurityManager implements SecurityManager {
       }
     }
 
-    if (envelope.frame.type === "KeyAnnounce") {
+    if (envelope.frame.type === 'KeyAnnounce') {
       if (this._keyFrameHandler && context) {
         await this._keyFrameHandler.acceptKeyAnnounce(envelope, context);
         return null;
@@ -836,13 +956,18 @@ export class DefaultSecurityManager implements SecurityManager {
         return null;
       }
 
-      logger.debug("keyannounce_frame_ignored_no_key_handler", { envp_id: envelope.id });
+      logger.debug('keyannounce_frame_ignored_no_key_handler', {
+        envp_id: envelope.id,
+      });
       return envelope;
     }
 
-    if (envelope.frame.type === "KeyRequest") {
+    if (envelope.frame.type === 'KeyRequest') {
       if (this._keyFrameHandler && context) {
-        const handledLocally = await this._keyFrameHandler.acceptKeyRequest(envelope, context);
+        const handledLocally = await this._keyFrameHandler.acceptKeyRequest(
+          envelope,
+          context
+        );
         if (handledLocally) {
           return null;
         }
@@ -850,14 +975,19 @@ export class DefaultSecurityManager implements SecurityManager {
         await this.handleChildKeyRequest(envelope, context);
         return null;
       } else {
-        logger.debug("keyrequest_frame_ignored_no_handler", { envp_id: envelope.id });
+        logger.debug('keyrequest_frame_ignored_no_handler', {
+          envp_id: envelope.id,
+        });
         return envelope;
       }
     }
 
     if (this._envelopeSecurityHandler) {
       const [processed, shouldContinue] =
-        await this._envelopeSecurityHandler.handleEnvelopeSecurity(envelope, context);
+        await this._envelopeSecurityHandler.handleEnvelopeSecurity(
+          envelope,
+          context
+        );
 
       if (!shouldContinue) {
         return null;
@@ -866,7 +996,9 @@ export class DefaultSecurityManager implements SecurityManager {
       envelope = processed;
     }
 
-    logger.debug("on_deliver_security_processing_complete", { envp_id: envelope.id });
+    logger.debug('on_deliver_security_processing_complete', {
+      envp_id: envelope.id,
+    });
     return envelope;
   }
 
@@ -875,21 +1007,29 @@ export class DefaultSecurityManager implements SecurityManager {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    logger.debug("on_forward_upstream_start", { envp_id: envelope.id });
+    logger.debug('on_forward_upstream_start', { envp_id: envelope.id });
 
-    if (context?.originType === DeliveryOriginType.LOCAL && this._envelopeSecurityHandler) {
+    if (
+      context?.originType === DeliveryOriginType.LOCAL &&
+      this._envelopeSecurityHandler
+    ) {
       const normalizedContext = normalizeDeliveryContext(_node, context);
-      const handled = await this._envelopeSecurityHandler.handleOutboundSecurity(
-        envelope,
-        normalizedContext
-      );
+      const handled =
+        await this._envelopeSecurityHandler.handleOutboundSecurity(
+          envelope,
+          normalizedContext
+        );
       if (!handled) {
-        logger.debug("on_forward_upstream_queued_for_keys", { envp_id: envelope.id });
+        logger.debug('on_forward_upstream_queued_for_keys', {
+          envp_id: envelope.id,
+        });
         return null;
       }
     }
 
-    logger.debug("on_forward_upstream_security_processing_complete", { envp_id: envelope.id });
+    logger.debug('on_forward_upstream_security_processing_complete', {
+      envp_id: envelope.id,
+    });
     return envelope;
   }
 
@@ -899,22 +1039,28 @@ export class DefaultSecurityManager implements SecurityManager {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    logger.debug("on_forward_to_route_start", {
+    logger.debug('on_forward_to_route_start', {
       envp_id: envelope.id,
       next_segment: nextSegment,
     });
 
-    if (context && this._policy && isCriticalFrame(envelope.frame) && !envelope.sec?.sig) {
+    if (
+      context &&
+      this._policy &&
+      isCriticalFrame(envelope.frame) &&
+      !envelope.sec?.sig
+    ) {
       if (this._envelopeSecurityHandler) {
         const localContext = createLocalContext(node, context);
         ensureSecurityContext(localContext);
 
-        const handled = await this._envelopeSecurityHandler.handleOutboundSecurity(
-          envelope,
-          localContext
-        );
+        const handled =
+          await this._envelopeSecurityHandler.handleOutboundSecurity(
+            envelope,
+            localContext
+          );
         if (!handled) {
-          logger.warning("critical_frame_forwarding_failed_missing_keys", {
+          logger.warning('critical_frame_forwarding_failed_missing_keys', {
             envp_id: envelope.id,
             frame_type: envelope.frame.type,
             next_segment: nextSegment,
@@ -922,7 +1068,7 @@ export class DefaultSecurityManager implements SecurityManager {
           return null;
         }
       } else {
-        logger.error("critical_frame_forwarding_failed_no_security_handler", {
+        logger.error('critical_frame_forwarding_failed_no_security_handler', {
           envp_id: envelope.id,
           frame_type: envelope.frame.type,
           next_segment: nextSegment,
@@ -931,14 +1077,18 @@ export class DefaultSecurityManager implements SecurityManager {
       }
     }
 
-    if (context?.originType === DeliveryOriginType.LOCAL && this._envelopeSecurityHandler) {
+    if (
+      context?.originType === DeliveryOriginType.LOCAL &&
+      this._envelopeSecurityHandler
+    ) {
       const normalizedContext = normalizeDeliveryContext(node, context);
-      const handled = await this._envelopeSecurityHandler.handleOutboundSecurity(
-        envelope,
-        normalizedContext
-      );
+      const handled =
+        await this._envelopeSecurityHandler.handleOutboundSecurity(
+          envelope,
+          normalizedContext
+        );
       if (!handled) {
-        logger.debug("on_forward_to_route_queued_for_keys", {
+        logger.debug('on_forward_to_route_queued_for_keys', {
           envp_id: envelope.id,
           next_segment: nextSegment,
         });
@@ -946,7 +1096,7 @@ export class DefaultSecurityManager implements SecurityManager {
       }
     }
 
-    logger.debug("on_forward_to_route_security_processing_complete", {
+    logger.debug('on_forward_to_route_security_processing_complete', {
       envp_id: envelope.id,
       next_segment: nextSegment,
     });
@@ -959,12 +1109,17 @@ export class DefaultSecurityManager implements SecurityManager {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    logger.debug("on_forward_to_peer_start", {
+    logger.debug('on_forward_to_peer_start', {
       envp_id: envelope.id,
       peer_segment: peerSegment,
     });
 
-    if (context && this._policy && isCriticalFrame(envelope.frame) && !envelope.sec?.sig) {
+    if (
+      context &&
+      this._policy &&
+      isCriticalFrame(envelope.frame) &&
+      !envelope.sec?.sig
+    ) {
       if (this._envelopeSecurityHandler) {
         const localContext: FameDeliveryContext = {
           originType: DeliveryOriginType.LOCAL,
@@ -978,12 +1133,13 @@ export class DefaultSecurityManager implements SecurityManager {
           localContext.security = context.security;
         }
 
-        const handled = await this._envelopeSecurityHandler.handleOutboundSecurity(
-          envelope,
-          localContext
-        );
+        const handled =
+          await this._envelopeSecurityHandler.handleOutboundSecurity(
+            envelope,
+            localContext
+          );
         if (!handled) {
-          logger.warning("critical_frame_forwarding_failed_missing_keys", {
+          logger.warning('critical_frame_forwarding_failed_missing_keys', {
             envp_id: envelope.id,
             frame_type: envelope.frame.type,
             peer_segment: peerSegment,
@@ -991,7 +1147,7 @@ export class DefaultSecurityManager implements SecurityManager {
           return null;
         }
       } else {
-        logger.error("critical_frame_forwarding_failed_no_security_handler", {
+        logger.error('critical_frame_forwarding_failed_no_security_handler', {
           envp_id: envelope.id,
           frame_type: envelope.frame.type,
           peer_segment: peerSegment,
@@ -1000,10 +1156,17 @@ export class DefaultSecurityManager implements SecurityManager {
       }
     }
 
-    if (context?.originType === DeliveryOriginType.LOCAL && this._envelopeSecurityHandler) {
-      const handled = await this._envelopeSecurityHandler.handleOutboundSecurity(envelope, context);
+    if (
+      context?.originType === DeliveryOriginType.LOCAL &&
+      this._envelopeSecurityHandler
+    ) {
+      const handled =
+        await this._envelopeSecurityHandler.handleOutboundSecurity(
+          envelope,
+          context
+        );
       if (!handled) {
-        logger.debug("on_forward_to_peer_queued_for_keys", {
+        logger.debug('on_forward_to_peer_queued_for_keys', {
           envp_id: envelope.id,
           peer_segment: peerSegment,
         });
@@ -1011,7 +1174,7 @@ export class DefaultSecurityManager implements SecurityManager {
       }
     }
 
-    logger.debug("on_forward_to_peer_security_processing_complete", {
+    logger.debug('on_forward_to_peer_security_processing_complete', {
       envp_id: envelope.id,
       peer_segment: peerSegment,
     });
@@ -1025,13 +1188,18 @@ export class DefaultSecurityManager implements SecurityManager {
     excludePeers?: unknown,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
-    logger.debug("on_forward_to_peers_start", {
+    logger.debug('on_forward_to_peers_start', {
       envp_id: envelope.id,
       peers,
       exclude_peers: excludePeers,
     });
 
-    if (context && this._policy && isCriticalFrame(envelope.frame) && !envelope.sec?.sig) {
+    if (
+      context &&
+      this._policy &&
+      isCriticalFrame(envelope.frame) &&
+      !envelope.sec?.sig
+    ) {
       if (this._envelopeSecurityHandler) {
         const localContext: FameDeliveryContext = {
           originType: DeliveryOriginType.LOCAL,
@@ -1045,12 +1213,13 @@ export class DefaultSecurityManager implements SecurityManager {
           localContext.security = context.security;
         }
 
-        const handled = await this._envelopeSecurityHandler.handleOutboundSecurity(
-          envelope,
-          localContext
-        );
+        const handled =
+          await this._envelopeSecurityHandler.handleOutboundSecurity(
+            envelope,
+            localContext
+          );
         if (!handled) {
-          logger.warning("critical_frame_forwarding_failed_missing_keys", {
+          logger.warning('critical_frame_forwarding_failed_missing_keys', {
             envp_id: envelope.id,
             frame_type: envelope.frame.type,
             peers,
@@ -1058,7 +1227,7 @@ export class DefaultSecurityManager implements SecurityManager {
           return null;
         }
       } else {
-        logger.error("critical_frame_forwarding_failed_no_security_handler", {
+        logger.error('critical_frame_forwarding_failed_no_security_handler', {
           envp_id: envelope.id,
           frame_type: envelope.frame.type,
           peers,
@@ -1067,65 +1236,80 @@ export class DefaultSecurityManager implements SecurityManager {
       }
     }
 
-    if (context?.originType === DeliveryOriginType.LOCAL && this._envelopeSecurityHandler) {
-      const handled = await this._envelopeSecurityHandler.handleOutboundSecurity(envelope, context);
+    if (
+      context?.originType === DeliveryOriginType.LOCAL &&
+      this._envelopeSecurityHandler
+    ) {
+      const handled =
+        await this._envelopeSecurityHandler.handleOutboundSecurity(
+          envelope,
+          context
+        );
       if (!handled) {
-        logger.debug("on_forward_to_peers_queued_for_keys", { envp_id: envelope.id });
+        logger.debug('on_forward_to_peers_queued_for_keys', {
+          envp_id: envelope.id,
+        });
         return null;
       }
     }
 
-    logger.debug("on_forward_to_peers_security_processing_complete", {
+    logger.debug('on_forward_to_peers_security_processing_complete', {
       envp_id: envelope.id,
     });
     return envelope;
   }
 
   public async onEpochChange(_node: NodeLike, epoch: string): Promise<void> {
-    logger.debug("handle_epoch_change_security", { epoch });
+    logger.debug('handle_epoch_change_security', { epoch });
 
     if (this._keyManager && this._keyManager.announceKeysToUpstream) {
       await this._keyManager.announceKeysToUpstream();
     } else {
-      logger.debug("skipping_key_announcement_no_key_manager");
+      logger.debug('skipping_key_announcement_no_key_manager');
     }
   }
 
   public async onNodeStopped(node: NodeLike): Promise<void> {
-    logger.debug("stopping_security_components", { node_id: node.id });
+    logger.debug('stopping_security_components', { node_id: node.id });
 
     if (this._keyFrameHandler) {
       await this._keyFrameHandler.stop();
       this._keyFrameHandler = null;
-      logger.debug("key_frame_handler_stopped");
+      logger.debug('key_frame_handler_stopped');
     }
 
     if (this._keyManagementHandler) {
       await this._keyManagementHandler.stop();
       this._keyManagementHandler = null;
-      logger.debug("key_management_handler_stopped");
+      logger.debug('key_management_handler_stopped');
     }
 
-    if (this._keyManager && hasNodeListenerMethod(this._keyManager, "onNodeStopped")) {
+    if (
+      this._keyManager &&
+      hasNodeListenerMethod(this._keyManager, 'onNodeStopped')
+    ) {
       await this._keyManager.onNodeStopped(node);
-      logger.debug("key_manager_stopped");
+      logger.debug('key_manager_stopped');
     }
 
     if (
       this._certificateManager &&
-      hasNodeListenerMethod(this._certificateManager, "onNodeStopped")
+      hasNodeListenerMethod(this._certificateManager, 'onNodeStopped')
     ) {
       await this._certificateManager.onNodeStopped(node);
-      logger.debug("certificate_manager_stopped");
+      logger.debug('certificate_manager_stopped');
     }
 
-    if (this._encryption && hasNodeListenerMethod(this._encryption, "onNodeStopped")) {
+    if (
+      this._encryption &&
+      hasNodeListenerMethod(this._encryption, 'onNodeStopped')
+    ) {
       await this._encryption.onNodeStopped(node);
-      logger.debug("encryption_manager_stopped");
+      logger.debug('encryption_manager_stopped');
     }
 
     this._node = null;
-    logger.debug("security_manager_node_cleared", { node_id: node.id });
+    logger.debug('security_manager_node_cleared', { node_id: node.id });
   }
 
   public async onWelcome(welcomeFrame: NodeWelcomeFrame): Promise<void> {
@@ -1136,20 +1320,26 @@ export class DefaultSecurityManager implements SecurityManager {
     try {
       await this._certificateManager.onWelcome?.(welcomeFrame);
     } catch (error) {
-      if (error instanceof Error && error.message.includes("certificate validation failed")) {
-        logger.error("child_node_certificate_validation_failed_stopping_node", {
+      if (
+        error instanceof Error &&
+        error.message.includes('certificate validation failed')
+      ) {
+        logger.error('child_node_certificate_validation_failed_stopping_node', {
           error: error.message,
           node_id: (welcomeFrame as { system_id?: string }).system_id ?? null,
-          assigned_path: (welcomeFrame as { assigned_path?: string }).assigned_path ?? null,
-          message: "Child node cannot proceed due to certificate validation failure",
+          assigned_path:
+            (welcomeFrame as { assigned_path?: string }).assigned_path ?? null,
+          message:
+            'Child node cannot proceed due to certificate validation failure',
         });
         throw error;
       }
 
-      logger.warning("certificate_provisioning_error_proceeding_without_cert", {
+      logger.warning('certificate_provisioning_error_proceeding_without_cert', {
         error: error instanceof Error ? error.message : String(error),
         node_id: (welcomeFrame as { system_id?: string }).system_id ?? null,
-        assigned_path: (welcomeFrame as { assigned_path?: string }).assigned_path ?? null,
+        assigned_path:
+          (welcomeFrame as { assigned_path?: string }).assigned_path ?? null,
         exc_info: true,
       });
     }
@@ -1159,9 +1349,9 @@ export class DefaultSecurityManager implements SecurityManager {
     if (envelope.sec?.sig && this._envelopeVerifier) {
       try {
         await this._envelopeVerifier.verifyEnvelope(envelope);
-        logger.debug("heartbeat_ack_envelope_verified");
+        logger.debug('heartbeat_ack_envelope_verified');
       } catch (error) {
-        logger.warning("heartbeat_envelope_verification_failed", {
+        logger.warning('heartbeat_envelope_verification_failed', {
           envelope_id: envelope.id,
           error: error instanceof Error ? error.message : String(error),
           exc_info: true,
@@ -1173,22 +1363,28 @@ export class DefaultSecurityManager implements SecurityManager {
     if (envelope.sec?.sig && !this._envelopeVerifier) {
       try {
         const requirements =
-          (this._policy as { _requirements?: { verification_required?: boolean } })._requirements ??
-          this._policy.requirements();
+          (
+            this._policy as {
+              _requirements?: { verification_required?: boolean };
+            }
+          )._requirements ?? this._policy.requirements();
         const verificationRequired =
-          "verificationRequired" in requirements
+          'verificationRequired' in requirements
             ? requirements.verificationRequired
             : Boolean(requirements.verification_required);
         if (verificationRequired) {
           logger.warning(
-            "heartbeat_signature_present_but_no_verifier_policy_requires_verification",
+            'heartbeat_signature_present_but_no_verifier_policy_requires_verification',
             { envelope_id: envelope.id }
           );
         }
       } catch {
-        logger.debug("could_not_determine_verification_policy_allowing_heartbeat", {
-          envelope_id: envelope.id,
-        });
+        logger.debug(
+          'could_not_determine_verification_policy_allowing_heartbeat',
+          {
+            envelope_id: envelope.id,
+          }
+        );
       }
     }
   }
@@ -1216,14 +1412,15 @@ export class DefaultSecurityManager implements SecurityManager {
 
     if (isRebind && oldAssignedPath && this._keyManager) {
       try {
-        const removedCount = await this._keyManager.removeKeysForPath(oldAssignedPath);
-        logger.debug("removed_stale_keys_on_rebind", {
+        const removedCount =
+          await this._keyManager.removeKeysForPath(oldAssignedPath);
+        logger.debug('removed_stale_keys_on_rebind', {
           system_id: childSystemId,
           old_path: oldAssignedPath,
           removed_count: removedCount,
         });
       } catch (error) {
-        logger.warning("failed_to_remove_stale_keys_on_rebind", {
+        logger.warning('failed_to_remove_stale_keys_on_rebind', {
           system_id: childSystemId,
           old_path: oldAssignedPath,
           error: error instanceof Error ? error.message : String(error),
@@ -1239,21 +1436,26 @@ export class DefaultSecurityManager implements SecurityManager {
           nodeLike?: NodeLike;
         } = { nodeLike };
         if (Array.isArray(childKeys)) {
-          childValidationOptions.peerKeys = childKeys as Array<Record<string, unknown>>;
+          childValidationOptions.peerKeys = childKeys as Array<
+            Record<string, unknown>
+          >;
         }
 
-        const [validChildKeys, reason] = sentinelPolicy.validateAttachSecurityCompatibility
-          ? sentinelPolicy.validateAttachSecurityCompatibility(childValidationOptions)
-          : [true, undefined];
+        const [validChildKeys, reason] =
+          sentinelPolicy.validateAttachSecurityCompatibility
+            ? sentinelPolicy.validateAttachSecurityCompatibility(
+                childValidationOptions
+              )
+            : [true, undefined];
 
         if (!validChildKeys) {
-          logger.warning("attach_child_security_validation_failed", {
+          logger.warning('attach_child_security_validation_failed', {
             reason,
             child_system_id: childSystemId,
             child_keys_count: childKeys.length ?? 0,
           });
         } else {
-          logger.debug("attach_child_security_validation_passed", {
+          logger.debug('attach_child_security_validation_passed', {
             child_system_id: childSystemId,
             child_keys_count: childKeys.length ?? 0,
           });
@@ -1268,18 +1470,21 @@ export class DefaultSecurityManager implements SecurityManager {
         ourValidationOptions.peerKeys = ourKeys;
       }
 
-      const [ourKeysValid, ourReason] = sentinelPolicy.validateAttachSecurityCompatibility
-        ? sentinelPolicy.validateAttachSecurityCompatibility(ourValidationOptions)
-        : [true, undefined];
+      const [ourKeysValid, ourReason] =
+        sentinelPolicy.validateAttachSecurityCompatibility
+          ? sentinelPolicy.validateAttachSecurityCompatibility(
+              ourValidationOptions
+            )
+          : [true, undefined];
 
       if (!ourKeysValid) {
-        logger.warning("attach_our_security_validation_warning", {
+        logger.warning('attach_our_security_validation_warning', {
           reason: ourReason,
           child_system_id: childSystemId,
           our_keys_count: ourKeys?.length ?? 0,
         });
       } else {
-        logger.debug("attach_our_security_validation_passed", {
+        logger.debug('attach_our_security_validation_passed', {
           child_system_id: childSystemId,
           our_keys_count: ourKeys?.length ?? 0,
         });
@@ -1290,38 +1495,40 @@ export class DefaultSecurityManager implements SecurityManager {
         const hasSigningKey = ourKeys.some((key) => {
           const use = key.use;
           return (
-            (use === "sig" || use === undefined || use === null) &&
-            key.kty === "OKP" &&
-            key.crv === "Ed25519"
+            (use === 'sig' || use === undefined || use === null) &&
+            key.kty === 'OKP' &&
+            key.crv === 'Ed25519'
           );
         });
         const hasEncryptionKey = ourKeys.some((key) => {
           const use = key.use;
           return (
-            (use === "enc" || use === undefined || use === null) &&
-            key.kty === "OKP" &&
-            key.crv === "X25519"
+            (use === 'enc' || use === undefined || use === null) &&
+            key.kty === 'OKP' &&
+            key.crv === 'X25519'
           );
         });
 
         if (requirements.requireSigningKeyExchange && !hasSigningKey) {
-          logger.warning("attach_missing_signing_key", {
+          logger.warning('attach_missing_signing_key', {
             child_system_id: childSystemId,
-            reason: "Our policy requires signing but we are not providing signing keys",
+            reason:
+              'Our policy requires signing but we are not providing signing keys',
           });
         }
 
         if (requirements.requireEncryptionKeyExchange && !hasEncryptionKey) {
-          logger.warning("attach_missing_encryption_key", {
+          logger.warning('attach_missing_encryption_key', {
             child_system_id: childSystemId,
-            reason: "Our policy requires encryption but we are not providing encryption keys",
+            reason:
+              'Our policy requires encryption but we are not providing encryption keys',
           });
         }
       } else if (
         requirements.requireSigningKeyExchange ||
         requirements.requireEncryptionKeyExchange
       ) {
-        logger.warning("attach_no_keys_provided", {
+        logger.warning('attach_no_keys_provided', {
           child_system_id: childSystemId,
           require_signing: requirements.requireSigningKeyExchange,
           require_encryption: requirements.requireEncryptionKeyExchange,
@@ -1337,20 +1544,20 @@ export class DefaultSecurityManager implements SecurityManager {
           origin: originType,
           systemId: childSystemId,
         });
-        logger.debug("added_child_attach_keys", {
+        logger.debug('added_child_attach_keys', {
           child_system_id: childSystemId,
           assigned_path: assignedPath,
           keys_count: childKeys.length ?? 0,
         });
       } catch (error) {
         if (error instanceof FameTransportClose) {
-          logger.error("failed_to_add_attach_keys_will_retry_on_epoch_change", {
+          logger.error('failed_to_add_attach_keys_will_retry_on_epoch_change', {
             parent_id: childSystemId,
             trace_id: currentTraceId(),
             exc_info: true,
           });
         } else {
-          logger.error("failed_to_add_attach_keys", {
+          logger.error('failed_to_add_attach_keys', {
             child_system_id: childSystemId,
             assigned_path: assignedPath,
             error: error instanceof Error ? error.message : String(error),
@@ -1366,17 +1573,19 @@ export class DefaultSecurityManager implements SecurityManager {
     context: FameDeliveryContext
   ): Promise<void> {
     if (!this._keyManager) {
-      throw new Error("KeyManager must be set for KeyRequest handling");
+      throw new Error('KeyManager must be set for KeyRequest handling');
     }
 
     const frame = envelope.frame as KeyRequestFrame;
     const originSid = context.fromSystemId ?? null;
     if (!originSid) {
-      logger.warning("missing_origin_sid_for_key_request", { envp_id: envelope.id });
+      logger.warning('missing_origin_sid_for_key_request', {
+        envp_id: envelope.id,
+      });
       return;
     }
 
-    logger.debug("handling_key_request_for_child_node", {
+    logger.debug('handling_key_request_for_child_node', {
       address: frame.address ? String(frame.address) : null,
       kid: frame.kid ?? null,
       corr_id: envelope.corrId ?? null,
@@ -1399,7 +1608,7 @@ export class DefaultSecurityManager implements SecurityManager {
         requestOptions.originalClientSid = envelope.sid;
       }
 
-      logger.debug("child_node_forwarding_key_request", {
+      logger.debug('child_node_forwarding_key_request', {
         kid: frame.kid,
         origin_sid: originSid,
         correlation_id: envelope.corrId ?? null,
@@ -1413,8 +1622,8 @@ export class DefaultSecurityManager implements SecurityManager {
       try {
         const cryptoProvider = this.resolveCryptoProvider();
         if (!cryptoProvider) {
-          logger.debug("crypto_provider_key_lookup_failed", {
-            error: "no_crypto_provider_available",
+          logger.debug('crypto_provider_key_lookup_failed', {
+            error: 'no_crypto_provider_available',
             envp_id: envelope.id,
           });
         }
@@ -1432,7 +1641,7 @@ export class DefaultSecurityManager implements SecurityManager {
             requestOptions.originalClientSid = envelope.sid;
           }
 
-          logger.debug("child_node_responding_with_own_encryption_key_id", {
+          logger.debug('child_node_responding_with_own_encryption_key_id', {
             key_id: cryptoProvider.encryptionKeyId,
             requested_address: frame.address ? String(frame.address) : null,
             envp_id: envelope.id,
@@ -1455,7 +1664,7 @@ export class DefaultSecurityManager implements SecurityManager {
             requestOptions.originalClientSid = envelope.sid;
           }
 
-          logger.debug("child_node_responding_with_own_signature_key_id", {
+          logger.debug('child_node_responding_with_own_signature_key_id', {
             key_id: cryptoProvider.signatureKeyId,
             requested_address: frame.address ? String(frame.address) : null,
             envp_id: envelope.id,
@@ -1465,21 +1674,23 @@ export class DefaultSecurityManager implements SecurityManager {
           return;
         }
       } catch (error) {
-        logger.debug("crypto_provider_key_lookup_failed", {
+        logger.debug('crypto_provider_key_lookup_failed', {
           error: error instanceof Error ? error.message : String(error),
           envp_id: envelope.id,
         });
       }
 
-      logger.debug("child_node_cannot_resolve_address_key_request", {
+      logger.debug('child_node_cannot_resolve_address_key_request', {
         address: frame.address,
-        reason: "no_crypto_provider_keys_found",
+        reason: 'no_crypto_provider_keys_found',
         envp_id: envelope.id,
       });
       return;
     }
 
-    logger.warning("key_request_missing_both_kid_and_address", { envp_id: envelope.id });
+    logger.warning('key_request_missing_both_kid_and_address', {
+      envp_id: envelope.id,
+    });
   }
 
   private _getKeyAnnounceHandler(): (
@@ -1498,7 +1709,7 @@ export class DefaultSecurityManager implements SecurityManager {
 
   private _getKeysToProvide(): Array<Record<string, unknown>> | null {
     if (!this._envelopeSigner) {
-      logger.debug("no_keys_provided_no_crypto_components");
+      logger.debug('no_keys_provided_no_crypto_components');
       return null;
     }
 
@@ -1520,7 +1731,7 @@ export class DefaultSecurityManager implements SecurityManager {
           if (
             nodeJwk &&
             jwk.kid === (nodeJwk as Record<string, unknown>).kid &&
-            jwk.use !== "enc"
+            jwk.use !== 'enc'
           ) {
             continue;
           }
@@ -1537,25 +1748,29 @@ export class DefaultSecurityManager implements SecurityManager {
   private resolveCryptoProvider(): CryptoProvider | null {
     if (this._node) {
       const provider = this._node.cryptoProvider ?? null;
-      logger.debug("resolve_provider_from_node", {
+      logger.debug('resolve_provider_from_node', {
         node_id: this._node.id,
         has_provider: Boolean(provider),
       });
       return provider;
     }
 
-    logger.debug("resolve_provider_without_node_context");
+    logger.debug('resolve_provider_without_node_context');
     return null;
   }
 
-  private async sendNack(node: NodeLike, originalEnv: FameEnvelope, reason: string): Promise<void> {
+  private async sendNack(
+    node: NodeLike,
+    originalEnv: FameEnvelope,
+    reason: string
+  ): Promise<void> {
     const frameType = originalEnv.frame?.type;
     if (
-      frameType === "CreditUpdate" ||
-      frameType === "NodeHeartbeat" ||
-      frameType === "NodeHeartbeatAck"
+      frameType === 'CreditUpdate' ||
+      frameType === 'NodeHeartbeat' ||
+      frameType === 'NodeHeartbeatAck'
     ) {
-      logger.debug("nack_skipped_for_control_frame", {
+      logger.debug('nack_skipped_for_control_frame', {
         envp_id: originalEnv.id,
         frame_type: frameType,
         reason,
@@ -1564,12 +1779,12 @@ export class DefaultSecurityManager implements SecurityManager {
     }
 
     if (!originalEnv.replyTo) {
-      logger.debug("nack_no_destination", { envp_id: originalEnv.id });
+      logger.debug('nack_no_destination', { envp_id: originalEnv.id });
       return;
     }
 
     const frame = {
-      type: "DeliveryAck",
+      type: 'DeliveryAck',
       ok: false,
       refId: originalEnv.id,
       code: reason,
@@ -1598,16 +1813,19 @@ export class DefaultSecurityManager implements SecurityManager {
   private getSpawner(
     target: unknown
   ):
-    | ((task: () => Promise<void>, options?: { name?: string }) => Promise<unknown> | unknown)
+    | ((
+        task: () => Promise<void>,
+        options?: { name?: string }
+      ) => Promise<unknown> | unknown)
     | null {
     const candidate = (target as SpawnLike | undefined)?.spawn;
-    if (typeof candidate === "function") {
+    if (typeof candidate === 'function') {
       return candidate.bind(target as object);
     }
     return null;
   }
 
   private isRoutingNode(node: NodeLike): node is RoutingNodeLike {
-    return typeof (node as RoutingNodeLike).forwardToRoute === "function";
+    return typeof (node as RoutingNodeLike).forwardToRoute === 'function';
   }
 }

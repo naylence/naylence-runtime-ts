@@ -1,9 +1,14 @@
-import type { CreateResourceOptions, ResourceConfig } from "naylence-factory";
-import { AbstractResourceFactory, createDefaultResource, createResource } from "naylence-factory";
+import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import {
+  AbstractResourceFactory,
+  createDefaultResource,
+  createResource,
+} from 'naylence-factory';
 
-import type { WelcomeService } from "./welcome-service.js";
+import type { WelcomeService } from './welcome-service.js';
 
-export const WELCOME_SERVICE_FACTORY_BASE_TYPE = "WelcomeServiceFactory" as const;
+export const WELCOME_SERVICE_FACTORY_BASE_TYPE =
+  'WelcomeServiceFactory' as const;
 
 export interface WelcomeServiceConfig extends ResourceConfig {
   type: string;
@@ -18,13 +23,16 @@ export abstract class WelcomeServiceFactory<
     ...factoryArgs: unknown[]
   ): Promise<WelcomeService>;
 
-  public static async createWelcomeService<C extends WelcomeServiceConfig = WelcomeServiceConfig>(
+  public static async createWelcomeService<
+    C extends WelcomeServiceConfig = WelcomeServiceConfig,
+  >(
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<WelcomeService> {
     if (config) {
       const candidate = config as Record<string, unknown>;
-      const hasTypeField = typeof candidate.type === "string" && candidate.type.trim().length > 0;
+      const hasTypeField =
+        typeof candidate.type === 'string' && candidate.type.trim().length > 0;
 
       if (!hasTypeField) {
         const service = await createDefaultResource<WelcomeService>(
@@ -34,7 +42,9 @@ export abstract class WelcomeServiceFactory<
         );
 
         if (!service) {
-          throw new Error("Failed to create default welcome service from partial configuration");
+          throw new Error(
+            'Failed to create default welcome service from partial configuration'
+          );
         }
 
         return service;
@@ -52,7 +62,7 @@ export abstract class WelcomeServiceFactory<
       );
 
       if (!service) {
-        throw new Error("Failed to create welcome service from configuration");
+        throw new Error('Failed to create welcome service from configuration');
       }
 
       return service;
@@ -65,7 +75,7 @@ export abstract class WelcomeServiceFactory<
     );
 
     if (!service) {
-      throw new Error("Failed to create default welcome service");
+      throw new Error('Failed to create default welcome service');
     }
 
     return service;

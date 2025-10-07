@@ -1,15 +1,15 @@
-import type { FameDeliveryContext, FameEnvelope } from "naylence-core";
+import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
 import {
   createDefaultResource,
   createResource,
   type ResourceConfig,
   type ResourceFactory as BaseResourceFactory,
-} from "naylence-factory";
+} from 'naylence-factory';
 
-import type { RouterState, RoutingAction } from "./router.js";
-import type { LoadBalancingStrategy } from "./load-balancing/load-balancing-strategy.js";
+import type { RouterState, RoutingAction } from './router.js';
+import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';
 
-export const ROUTING_POLICY_FACTORY_BASE = "RoutingPolicyFactory";
+export const ROUTING_POLICY_FACTORY_BASE = 'RoutingPolicyFactory';
 
 export interface RoutingPolicy {
   decide(
@@ -42,11 +42,18 @@ export abstract class RoutingPolicyFactory
   ): Promise<RoutingPolicy> {
     const typedConfig = config ?? null;
 
-    if (typedConfig && typeof (typedConfig as Record<string, unknown>).type === "string") {
-      const policy = await createResource<RoutingPolicy>(ROUTING_POLICY_FACTORY_BASE, typedConfig, {
-        factoryArgs: [loadBalancingStrategy],
-        validate: false,
-      });
+    if (
+      typedConfig &&
+      typeof (typedConfig as Record<string, unknown>).type === 'string'
+    ) {
+      const policy = await createResource<RoutingPolicy>(
+        ROUTING_POLICY_FACTORY_BASE,
+        typedConfig,
+        {
+          factoryArgs: [loadBalancingStrategy],
+          validate: false,
+        }
+      );
 
       if (policy) {
         return policy;
@@ -63,7 +70,7 @@ export abstract class RoutingPolicyFactory
     );
 
     if (!policy) {
-      throw new Error("Failed to create routing policy");
+      throw new Error('Failed to create routing policy');
     }
 
     return policy;

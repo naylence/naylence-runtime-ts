@@ -32,28 +32,34 @@
   "types": "dist/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./dist/types/index.d.ts"
+      "default": "./dist/esm/index.js"
     },
     "./browser": {
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/browser/index.js",
-      "types": "./dist/types/index.d.ts"
+      "default": "./dist/browser/index.js"
     },
     "./factory-manifest": {
+      "types": "./dist/types/naylence/fame/factory-manifest.d.ts",
       "import": "./dist/esm/naylence/fame/factory-manifest.js",
-      "require": "./dist/cjs/naylence/fame/factory-manifest.js",
-      "types": "./dist/types/naylence/fame/factory-manifest.d.ts"
+      "default": "./dist/esm/naylence/fame/factory-manifest.js"
     },
     "./register-runtime-factories": {
+      "types": "./dist/types/naylence/fame/util/register-runtime-factories.d.ts",
       "import": "./dist/esm/naylence/fame/util/register-runtime-factories.js",
-      "require": "./dist/cjs/naylence/fame/util/register-runtime-factories.js",
-      "types": "./dist/types/naylence/fame/util/register-runtime-factories.d.ts"
+      "default": "./dist/esm/naylence/fame/util/register-runtime-factories.js"
     },
     "./plugin": {
+      "types": "./dist/types/plugin.d.ts",
       "import": "./dist/esm/plugin.js",
-      "require": "./dist/cjs/plugin.js",
-      "types": "./dist/types/plugin.d.ts"
+      "default": "./dist/esm/plugin.js"
+    },
+    "./*": {
+      "types": "./dist/types/*",
+      "import": "./dist/esm/*",
+      "default": "./dist/esm/*"
     }
   },
   "files": [
@@ -63,11 +69,12 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm && npm run build:browser",
+    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm && npm run build:browser && npm run fix-source-maps",
     "build:types": "tsc --emitDeclarationOnly --outDir dist/types",
-  "build:cjs": "tsc -p tsconfig.cjs.json",
-  "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
     "build:browser": "rollup -c rollup.config.js",
+    "fix-source-maps": "node ./scripts/fix-source-maps.js",
     "clean": "rimraf dist",
     "test": "jest",
     "test:watch": "jest --watch",

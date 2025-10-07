@@ -1,13 +1,13 @@
-import type { KeyProvider } from "./key-provider.js";
+import type { KeyProvider } from './key-provider.js';
 import {
   JWKValidationError,
   validateJwkComplete,
   type JsonWebKey,
-} from "../crypto/jwk-validation.js";
-import { secureDigest } from "../../util/util.js";
-import { getLogger } from "../../util/logging.js";
+} from '../crypto/jwk-validation.js';
+import { secureDigest } from '../../util/util.js';
+import { getLogger } from '../../util/logging.js';
 
-const logger = getLogger("key-store");
+const logger = getLogger('key-store');
 
 export type KeyRecord = Record<string, unknown> & { kid: string };
 
@@ -25,7 +25,9 @@ export abstract class KeyStore implements KeyProvider {
   public abstract getKeys(): Promise<Iterable<KeyRecord>>;
 
   /** Return all JWKs that originated from the given physical path. */
-  public abstract getKeysForPath(physicalPath: string): Promise<Iterable<KeyRecord>>;
+  public abstract getKeysForPath(
+    physicalPath: string
+  ): Promise<Iterable<KeyRecord>>;
 
   /** Return a mapping sid → list[JWK] for all stored keys. */
   public abstract getKeysGroupedByPath(): Promise<Record<string, KeyRecord[]>>;
@@ -39,10 +41,15 @@ export abstract class KeyStore implements KeyProvider {
   /**
    * Add a batch of keys that originated from the same physical path.
    */
-  public async addKeys(keys: Array<JsonWebKey>, physicalPath: string): Promise<void> {
-    logger.debug("adding_keys", {
+  public async addKeys(
+    keys: Array<JsonWebKey>,
+    physicalPath: string
+  ): Promise<void> {
+    logger.debug('adding_keys', {
       from_physical_path: physicalPath,
-      key_ids: keys.map((key) => (typeof key?.kid === "string" ? key.kid : "unknown")),
+      key_ids: keys.map((key) =>
+        typeof key?.kid === 'string' ? key.kid : 'unknown'
+      ),
     });
 
     const sid = secureDigest(physicalPath);
@@ -52,8 +59,8 @@ export abstract class KeyStore implements KeyProvider {
         validateJwkComplete(keyInfo);
       } catch (error) {
         if (error instanceof JWKValidationError) {
-          logger.warning("rejected_invalid_jwk", {
-            kid: typeof keyInfo?.kid === "string" ? keyInfo.kid : "unknown",
+          logger.warning('rejected_invalid_jwk', {
+            kid: typeof keyInfo?.kid === 'string' ? keyInfo.kid : 'unknown',
             from_physical_path: physicalPath,
             error: error.message,
           });
@@ -72,10 +79,10 @@ export abstract class KeyStore implements KeyProvider {
 
       await this.addKey(kid, keyWithMeta);
 
-      logger.debug("added_key", {
+      logger.debug('added_key', {
         kid,
         from_physical_path: physicalPath,
-        use: typeof keyInfo.use === "string" ? keyInfo.use : "unknown",
+        use: typeof keyInfo.use === 'string' ? keyInfo.use : 'unknown',
       });
     }
   }
@@ -91,11 +98,11 @@ export function getKeyStore(): KeyStore {
   if (!instance) {
     // Lazy-load to avoid circular dependency
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { InMemoryKeyStore } = require("./in-memory-key-store.js");
+    const { InMemoryKeyStore } = require('./in-memory-key-store.js');
     instance = new InMemoryKeyStore();
   }
   if (!instance) {
-    throw new Error("Failed to initialize key store");
+    throw new Error('Failed to initialize key store');
   }
   return instance;
 }

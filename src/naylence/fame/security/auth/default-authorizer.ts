@@ -3,38 +3,43 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from "naylence-core";
-import { createAuthorizationContext, DeliveryOriginType } from "naylence-core";
+} from 'naylence-core';
+import { createAuthorizationContext, DeliveryOriginType } from 'naylence-core';
 
-import { getLogger } from "../../util/logging.js";
-import type { NodeEventListener } from "../../node/node-event-listener.js";
-import type { NodeLike } from "../../node/node-like.js";
-import type { Authorizer } from "./authorizer.js";
-import type { TokenVerifier } from "./token-verifier.js";
-import type { TokenVerifierProvider } from "./token-verifier-provider.js";
+import { getLogger } from '../../util/logging.js';
+import type { NodeEventListener } from '../../node/node-event-listener.js';
+import type { NodeLike } from '../../node/node-like.js';
+import type { Authorizer } from './authorizer.js';
+import type { TokenVerifier } from './token-verifier.js';
+import type { TokenVerifierProvider } from './token-verifier-provider.js';
 
-const logger = getLogger("default-authorizer");
+const logger = getLogger('default-authorizer');
 
 function decodeCredentials(credentials: Uint8Array): string {
-  if (typeof TextDecoder !== "undefined") {
+  if (typeof TextDecoder !== 'undefined') {
     return new TextDecoder().decode(credentials);
   }
 
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(credentials).toString("utf-8");
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(credentials).toString('utf-8');
   }
 
-  throw new Error("Unable to decode credential bytes without TextDecoder support");
+  throw new Error(
+    'Unable to decode credential bytes without TextDecoder support'
+  );
 }
 
 function normalizeToken(credentials: string | Uint8Array): string | undefined {
-  const raw = typeof credentials === "string" ? credentials : decodeCredentials(credentials);
+  const raw =
+    typeof credentials === 'string'
+      ? credentials
+      : decodeCredentials(credentials);
   const trimmed = raw.trim();
   if (trimmed.length === 0) {
     return undefined;
   }
 
-  if (trimmed.toLowerCase().startsWith("bearer ")) {
+  if (trimmed.toLowerCase().startsWith('bearer ')) {
     const candidate = trimmed.slice(7).trim();
     return candidate.length > 0 ? candidate : undefined;
   }
@@ -42,9 +47,13 @@ function normalizeToken(credentials: string | Uint8Array): string | undefined {
   return trimmed;
 }
 
-function isNodeAttachFrame(frame: FameEnvelope["frame"]): frame is NodeAttachFrame {
+function isNodeAttachFrame(
+  frame: FameEnvelope['frame']
+): frame is NodeAttachFrame {
   return Boolean(
-    frame && typeof frame === "object" && (frame as { type?: unknown }).type === "NodeAttach"
+    frame &&
+      typeof frame === 'object' &&
+      (frame as { type?: unknown }).type === 'NodeAttach'
   );
 }
 
@@ -57,41 +66,48 @@ interface NodeAuthorizationClaims {
   acceptedCapabilities?: string[];
 }
 
-function extractNodeClaims(context: AuthorizationContext): NodeAuthorizationClaims | undefined {
+function extractNodeClaims(
+  context: AuthorizationContext
+): NodeAuthorizationClaims | undefined {
   const claims = context.claims;
-  if (!claims || typeof claims !== "object") {
+  if (!claims || typeof claims !== 'object') {
     return undefined;
   }
 
   const record = claims as Record<string, unknown>;
 
   const subject =
-    typeof context.principal === "string"
+    typeof context.principal === 'string'
       ? context.principal
-      : typeof record.sub === "string"
+      : typeof record.sub === 'string'
         ? (record.sub as string)
         : undefined;
 
   const instanceId =
-    typeof record.instance_id === "string" ? (record.instance_id as string) : undefined;
-  const audience = typeof record.aud === "string" ? (record.aud as string) : undefined;
+    typeof record.instance_id === 'string'
+      ? (record.instance_id as string)
+      : undefined;
+  const audience =
+    typeof record.aud === 'string' ? (record.aud as string) : undefined;
 
   if (!subject || !instanceId || !audience) {
     return undefined;
   }
 
   const assignedPath =
-    typeof record.assigned_path === "string" ? (record.assigned_path as string) : undefined;
+    typeof record.assigned_path === 'string'
+      ? (record.assigned_path as string)
+      : undefined;
 
   const acceptedLogicals = Array.isArray(record.accepted_logicals)
     ? (record.accepted_logicals as unknown[]).filter(
-        (item): item is string => typeof item === "string"
+        (item): item is string => typeof item === 'string'
       )
     : undefined;
 
   const acceptedCapabilities = Array.isArray(record.accepted_capabilities)
     ? (record.accepted_capabilities as unknown[]).filter(
-        (item): item is string => typeof item === "string"
+        (item): item is string => typeof item === 'string'
       )
     : undefined;
 
@@ -137,7 +153,9 @@ export interface DefaultAuthorizerOptions {
   tokenVerifier?: TokenVerifier;
 }
 
-export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, NodeEventListener {
+export class DefaultAuthorizer
+  implements Authorizer, TokenVerifierProvider, NodeEventListener
+{
   public readonly priority = 1000;
 
   private tokenVerifierImpl?: TokenVerifier;
@@ -151,7 +169,9 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
 
   public get tokenVerifier(): TokenVerifier {
     if (!this.tokenVerifierImpl) {
-      throw new Error("DefaultAuthorizer is not initialized properly, missing tokenVerifier");
+      throw new Error(
+        'DefaultAuthorizer is not initialized properly, missing tokenVerifier'
+      );
     }
 
     return this.tokenVerifierImpl;
@@ -184,10 +204,10 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
         ...context,
         authenticated: true,
         authorized: context.authorized ?? true,
-        authMethod: context.authMethod ?? "jwt_fame_claims",
+        authMethod: context.authMethod ?? 'jwt_fame_claims',
       });
     } catch (error) {
-      logger.warning("token_verification_failed", {
+      logger.warning('token_verification_failed', {
         error: error instanceof Error ? error.message : String(error),
       });
       return undefined;
@@ -208,14 +228,17 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
       return authorization;
     }
 
-    if (isNodeAttachFrame(envelope.frame) && context?.originType !== DeliveryOriginType.LOCAL) {
+    if (
+      isNodeAttachFrame(envelope.frame) &&
+      context?.originType !== DeliveryOriginType.LOCAL
+    ) {
       this.validateNodeAttach(node, envelope.frame, authorization);
     }
 
     return createAuthorizationContext({
       ...authorization,
       authorized: true,
-      authMethod: authorization.authMethod ?? "jwt_fame_claims",
+      authMethod: authorization.authMethod ?? 'jwt_fame_claims',
     });
   }
 
@@ -230,13 +253,15 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
 
     const claims = { ...(authContext.claims ?? {}) } as Record<string, unknown>;
 
-    if (typeof claims.sub !== "string") {
+    if (typeof claims.sub !== 'string') {
       claims.sub = authContext.principal ?? frame.systemId;
     }
 
     claims.instance_id =
-      typeof claims.instance_id === "string" ? claims.instance_id : frame.instanceId;
-    claims.aud = typeof claims.aud === "string" ? claims.aud : node.id;
+      typeof claims.instance_id === 'string'
+        ? claims.instance_id
+        : frame.instanceId;
+    claims.aud = typeof claims.aud === 'string' ? claims.aud : node.id;
 
     if (frame.assignedPath) {
       claims.assigned_path = frame.assignedPath;
@@ -255,9 +280,11 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
       claims,
       principal:
         authContext.principal ??
-        (typeof claims.sub === "string" ? (claims.sub as string) : frame.systemId),
+        (typeof claims.sub === 'string'
+          ? (claims.sub as string)
+          : frame.systemId),
       authorized: true,
-      authMethod: authContext.authMethod ?? "jwt_fame_claims",
+      authMethod: authContext.authMethod ?? 'jwt_fame_claims',
     });
   }
 
@@ -276,7 +303,7 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
     }
 
     if (nodeClaims.instanceId !== frame.instanceId) {
-      throw new Error("Token instance ID mismatch");
+      throw new Error('Token instance ID mismatch');
     }
 
     if (nodeClaims.audience !== node.id) {
@@ -288,14 +315,17 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
       nodeClaims.assignedPath &&
       frame.assignedPath !== nodeClaims.assignedPath
     ) {
-      throw new Error("Assigned path is not authorized by token");
+      throw new Error('Assigned path is not authorized by token');
     }
 
-    if (Array.isArray(frame.acceptedLogicals) && frame.acceptedLogicals.length > 0) {
+    if (
+      Array.isArray(frame.acceptedLogicals) &&
+      frame.acceptedLogicals.length > 0
+    ) {
       ensureSubset(
         nodeClaims.acceptedLogicals,
         frame.acceptedLogicals,
-        "Logicals not authorized by token"
+        'Logicals not authorized by token'
       );
     }
 
@@ -303,7 +333,7 @@ export class DefaultAuthorizer implements Authorizer, TokenVerifierProvider, Nod
       ensureSubset(
         nodeClaims.acceptedCapabilities,
         frame.capabilities,
-        "Capabilities not authorized by token"
+        'Capabilities not authorized by token'
       );
     }
   }

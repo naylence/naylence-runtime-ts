@@ -1,4 +1,4 @@
-import type { CredentialProvider } from "./credential-provider.js";
+import type { CredentialProvider } from './credential-provider.js';
 
 const DEFAULT_KEY_LENGTH = 32;
 
@@ -9,7 +9,7 @@ function hexToBytes(hex: string): Uint8Array {
     normalized.length % 2 !== 0 ||
     !/^([0-9a-f]{2})+$/u.test(normalized)
   ) {
-    throw new Error("Invalid hex string");
+    throw new Error('Invalid hex string');
   }
 
   const result = new Uint8Array(normalized.length / 2);
@@ -20,7 +20,7 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 function base64ToBytes(value: string): Uint8Array {
-  if (typeof atob === "function") {
+  if (typeof atob === 'function') {
     const binary = atob(value);
     const buffer = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
@@ -29,11 +29,11 @@ function base64ToBytes(value: string): Uint8Array {
     return buffer;
   }
 
-  if (typeof Buffer !== "undefined") {
-    return new Uint8Array(Buffer.from(value, "base64"));
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(value, 'base64'));
   }
 
-  throw new Error("Base64 decoding is not available in this environment");
+  throw new Error('Base64 decoding is not available in this environment');
 }
 
 export class DevFixedKeyCredentialProvider implements CredentialProvider {
@@ -41,7 +41,9 @@ export class DevFixedKeyCredentialProvider implements CredentialProvider {
 
   constructor(key: Uint8Array) {
     if (key.byteLength !== DEFAULT_KEY_LENGTH) {
-      throw new Error(`DevFixedKeyCredentialProvider requires a ${DEFAULT_KEY_LENGTH}-byte key`);
+      throw new Error(
+        `DevFixedKeyCredentialProvider requires a ${DEFAULT_KEY_LENGTH}-byte key`
+      );
     }
 
     this.key = new Uint8Array(key);
@@ -62,7 +64,9 @@ export class DevFixedKeyCredentialProvider implements CredentialProvider {
   public static fromBase64(base64: string): DevFixedKeyCredentialProvider {
     const bytes = base64ToBytes(base64);
     if (bytes.byteLength !== DEFAULT_KEY_LENGTH) {
-      throw new Error(`Base64 value must decode to ${DEFAULT_KEY_LENGTH} bytes`);
+      throw new Error(
+        `Base64 value must decode to ${DEFAULT_KEY_LENGTH} bytes`
+      );
     }
     return new DevFixedKeyCredentialProvider(bytes);
   }

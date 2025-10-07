@@ -1,30 +1,30 @@
-import { ConnectorState, type FameEnvelope } from "naylence-core";
+import { ConnectorState, type FameEnvelope } from 'naylence-core';
 
-import "../../security/index.js";
-import "../../node/index.js";
-import "../../connector/index.js";
-import "../../sentinel/index.js";
-import "../../delivery/index.js";
-import "../../stickiness/index.js";
+import '../../security/index.js';
+import '../../node/index.js';
+import '../../connector/index.js';
+import '../../sentinel/index.js';
+import '../../delivery/index.js';
+import '../../stickiness/index.js';
 
-import { WebSocketConnector } from "../../connector/websocket-connector.js";
-import { getWebsocketListenerInstance } from "../../connector/websocket-listener.js";
-import { DefaultHttpServer } from "../../connector/default-http-server.js";
-import { SentinelFactory } from "../sentinel-factory.js";
-import type { Sentinel } from "../sentinel.js";
-import type { RouteManager } from "../route-manager.js";
-import { NodeFactory } from "../../node/node-factory.js";
-import type { FameNode } from "../../node/node.js";
-import type { NodeEventListener } from "../../node/node-event-listener.js";
-import { UpstreamSessionManager } from "../../node/upstream-session-manager.js";
-import { basicConfig, LogLevel } from "../../util/logging.js";
+import { WebSocketConnector } from '../../connector/websocket-connector.js';
+import { getWebsocketListenerInstance } from '../../connector/websocket-listener.js';
+import { DefaultHttpServer } from '../../connector/default-http-server.js';
+import { SentinelFactory } from '../sentinel-factory.js';
+import type { Sentinel } from '../sentinel.js';
+import type { RouteManager } from '../route-manager.js';
+import { NodeFactory } from '../../node/node-factory.js';
+import type { FameNode } from '../../node/node.js';
+import type { NodeEventListener } from '../../node/node-event-listener.js';
+import { UpstreamSessionManager } from '../../node/upstream-session-manager.js';
+import { basicConfig, LogLevel } from '../../util/logging.js';
 
-jest.mock("fastify", () => {
-  const actual = jest.requireActual("fastify");
+jest.mock('fastify', () => {
+  const actual = jest.requireActual('fastify');
   return (...args: unknown[]) => {
     const instance = actual(...args);
-    Object.defineProperty(instance, "version", {
-      value: actual.version ?? instance.version ?? "5.6.1",
+    Object.defineProperty(instance, 'version', {
+      value: actual.version ?? instance.version ?? '5.6.1',
       configurable: true,
     });
     return instance;
@@ -33,16 +33,16 @@ jest.mock("fastify", () => {
 
 jest.setTimeout(20000);
 
-const SOCKET_HOST = "127.0.0.1";
+const SOCKET_HOST = '127.0.0.1';
 const WAIT_TIMEOUT_MS = 10_000;
 const WAIT_INTERVAL_MS = 50;
 
 function createSecurityConfig(): Record<string, unknown> {
   return {
-    type: "DefaultSecurityManager",
-    authorizer: { type: "NoopAuthorizer" },
+    type: 'DefaultSecurityManager',
+    authorizer: { type: 'NoopAuthorizer' },
     security_policy: {
-      type: "NoSecurityPolicy",
+      type: 'NoSecurityPolicy',
     },
   } satisfies Record<string, unknown>;
 }
@@ -67,19 +67,22 @@ async function waitForCondition(
     });
   }
 
-  throw new Error("Timed out waiting for condition");
+  throw new Error('Timed out waiting for condition');
 }
 
 type UpstreamTimingOverrideKey =
-  | "HEARTBEAT_INTERVAL"
-  | "HEARTBEAT_GRACE"
-  | "BACKOFF_INITIAL"
-  | "BACKOFF_CAP";
+  | 'HEARTBEAT_INTERVAL'
+  | 'HEARTBEAT_GRACE'
+  | 'BACKOFF_INITIAL'
+  | 'BACKOFF_CAP';
 
 function overrideUpstreamSessionManagerTiming(
   overrides: Partial<Record<UpstreamTimingOverrideKey, number>>
 ): () => void {
-  const manager = UpstreamSessionManager as unknown as Record<UpstreamTimingOverrideKey, number>;
+  const manager = UpstreamSessionManager as unknown as Record<
+    UpstreamTimingOverrideKey,
+    number
+  >;
   const previous = new Map<UpstreamTimingOverrideKey, number>();
 
   for (const [key, value] of Object.entries(overrides) as Array<
@@ -99,7 +102,7 @@ function overrideUpstreamSessionManagerTiming(
   };
 }
 
-describe("Sentinel downstream node integration", () => {
+describe('Sentinel downstream node integration', () => {
   beforeAll(() => {
     basicConfig({ level: LogLevel.ERROR });
   });
@@ -108,7 +111,7 @@ describe("Sentinel downstream node integration", () => {
     await DefaultHttpServer.shutdownAll();
   });
 
-  test("downstream node binds logical address and propagates upstream", async () => {
+  test('downstream node binds logical address and propagates upstream', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -117,22 +120,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel",
+        type: 'Sentinel',
+        id: 'parent-sentinel',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -149,26 +152,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       child = await nodeFactory.create({
-        type: "Node",
-        id: "child-node",
+        type: 'Node',
+        id: 'child-node',
         hasParent: true,
-        requestedLogicals: ["svc"],
+        requestedLogicals: ['svc'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -180,19 +183,25 @@ describe("Sentinel downstream node integration", () => {
 
       await waitForCondition(() => child?.handshakeCompleted === true);
 
-      const routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager.downstreamRoutes.has(child!.id));
+      const routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager.downstreamRoutes.has(child!.id)
+      );
 
       const upstreamConnector = child.upstreamConnector;
       expect(upstreamConnector).toBeInstanceOf(WebSocketConnector);
       expect(upstreamConnector?.state).toBe(ConnectorState.STARTED);
 
-      const binding = await child.bind("svc");
+      const binding = await child.bind('svc');
       const addressKey = binding.address.toString();
 
-      await waitForCondition(() => routeManager._downstream_addresses_routes.has(addressKey));
+      await waitForCondition(() =>
+        routeManager._downstream_addresses_routes.has(addressKey)
+      );
 
-      const routeInfo = routeManager._downstream_addresses_routes.get(addressKey);
+      const routeInfo =
+        routeManager._downstream_addresses_routes.get(addressKey);
       expect(routeInfo).toBeTruthy();
       expect(routeInfo?.segment).toBe(child.id);
     } finally {
@@ -201,7 +210,7 @@ describe("Sentinel downstream node integration", () => {
     }
   });
 
-  test("downstream node automatically reconnects after parent disconnect", async () => {
+  test('downstream node automatically reconnects after parent disconnect', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -218,22 +227,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel",
+        type: 'Sentinel',
+        id: 'parent-sentinel',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -250,26 +259,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       child = await nodeFactory.create({
-        type: "Node",
-        id: "child-node",
+        type: 'Node',
+        id: 'child-node',
         hasParent: true,
-        requestedLogicals: ["svc"],
+        requestedLogicals: ['svc'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -281,7 +290,8 @@ describe("Sentinel downstream node integration", () => {
 
       await waitForCondition(() => child?.handshakeCompleted === true);
 
-      const routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
+      const routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
       const childId = child!.id;
 
       await waitForCondition(() => routeManager.downstreamRoutes.has(childId));
@@ -309,7 +319,8 @@ describe("Sentinel downstream node integration", () => {
         return Boolean(connector && connector !== initialParentConnector);
       }, FAST_RECONNECT_TIMEOUT_MS);
 
-      const reconnectedParentConnector = routeManager.downstreamRoutes.get(childId);
+      const reconnectedParentConnector =
+        routeManager.downstreamRoutes.get(childId);
       expect(reconnectedParentConnector).toBeInstanceOf(WebSocketConnector);
       expect(reconnectedParentConnector).not.toBe(initialParentConnector);
 
@@ -322,7 +333,8 @@ describe("Sentinel downstream node integration", () => {
         );
       }, FAST_RECONNECT_TIMEOUT_MS);
 
-      const reconnectedChildConnector = child!.upstreamConnector as WebSocketConnector;
+      const reconnectedChildConnector = child!
+        .upstreamConnector as WebSocketConnector;
       expect(reconnectedChildConnector).not.toBe(initialChildConnector);
       expect(reconnectedChildConnector.state).toBe(ConnectorState.STARTED);
     } finally {
@@ -332,7 +344,7 @@ describe("Sentinel downstream node integration", () => {
     }
   });
 
-  test("downstream node sends heartbeat and receives ack from parent sentinel", async () => {
+  test('downstream node sends heartbeat and receives ack from parent sentinel', async () => {
     const sentinelFactory = new SentinelFactory();
     const nodeFactory = new NodeFactory();
 
@@ -348,10 +360,17 @@ describe("Sentinel downstream node integration", () => {
     let parent: Sentinel | null = null;
     let child: FameNode | null = null;
 
-    const captureEnvelope = (first?: unknown, second?: unknown): FameEnvelope | undefined => {
+    const captureEnvelope = (
+      first?: unknown,
+      second?: unknown
+    ): FameEnvelope | undefined => {
       const candidates = [first, second];
       for (const candidate of candidates) {
-        if (candidate && typeof candidate === "object" && "frame" in candidate) {
+        if (
+          candidate &&
+          typeof candidate === 'object' &&
+          'frame' in candidate
+        ) {
           return candidate as FameEnvelope;
         }
       }
@@ -376,22 +395,22 @@ describe("Sentinel downstream node integration", () => {
 
     try {
       parent = await sentinelFactory.create({
-        type: "Sentinel",
-        id: "parent-sentinel",
+        type: 'Sentinel',
+        id: 'parent-sentinel',
         security: createSecurityConfig(),
         admission: {
-          type: "NoopAdmissionClient",
+          type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         routingPolicy: {
-          type: "CompositeRoutingPolicy",
+          type: 'CompositeRoutingPolicy',
         },
         listeners: [
           {
-            type: "WebSocketListener",
+            type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
@@ -408,26 +427,26 @@ describe("Sentinel downstream node integration", () => {
       const baseUrl = serverListener?.baseUrl;
       expect(baseUrl).toBeTruthy();
 
-      const wsBaseUrl = baseUrl!.startsWith("https://")
-        ? baseUrl!.replace("https://", "wss://")
-        : baseUrl!.replace("http://", "ws://");
+      const wsBaseUrl = baseUrl!.startsWith('https://')
+        ? baseUrl!.replace('https://', 'wss://')
+        : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
       child = await nodeFactory.create({
-        type: "Node",
-        id: "child-node",
+        type: 'Node',
+        id: 'child-node',
         hasParent: true,
-        requestedLogicals: ["svc"],
+        requestedLogicals: ['svc'],
         security: createSecurityConfig(),
         delivery: {
-          type: "AtLeastOnceDeliveryPolicy",
+          type: 'AtLeastOnceDeliveryPolicy',
         },
         admission: {
-          type: "DirectAdmissionClient",
+          type: 'DirectAdmissionClient',
           connectionGrants: [
             {
-              type: "WebSocketConnectionGrant",
-              purpose: "node.attach",
+              type: 'WebSocketConnectionGrant',
+              purpose: 'node.attach',
               url: downstreamAttachUrl,
             },
           ],
@@ -441,24 +460,34 @@ describe("Sentinel downstream node integration", () => {
 
       await waitForCondition(() => child?.handshakeCompleted === true);
 
-      const routeManager = (parent as unknown as { routeManager: RouteManager }).routeManager;
-      await waitForCondition(() => routeManager.downstreamRoutes.has(child!.id));
+      const routeManager = (parent as unknown as { routeManager: RouteManager })
+        .routeManager;
+      await waitForCondition(() =>
+        routeManager.downstreamRoutes.has(child!.id)
+      );
 
-      await waitForCondition(() => heartbeatsSent.length > 0, HEARTBEAT_WAIT_TIMEOUT_MS);
-      await waitForCondition(() => heartbeatAcks.length > 0, HEARTBEAT_WAIT_TIMEOUT_MS);
+      await waitForCondition(
+        () => heartbeatsSent.length > 0,
+        HEARTBEAT_WAIT_TIMEOUT_MS
+      );
+      await waitForCondition(
+        () => heartbeatAcks.length > 0,
+        HEARTBEAT_WAIT_TIMEOUT_MS
+      );
 
       const sentHeartbeat = heartbeatsSent[heartbeatsSent.length - 1];
-      expect(sentHeartbeat.frame?.type).toBe("NodeHeartbeat");
+      expect(sentHeartbeat.frame?.type).toBe('NodeHeartbeat');
 
       const ackEnvelope =
-        heartbeatAcks.find((ack) => ack.corrId && ack.corrId === sentHeartbeat.corrId) ??
-        heartbeatAcks[heartbeatAcks.length - 1];
+        heartbeatAcks.find(
+          (ack) => ack.corrId && ack.corrId === sentHeartbeat.corrId
+        ) ?? heartbeatAcks[heartbeatAcks.length - 1];
       expect(ackEnvelope).toBeTruthy();
 
       const ackFrame = ackEnvelope!.frame as
         | { type?: string; ok?: boolean; refId?: string | null }
         | undefined;
-      expect(ackFrame?.type).toBe("NodeHeartbeatAck");
+      expect(ackFrame?.type).toBe('NodeHeartbeatAck');
       expect(ackFrame?.ok).not.toBe(false);
       expect(ackFrame?.refId).toBe(sentHeartbeat.id);
       expect(ackEnvelope!.corrId).toBe(sentHeartbeat.corrId);

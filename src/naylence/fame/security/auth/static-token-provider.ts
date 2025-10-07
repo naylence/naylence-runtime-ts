@@ -1,19 +1,21 @@
-import type { Token } from "./token.js";
-import type { TokenProvider } from "./token-provider.js";
+import type { Token } from './token.js';
+import type { TokenProvider } from './token-provider.js';
 
 export interface StaticTokenProviderOptions {
   token: string;
   expiresAt?: number | string | Date | null;
 }
 
-function normalizeExpiresAt(expiresAt?: number | string | Date | null): number | undefined {
+function normalizeExpiresAt(
+  expiresAt?: number | string | Date | null
+): number | undefined {
   if (expiresAt === null || expiresAt === undefined) {
     return undefined;
   }
 
-  if (typeof expiresAt === "number") {
+  if (typeof expiresAt === 'number') {
     if (!Number.isFinite(expiresAt)) {
-      throw new TypeError("expiresAt must be a finite number when provided");
+      throw new TypeError('expiresAt must be a finite number when provided');
     }
     return expiresAt;
   }
@@ -21,28 +23,32 @@ function normalizeExpiresAt(expiresAt?: number | string | Date | null): number |
   if (expiresAt instanceof Date) {
     const time = expiresAt.getTime();
     if (Number.isNaN(time)) {
-      throw new TypeError("expiresAt Date must be valid");
+      throw new TypeError('expiresAt Date must be valid');
     }
     return time;
   }
 
-  if (typeof expiresAt === "string") {
+  if (typeof expiresAt === 'string') {
     const parsed = Date.parse(expiresAt);
     if (Number.isNaN(parsed)) {
-      throw new TypeError("expiresAt string must be ISO-8601 or epoch milliseconds");
+      throw new TypeError(
+        'expiresAt string must be ISO-8601 or epoch milliseconds'
+      );
     }
     return parsed;
   }
 
-  throw new TypeError("expiresAt must be a number, string, Date, or null/undefined");
+  throw new TypeError(
+    'expiresAt must be a number, string, Date, or null/undefined'
+  );
 }
 
 export class StaticTokenProvider implements TokenProvider {
   private readonly token: Token;
 
   constructor(options: StaticTokenProviderOptions) {
-    if (!options || typeof options.token !== "string") {
-      throw new TypeError("StaticTokenProvider requires a string token value");
+    if (!options || typeof options.token !== 'string') {
+      throw new TypeError('StaticTokenProvider requires a string token value');
     }
 
     this.token = {

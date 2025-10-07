@@ -8,14 +8,17 @@ export interface CredentialProvider {
   get(): Promise<Uint8Array | string | null>;
 }
 
-const sharedTextDecoder = typeof TextDecoder !== "undefined" ? new TextDecoder() : null;
+const sharedTextDecoder =
+  typeof TextDecoder !== 'undefined' ? new TextDecoder() : null;
 
-export function credentialToString(value: Uint8Array | string | null | undefined): string | null {
+export function credentialToString(
+  value: Uint8Array | string | null | undefined
+): string | null {
   if (value === undefined || value === null) {
     return null;
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     return value;
   }
 
@@ -23,9 +26,11 @@ export function credentialToString(value: Uint8Array | string | null | undefined
     return sharedTextDecoder.decode(value);
   }
 
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(value).toString("utf-8");
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(value).toString('utf-8');
   }
 
-  throw new Error("Unable to decode credential bytes without TextDecoder support");
+  throw new Error(
+    'Unable to decode credential bytes without TextDecoder support'
+  );
 }

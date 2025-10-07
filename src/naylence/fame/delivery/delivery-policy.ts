@@ -1,6 +1,6 @@
-import type { FameEnvelope } from "naylence-core";
+import type { FameEnvelope } from 'naylence-core';
 
-import type { RetryPolicy } from "./retry-policy.js";
+import type { RetryPolicy } from './retry-policy.js';
 
 export interface DeliveryPolicyOptions {
   readonly senderRetryPolicy?: RetryPolicy;

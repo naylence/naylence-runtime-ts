@@ -3,11 +3,13 @@ export interface AuthInjectionStrategy {
   cleanup(): Promise<void>;
 }
 
-export function isAuthInjectionStrategy(candidate: unknown): candidate is AuthInjectionStrategy {
+export function isAuthInjectionStrategy(
+  candidate: unknown
+): candidate is AuthInjectionStrategy {
   return (
-    typeof candidate === "object" &&
+    typeof candidate === 'object' &&
     candidate !== null &&
-    typeof (candidate as Partial<AuthInjectionStrategy>).apply === "function" &&
-    typeof (candidate as Partial<AuthInjectionStrategy>).cleanup === "function"
+    typeof (candidate as Partial<AuthInjectionStrategy>).apply === 'function' &&
+    typeof (candidate as Partial<AuthInjectionStrategy>).cleanup === 'function'
   );
 }
