@@ -463,8 +463,6 @@ export class DefaultDeliveryTracker
       frame_type: envelope.frame?.type ?? 'unknown',
     });
 
-    const outbox = this.ensureOutbox();
-
     if (!envelope.corrId) {
       logger.debug('envelope_delivered_no_corr_id', {
         envelope_id: envelope.id,
@@ -488,37 +486,60 @@ export class DefaultDeliveryTracker
       return null;
     }
 
+    return this.onCorrelatedMessage(inboxName, envelope, context);
+  }
+
+  private async onCorrelatedMessage(
+    inboxName: string,
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<TrackedEnvelope | null> {
+    void context;
+    if (!envelope.corrId) {
+      throw new Error('Envelope must have a correlation ID');
+    }
+
+    const outbox = this.ensureOutbox();
     const trackedId = await this.lock.runExclusive(async () =>
       this.correlationToEnvelope.get(envelope.corrId!)
     );
 
+    let tracked: TrackedEnvelope | null = null;
+
     if (trackedId) {
-      const tracked = await outbox.get(trackedId);
-      if (tracked && tracked.originalEnvelope.id !== envelope.id) {
-        return this.onReply(envelope, tracked, context);
+      const outboxEntry = await outbox.get(trackedId);
+      if (outboxEntry && outboxEntry.originalEnvelope.id !== envelope.id) {
+        tracked = await this.onReply(envelope, outboxEntry, context);
       }
     }
 
-    const inbox = this.ensureInbox();
-    let tracked = await inbox.get(envelope.id);
+    if (!tracked) {
+      const inbox = this.ensureInbox();
+      tracked = (await inbox.get(envelope.id)) ?? null;
 
-    if (tracked) {
-      if (tracked.status !== EnvelopeStatus.HANDLED) {
-        tracked.status = EnvelopeStatus.RECEIVED;
+      if (tracked) {
+        if (tracked.status !== EnvelopeStatus.HANDLED) {
+          tracked.status = EnvelopeStatus.RECEIVED;
+          await inbox.set(envelope.id, tracked);
+        } else {
+          logger.debug('tracker_duplicate_envelope_already_handled', {
+            envp_id: envelope.id,
+            status: tracked.status,
+          });
+        }
+      } else {
+        tracked = new TrackedEnvelope({
+          timeoutAtMs: 0,
+          overallTimeoutAtMs: 0,
+          expectedResponseType: envelope.rtype ?? FameResponseType.NONE,
+          createdAtMs: Date.now(),
+          status: EnvelopeStatus.RECEIVED,
+          mailboxType: MailboxType.INBOX,
+          originalEnvelope: envelope,
+          serviceName: inboxName,
+        });
         await inbox.set(envelope.id, tracked);
       }
-    } else {
-      tracked = new TrackedEnvelope({
-        timeoutAtMs: 0,
-        overallTimeoutAtMs: 0,
-        expectedResponseType: envelope.rtype ?? FameResponseType.NONE,
-        createdAtMs: Date.now(),
-        status: EnvelopeStatus.RECEIVED,
-        mailboxType: MailboxType.INBOX,
-        originalEnvelope: envelope,
-        serviceName: inboxName,
-      });
-      await inbox.set(envelope.id, tracked);
     }
 
     if (envelope.rtype && Boolean(envelope.rtype & FameResponseType.ACK)) {
@@ -760,6 +781,7 @@ export class DefaultDeliveryTracker
       throw new Error('Node is required to process replies');
     }
 
+    const node = this.node;
     const outbox = this.ensureOutbox();
 
     if (trackedEnvelope.expectedResponseType & FameResponseType.STREAM) {
@@ -783,15 +805,17 @@ export class DefaultDeliveryTracker
         trackedEnvelope.originalEnvelope.id
       );
       if (ackFuture && ackFuture.resolve) {
-        const ackEnvelope: FameEnvelope = {
-          ...envelope,
+        const ackEnvelope = node.envelopeFactory.createEnvelope({
+          to: envelope.replyTo ?? undefined,
           frame: {
             type: 'DeliveryAck',
             ok: true,
             refId: trackedEnvelope.originalEnvelope.id,
             reason: 'Auto-ack for reply',
-          } as DeliveryAckFrame,
-        };
+          } satisfies DeliveryAckFrame,
+          corrId: envelope.corrId ?? undefined,
+          traceId: envelope.traceId ?? undefined,
+        });
         ackFuture.resolve(ackEnvelope);
       }
     });
@@ -1678,6 +1702,7 @@ export class DefaultDeliveryTracker
     if (!this.node) {
       return;
     }
+    const node = this.node;
     if (!envelope.replyTo) {
       logger.error('cannot_send_ack_no_reply_to', { envp_id: envelope.id });
       return;
@@ -1694,7 +1719,7 @@ export class DefaultDeliveryTracker
       corr_id: envelope.corrId,
     });
 
-    const ackEnvelope = this.node.envelopeFactory.createEnvelope({
+    const ackEnvelope = node.envelopeFactory.createEnvelope({
       to: envelope.replyTo,
       frame: {
         type: 'DeliveryAck',
@@ -1702,8 +1727,9 @@ export class DefaultDeliveryTracker
         refId: envelope.id,
       } satisfies DeliveryAckFrame,
       corrId: envelope.corrId,
+      traceId: envelope.traceId ?? undefined,
     });
 
-    await this.node.send(ackEnvelope);
+    await node.send(ackEnvelope);
   }
 }
