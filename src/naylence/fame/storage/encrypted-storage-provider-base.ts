@@ -343,6 +343,7 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
       deserialize?: (input: unknown) => V;
     };
 
+    // Prefer static factory methods for custom deserialization logic
     if (typeof ctorAsAny.fromJSON === 'function') {
       return ctorAsAny.fromJSON(data);
     }
@@ -353,11 +354,9 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
       return ctorAsAny.deserialize(data);
     }
 
-    try {
-      return new this.modelCtor(data);
-    } catch (e) {
-      return Object.assign(Object.create(this.modelCtor.prototype), data);
-    }
+    // Default: Use Object.assign (standard approach for JSON deserialization)
+    // This creates an instance with the correct prototype and copies all properties
+    return Object.assign(Object.create(this.modelCtor.prototype), data);
   }
 
   private cacheGet(key: string): V | undefined {

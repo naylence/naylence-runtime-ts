@@ -54,14 +54,6 @@ export class BindingStoreEntryRecord implements BindingStoreEntry {
     public encryptionKeyId: string | null = null,
     public physicalPath: string | null = null
   ) {}
-
-  static fromJSON(data: BindingStoreEntry): BindingStoreEntryRecord {
-    return new BindingStoreEntryRecord(
-      data.address,
-      data.encryptionKeyId ?? null,
-      data.physicalPath ?? null
-    );
-  }
 }
 
 export interface BindingManagerOptions {

@@ -6,8 +6,4 @@ export interface NodeMeta {
 
 export class NodeMetaRecord implements NodeMeta {
   constructor(public id: string) {}
-
-  static fromJSON(data: NodeMeta): NodeMetaRecord {
-    return new NodeMetaRecord(data.id);
-  }
 }
