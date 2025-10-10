@@ -49,31 +49,18 @@ export interface BindingStoreEntry {
 }
 
 export class BindingStoreEntryRecord implements BindingStoreEntry {
-  public readonly address: string;
-  public encryptionKeyId: string | null;
-  public physicalPath: string | null;
-
   constructor(
-    addressOrData: string | BindingStoreEntry,
-    encryptionKeyId: string | null = null,
-    physicalPath: string | null = null
-  ) {
-    if (typeof addressOrData === 'object' && addressOrData !== null) {
-      // Called from deserializer with {address, encryptionKeyId, physicalPath}
-      // Handle double-wrapped case where address might itself be an object
-      const data = addressOrData;
-      this.address =
-        typeof data.address === 'string'
-          ? data.address
-          : (data.address as any)?.address || '';
-      this.encryptionKeyId = data.encryptionKeyId ?? null;
-      this.physicalPath = data.physicalPath ?? null;
-    } else {
-      // Called programmatically with (address: string, ...)
-      this.address = addressOrData;
-      this.encryptionKeyId = encryptionKeyId;
-      this.physicalPath = physicalPath;
-    }
+    public readonly address: string,
+    public encryptionKeyId: string | null = null,
+    public physicalPath: string | null = null
+  ) {}
+
+  static fromJSON(data: BindingStoreEntry): BindingStoreEntryRecord {
+    return new BindingStoreEntryRecord(
+      data.address,
+      data.encryptionKeyId ?? null,
+      data.physicalPath ?? null
+    );
   }
 }
 
