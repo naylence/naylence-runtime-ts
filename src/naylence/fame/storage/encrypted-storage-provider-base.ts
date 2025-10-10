@@ -131,6 +131,38 @@ function fromHex(hex: string): Uint8Array {
   return result;
 }
 
+function fromBase64Url(base64url: string): Uint8Array {
+  // Convert base64url to base64
+  let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  
+  // Add padding if needed
+  const padding = base64.length % 4;
+  if (padding === 2) {
+    base64 += '==';
+  } else if (padding === 3) {
+    base64 += '=';
+  } else if (padding === 1) {
+    throw new Error('Invalid base64url string: length % 4 === 1');
+  }
+  
+  // Prefer Node.js Buffer for consistency
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(base64, 'base64'));
+  }
+  
+  // Browser fallback using atob
+  if (typeof atob !== 'undefined') {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+  
+  throw new Error('No base64 decoding available in this environment');
+}
+
 function isEncryptedValue(candidate: unknown): candidate is EncryptedValue {
   if (!candidate || typeof candidate !== 'object') {
     return false;
@@ -261,7 +293,36 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
       return key;
     }
 
-    return utf8Encode(key);
+    // Check if the key looks like base64url (alphanumeric, -, _, and typically 43 chars for 32 bytes)
+    // Base64url pattern: only contains [A-Za-z0-9_-]
+    const base64UrlPattern = /^[A-Za-z0-9_-]+$/;
+    const matchesPattern = base64UrlPattern.test(key);
+    
+    if (matchesPattern && key.length >= 16) {
+      try {
+        // Try to decode as base64url
+        const decoded = fromBase64Url(key);
+        
+        // Verify it's a reasonable key length (16, 24, or 32 bytes for AES)
+        if (decoded.length === 16 || decoded.length === 24 || decoded.length === 32) {
+          return decoded;
+        }
+        // If wrong length after decoding, treat as UTF-8 passphrase
+        console.warn(
+          `[EncryptedStorage] Master key decoded from base64url but has unexpected length ${decoded.length}. Treating as UTF-8 passphrase.`
+        );
+      } catch (error) {
+        // If decoding fails, treat as UTF-8 passphrase
+        console.warn(
+          `[EncryptedStorage] Master key looks like base64url but failed to decode: ${error instanceof Error ? error.message : String(error)}. Treating as UTF-8 passphrase.`
+        );
+      }
+    }
+
+    // Treat as UTF-8 passphrase
+    const utf8Key = utf8Encode(key);
+    // console.log('[EncryptedStorage] Using UTF-8 encoded key, length:', utf8Key.length, 'hex:', toHex(utf8Key.slice(0, 8)) + '...');
+    return utf8Key;
   }
 
   private serialize(value: V): string {
@@ -294,7 +355,7 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
 
     try {
       return new this.modelCtor(data);
-    } catch {
+    } catch (e) {
       return Object.assign(Object.create(this.modelCtor.prototype), data);
     }
   }
@@ -364,16 +425,23 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
       throw new Error(`Expected EncryptedValue, got ${typeof encryptedValue}`);
     }
 
-    const masterKey = await this.getRawMasterKey();
-    const ciphertext = fromHex(encryptedValue.ciphertext);
-    const plaintext = await this.encryptionManager.decrypt(
-      ciphertext,
-      masterKey
-    );
-    const json = utf8Decode(plaintext);
-    const value = this.deserialize(json);
-    this.cacheSet(key, value);
-    return value;
+    try {
+      const masterKey = await this.getRawMasterKey();
+      const ciphertext = fromHex(encryptedValue.ciphertext);
+      const plaintext = await this.encryptionManager.decrypt(
+        ciphertext,
+        masterKey
+      );
+      const json = utf8Decode(plaintext);
+      const value = this.deserialize(json);
+      
+      this.cacheSet(key, value);
+      return value;
+    } catch (error) {
+      console.error(`[EncryptedStorage] ERROR decrypting key "${key}":`, error);
+      console.error(`[EncryptedStorage] Encrypted value:`, JSON.stringify(encryptedValue));
+      throw error;
+    }
   }
 
   async delete(key: string): Promise<void> {
@@ -407,8 +475,9 @@ export class EncryptedKeyValueStore<V> implements KeyValueStore<V> {
         const value = this.deserialize(json);
         result[key] = value;
         this.cacheSet(key, value);
-      } catch {
-        // Skip corrupted entries
+      } catch (error) {
+        console.error('[EncryptedStorage] ERROR decrypting list item, key:', key, 'error:', error);
+        console.error('[EncryptedStorage] Encrypted value:', JSON.stringify(encrypted));
       }
     }
 

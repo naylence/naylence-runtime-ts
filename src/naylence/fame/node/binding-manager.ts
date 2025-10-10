@@ -48,6 +48,35 @@ export interface BindingStoreEntry {
   physicalPath?: string | null;
 }
 
+export class BindingStoreEntryRecord implements BindingStoreEntry {
+  public readonly address: string;
+  public encryptionKeyId: string | null;
+  public physicalPath: string | null;
+
+  constructor(
+    addressOrData: string | BindingStoreEntry,
+    encryptionKeyId: string | null = null,
+    physicalPath: string | null = null
+  ) {
+    if (typeof addressOrData === 'object' && addressOrData !== null) {
+      // Called from deserializer with {address, encryptionKeyId, physicalPath}
+      // Handle double-wrapped case where address might itself be an object
+      const data = addressOrData;
+      this.address =
+        typeof data.address === 'string'
+          ? data.address
+          : (data.address as any)?.address || '';
+      this.encryptionKeyId = data.encryptionKeyId ?? null;
+      this.physicalPath = data.physicalPath ?? null;
+    } else {
+      // Called programmatically with (address: string, ...)
+      this.address = addressOrData;
+      this.encryptionKeyId = encryptionKeyId;
+      this.physicalPath = physicalPath;
+    }
+  }
+}
+
 export interface BindingManagerOptions {
   hasUpstream: boolean;
   getId: () => string;
@@ -208,7 +237,11 @@ export class BindingManager {
     }
 
     for (const address of addresses) {
-      await this.bindingStore.set(address, { address });
+      await this.bindingStore.set(address, { 
+        address, 
+        encryptionKeyId: null, 
+        physicalPath: null 
+      });
     }
 
     logger.debug('bind_success', {

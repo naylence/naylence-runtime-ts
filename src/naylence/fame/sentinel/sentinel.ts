@@ -16,6 +16,8 @@ import {
   formatAddress,
   generateId,
   localDeliveryContext,
+  withFabric,
+  type FameConfig,
   // type NodeAttachAckFrame,
 } from 'naylence-core';
 
@@ -68,7 +70,6 @@ import type { DefaultDeliveryTracker } from '../delivery/default-delivery-tracke
 import { emitDeliveryNack, RouterState, type RoutingAction } from './router.js';
 import type { AddressRouteInfo } from './key-frame-handler.js';
 import type { NodeLike } from '../node/node-like.js';
-import { InProcessFameFabric } from '../fabric/in-process-fame-fabric.js';
 
 const logger = getLogger('sentinel');
 
@@ -113,11 +114,13 @@ export interface SentinelOptions extends FameNodeOptions {
 
 export interface SentinelServeOptions {
   logLevel?: LogLevel | keyof typeof LogLevelNames | string | number | null;
+  rootConfig?: Record<string, unknown> | FameConfig;
   config?: Record<string, unknown> | null;
   node?: NodeLike | null;
   fabric?: FameFabric | null;
   signals?: NodeJS.Signals[];
   signal?: AbortSignal;
+  [key: string]: unknown;
 }
 
 export class Sentinel extends FameNode implements RoutingNodeLike {
@@ -1187,12 +1190,17 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
   static async aserve(options: SentinelServeOptions = {}): Promise<void> {
     const {
       logLevel,
-      config = null,
+      rootConfig,
+      config,
       node = null,
       fabric: providedFabric = null,
       signals = ['SIGINT', 'SIGTERM'],
       signal,
-    } = options;
+      ...fabricOptions
+    } = options as SentinelServeOptions & {
+      rootConfig?: Record<string, unknown> | FameConfig;
+      [key: string]: unknown;
+    };
 
     const resolvedLevel = normalizeServeLogLevel(logLevel) ?? LogLevel.INFO;
     basicConfig({ level: resolvedLevel });
@@ -1219,8 +1227,29 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       return;
     }
 
-    const fabric: FameFabric =
-      providedFabric ?? new InProcessFameFabric(node, config ?? undefined);
+    // Build fabric options, preferring rootConfig if provided
+    const fabricCreateOptions: Record<string, unknown> = {
+      ...fabricOptions,
+    };
+
+    if (rootConfig !== undefined) {
+      fabricCreateOptions.rootConfig = rootConfig;
+    } else if (config !== null && config !== undefined) {
+      fabricCreateOptions.rootConfig = config;
+    }
+
+    if (node !== null) {
+      fabricCreateOptions.node = node;
+    }
+
+    logger.debug('fabric_create_options', {
+      hasRootConfig: 'rootConfig' in fabricCreateOptions,
+      hasNode: 'node' in fabricCreateOptions,
+      rootConfigKeys: fabricCreateOptions.rootConfig 
+        ? Object.keys(fabricCreateOptions.rootConfig as Record<string, unknown>).join(',')
+        : 'none',
+      allKeys: Object.keys(fabricCreateOptions).join(','),
+    });
 
     let stopResolve!: () => void;
     let stopResolved = false;
@@ -1269,30 +1298,40 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       }
     };
 
-    await fabric.enter();
-    let shutdownError: unknown;
-    try {
-      registerSignalListeners();
-      logger.info('sentinel_live', {
-        message: 'Node is live! Press Ctrl+C to stop.',
-      });
-      await stopPromise;
-      logger.info('sentinel_shutdown_begin');
-    } catch (error) {
-      shutdownError = error;
-      throw error;
-    } finally {
-      cleanupListeners();
+    // Use provided fabric or withFabric pattern for lifecycle management
+    if (providedFabric) {
+      // If a fabric is provided, use it directly without lifecycle management
+      await providedFabric.enter();
       try {
-        await fabric.exit();
-      } catch (error) {
-        logger.error('sentinel_shutdown_failed', {
-          error: error instanceof Error ? error.message : String(error),
+        registerSignalListeners();
+        logger.info('sentinel_live', {
+          message: 'Node is live! Press Ctrl+C to stop.',
         });
-        if (!shutdownError) {
-          throw error;
+        
+        try {
+          await stopPromise;
+          logger.info('sentinel_shutdown_begin');
+        } finally {
+          cleanupListeners();
         }
+      } finally {
+        await providedFabric.exit();
       }
+    } else {
+      // Use withFabric pattern for automatic lifecycle management
+      await withFabric(fabricCreateOptions, async () => {
+        registerSignalListeners();
+        logger.info('sentinel_live', {
+          message: 'Node is live! Press Ctrl+C to stop.',
+        });
+        
+        try {
+          await stopPromise;
+          logger.info('sentinel_shutdown_begin');
+        } finally {
+          cleanupListeners();
+        }
+      });
     }
 
     logger.info('sentinel_shutdown_complete');

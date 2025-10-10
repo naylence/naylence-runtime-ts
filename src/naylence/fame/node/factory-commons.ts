@@ -17,6 +17,7 @@ import { InMemoryStorageProvider } from '../storage/in-memory-storage.js';
 import type { KeyValueStore } from '../storage/key-value-store.js';
 import { NodeMetaRecord, NODE_META_NAMESPACE } from './node-meta.js';
 import type { BindingStoreEntry } from './binding-manager.js';
+import { BindingStoreEntryRecord } from './binding-manager.js';
 import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
 import { DeliveryPolicyFactory } from '../delivery/delivery-policy-factory.js';
 import { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
@@ -45,22 +46,6 @@ import type { CryptoProvider } from '../security/crypto/providers/crypto-provide
 const BINDING_STORE_NAMESPACE = '__binding_store';
 
 const logger = getLogger('node-factory');
-
-class BindingStoreEntryRecord implements BindingStoreEntry {
-  public readonly address: string;
-  public encryptionKeyId: string | null;
-  public physicalPath: string | null;
-
-  constructor(
-    address: string,
-    encryptionKeyId: string | null = null,
-    physicalPath: string | null = null
-  ) {
-    this.address = address;
-    this.encryptionKeyId = encryptionKeyId;
-    this.physicalPath = physicalPath;
-  }
-}
 
 export interface CommonNodeComponents {
   systemId: string;
