@@ -63,27 +63,29 @@ function normalizeConfig(
 
   const candidate = config as OAuth2ClientCredentialsTokenProviderConfig &
     Record<string, unknown>;
-  if (
-    typeof candidate.tokenUrl !== 'string' ||
-    candidate.tokenUrl.length === 0
-  ) {
+  
+  // Support both camelCase and snake_case for compatibility
+  const tokenUrl = candidate.tokenUrl ?? candidate.token_url;
+  if (typeof tokenUrl !== 'string' || tokenUrl.length === 0) {
     throw new Error(
       'OAuth2ClientCredentialsTokenProvider tokenUrl must be a non-empty string'
     );
   }
 
-  const clientIdSource: SecretSourceType = candidate.clientId;
-  const clientSecretSource: SecretSourceType = candidate.clientSecret;
+  const clientIdSource: SecretSourceType =
+    candidate.clientId ?? candidate.client_id;
+  const clientSecretSource: SecretSourceType =
+    candidate.clientSecret ?? candidate.client_secret;
 
   const scopes = Array.isArray(candidate.scopes)
     ? candidate.scopes.filter(
         (scope): scope is string =>
           typeof scope === 'string' && scope.length > 0
       )
-    : [];
+    : ['node.connect'];
 
   const normalized: NormalizedOAuth2Config = {
-    tokenUrl: candidate.tokenUrl,
+    tokenUrl,
     clientIdConfig: normalizeSecretSource(clientIdSource),
     clientSecretConfig: normalizeSecretSource(clientSecretSource),
     scopes,

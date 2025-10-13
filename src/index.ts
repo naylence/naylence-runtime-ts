@@ -73,3 +73,21 @@ export {
   registerRuntimeFactories,
   type RuntimeFactoryRegistry,
 } from './naylence/fame/util/register-runtime-factories.js';
+
+// Export HTTP/OAuth2 development server utilities
+export {
+  createJwksRouter,
+  type CreateJwksRouterOptions,
+} from './naylence/fame/http/jwks-api-router.js';
+export {
+  createOAuth2TokenRouter,
+  type CreateOAuth2TokenRouterOptions,
+} from './naylence/fame/http/oauth2-token-router.js';
+export {
+  createOpenIDConfigurationRouter,
+  type CreateOpenIDConfigurationRouterOptions,
+} from './naylence/fame/http/openid-configuration-router.js';
+export {
+  createApp as createOAuth2ServerApp,
+  main as runOAuth2Server,
+} from './naylence/fame/http/oauth2-server.js';

@@ -148,7 +148,10 @@ export async function makeCommonOptions(
     addEventListener(replicaStickinessManager, eventListeners);
   }
 
-  const cryptoProvider = extractCryptoProvider(config.security ?? null);
+  const cryptoProvider = await resolveCryptoProvider(
+    config.security ?? null,
+    expressionOptions
+  );
 
   const securityManager = await resolveSecurityManager(
     config.security ?? null,
@@ -483,6 +486,103 @@ function isNodeEventListener(value: unknown): value is NodeEventListener {
       typeof value === 'object' &&
       typeof (value as NodeEventListener).priority === 'number'
   );
+}
+
+async function resolveCryptoProvider(
+  config: SecurityManagerConfig | Record<string, unknown> | null,
+  options: CreateResourceOptions
+): Promise<CryptoProvider | null> {
+  // First, try to extract an explicitly provided crypto provider
+  const extracted = extractCryptoProvider(config);
+  if (extracted) {
+    return extracted;
+  }
+
+  // Check if the security configuration requires a crypto provider
+  // This happens with overlay security profiles that need envelope signing
+  if (requiresCryptoProvider(config)) {
+    try {
+      logger.debug('auto_creating_crypto_provider', {
+        reason: 'overlay_security_requires_signing',
+      });
+      
+      // Dynamically import to avoid circular dependencies
+      const { DefaultCryptoProvider } = await import(
+        '../security/crypto/providers/default-crypto-provider.js'
+      );
+      
+      // Extract environment variables for issuer and audience
+      const env = options.env ?? {};
+      const issuer =
+        typeof env.FAME_JWT_ISSUER === 'string'
+          ? env.FAME_JWT_ISSUER
+          : 'naylence.runtime.node';
+      const audience =
+        typeof env.FAME_JWT_AUDIENCE === 'string'
+          ? env.FAME_JWT_AUDIENCE
+          : 'fame.fabric';
+      
+      return await DefaultCryptoProvider.create({
+        issuer,
+        audience,
+        ttlSec: 3600,
+      });
+    } catch (error) {
+      logger.error('failed_to_auto_create_crypto_provider', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  return null;
+}
+
+function requiresCryptoProvider(
+  config: SecurityManagerConfig | Record<string, unknown> | null
+): boolean {
+  if (!config || typeof config !== 'object') {
+    return false;
+  }
+
+  const record = config as Record<string, unknown>;
+
+  // Check if using SecurityProfile with overlay variant
+  if (record.type === 'SecurityProfile' || record.type === 'NodeSecurityProfile') {
+    const profile = record.profile;
+    if (typeof profile === 'string') {
+      const profileLower = profile.toLowerCase();
+      // Overlay variants require crypto provider for envelope signing
+      if (
+        profileLower.includes('overlay') ||
+        profileLower === 'strict-overlay'
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Check if DefaultSecurityManager with signing policy
+  if (record.type === 'DefaultSecurityManager') {
+    const securityPolicy = record.security_policy ?? record.securityPolicy;
+    if (securityPolicy && typeof securityPolicy === 'object') {
+      const policyRecord = securityPolicy as Record<string, unknown>;
+      const signing = policyRecord.signing;
+      if (signing && typeof signing === 'object') {
+        const signingRecord = signing as Record<string, unknown>;
+        const outbound = signingRecord.outbound;
+        if (outbound && typeof outbound === 'object') {
+          const outboundRecord = outbound as Record<string, unknown>;
+          // If default signing is enabled, crypto provider is needed
+          if (outboundRecord.defaultSigning === true) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 function extractCryptoProvider(

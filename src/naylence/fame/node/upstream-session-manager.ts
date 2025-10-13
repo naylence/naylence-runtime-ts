@@ -338,14 +338,12 @@ export class UpstreamSessionManager
 
     await this.onWelcome(welcome.frame);
 
-    const connector = await ConnectorFactory.createConnector(grant, {
+        const connector = await ConnectorFactory.createConnector(grant, {
       systemId: welcome.frame.systemId,
     });
 
     await connector.start(this.wrappedHandler);
-    this.connector = connector;
-
-    const callbackGrants = this.node.gatherSupportedCallbackGrants();
+    this.connector = connector;    const callbackGrants = this.node.gatherSupportedCallbackGrants();
     const attachInfo = await this.attachClient.attach(
       this.node,
       this.outboundOriginType,
@@ -782,6 +780,7 @@ export class UpstreamSessionManager
   ): FameEnvelopeHandler {
     return async (env: FameEnvelope, context?: FameDeliveryContext) => {
       const authorizationContext = this.connector?.authorizationContext;
+
       if (!context) {
         context = {
           originType: this.inboundOriginType,

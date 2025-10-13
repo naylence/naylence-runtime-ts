@@ -142,6 +142,12 @@ export class OAuth2Authorizer
       return undefined;
     }
 
+    // Early return if already authorized (matches Python behavior)
+    // This skips scope checking for reverse auth contexts
+    if (authorization.authorized) {
+      return authorization;
+    }
+
     const grantedScopes = new Set<string>(authorization.grantedScopes ?? []);
 
     if (
@@ -152,14 +158,10 @@ export class OAuth2Authorizer
       return undefined;
     }
 
-    if (!authorization.authorized) {
-      return createAuthorizationContext({
-        ...authorization,
-        authorized: true,
-      });
-    }
-
-    return authorization;
+    return createAuthorizationContext({
+      ...authorization,
+      authorized: true,
+    });
   }
 
   async createReverseAuthorizationConfig(
