@@ -98,4 +98,8 @@ export class NoopSecureChannelManager implements SecureChannelManager {
   public removeChannel(_channelId: string): boolean {
     return false;
   }
+
+  public removeChannelsForDestination(_destination: string): number {
+    return 0;
+  }
 }

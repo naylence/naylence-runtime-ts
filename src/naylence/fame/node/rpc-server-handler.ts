@@ -14,7 +14,7 @@ import { ResponseContextManager } from './response-context-manager.js';
 import { StreamingResponseHandler } from './streaming-response-handler.js';
 import { isFameMessageResponse } from 'naylence-core';
 
-const logger = getLogger('rpc-server-handler');
+const logger = getLogger('naylence.fame.node.rpc_server_handler');
 
 type RpcHandlerResult = FameMessageResponse | unknown;
 

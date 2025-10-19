@@ -12,6 +12,7 @@ import type { AttachmentKeyValidator } from './keys/attachment-key-validator.js'
 import type { KeyManager } from './keys/key-manager.js';
 import type { KeyStore } from './keys/key-store.js';
 import { getKeyStore } from './keys/key-store.js';
+import { KeyStoreFactory } from './keys/key-store-factory.js';
 import { KeyManagerFactory } from './keys/key-manager-factory.js';
 import type { DefaultKeyManagerConfig } from './keys/default-key-manager-factory.js';
 import type { SecurityPolicy } from './policy/security-policy.js';
@@ -33,7 +34,9 @@ import type { NodeEventListener } from '../node/node-event-listener.js';
 import { getLogger } from '../util/logging.js';
 import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
 
-const logger = getLogger('default-security-manager-factory');
+const logger = getLogger(
+  'naylence.fame.security.default_security_manager_factory'
+);
 
 export interface DefaultSecurityManagerConfig extends SecurityManagerConfig {
   type: 'DefaultSecurityManager';
@@ -241,9 +244,14 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
     } = options;
 
     if (!keyStore) {
-      keyStore =
-        DefaultSecurityManagerFactory.getKeyStoreFromConfig(config) ??
-        getKeyStore();
+      keyStore = await DefaultSecurityManagerFactory.getOrCreateKeyStore(
+        config,
+        createOptions ?? null
+      );
+    }
+
+    if (!keyStore) {
+      keyStore = getKeyStore();
     }
 
     if (!policy) {
@@ -265,7 +273,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
         await DefaultSecurityManagerFactory.createKeyManagerFromConfig(
           config,
           policy,
-          keyStore
+          keyStore,
+          createOptions ?? null
         );
     }
 
@@ -339,13 +348,31 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
     );
   }
 
-  private static getKeyStoreFromConfig(
-    config: Record<string, unknown>
-  ): KeyStore | null {
+  private static async getOrCreateKeyStore(
+    config: Record<string, unknown>,
+    createOptions: CreateResourceOptions | null
+  ): Promise<KeyStore | null> {
     const value = config.keyStore ?? config.key_store;
-    return value && !DefaultSecurityManagerFactory.isConfigLike(value)
-      ? (value as KeyStore)
-      : null;
+
+    if (!value) {
+      return null;
+    }
+
+    if (!DefaultSecurityManagerFactory.isConfigLike(value)) {
+      return value as KeyStore;
+    }
+
+    try {
+      return await KeyStoreFactory.createKeyStore(
+        value as Record<string, unknown>,
+        createOptions ?? undefined
+      );
+    } catch (error) {
+      logger.error('failed_to_create_key_store_from_config', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
 
   private static async createPolicyFromConfig(
@@ -514,6 +541,7 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
           dependencies: {
             keyProvider: keyManager,
             secureChannelManager: secureChannelManager ?? null,
+            cryptoProvider: cryptoProviderOverride ?? null,
           },
         }
       );
@@ -543,14 +571,16 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
 
       const cryptoProvider = cryptoProviderOverride ?? null;
 
+      const dependencies = {
+        secureChannelManager,
+        keyProvider: keyManager,
+        cryptoProvider: cryptoProvider ?? null,
+      } as const;
+
       const manager = await EncryptionManagerFactory.createEncryptionManager(
         null,
         {
-          dependencies: {
-            secureChannelManager,
-            keyProvider: keyManager,
-            cryptoProvider: cryptoProvider ?? null,
-          },
+          dependencies,
         }
       );
 
@@ -567,15 +597,25 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
   private static async createKeyManagerFromConfig(
     config: Record<string, unknown>,
     policy: SecurityPolicy,
-    keyStore: KeyStore | null
+    keyStore: KeyStore | null,
+    createOptions: CreateResourceOptions | null
   ): Promise<KeyManager | null> {
-    let resolvedKeyStore =
-      keyStore ?? DefaultSecurityManagerFactory.getKeyStoreFromConfig(config);
+    let resolvedKeyStore = keyStore;
+    if (!resolvedKeyStore) {
+      resolvedKeyStore =
+        await DefaultSecurityManagerFactory.getOrCreateKeyStore(
+          config,
+          createOptions
+        );
+    }
     if (!resolvedKeyStore) {
       resolvedKeyStore = getKeyStore();
     }
 
-    const keyManagerConfig = config.key_manager_config ?? null;
+    const keyManagerConfig =
+      config.key_manager_config ??
+      config.keyManagerConfig ??
+      DefaultSecurityManagerFactory.getKeyManagerConfigAlias(config);
     if (
       keyManagerConfig &&
       DefaultSecurityManagerFactory.isConfigLike(keyManagerConfig)
@@ -584,6 +624,7 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
         keyManagerConfig as Record<string, unknown>,
         {
           keyStore: resolvedKeyStore,
+          ...(createOptions ?? {}),
         }
       );
     }
@@ -598,11 +639,12 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
         return null;
       }
 
-      const defaultConfig: DefaultKeyManagerConfig = {
-        type: 'DefaultKeyManager',
-      };
-      return await KeyManagerFactory.createKeyManager(defaultConfig, {
+      // const defaultConfig: DefaultKeyManagerConfig = {
+      //   type: 'DefaultKeyManager',
+      // };
+      return await KeyManagerFactory.createKeyManager(undefined, {
         keyStore: resolvedKeyStore,
+        ...(createOptions ?? {}),
       });
     } catch (error) {
       logger.error('failed_to_auto_create_key_manager', {
@@ -615,8 +657,21 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
       };
       return await KeyManagerFactory.createKeyManager(fallbackConfig, {
         keyStore: resolvedKeyStore,
+        ...(createOptions ?? {}),
       });
     }
+  }
+
+  private static getKeyManagerConfigAlias(
+    config: Record<string, unknown>
+  ): Record<string, unknown> | null {
+    const aliasCandidates = [config.keyManagerConfig, config.keyManager];
+    for (const candidate of aliasCandidates) {
+      if (candidate && DefaultSecurityManagerFactory.isConfigLike(candidate)) {
+        return candidate as Record<string, unknown>;
+      }
+    }
+    return null;
   }
 
   private static async createAuthorizerFromConfig(

@@ -31,7 +31,7 @@ import {
 } from '../delivery/tracked-envelope.js';
 import type { RetryPolicy } from '../delivery/retry-policy.js';
 
-const logger = getLogger('envelope-listener-manager');
+const logger = getLogger('naylence.fame.node.envelope_listener_manager');
 
 const SYSTEM_INBOX = '__sys__';
 

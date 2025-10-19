@@ -4,7 +4,9 @@ import { parse as parseYaml } from 'yaml';
 
 import { getLogger } from '../util/logging.js';
 
-export const configLogger = getLogger('naylence.fame.config');
+export const configLogger = getLogger(
+  'naylence.fame.config.extended_fame_config_base'
+);
 
 // Create the extended schema by preprocessing and then extending the base object schema
 export const ExtendedFameConfigSchema = z.preprocess(
@@ -12,13 +14,18 @@ export const ExtendedFameConfigSchema = z.preprocess(
   z
     .object({
       fabric: z.any().optional().describe('Fame fabric config'),
-      plugins: z.array(z.union([
-        z.string(),
-        z.object({
-          name: z.string(),
-          export: z.string().optional(),
-        }),
-      ])).optional().default([]),
+      plugins: z
+        .array(
+          z.union([
+            z.string(),
+            z.object({
+              name: z.string(),
+              export: z.string().optional(),
+            }),
+          ])
+        )
+        .optional()
+        .default([]),
       autoLoadPlugins: z.boolean().optional().default(true),
       pluginLogLevel: z
         .enum(['silent', 'error', 'warn', 'info', 'debug'])

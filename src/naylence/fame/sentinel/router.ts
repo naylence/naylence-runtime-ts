@@ -16,7 +16,7 @@ import { FameTransportClose } from '../errors/errors.js';
 import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import { getLogger, summarizeEnvelope } from '../util/logging.js';
 
-const logger = getLogger('router');
+const logger = getLogger('naylence.fame.sentinel.router');
 
 const ZERO_EPH_PUB_BASE64 = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
@@ -105,7 +105,15 @@ export class ForwardChild implements RoutingAction {
           segment: this.segment,
           error: error.message,
         });
-        await router.removeDownstreamRoute?.(this.segment);
+        await router.removeDownstreamRoute?.(this.segment, {
+          reason: 'transport_closed_forward_child',
+          meta: {
+            segment: this.segment,
+            envelope_id: envelope.id,
+            frame_type: envelope.frame?.type ?? null,
+          },
+          captureStack: false,
+        });
         if (!isDeliveryAck(envelope.frame)) {
           await emitDeliveryNack(
             envelope,
@@ -143,7 +151,15 @@ export class ForwardPeer implements RoutingAction {
           segment: this.segment,
           error: error.message,
         });
-        await router.removePeerRoute?.(this.segment);
+        await router.removePeerRoute?.(this.segment, {
+          reason: 'transport_closed_forward_peer',
+          meta: {
+            segment: this.segment,
+            envelope_id: envelope.id,
+            frame_type: envelope.frame?.type ?? null,
+          },
+          captureStack: false,
+        });
         if (!isDeliveryAck(envelope.frame)) {
           await emitDeliveryNack(
             envelope,

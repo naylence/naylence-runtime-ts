@@ -7,7 +7,7 @@ import type {
 import { getLogger } from '../../util/logging.js';
 import type { TokenIssuer } from './token-issuer.js';
 
-const logger = getLogger('jwt-token-issuer');
+const logger = getLogger('naylence.fame.security.auth.jwt_token_issuer');
 
 let joseModulePromise: Promise<typeof import('jose')> | null = null;
 

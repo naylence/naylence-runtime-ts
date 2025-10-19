@@ -71,7 +71,7 @@ export interface NodeEventListener {
   /**
    * Called when a heartbeat is sent to upstream.
    */
-  onHeartbeatSent?(envelope: FameEnvelope): Promise<void>;
+  onHeartbeatSent?(node: NodeLike, envelope: FameEnvelope): Promise<void>;
 
   /**
    * Called when a node has been fully initialized but before it starts.
@@ -432,7 +432,10 @@ export abstract class BaseNodeEventListener implements NodeEventListener {
     // Default implementation does nothing
   }
 
-  async onHeartbeatSent?(_envelope: FameEnvelope): Promise<void> {
+  async onHeartbeatSent?(
+    _node: NodeLike,
+    _envelope: FameEnvelope
+  ): Promise<void> {
     // Default implementation does nothing
   }
 

@@ -29,53 +29,58 @@ export abstract class WelcomeServiceFactory<
     config?: C | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<WelcomeService> {
-    if (config) {
-      const candidate = config as Record<string, unknown>;
-      const hasTypeField =
-        typeof candidate.type === 'string' && candidate.type.trim().length > 0;
+    // If no config provided, load from fame config
+    if (!config) {
+      const { getFameConfig, loadPluginsFromConfig } = await import(
+        '../config/extended-fame-config.js'
+      );
 
-      if (!hasTypeField) {
-        const service = await createDefaultResource<WelcomeService>(
-          WELCOME_SERVICE_FACTORY_BASE_TYPE,
-          candidate,
-          options
+      // Load plugins before creating the service
+      await loadPluginsFromConfig();
+
+      const fameConfig = getFameConfig();
+      config = fameConfig.welcome as Record<string, unknown> | undefined;
+
+      if (!config) {
+        throw new Error(
+          'No welcome service configuration found in fame config'
         );
-
-        if (!service) {
-          throw new Error(
-            'Failed to create default welcome service from partial configuration'
-          );
-        }
-
-        return service;
       }
+    }
 
-      const typedConfig: WelcomeServiceConfig = {
-        ...candidate,
-        type: candidate.type as string,
-      };
+    const candidate = config as Record<string, unknown>;
+    const hasTypeField =
+      typeof candidate.type === 'string' && candidate.type.trim().length > 0;
 
-      const service = await createResource<WelcomeService>(
+    if (!hasTypeField) {
+      const service = await createDefaultResource<WelcomeService>(
         WELCOME_SERVICE_FACTORY_BASE_TYPE,
-        typedConfig,
+        candidate,
         options
       );
 
       if (!service) {
-        throw new Error('Failed to create welcome service from configuration');
+        throw new Error(
+          'Failed to create default welcome service from partial configuration'
+        );
       }
 
       return service;
     }
 
-    const service = await createDefaultResource<WelcomeService>(
+    const typedConfig: WelcomeServiceConfig = {
+      ...candidate,
+      type: candidate.type as string,
+    };
+
+    const service = await createResource<WelcomeService>(
       WELCOME_SERVICE_FACTORY_BASE_TYPE,
-      null,
+      typedConfig,
       options
     );
 
     if (!service) {
-      throw new Error('Failed to create default welcome service');
+      throw new Error('Failed to create welcome service from configuration');
     }
 
     return service;

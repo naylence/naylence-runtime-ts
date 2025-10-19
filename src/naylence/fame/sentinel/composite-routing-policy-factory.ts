@@ -11,7 +11,9 @@ import {
   type RoutingPolicyConfig,
 } from './routing-policy.js';
 
-const logger = getLogger('composite-routing-policy-factory');
+const logger = getLogger(
+  'naylence.fame.sentinel.composite_routing_policy_factory'
+);
 
 export interface CompositeRoutingPolicyConfig extends RoutingPolicyConfig {
   type: 'CompositeRoutingPolicy';

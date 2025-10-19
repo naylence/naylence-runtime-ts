@@ -9,7 +9,7 @@ import {
 import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('node-heartbeat-frame-handler');
+const logger = getLogger('naylence.fame.sentinel.node_heartbeat_frame_handler');
 
 type RoutingNodeWithEpoch = RoutingNodeLike & {
   readonly routingEpoch?: string | null | undefined;

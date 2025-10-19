@@ -5,7 +5,10 @@ export {
 } from './auth/authorizer-factory.js';
 export type * from './auth/authorizer-factory.js';
 export * from './auth/auth-injection-strategy.js';
-export { AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE } from './auth/auth-injection-strategy-factory.js';
+export {
+  AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
+  AuthInjectionStrategyFactory,
+} from './auth/auth-injection-strategy-factory.js';
 export type * from './auth/auth-injection-strategy-factory.js';
 export * from './auth/token-issuer.js';
 export {

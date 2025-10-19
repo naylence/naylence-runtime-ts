@@ -10,7 +10,7 @@ import type { AtLeastOnceDeliveryPolicyConfig } from './at-least-once-delivery-p
 import type { AtMostOnceDeliveryPolicyConfig } from './at-most-once-delivery-policy-factory.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('delivery-profile-factory');
+const logger = getLogger('naylence.fame.delivery.delivery_profile_factory');
 
 export interface DeliveryProfileConfig extends DeliveryPolicyConfig {
   type: 'DeliveryProfile';

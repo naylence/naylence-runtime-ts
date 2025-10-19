@@ -22,7 +22,7 @@ import type { DeliveryTrackerEventHandler } from '../delivery/default-delivery-t
 import type { TrackedEnvelope } from '../delivery/tracked-envelope.js';
 import type { FameEnvelopeHandler } from 'naylence-core';
 
-const logger = getLogger('rpc-client-manager');
+const logger = getLogger('naylence.fame.node.rpc_client_manager');
 
 type DeliverFn = (
   envelope: FameEnvelope,
@@ -328,7 +328,7 @@ export class RPCClientManager {
       return;
     }
 
-    const recipient = '__rpc__';
+    const recipient = `__rpc__${generateId()}`;
     this.rpcReplyAddress = formatAddress(recipient, this.getPhysicalPath());
 
     const handler: FameEnvelopeHandler = async (

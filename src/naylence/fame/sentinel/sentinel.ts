@@ -12,6 +12,7 @@ import {
   FameResponseType,
   FameFabric,
   FlowFlags,
+  parseAddress,
   SecurityContext,
   formatAddress,
   generateId,
@@ -32,8 +33,15 @@ import type {
   RoutingNodeLike,
 } from '../node/routing-node-like.js';
 import type { RouteStore } from './store/route-store.js';
-import { getDefaultRouteStore } from './store/route-store.js';
-import { RouteManager, type PendingRouteEntry } from './route-manager.js';
+import {
+  createPersistentRouteStore,
+  getDefaultRouteStore,
+} from './store/route-store.js';
+import {
+  RouteManager,
+  type PendingRouteEntry,
+  type RouteRemovalOptions,
+} from './route-manager.js';
 import type { RoutingPolicy } from './routing-policy.js';
 import { CompositeRoutingPolicy } from './composite-routing-policy.js';
 import { CapabilityAwareRoutingPolicy } from './capability-aware-routing-policy.js';
@@ -71,10 +79,11 @@ import { emitDeliveryNack, RouterState, type RoutingAction } from './router.js';
 import type { AddressRouteInfo } from './key-frame-handler.js';
 import type { NodeLike } from '../node/node-like.js';
 
-const logger = getLogger('sentinel');
+const logger = getLogger('naylence.fame.sentinel.sentinel');
 
 const ALLOWED_BEFORE_ATTACH = new Set(['NodeAttach']);
 const SYSTEM_INBOX = '__sys__';
+const RESERVED_UPSTREAM_ADDRESS_NAMES = new Set(['__sys__', '__rpc__']);
 const DEFAULT_BINDING_ACK_TIMEOUT_MS = 20_000;
 const DEFAULT_ATTACH_TIMEOUT_SEC = 5;
 const DEFAULT_CONNECTOR_CLEANUP_DELAY_MS = 200;
@@ -110,6 +119,7 @@ export interface SentinelOptions extends FameNodeOptions {
   stickinessManager?: LoadBalancerStickinessManager | null;
   attachClient?: NodeAttachClient | null;
   cleanupDelayMs?: number;
+  rebindOnAttach?: boolean;
 }
 
 export interface SentinelServeOptions {
@@ -140,6 +150,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
   private readonly attachClient: NodeAttachClient | null;
   private readonly attachTimeoutMs: number | null;
   private readonly cleanupDelayMs: number;
+  private readonly rebindOnAttach: boolean;
 
   private readonly pendingBinds = new Map<string, Deferred<boolean>>();
   private readonly pendingLock = new AsyncLock();
@@ -157,7 +168,19 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
   constructor(options: SentinelOptions = {}) {
     super(options);
 
-    const routeStore = options.routeStore ?? getDefaultRouteStore();
+    let routeStore: RouteStore;
+    if (options.routeStore) {
+      routeStore = options.routeStore;
+    } else {
+      try {
+        routeStore = createPersistentRouteStore(this.storageProvider);
+      } catch (error) {
+        logger.warning('persistent_route_store_unavailable', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        routeStore = getDefaultRouteStore();
+      }
+    }
     const cleanupDelayMs = Number.isFinite(options.cleanupDelayMs ?? NaN)
       ? Math.max(0, Number(options.cleanupDelayMs))
       : DEFAULT_CONNECTOR_CLEANUP_DELAY_MS;
@@ -169,6 +192,8 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         ? Math.max(0, attachTimeoutSec * 1000)
         : null;
 
+    const rebindOnAttach = options.rebindOnAttach ?? false;
+
     this.routeManager = new RouteManager({
       deliver: (
         envelope: FameEnvelope,
@@ -178,6 +203,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       getId: () => this.id,
       cleanupDelayMs: this.cleanupDelayMs,
     });
+    this.rebindOnAttach = rebindOnAttach;
 
     (this as unknown as { _route_manager?: RouteManager })._route_manager =
       this.routeManager;
@@ -232,10 +258,28 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         'Sentinel nodes require a security manager with an authorizer'
       );
     }
+
+    if (this.rebindOnAttach) {
+      this.addEventListener({
+        priority: 500,
+        onNodeAttachToUpstream: async () => {
+          await this.propagateAddressBindingsUpstream();
+        },
+      });
+    }
   }
 
   get routingEpoch(): string {
     return this.routingEpochValue;
+  }
+
+  public bumpRoutingEpoch(): void {
+    const previousEpoch = this.routingEpochValue;
+    this.routingEpochValue = generateId();
+    logger.debug('routing_epoch_bumped', {
+      previous_epoch: previousEpoch,
+      new_epoch: this.routingEpochValue,
+    });
   }
 
   override get upstreamConnector(): FameConnector | null {
@@ -899,28 +943,38 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
   async removeDownstreamRoute(
     segment: string,
-    { stop = true }: { stop?: boolean } = {}
+    options: RouteRemovalOptions = {}
   ): Promise<void> {
-    if (stop) {
-      await this.routeManager.unregisterDownstreamRoute(segment);
-    } else {
-      await this.routeManager.routesLock.runExclusive(async () => {
-        this.routeManager.downstreamRoutes.delete(segment);
-      });
-    }
+    const { stop = true, delayMs, reason, meta, captureStack } = options;
+    await this.routeManager.unregisterDownstreamRoute(segment, {
+      stop,
+      delayMs,
+      reason: reason ?? 'sentinel.removeDownstreamRoute',
+      meta: {
+        ...(meta ?? {}),
+        requested_stop: stop,
+        caller: 'Sentinel.removeDownstreamRoute',
+      },
+      captureStack,
+    });
   }
 
   async removePeerRoute(
     segment: string,
-    { stop = true }: { stop?: boolean } = {}
+    options: RouteRemovalOptions = {}
   ): Promise<void> {
-    if (stop) {
-      await this.routeManager.unregisterPeerRoute(segment);
-    } else {
-      await this.routeManager.routesLock.runExclusive(async () => {
-        this.routeManager._peer_routes.delete(segment);
-      });
-    }
+    const { stop = true, delayMs, reason, meta, captureStack } = options;
+    await this.routeManager.unregisterPeerRoute(segment, {
+      stop,
+      delayMs,
+      reason: reason ?? 'sentinel.removePeerRoute',
+      meta: {
+        ...(meta ?? {}),
+        requested_stop: stop,
+        caller: 'Sentinel.removePeerRoute',
+      },
+      captureStack,
+    });
   }
 
   async resolveEncryptionKeyForAddress(
@@ -1101,6 +1155,18 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       if (!info) {
         continue;
       }
+
+      let name: string | null = null;
+      try {
+        const [parsedName] = parseAddress(address);
+        name = parsedName;
+      } catch {
+        name = null;
+      }
+
+      if (name && RESERVED_UPSTREAM_ADDRESS_NAMES.has(name.toLowerCase())) {
+        continue;
+      }
       try {
         await this.bindAddressUpstream(new FameAddress(address), info);
       } catch (error) {
@@ -1245,8 +1311,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     logger.debug('fabric_create_options', {
       hasRootConfig: 'rootConfig' in fabricCreateOptions,
       hasNode: 'node' in fabricCreateOptions,
-      rootConfigKeys: fabricCreateOptions.rootConfig 
-        ? Object.keys(fabricCreateOptions.rootConfig as Record<string, unknown>).join(',')
+      rootConfigKeys: fabricCreateOptions.rootConfig
+        ? Object.keys(
+            fabricCreateOptions.rootConfig as Record<string, unknown>
+          ).join(',')
         : 'none',
       allKeys: Object.keys(fabricCreateOptions).join(','),
     });
@@ -1307,7 +1375,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         logger.info('sentinel_live', {
           message: 'Node is live! Press Ctrl+C to stop.',
         });
-        
+
         try {
           await stopPromise;
           logger.info('sentinel_shutdown_begin');
@@ -1324,7 +1392,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         logger.info('sentinel_live', {
           message: 'Node is live! Press Ctrl+C to stop.',
         });
-        
+
         try {
           await stopPromise;
           logger.info('sentinel_shutdown_begin');

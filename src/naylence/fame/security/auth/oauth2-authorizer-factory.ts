@@ -25,7 +25,9 @@ import {
 import type { JWKSJWTTokenVerifierConfig } from './jwks-jwt-token-verifier-factory.js';
 import type { OAuth2AuthorizerOptions } from './oauth2-authorizer.js';
 
-const logger = getLogger('oauth2-authorizer-factory');
+const logger = getLogger(
+  'naylence.fame.security.auth.oauth2_authorizer_factory'
+);
 
 type OAuth2AuthorizerModule = typeof import('./oauth2-authorizer.js');
 

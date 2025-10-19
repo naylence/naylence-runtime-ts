@@ -54,23 +54,20 @@ export class WelcomeServiceClientFactory extends AdmissionClientFactory<WelcomeS
 
     const normalized = normalizeConfig(config);
 
-    const authStrategy = await createAuthStrategy(normalized.authConfig);
-
     const clientOptions: WelcomeServiceClientOptions = {
       hasUpstream: !normalized.isRoot,
       url: normalized.url,
       supportedTransports: normalized.supportedTransports,
       ...(normalized.fetchImpl ? { fetchImpl: normalized.fetchImpl } : {}),
-      ...(authStrategy ? { authStrategy } : {}),
+      ...(normalized.authConfig
+        ? {
+            authStrategyFactory: () =>
+              createAuthStrategy(normalized.authConfig),
+          }
+        : {}),
     };
 
-    const client = new WelcomeServiceClient(clientOptions);
-
-    if (authStrategy) {
-      await authStrategy.apply(client);
-    }
-
-    return client;
+    return new WelcomeServiceClient(clientOptions);
   }
 }
 

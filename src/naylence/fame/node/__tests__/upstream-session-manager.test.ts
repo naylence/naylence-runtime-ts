@@ -144,6 +144,7 @@ describe('UpstreamSessionManager', () => {
 
     admissionClient = {
       hello: jest.fn(),
+      close: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AdmissionClient>;
 
     attachClient = {
@@ -1273,7 +1274,7 @@ describe('UpstreamSessionManager', () => {
     const manager = createManager();
     const downstream = jest.fn().mockResolvedValue(undefined);
     const handler = (manager as any).makeHeartbeatEnabledHandler(downstream);
-    const logger = getLogger('upstream-session-manager');
+    const logger = getLogger('naylence.fame.node.upstream_session_manager');
     const warningSpy = jest.spyOn(logger, 'warning');
 
     (manager as any).connector = connector;

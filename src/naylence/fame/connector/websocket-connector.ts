@@ -18,7 +18,7 @@ import type {
   FameChannelMessage,
 } from 'naylence-core';
 
-const logger = getLogger('websocket-connector');
+const logger = getLogger('naylence.fame.connector.websocket_connector');
 
 interface ReceiveWaiter {
   resolve: (value: Uint8Array) => void;
@@ -536,8 +536,15 @@ export class WebSocketConnector extends BaseAsyncConnector {
         }
       }
 
-      this._rejectPendingWaiters(new FameTransportClose(reason, code));
+      // Immediately initiate shutdown to prevent sending on closed socket
+      // This ensures _closed flag is set before any send attempts
+      const error = new FameTransportClose(reason, code);
+      this._rejectPendingWaiters(error);
       this._detachReceiveHandlers();
+
+      // Trigger shutdown asynchronously to set _closed flag immediately
+      // Use void to explicitly ignore the promise (shutdown is fire-and-forget here)
+      void this['_shutdown'](code, reason, undefined, error);
     };
 
     const handleError = (event: any) => {

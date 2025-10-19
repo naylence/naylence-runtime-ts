@@ -7,7 +7,7 @@ import {
   type RoutingPolicyConfig,
 } from './routing-policy.js';
 
-const logger = getLogger('routing-profile-factory');
+const logger = getLogger('naylence.fame.sentinel.routing_profile_factory');
 
 export const PROFILE_NAME_DEVELOPMENT = 'development';
 export const PROFILE_NAME_PRODUCTION = 'production';

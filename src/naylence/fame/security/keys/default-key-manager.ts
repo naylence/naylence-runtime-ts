@@ -18,7 +18,7 @@ import {
 import type { KeyManager } from './key-manager.js';
 import type { KeyRecord, KeyStore } from './key-store.js';
 
-const logger = getLogger('default-key-manager');
+const logger = getLogger('naylence.fame.security.keys.default_key_manager');
 
 function normalizePhysicalPath(path: string | null | undefined): string {
   if (!path) {
@@ -82,7 +82,7 @@ export class DefaultKeyManager implements KeyManager {
 
   private readonly keyStore: KeyStore;
   private node: NodeLike | null = null;
-  private routingNode: RoutingNodeLike | null = null;
+  public routingNode: RoutingNodeLike | null = null;
 
   constructor(options: { keyStore: KeyStore }) {
     this.keyStore = options.keyStore;
@@ -97,6 +97,12 @@ export class DefaultKeyManager implements KeyManager {
       physical_path: this.physicalPath,
       has_upstream: this.hasUpstream,
     });
+
+    // Announce own keys to upstream after node is fully initialized
+    // This is critical for sealed encryption to work - other nodes need our public encryption key
+    if (this.hasUpstream) {
+      await this.announceKeysToUpstream();
+    }
   }
 
   public async onNodeStopped(_node: NodeLike): Promise<void> {
@@ -236,11 +242,25 @@ export class DefaultKeyManager implements KeyManager {
     const selfPhysicalPath = this.physicalPath;
     const grouped = await this.keyStore.getKeysGroupedByPath();
 
+    logger.debug('checking_paths_for_announcement', {
+      self_physical_path: selfPhysicalPath,
+      paths: Object.keys(grouped),
+    });
+
     const tasks: Array<Promise<void>> = [];
     for (const [path, keys] of Object.entries(grouped)) {
       if (!path.startsWith(selfPhysicalPath)) {
+        logger.debug('skipping_path_not_under_self', {
+          path,
+          self_physical_path: selfPhysicalPath,
+        });
         continue;
       }
+      logger.debug('announcing_path_keys', {
+        path,
+        key_count: keys.length,
+        key_ids: keys.map((k: any) => k.kid),
+      });
       tasks.push(
         this.announcePathKeys(
           keys as Array<Record<string, unknown>>,
@@ -284,12 +304,20 @@ export class DefaultKeyManager implements KeyManager {
       if (!physicalPath) {
         throw error;
       }
+
       const fromPathKeys = await this.keyStore.getKeysForPath(physicalPath);
-      keys = Array.from(fromPathKeys);
-      key = keys[0];
-      if (!key) {
+      const matchingKeys = Array.from(fromPathKeys).filter((candidate) => {
+        const candidateId =
+          typeof candidate.kid === 'string' ? candidate.kid : null;
+        return candidateId === kid;
+      });
+
+      if (matchingKeys.length === 0) {
         throw error;
       }
+
+      key = matchingKeys[0];
+      keys = matchingKeys;
     }
 
     const envelopeFactory = ensureEnvelopeFactory(this.envelopeFactory);

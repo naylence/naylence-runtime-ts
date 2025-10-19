@@ -6,7 +6,9 @@ import { getLogger } from '../util/logging.js';
 import type { LoadBalancerStickinessManager } from './load-balancer-stickiness-manager.js';
 import type { SimpleLoadBalancerStickinessManagerConfig } from './simple-load-balancer-stickiness-manager-factory.js';
 
-const logger = getLogger('naylence.fame.stickiness.simple-load-balancer');
+const logger = getLogger(
+  'naylence.fame.stickiness.simple_load_balancer_stickiness_manager'
+);
 
 export class SimpleLoadBalancerStickinessManager
   extends BaseNodeEventListener

@@ -16,7 +16,7 @@ import type { ResponseContextManager } from './response-context-manager.js';
 import { StreamingResponseHandler } from './streaming-response-handler.js';
 import { TaskTimeoutError } from '../util/task-types.js';
 
-const logger = getLogger('channel-polling-manager');
+const logger = getLogger('naylence.fame.node.channel_polling_manager');
 
 type DeliverFn = (
   envelope: FameEnvelope,

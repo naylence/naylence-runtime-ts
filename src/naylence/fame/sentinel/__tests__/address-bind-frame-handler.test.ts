@@ -213,7 +213,7 @@ describe('AddressBindFrameHandler', () => {
         expectedResponseType: FameResponseType.NONE,
       });
 
-      expect(forwardUpstream).not.toHaveBeenCalled();
+      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
       expect(forwardToPeers).toHaveBeenCalledWith(
         envelope,
         undefined,
@@ -222,6 +222,26 @@ describe('AddressBindFrameHandler', () => {
       );
     });
 
+    it('does not propagate reserved system addresses upstream', async () => {
+      const address = formatAddress('__sys__', '/physical/node');
+      const routeManager = createRouteManager();
+      const { handler, forwardUpstream, forwardToPeers } = createTestContext({
+        routeManager,
+      });
+
+      const envelope = createBindEnvelope(address);
+      const context = createDeliveryContext(DeliveryOriginType.DOWNSTREAM);
+
+      await handler.acceptAddressBind(envelope, context);
+
+      expect(forwardUpstream).not.toHaveBeenCalled();
+      expect(forwardToPeers).toHaveBeenCalledWith(
+        envelope,
+        undefined,
+        ['segment-1'],
+        context
+      );
+    });
     it('forwards upstream for host-based logical bindings', async () => {
       const address = formatAddress('svc', 'api.service');
       const routeManager = createRouteManager();
@@ -574,7 +594,7 @@ describe('AddressBindFrameHandler', () => {
       await handler.acceptAddressBind(envelope, context);
 
       expect(routingNode.forwardToPeers).toBeUndefined();
-      expect(forwardUpstream).not.toHaveBeenCalled();
+      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
       expect(forwardToPeers).not.toHaveBeenCalled();
     });
 
@@ -677,7 +697,7 @@ describe('AddressBindFrameHandler', () => {
       expect(downstreamRoutes.has(addressKey)).toBe(false);
       expect(legacyRoutes.has(addressKey)).toBe(false);
 
-      expect(forwardUpstream).not.toHaveBeenCalled();
+      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
       expect(forwardToRoute).toHaveBeenCalledTimes(1);
     });
 
@@ -691,6 +711,29 @@ describe('AddressBindFrameHandler', () => {
       const routeManager = createRouteManager({
         _downstream_addresses_routes: downstreamRoutes,
         _downstream_addresses_legacy: undefined,
+      });
+
+      const testContext = createTestContext({ routeManager });
+      const { handler, forwardUpstream } = testContext;
+
+      const envelope = createUnbindEnvelope(address);
+      const context = createDeliveryContext(DeliveryOriginType.DOWNSTREAM);
+
+      await handler.acceptAddressUnbind(envelope, context);
+
+      expect(downstreamRoutes.has(addressKey)).toBe(false);
+      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+    });
+
+    it('does not propagate reserved system unbinds upstream', async () => {
+      const address = formatAddress('__sys__', '/physical/node');
+      const addressKey = address.toString();
+      const downstreamRoutes = new Map([
+        [addressKey, { segment: 'segment-1' }],
+      ]);
+
+      const routeManager = createRouteManager({
+        _downstream_addresses_routes: downstreamRoutes,
       });
 
       const testContext = createTestContext({ routeManager });
@@ -896,7 +939,7 @@ describe('AddressBindFrameHandler', () => {
 
       expect(addressKey in downstreamRoutes).toBe(false);
       expect(addressKey in legacyRoutes).toBe(false);
-      expect(forwardUpstream).not.toHaveBeenCalled();
+      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
     });
 
     it('keeps pool entry when segment is not a member', async () => {
@@ -974,7 +1017,7 @@ describe('AddressBindFrameHandler', () => {
       await handler.acceptAddressUnbind(envelope, context);
 
       expect(downstreamRoutes.has(addressKey)).toBe(false);
-      expect(forwardUpstream).not.toHaveBeenCalled();
+      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
       expect(parseComponentsSpy).toHaveBeenCalled();
     });
   });

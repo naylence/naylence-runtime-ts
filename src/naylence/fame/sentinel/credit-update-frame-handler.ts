@@ -3,7 +3,7 @@ import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
 import { getLogger } from '../util/logging.js';
 import type { RouteManager } from './route-manager.js';
 
-const logger = getLogger('credit-update-frame-handler');
+const logger = getLogger('naylence.fame.sentinel.credit_update_frame_handler');
 
 export interface CreditUpdateFrameHandlerOptions {
   routeManager: RouteManager;

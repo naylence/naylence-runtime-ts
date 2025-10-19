@@ -24,7 +24,7 @@ import {
   type SubscribeParams,
 } from './sink-service.js';
 
-const logger = getLogger('in-memory-sink-service');
+const logger = getLogger('naylence.fame.service.in_memory_sink_service');
 
 type DeliverFunction = (
   envelope: FameEnvelope,

@@ -9,6 +9,7 @@ import type {
 import type { ConnectorConfig } from '../connector/connector-config.js';
 import type { WebSocketLike } from '../connector/websocket-connector.js';
 import type { NodeLike } from './node-like.js';
+import type { RouteRemovalOptions } from '../sentinel/route-manager.js';
 
 export interface OriginConnectorOptions {
   originType: DeliveryOriginType;
@@ -23,6 +24,7 @@ export interface RoutingNodeLike extends NodeLike {
   createOriginConnector(
     options: OriginConnectorOptions
   ): Promise<FameConnector>;
+  bumpRoutingEpoch?(): void;
   forwardToPeers?(
     envelope: FameEnvelope,
     peers?: unknown,
@@ -39,6 +41,12 @@ export interface RoutingNodeLike extends NodeLike {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<void>;
-  removeDownstreamRoute?(segment: string): Promise<void> | void;
-  removePeerRoute?(segment: string): Promise<void> | void;
+  removeDownstreamRoute?(
+    segment: string,
+    options?: RouteRemovalOptions
+  ): Promise<void> | void;
+  removePeerRoute?(
+    segment: string,
+    options?: RouteRemovalOptions
+  ): Promise<void> | void;
 }

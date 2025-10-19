@@ -14,7 +14,7 @@ import type {
 import type { WelcomeService } from './welcome-service.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('naylence.fame.welcome.NodeWelcomeRouter');
+const logger = getLogger('naylence.fame.welcome.node_welcome_router');
 
 const PROTO_MAJOR = 1;
 const DEFAULT_PREFIX = `/fame/v${PROTO_MAJOR}/welcome` as const;

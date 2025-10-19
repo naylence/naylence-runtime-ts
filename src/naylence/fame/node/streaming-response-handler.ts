@@ -9,7 +9,7 @@ import {
 import { getLogger } from '../util/logging.js';
 import { ResponseContextManager } from './response-context-manager.js';
 
-const logger = getLogger('streaming-response-handler');
+const logger = getLogger('naylence.fame.node.streaming_response_handler');
 
 type DeliverFn = (
   envelope: FameEnvelope,

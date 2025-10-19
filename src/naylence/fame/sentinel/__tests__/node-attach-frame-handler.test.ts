@@ -206,6 +206,67 @@ describe('NodeAttachFrameHandler', () => {
     expect(routeManager._pending_route_metadata.has('child-node')).toBe(false);
   });
 
+  it('retains routing epoch when rebind occurs', async () => {
+    const connector = createConnector();
+    const routingNode = createRoutingNode();
+    const bumpRoutingEpoch = jest.fn();
+    (routingNode as any).bumpRoutingEpoch = bumpRoutingEpoch;
+
+    const routeManager = new RouteManager({
+      deliver: jest.fn(async () => undefined),
+      getId: () => 'parent-node',
+    });
+
+    const existingConnector = createConnector();
+    routeManager.downstreamRoutes.set('child-node', existingConnector);
+
+    jest
+      .spyOn(routeManager, 'unregisterDownstreamRoute')
+      .mockResolvedValue(undefined);
+    jest
+      .spyOn(routeManager, 'registerDownstreamRoute')
+      .mockResolvedValue(undefined);
+
+    routeManager._pending_routes.set('child-node', {
+      connector,
+      attached: { set: jest.fn(), wait: jest.fn() },
+      buffer: [],
+    });
+    routeManager._pending_route_metadata.set('child-node', {
+      type: 'websocket',
+      durable: false,
+    });
+
+    const handler = new NodeAttachFrameHandler({
+      routingNode,
+      routeManager,
+    });
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'child-node',
+    } as NodeAttachFrame;
+
+    const envelope = {
+      id: 'env-reattach',
+      frame,
+    } as unknown as FameEnvelope;
+
+    const context = createContext(connector);
+
+    await handler.acceptNodeAttach(envelope, context);
+
+    expect(bumpRoutingEpoch).not.toHaveBeenCalled();
+
+    const ackEnvelope = (connector.send as jest.Mock).mock
+      .calls[0][0] as FameEnvelope;
+    expect(ackEnvelope.frame).toMatchObject({
+      type: 'NodeAttachAck',
+      routingEpoch: 'epoch-1',
+    });
+  });
+
   it('rejects attachment and schedules connector close when key validation fails', async () => {
     jest.useFakeTimers();
 

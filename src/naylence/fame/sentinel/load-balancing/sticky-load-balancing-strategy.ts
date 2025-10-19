@@ -4,7 +4,9 @@ import { getLogger } from '../../util/logging.js';
 import type { LoadBalancerStickinessManager } from '../../stickiness/load-balancer-stickiness-manager.js';
 import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
 
-const logger = getLogger('sticky-load-balancing-strategy');
+const logger = getLogger(
+  'naylence.fame.sentinel.load_balancing.sticky_load_balancing_strategy'
+);
 
 type MetricsGetter = () => Record<string, unknown>;
 

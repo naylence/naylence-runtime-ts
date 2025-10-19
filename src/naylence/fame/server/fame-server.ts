@@ -11,7 +11,7 @@ import {
   type FameServerConfigInput,
 } from './fame-server-config.js';
 
-const logger = getLogger('fame-fastify-server');
+const logger = getLogger('naylence.fame.server.fame_server');
 
 export interface CreateFameServerOptions {
   config?: FameServerConfigInput | null;

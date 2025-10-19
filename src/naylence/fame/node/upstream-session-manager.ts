@@ -34,7 +34,7 @@ import { TaskCancelledError, SpawnedTask } from '../util/task-types.js';
 import type { FameAddress } from 'naylence-core';
 import { FameResponseType } from 'naylence-core';
 
-const logger = getLogger('upstream-session-manager');
+const logger = getLogger('naylence.fame.node.upstream_session_manager');
 
 interface EpochCallback {
   (epoch: string): Promise<any>;
@@ -338,12 +338,13 @@ export class UpstreamSessionManager
 
     await this.onWelcome(welcome.frame);
 
-        const connector = await ConnectorFactory.createConnector(grant, {
+    const connector = await ConnectorFactory.createConnector(grant, {
       systemId: welcome.frame.systemId,
     });
 
     await connector.start(this.wrappedHandler);
-    this.connector = connector;    const callbackGrants = this.node.gatherSupportedCallbackGrants();
+    this.connector = connector;
+    const callbackGrants = this.node.gatherSupportedCallbackGrants();
     const attachInfo = await this.attachClient.attach(
       this.node,
       this.outboundOriginType,
@@ -357,6 +358,12 @@ export class UpstreamSessionManager
     this.targetSystemId = attachInfo.targetSystemId ?? null;
 
     await this.onAttach(attachInfo, connector);
+
+    // Close the admission client immediately after attach completes
+    // This releases HTTP keep-alive connections (Node.js fetch/undici requires explicit cleanup)
+    if (this.admissionClient) {
+      await this.admissionClient.close();
+    }
 
     const epoch = attachInfo.routingEpoch;
     if (epoch && epoch !== this.lastSeenEpoch) {

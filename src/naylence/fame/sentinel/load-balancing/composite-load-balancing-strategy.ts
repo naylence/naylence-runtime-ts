@@ -3,7 +3,9 @@ import type { FameEnvelope } from 'naylence-core';
 import { getLogger } from '../../util/logging.js';
 import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
 
-const logger = getLogger('composite-load-balancing-strategy');
+const logger = getLogger(
+  'naylence.fame.sentinel.load_balancing.composite_load_balancing_strategy'
+);
 
 export class CompositeLoadBalancingStrategy implements LoadBalancingStrategy {
   private readonly strategies: readonly LoadBalancingStrategy[];

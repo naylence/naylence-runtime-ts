@@ -22,7 +22,7 @@ import { delay } from '../util/task-utils.js';
 import { getLogger } from '../util/logging.js';
 import type { ConnectorConfig } from '../connector/connector-config.js';
 
-const logger = getLogger('node-attach-frame-handler');
+const logger = getLogger('naylence.fame.sentinel.node_attach_frame_handler');
 
 const DOWNSTREAM_ORIGINS = new Set<DeliveryOriginType>([
   DeliveryOriginType.DOWNSTREAM,
@@ -145,14 +145,39 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     if (frame.originType === DeliveryOriginType.DOWNSTREAM) {
       const hasExistingRoute =
         this.routeManager.downstreamRoutes.has(attachedSystemId);
+      logger.debug('checking_for_existing_route', {
+        system_id: attachedSystemId,
+        has_existing: hasExistingRoute,
+        existing_routes: Array.from(this.routeManager.downstreamRoutes.keys()),
+      });
       if (hasExistingRoute) {
         isRebind = true;
+        logger.warning('rebinding_existing_downstream_route', {
+          system_id: attachedSystemId,
+        });
         oldAssignedPath = buildAssignedPath(
           this.routingNode.physicalPath,
           attachedSystemId
         );
+
+        // Before unregistering the route, collect addresses that will become orphaned
+        // so we can clean up their associated secure channels
+        const orphanedAddresses: string[] = [];
+        for (const [
+          address,
+          info,
+        ] of this.routeManager._downstream_addresses_routes.entries()) {
+          if (info.segment === attachedSystemId) {
+            orphanedAddresses.push(address);
+          }
+        }
+
         await this.routeManager
-          .unregisterDownstreamRoute(attachedSystemId)
+          .unregisterDownstreamRoute(attachedSystemId, {
+            reason: 'rebind_downstream_route',
+            delayMs: 0, // Stop old connector immediately during rebind to prevent message loss
+            meta: { systemId: attachedSystemId },
+          })
           .catch((error: unknown) => {
             logger.warning(
               'failed_to_unregister_downstream_route_before_rebind',
@@ -162,6 +187,50 @@ export class NodeAttachFrameHandler extends TaskSpawner {
               }
             );
           });
+
+        // Clean up secure channels for orphaned addresses to prevent stale channel reuse
+        if (orphanedAddresses.length > 0) {
+          try {
+            // Access encryption manager - CompositeEncryptionManager exposes channel cleanup methods
+            const securityMgr = this.routingNode.securityManager as any;
+            const encryptionMgr = securityMgr?.encryption;
+
+            // CompositeEncryptionManager provides clearChannelCacheForDestination and removeChannelsForDestination
+            if (
+              typeof encryptionMgr?.clearChannelCacheForDestination ===
+              'function'
+            ) {
+              for (const address of orphanedAddresses) {
+                encryptionMgr.clearChannelCacheForDestination(address);
+              }
+              logger.debug('cleared_channel_cache_for_rebind', {
+                system_id: attachedSystemId,
+                addresses: orphanedAddresses,
+              });
+            }
+
+            if (
+              typeof encryptionMgr?.removeChannelsForDestination === 'function'
+            ) {
+              let totalRemoved = 0;
+              for (const address of orphanedAddresses) {
+                totalRemoved +=
+                  encryptionMgr.removeChannelsForDestination(address);
+              }
+              if (totalRemoved > 0) {
+                logger.debug('removed_channel_states_for_rebind', {
+                  system_id: attachedSystemId,
+                  channels_removed: totalRemoved,
+                });
+              }
+            }
+          } catch (error) {
+            logger.warning('failed_to_cleanup_channels_for_rebind', {
+              system_id: attachedSystemId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
       }
       assignedPath =
         frame.assignedPath ??
@@ -173,7 +242,11 @@ export class NodeAttachFrameHandler extends TaskSpawner {
         isRebind = true;
         oldAssignedPath = frame.assignedPath ?? `/${attachedSystemId}`;
         await this.routeManager
-          .unregisterPeerRoute(attachedSystemId)
+          .unregisterPeerRoute(attachedSystemId, {
+            reason: 'rebind_peer_route',
+            delayMs: 0, // Stop old connector immediately during rebind to prevent message loss
+            meta: { systemId: attachedSystemId },
+          })
           .catch((error: unknown) => {
             logger.warning('failed_to_unregister_peer_route_before_rebind', {
               system_id: attachedSystemId,

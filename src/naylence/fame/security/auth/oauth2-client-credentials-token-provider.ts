@@ -6,7 +6,9 @@ import {
 import type { Token } from './token.js';
 import type { TokenProvider } from './token-provider.js';
 
-const logger = getLogger('oauth2-client-credentials-token-provider');
+const logger = getLogger(
+  'naylence.fame.security.auth.oauth2_client_credentials_token_provider'
+);
 
 interface FetchLike {
   (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;

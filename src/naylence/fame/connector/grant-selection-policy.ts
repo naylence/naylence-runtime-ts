@@ -19,7 +19,7 @@ import {
 import type { ConnectorConfig } from './connector-config.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('grant-selection-policy');
+const logger = getLogger('naylence.fame.connector.grant_selection_policy');
 
 function isSerializedGrant(value: unknown): value is SerializedGrant {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

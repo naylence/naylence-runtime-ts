@@ -10,7 +10,9 @@ import {
   registerDeliveryTrackerFactory,
 } from './delivery-tracker-factory.js';
 
-const logger = getLogger('default-delivery-tracker-factory');
+const logger = getLogger(
+  'naylence.fame.delivery.default_delivery_tracker_factory'
+);
 
 export interface DefaultDeliveryTrackerConfig extends DeliveryTrackerConfig {
   type: 'DefaultDeliveryTracker';

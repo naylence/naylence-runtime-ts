@@ -14,7 +14,7 @@ export default {
     '^naylence-factory-ts$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@noble|yaml|jose)/)',
+    'node_modules/(?!(@noble|yaml|jose|@peculiar)/)',
   ],
   transform: {
     '^.+\\.(ts|js|mjs)$': [

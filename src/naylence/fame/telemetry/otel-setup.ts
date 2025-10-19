@@ -5,7 +5,7 @@ import type {
 } from '@opentelemetry/sdk-trace-base';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('telemetry.open-telemetry');
+const logger = getLogger('naylence.fame.telemetry.otel_setup');
 
 export interface SetupOtelOptions {
   serviceName: string;

@@ -68,7 +68,7 @@ function hasNodeAttachValidation(
   );
 }
 
-const logger = getLogger('default-security-manager');
+const logger = getLogger('naylence.fame.security.default_security_manager');
 
 type SendCallback = (
   envelope: FameEnvelope,

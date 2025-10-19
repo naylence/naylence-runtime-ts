@@ -63,7 +63,7 @@ function normalizeConfig(
 
   const candidate = config as OAuth2ClientCredentialsTokenProviderConfig &
     Record<string, unknown>;
-  
+
   // Support both camelCase and snake_case for compatibility
   const tokenUrl = candidate.tokenUrl ?? candidate.token_url;
   if (typeof tokenUrl !== 'string' || tokenUrl.length === 0) {

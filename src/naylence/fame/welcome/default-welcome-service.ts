@@ -23,7 +23,7 @@ import type {
   WelcomeServiceMetadata,
 } from './welcome-service.js';
 
-const logger = getLogger('naylence.fame.welcome.DefaultWelcomeService');
+const logger = getLogger('naylence.fame.welcome.default_welcome_service');
 
 const ENV_VAR_SHOW_ENVELOPES = 'FAME_SHOW_ENVELOPES';
 const DEFAULT_TTL_SEC = 3600;

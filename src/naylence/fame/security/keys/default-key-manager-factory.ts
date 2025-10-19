@@ -23,7 +23,6 @@ export const FACTORY_META = {
 export class DefaultKeyManagerFactory extends KeyManagerFactory<DefaultKeyManagerConfig> {
   public readonly type = 'DefaultKeyManager';
   public readonly isDefault = true;
-  public readonly priority = 100;
 
   public async create(
     config?: DefaultKeyManagerConfig | Record<string, unknown> | null,

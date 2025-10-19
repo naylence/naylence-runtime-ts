@@ -8,7 +8,9 @@ import {
 } from './admission-client-factory.js';
 import type { AdmissionClient } from './admission-client.js';
 
-const logger = getLogger('admission-profile-factory');
+const logger = getLogger(
+  'naylence.fame.node.admission.admission_profile_factory'
+);
 
 export interface AdmissionProfileConfig extends AdmissionConfig {
   type: 'AdmissionProfile';
@@ -35,6 +37,7 @@ const WELCOME_SERVICE_PROFILE: AdmissionConfig = {
   is_root: Expressions.env(ENV_VAR_IS_ROOT, 'false'),
   url: Expressions.env(ENV_VAR_ADMISSION_SERVICE_URL),
   supported_transports: ['websocket'],
+  supportedTransports: ['websocket'],
   auth: {
     type: 'BearerTokenHeaderAuth',
     token_provider: {

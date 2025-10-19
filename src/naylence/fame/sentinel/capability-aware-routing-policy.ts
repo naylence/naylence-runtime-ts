@@ -15,7 +15,9 @@ import {
 } from './router.js';
 import type { RoutingPolicy } from './routing-policy.js';
 
-const logger = getLogger('capability-aware-routing-policy');
+const logger = getLogger(
+  'naylence.fame.sentinel.capability_aware_routing_policy'
+);
 
 export interface CapabilityAwareRoutingPolicyOptions {
   loadBalancingStrategy?: LoadBalancingStrategy;

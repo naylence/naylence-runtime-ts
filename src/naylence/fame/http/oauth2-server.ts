@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
  * OAuth2/OIDC development server CLI
- * 
+ *
  * Provides a complete OAuth2 server with:
  * - Token endpoint (client credentials grant)
  * - JWKS endpoint (public key discovery)
  * - OpenID Connect Discovery endpoint
- * 
+ *
  * Usage:
  *   node --loader ts-node/esm oauth2-server.ts
  *   # Or after build:
  *   node dist/esm/naylence/fame/http/oauth2-server.js
- * 
+ *
  * Environment Variables:
  *   APP_HOST: Server host (default: 0.0.0.0)
  *   APP_PORT: Server port (default: 8099)
@@ -29,7 +29,7 @@ import { createJwksRouter } from './jwks-api-router.js';
 import { createOpenIDConfigurationRouter } from './openid-configuration-router.js';
 import { getLogger, LogLevel } from '../util/logging.js';
 
-const logger = getLogger('oauth2-server');
+const logger = getLogger('naylence.fame.http.oauth2_server');
 
 const ENV_VAR_APP_HOST = 'APP_HOST';
 const ENV_VAR_APP_PORT = 'APP_PORT';
@@ -51,7 +51,7 @@ function getLogLevel(): LogLevel {
 
 /**
  * Get or create crypto provider
- * 
+ *
  * This uses a lazy-loaded default crypto provider similar to Python's get_crypto_provider()
  */
 async function getCryptoProvider(): Promise<CryptoProvider> {
@@ -98,7 +98,10 @@ async function main(): Promise<void> {
 
   // Get configuration
   const host = process.env[ENV_VAR_APP_HOST] ?? DEFAULT_HOST;
-  const port = parseInt(process.env[ENV_VAR_APP_PORT] ?? String(DEFAULT_PORT), 10);
+  const port = parseInt(
+    process.env[ENV_VAR_APP_PORT] ?? String(DEFAULT_PORT),
+    10
+  );
 
   // Validate required environment variables
   if (!process.env.FAME_JWT_CLIENT_ID || !process.env.FAME_JWT_CLIENT_SECRET) {
@@ -145,4 +148,3 @@ async function main(): Promise<void> {
 
 // Export main for CLI usage
 export { main };
-

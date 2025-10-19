@@ -52,17 +52,30 @@ export function capitalizeFirstLetter(text: string): string {
  * Convert a value to pretty-printed JSON string.
  */
 export function jsonDumps(value: any): string {
-  return JSON.stringify(
-    value,
-    (_key, val) => {
-      try {
-        return defaultJsonEncoder(val);
-      } catch {
-        return val;
+  const seen = new WeakSet<object>();
+
+  const replacer = (_key: string, val: any): any => {
+    try {
+      return defaultJsonEncoder(val);
+    } catch {
+      // ignore – fall through to default handling below
+    }
+
+    if (typeof val === 'bigint') {
+      return val.toString();
+    }
+
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val)) {
+        return '[Circular]';
       }
-    },
-    2
-  );
+      seen.add(val);
+    }
+
+    return val;
+  };
+
+  return JSON.stringify(value, replacer, 2);
 }
 
 /**

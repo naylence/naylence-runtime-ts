@@ -9,7 +9,7 @@ import {
 } from './jose-loader.js';
 import { buildAuthorizationContext } from './jwt-authorization-utils.js';
 
-const logger = getLogger('jwks-jwt-token-verifier');
+const logger = getLogger('naylence.fame.security.auth.jwks_jwt_token_verifier');
 
 const DEFAULT_ALGORITHMS = ['RS256', 'ES256', 'EdDSA'] as const;
 

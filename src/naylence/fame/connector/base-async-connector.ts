@@ -49,7 +49,7 @@ import {
   BackPressureFull,
 } from '../errors/errors.js';
 
-const logger = getLogger('base-async-connector');
+const logger = getLogger('naylence.fame.connector.base_async_connector');
 
 // Environment variables
 const ENV_VAR_FAME_FLOW_CONTROL = 'FAME_FLOW_CONTROL';

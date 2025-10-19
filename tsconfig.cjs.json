@@ -6,5 +6,15 @@
     "outDir": "./dist/cjs",
     "declaration": false,
     "declarationMap": false
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "**/*.test.ts",
+    "**/__tests__/**",
+    "src/naylence/fame/welcome/node-welcome-server.ts",
+    "src/naylence/fame/fastapi/oauth2-server.ts",
+    "src/naylence/fame/security/cert/ca-server.ts"
+  ]
 }

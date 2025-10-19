@@ -7,7 +7,7 @@ import {
 import { secureDigest } from '../../util/util.js';
 import { getLogger } from '../../util/logging.js';
 
-const logger = getLogger('key-store');
+const logger = getLogger('naylence.fame.security.keys.key_store');
 
 export type KeyRecord = Record<string, unknown> & { kid: string };
 

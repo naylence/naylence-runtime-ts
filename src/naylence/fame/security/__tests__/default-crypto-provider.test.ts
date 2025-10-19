@@ -1,3 +1,10 @@
+import { AsnConvert } from '@peculiar/asn1-schema';
+import { CertificationRequest } from '@peculiar/asn1-csr';
+import {
+  Extensions,
+  SubjectAlternativeName,
+  id_ce_subjectAltName,
+} from '@peculiar/asn1-x509';
 import { DefaultCryptoProvider } from '../crypto/providers/default-crypto-provider.js';
 import { secureDigest } from '../../util/util.js';
 import type { NodeLike } from '../../node/node-like.js';
@@ -55,6 +62,19 @@ describe('DefaultCryptoProvider', () => {
       return [];
     }
     return matches.map((entry) => stripPem(entry));
+  }
+
+  function pemToDer(pem: string): ArrayBuffer {
+    const normalized = pem
+      .replace(/-----BEGIN [^-]+-----/g, '')
+      .replace(/-----END [^-]+-----/g, '')
+      .replace(/\s+/g, '');
+
+    const buffer = Buffer.from(normalized, 'base64');
+    return buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    );
   }
 
   it('creates default provider with generated keys and issues tokens', async () => {
@@ -213,21 +233,76 @@ describe('DefaultCryptoProvider', () => {
     });
   });
 
-  it('indicates missing node context and rejects CSR creation', async () => {
+  it('creates Ed25519 CSRs with logical SAN entries', async () => {
     const provider = await DefaultCryptoProvider.create();
 
-    expect(provider.getCertificateContext()).toBeNull();
-    expect(provider.hasNodeContext()).toBe(false);
+    const csrPem = await provider.createCsr('node-csr', '/rack/a1/node', [
+      'edge.fabric',
+      '  ',
+      'edge-secondary.fabric',
+    ]);
 
-    provider.setLogicals(['ignored-before-context']);
-    expect(provider.getCertificateContext()).toBeNull();
-
-    expect(() => provider.createCsr()).toThrow(
-      'CSR creation is not supported by the TypeScript default crypto provider yet.'
+    expect(csrPem.startsWith('-----BEGIN CERTIFICATE REQUEST-----')).toBe(true);
+    expect(csrPem.trim().endsWith('-----END CERTIFICATE REQUEST-----')).toBe(
+      true
     );
 
-    provider.prepareForAttach('node-prep', '/nodes/path', ['logical.updated']);
-    expect(provider.hasNodeContext()).toBe(true);
+    const csrDer = pemToDer(csrPem);
+    const csr = AsnConvert.parse(csrDer, CertificationRequest);
+
+    const subjectSequence = Array.from(
+      csr.certificationRequestInfo.subject
+    ) as Array<unknown>;
+    expect(subjectSequence).toHaveLength(1);
+    const firstRdn = (subjectSequence[0] as Array<unknown>) ?? [];
+    const cn = (firstRdn[0] as {
+      type?: string;
+      value?: { utf8String?: string };
+    }) ?? { type: undefined, value: { utf8String: undefined } };
+    expect(cn.type).toBe('2.5.4.3');
+    expect(cn.value?.utf8String).toBe('node-csr');
+
+    const attributeList = Array.from(
+      csr.certificationRequestInfo.attributes
+    ) as Array<unknown>;
+    const extensionRequest = attributeList.find(
+      (attribute) =>
+        (attribute as { type?: string }).type === '1.2.840.113549.1.9.14'
+    ) as { values?: ArrayBuffer[] } | undefined;
+    expect(extensionRequest).toBeDefined();
+
+    const extensionValues = extensionRequest?.values;
+    const extensions = extensionValues?.[0]
+      ? AsnConvert.parse(extensionValues[0], Extensions)
+      : null;
+
+    const extensionItems = extensions
+      ? (Array.from(extensions) as Array<unknown>)
+      : [];
+    const sanExtension = extensionItems.find(
+      (extension) =>
+        (extension as { extnID?: string }).extnID === id_ce_subjectAltName
+    ) as { extnValue?: ArrayBuffer } | undefined;
+
+    expect(sanExtension).toBeDefined();
+
+    const sanValue = sanExtension?.extnValue;
+    const san = sanValue
+      ? AsnConvert.parse(sanValue, SubjectAlternativeName)
+      : null;
+
+    const sanGeneralNames = san ? (Array.from(san) as Array<unknown>) : [];
+
+    const sanUris = sanGeneralNames
+      .map(
+        (name) =>
+          (name as { uniformResourceIdentifier?: string })
+            .uniformResourceIdentifier
+      )
+      .filter((uri): uri is string => typeof uri === 'string');
+
+    expect(sanUris).toContain('naylence://edge.fabric');
+    expect(sanUris).toContain('naylence://edge-secondary.fabric');
   });
 
   it('normalizes Ed25519 algorithm and applies ttl overrides', async () => {

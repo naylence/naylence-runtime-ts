@@ -6,7 +6,7 @@ import {
 import { getLogger } from '../../util/logging.js';
 import type { AdmissionClient } from './admission-client.js';
 
-const logger = getLogger('noop-admission-client');
+const logger = getLogger('naylence.fame.node.admission.noop_admission_client');
 
 export interface NoopAdmissionClientOptions {
   readonly systemId?: string;

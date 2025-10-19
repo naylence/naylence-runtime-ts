@@ -695,20 +695,21 @@ describe('DefaultKeyManager', () => {
       }
     );
     const manager = new DefaultKeyManager({ keyStore: store });
-    await manager.onNodeStarted(helper.node);
 
     const storedKey: KeyRecord = {
       kid: 'kid-reannounce',
       use: 'sig',
       physical_path: '/parent/node/child',
     } as KeyRecord;
-    mocks.getKeysGroupedByPath.mockResolvedValueOnce({
+    // Mock for both auto-announce in onNodeStarted and the explicit test call
+    mocks.getKeysGroupedByPath.mockResolvedValue({
       '/parent/node/child': [storedKey],
     });
 
+    await manager.onNodeStarted(helper.node);
     await manager.announceKeysToUpstream();
 
-    expect(mocks.getKeysGroupedByPath).toHaveBeenCalledTimes(1);
+    expect(mocks.getKeysGroupedByPath).toHaveBeenCalledTimes(2);
   });
 
   it('throws when routing peer forwarding lacks node id', async () => {
@@ -723,6 +724,11 @@ describe('DefaultKeyManager', () => {
     );
     const manager = new DefaultKeyManager({ keyStore: store });
     await manager.onNodeStarted(helper.node);
+
+    // Set up a routing node so that announcePathKeys will attempt to forward to peers
+    manager.routingNode = {
+      forwardToPeers: jest.fn(),
+    } as unknown as RoutingNodeLike;
 
     const sid = secureDigest('/parent/node/child');
 

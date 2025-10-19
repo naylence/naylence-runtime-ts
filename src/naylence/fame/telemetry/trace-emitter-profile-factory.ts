@@ -9,7 +9,9 @@ import {
 import type { NoopTraceEmitterConfig } from './noop-trace-emitter-factory.js';
 import type { OpenTelemetryTraceEmitterConfig } from './open-telemetry-trace-emitter-factory.js';
 
-const logger = getLogger('trace-emitter-profile-factory');
+const logger = getLogger(
+  'naylence.fame.telemetry.trace_emitter_profile_factory'
+);
 
 export interface TraceEmitterProfileConfig extends TraceEmitterConfig {
   type: 'TraceEmitterProfile';

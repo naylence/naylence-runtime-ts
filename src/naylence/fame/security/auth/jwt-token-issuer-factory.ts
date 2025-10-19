@@ -82,14 +82,22 @@ export class JWTTokenIssuerFactory extends TokenIssuerFactory<JWTTokenIssuerConf
 
   public async create(
     config?: JWTTokenIssuerConfig | Record<string, unknown> | null,
-    cryptoProvider?: CryptoProvider
+    ...factoryArgs: unknown[]
   ): Promise<TokenIssuer> {
     if (!config) {
       throw new Error('JWTTokenIssuerFactory requires configuration');
     }
 
     const normalized = normalizeConfig(config);
-    const cryptoProvider1 = cryptoProvider ?? null;
+
+    // Extract crypto provider from factory args
+    let cryptoProvider1: CryptoProvider | null = null;
+    for (const arg of factoryArgs) {
+      if (arg && typeof arg === 'object' && 'signingPrivatePem' in arg) {
+        cryptoProvider1 = arg as CryptoProvider;
+        break;
+      }
+    }
 
     const algorithm = normalized.algorithm;
     const isHmac = algorithm.toUpperCase().startsWith('HS');

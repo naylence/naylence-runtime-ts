@@ -62,11 +62,13 @@ describe('AdmissionProfileFactory', () => {
       'WelcomeServiceClient'
     );
 
-    const { auth, supported_transports: transports } = config as Record<
-      string,
-      any
-    >;
+    const {
+      auth,
+      supported_transports: transports,
+      supportedTransports,
+    } = config as Record<string, any>;
     expect(transports).toEqual(['websocket']);
+    expect(supportedTransports).toEqual(['websocket']);
     expect(auth?.token_provider?.client_id).toBe(
       Expressions.env('FAME_ADMISSION_CLIENT_ID')
     );

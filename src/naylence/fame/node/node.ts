@@ -56,7 +56,7 @@ import { DefaultServiceManager } from '../service/default-service-manager.js';
 
 const SYSTEM_INBOX = '__sys__';
 
-const logger = getLogger('fame-node');
+const logger = getLogger('naylence.fame.node.node');
 
 function isSnakeCase(name: string): boolean {
   return name.includes('_');

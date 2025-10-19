@@ -11,6 +11,8 @@ import {
 } from 'naylence-core';
 
 import { Sentinel, type SentinelOptions } from '../sentinel.js';
+import * as routeStore from '../store/route-store.js';
+import type { RouteStore } from '../store/route-store.js';
 import type { UpstreamSessionManager } from '../../node/upstream-session-manager.js';
 import type { SecurityManager } from '../../security/security-manager.js';
 import type { RouteManager } from '../route-manager.js';
@@ -133,6 +135,16 @@ describe('Sentinel', () => {
       getShareableKeys: () => undefined,
       onDeliver: jest.fn(async (_node, envelope) => envelope),
     } as unknown as SecurityManager;
+  }
+
+  function createRouteStoreStub(): RouteStore {
+    return {
+      set: jest.fn(async () => undefined),
+      update: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined),
+      delete: jest.fn(async () => undefined),
+      list: jest.fn(async () => ({})),
+    } as RouteStore;
   }
 
   function createSentinel(options: SentinelOptions = {}): Sentinel {
@@ -1194,6 +1206,58 @@ describe('Sentinel', () => {
     expect(found?.toString()).toBe('svc@/child');
   });
 
+  it('uses persistent route store when creation succeeds', () => {
+    const persistentStore = createRouteStoreStub();
+    const persistentSpy = jest
+      .spyOn(routeStore, 'createPersistentRouteStore')
+      .mockReturnValue(persistentStore);
+    const defaultSpy = jest
+      .spyOn(routeStore, 'getDefaultRouteStore')
+      .mockImplementation(() => {
+        throw new Error('should not be called');
+      });
+
+    try {
+      const sentinel = createSentinel();
+      const sentinelAny = sentinel as any;
+
+      expect(persistentSpy).toHaveBeenCalledTimes(1);
+      expect(defaultSpy).not.toHaveBeenCalled();
+      expect(sentinelAny.routeManager._downstream_route_store).toBe(
+        persistentStore
+      );
+      expect(persistentSpy.mock.calls[0]?.[0]).toBe(sentinel.storageProvider);
+    } finally {
+      persistentSpy.mockRestore();
+      defaultSpy.mockRestore();
+    }
+  });
+
+  it('falls back to default route store when persistent creation fails', () => {
+    const defaultStore = createRouteStoreStub();
+    const persistentSpy = jest
+      .spyOn(routeStore, 'createPersistentRouteStore')
+      .mockImplementation(() => {
+        throw new Error('no provider');
+      });
+    const defaultSpy = jest
+      .spyOn(routeStore, 'getDefaultRouteStore')
+      .mockReturnValue(defaultStore);
+
+    try {
+      const sentinel = createSentinel();
+      const sentinelAny = sentinel as any;
+
+      expect(defaultSpy).toHaveBeenCalledTimes(1);
+      expect(sentinelAny.routeManager._downstream_route_store).toBe(
+        defaultStore
+      );
+    } finally {
+      persistentSpy.mockRestore();
+      defaultSpy.mockRestore();
+    }
+  });
+
   it('propagates downstream bindings upstream when parent exists', async () => {
     const sentinel = createSentinel({ hasParent: true });
     const sentinelAny = sentinel as any;
@@ -1203,14 +1267,20 @@ describe('Sentinel', () => {
       segment: 'child',
     });
     routeManager._downstream_addresses_routes.set('svc@/other', null as any);
+    routeManager._downstream_addresses_routes.set('__sys__@/child', {
+      segment: 'child',
+    } as AddressRouteInfo);
 
     const bindSpy = jest
       .spyOn(sentinelAny, 'bindAddressUpstream')
       .mockResolvedValue(undefined);
     await sentinelAny.propagateAddressBindingsUpstream();
-    expect(bindSpy).toHaveBeenCalledWith(new FameAddress('svc@/child'), {
-      segment: 'child',
-    });
+    expect(bindSpy).toHaveBeenCalledTimes(1);
+    const [[addressArg, infoArg]] = bindSpy.mock.calls as Array<
+      [FameAddress, AddressRouteInfo]
+    >;
+    expect(addressArg.toString()).toBe('svc@/child');
+    expect(infoArg).toEqual({ segment: 'child' });
   });
 
   it('does not propagate bindings when parent is absent', async () => {
@@ -1218,6 +1288,52 @@ describe('Sentinel', () => {
     const sentinelAny = sentinel as any;
     const bindSpy = jest.spyOn(sentinelAny, 'bindAddressUpstream');
     await sentinelAny.propagateAddressBindingsUpstream();
+    expect(bindSpy).not.toHaveBeenCalled();
+  });
+
+  it('replays downstream bindings upstream when attaching to parent and rebind is enabled', async () => {
+    const sentinel = createSentinel({ hasParent: true, rebindOnAttach: true });
+    const sentinelAny = sentinel as any;
+    const routeManager = sentinelAny.routeManager as RouteManager;
+
+    routeManager._downstream_addresses_routes.set('svc@/child', {
+      segment: 'child',
+    });
+
+    const bindSpy = jest
+      .spyOn(sentinelAny, 'bindAddressUpstream')
+      .mockResolvedValue(undefined);
+
+    await sentinel.dispatchEvent(
+      'onNodeAttachToUpstream',
+      sentinel,
+      {} as unknown
+    );
+
+    expect(bindSpy).toHaveBeenCalledTimes(1);
+    const [firstCall] = bindSpy.mock.calls as Array<
+      [FameAddress, AddressRouteInfo]
+    >;
+    expect(firstCall?.[0]?.toString()).toBe('svc@/child');
+  });
+
+  it('does not replay downstream bindings upstream on attach when rebind is disabled', async () => {
+    const sentinel = createSentinel({ hasParent: true, rebindOnAttach: false });
+    const sentinelAny = sentinel as any;
+    const routeManager = sentinelAny.routeManager as RouteManager;
+
+    routeManager._downstream_addresses_routes.set('svc@/child', {
+      segment: 'child',
+    });
+
+    const bindSpy = jest.spyOn(sentinelAny, 'bindAddressUpstream');
+
+    await sentinel.dispatchEvent(
+      'onNodeAttachToUpstream',
+      sentinel,
+      {} as unknown
+    );
+
     expect(bindSpy).not.toHaveBeenCalled();
   });
 
@@ -1237,7 +1353,10 @@ describe('Sentinel', () => {
 
     await sentinel.removeDownstreamRoute('child', { stop: false });
 
-    expect(unregisterSpy).not.toHaveBeenCalled();
+    expect(unregisterSpy).toHaveBeenCalledWith(
+      'child',
+      expect.objectContaining({ stop: false })
+    );
     expect(routeManager.downstreamRoutes.has('child')).toBe(false);
   });
 
@@ -1313,7 +1432,10 @@ describe('Sentinel', () => {
 
     await sentinel.removePeerRoute('peer', { stop: false });
 
-    expect(unregisterSpy).not.toHaveBeenCalled();
+    expect(unregisterSpy).toHaveBeenCalledWith(
+      'peer',
+      expect.objectContaining({ stop: false })
+    );
     expect(routeManager._peer_routes.has('peer')).toBe(false);
   });
 

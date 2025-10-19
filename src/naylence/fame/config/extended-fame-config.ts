@@ -147,6 +147,72 @@ export function loadFameConfig(): ExtendedFameConfig {
   }
 }
 
+let pluginsLoaded = false;
+
+export async function loadPluginsFromConfig(): Promise<void> {
+  if (pluginsLoaded) {
+    return;
+  }
+
+  const rawConfig = loadRawFameConfig();
+  const pluginNames = (rawConfig.plugins as string[] | undefined) ?? [];
+
+  if (pluginNames.length === 0) {
+    pluginsLoaded = true;
+    return;
+  }
+
+  logger.debug('loading_plugins_from_config', { plugins: pluginNames });
+
+  try {
+    // Import each plugin and call its register function
+    for (const pluginName of pluginNames) {
+      try {
+        // Import from the plugin subpath (all naylence plugins export ./plugin)
+        const pluginModule = await import(`${pluginName}/plugin`);
+        const plugin =
+          pluginModule.default ?? pluginModule.plugin ?? pluginModule;
+
+        if (
+          plugin &&
+          typeof (plugin as { register?: unknown }).register === 'function'
+        ) {
+          logger.debug('registering_plugin', {
+            plugin: pluginName,
+            name: (plugin as { name?: string }).name,
+          });
+          await (plugin as { register: () => Promise<void> }).register();
+        } else {
+          logger.error('plugin_missing_register_method', {
+            plugin: pluginName,
+            keys: Object.keys(pluginModule),
+            hasDefault: 'default' in pluginModule,
+            hasPlugin: 'plugin' in pluginModule,
+          });
+          throw new Error(
+            `Plugin ${pluginName} does not export a register() method`
+          );
+        }
+      } catch (error) {
+        logger.error('plugin_load_failed', {
+          plugin: pluginName,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        throw error;
+      }
+    }
+
+    pluginsLoaded = true;
+    logger.debug('plugins_loaded_from_config');
+  } catch (error) {
+    logger.error('failed_to_load_plugins_from_config', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
+
 export function getFameConfig(): ExtendedFameConfig {
   if (cachedConfig) {
     return cachedConfig;

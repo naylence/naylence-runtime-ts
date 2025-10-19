@@ -3,7 +3,7 @@ import { getLogger } from '../util/logging.js';
 import { delay } from '../util/task-utils.js';
 import { validateKeyCorrelationTtlSec } from '../util/ttl-validation.js';
 
-const logger = getLogger('key-correlation-map');
+const logger = getLogger('naylence.fame.sentinel.key_correlation_map');
 
 type CorrelationEntry = {
   route: string;

@@ -33,7 +33,9 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
   private readonly _maxsize: number;
   private readonly _defaultTimeoutMs: number;
   private _closed = false;
-  private readonly logger = getLogger('in-memory-channel');
+  private readonly logger = getLogger(
+    'naylence.fame.channel.in_memory.in_memory_channel'
+  );
 
   constructor(config: InMemoryChannelConfig = {}) {
     this._maxsize = config.maxsize || 0; // 0 = unlimited

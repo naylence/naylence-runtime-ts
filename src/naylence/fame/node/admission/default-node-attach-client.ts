@@ -23,7 +23,9 @@ import type { ReplicaStickinessManager } from '../../stickiness/replica-stickine
 import type { NodeLike } from '../node-like.js';
 import type { AttachInfo, NodeAttachClient } from './node-attach-client.js';
 
-const logger = getLogger('default-node-attach-client');
+const logger = getLogger(
+  'naylence.fame.node.admission.default_node_attach_client'
+);
 
 const HANDSHAKE_POLL_INTERVAL_MS = 20;
 

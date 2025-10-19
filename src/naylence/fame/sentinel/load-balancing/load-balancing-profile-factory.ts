@@ -8,7 +8,9 @@ import {
   type LoadBalancingStrategyConfig,
 } from './load-balancing-strategy-factory.js';
 
-const logger = getLogger('load-balancing-profile');
+const logger = getLogger(
+  'naylence.fame.sentinel.load_balancing.load_balancing_profile_factory'
+);
 
 export const PROFILE_NAME_RANDOM = 'random';
 export const PROFILE_NAME_ROUND_ROBIN = 'round_robin';

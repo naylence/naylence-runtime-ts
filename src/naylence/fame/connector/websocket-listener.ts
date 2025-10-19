@@ -22,7 +22,7 @@ import {
 import { DeliveryOriginType as DeliveryOriginTypeEnum } from 'naylence-core';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('websocket-listener');
+const logger = getLogger('naylence.fame.connector.websocket_listener');
 
 const WS_POLICY_VIOLATION = 1008;
 const WS_INTERNAL_ERROR = 1011;

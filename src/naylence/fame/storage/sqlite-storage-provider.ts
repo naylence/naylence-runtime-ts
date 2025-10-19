@@ -12,7 +12,7 @@ import { AsyncLock } from '../util/lock.js';
 type BetterSqlite3Constructor = typeof import('better-sqlite3');
 type BetterSqlite3Database = import('better-sqlite3').Database;
 
-const logger = getLogger('sqlite-storage-provider');
+const logger = getLogger('naylence.fame.storage.sqlite_storage_provider');
 
 let cachedSqliteCtor: BetterSqlite3Constructor | null | undefined;
 

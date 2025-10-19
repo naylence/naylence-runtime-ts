@@ -21,7 +21,7 @@ import { KeyValidationError } from './attachment-key-validator.js';
 import type { KeyManager } from './key-manager.js';
 import type { EncryptionManager } from '../encryption/encryption-manager.js';
 
-const logger = getLogger('key-management-handler');
+const logger = getLogger('naylence.fame.security.keys.key_management_handler');
 
 const KEY_REQUEST_TIMEOUT_MS = 5_000;
 const KEY_REQUEST_RETRIES = 3;
@@ -133,6 +133,11 @@ export class KeyManagementHandler extends TaskSpawner {
       name: 'key-request-gc',
     });
     await this.registerOwnPublicKeys();
+
+    // Announce own keys after registration
+    if (this.keyManager) {
+      await this.keyManager.announceKeysToUpstream();
+    }
   }
 
   public async stop(): Promise<void> {
@@ -241,6 +246,8 @@ export class KeyManagementHandler extends TaskSpawner {
       }
     }
 
+    let correlationAddressHandled: string | null = null;
+
     if (isCorrelationRouted && envelope.corrId) {
       const originalAddress = this.correlationToAddress.get(envelope.corrId);
       if (originalAddress) {
@@ -266,10 +273,43 @@ export class KeyManagementHandler extends TaskSpawner {
         });
 
         this.onNewKeyForAddressByCorrelation(originalAddress, validatedKeys);
+        correlationAddressHandled = originalAddress;
       }
     }
 
     if (frame.address) {
+      const addressKey = String(frame.address);
+
+      try {
+        if (correlationAddressHandled !== addressKey) {
+          const addKeysForAnnouncedAddress: Parameters<
+            KeyManager['addKeys']
+          >[0] = {
+            keys: validatedKeys,
+            physicalPath: addressKey,
+            systemId: originSystemId,
+            origin: context.originType,
+            skipSidValidation: true,
+          };
+
+          if (envelope.sid) {
+            addKeysForAnnouncedAddress.sid = envelope.sid;
+          }
+
+          await this.keyManager.addKeys(addKeysForAnnouncedAddress);
+
+          logger.debug('added_keys_for_announced_address', {
+            target_address: addressKey,
+            key_count: validatedKeys.length,
+          });
+        }
+      } catch (error) {
+        logger.warning('failed_to_add_keys_for_announced_address', {
+          target_address: addressKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
       this.onNewKeyForAddress(frame.address, validatedKeys);
     }
 

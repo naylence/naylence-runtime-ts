@@ -1,12 +1,14 @@
 import {
   DeliveryOriginType,
   FameResponseType,
+  createFameEnvelope,
   formatAddress,
 } from 'naylence-core';
 import type {
   FameAddress,
   FameConnector,
   NodeWelcomeFrame,
+  FameEnvelopeWith,
 } from 'naylence-core';
 import { FameNode } from '../node.js';
 import type { NodeEventListener } from '../node-event-listener.js';
@@ -17,6 +19,7 @@ import { NODE_META_NAMESPACE, NodeMetaRecord } from '../node-meta.js';
 import type { ServiceManager } from '../../service/service-manager.js';
 import { TransportListener } from '../../connector/transport-listener.js';
 import type { AttachInfo } from '../admission/node-attach-client.js';
+import type { AdmissionClient } from '../admission/admission-client.js';
 
 class TestDeliveryPolicy extends DeliveryPolicy {
   constructor(private readonly ackRequired: boolean) {
@@ -381,6 +384,49 @@ describe('FameNode', () => {
     dispatchSpy.mockRestore();
   });
 
+  it('closes the admission client when stopping', async () => {
+    const close = jest.fn(async () => {});
+    const hello = jest.fn(
+      async (
+        systemId: string,
+        _instanceId: string,
+        _requestedLogicals?: string[]
+      ) => {
+        const frame: NodeWelcomeFrame = {
+          type: 'NodeWelcome',
+          systemId,
+          instanceId: 'instance-admission',
+          assignedPath: `/${systemId}`,
+          acceptedLogicals: [],
+          // Use a long-lived expiration so the root session manager doesn't immediately
+          // schedule a refresh (which would trigger additional close() calls).
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        };
+
+        return createFameEnvelope({
+          frame,
+        }) as FameEnvelopeWith<NodeWelcomeFrame>;
+      }
+    );
+
+    const admissionClient: AdmissionClient = {
+      hasUpstream: false,
+      hello,
+      close,
+    };
+
+    const node = new FameNode({
+      systemId: 'admission-node',
+      physicalPath: '/admission-node',
+      admissionClient,
+    });
+
+    await node.start();
+    await node.stop();
+
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores duplicate event listeners', () => {
     const node = new FameNode({
       systemId: 'dedupe-node',
@@ -498,6 +544,63 @@ describe('FameNode', () => {
     expect(node.handshakeCompleted).toBe(true);
     expect(node.attachExpiresAt).toBe(attachExpiresAt);
     expect(node.welcomeExpiresAt).toBeNull();
+  });
+
+  it('does not force upstream rebind during attach', async () => {
+    const node = new FameNode({
+      systemId: 'rebind-node',
+      physicalPath: '/rebind-node',
+      hasParent: true,
+    });
+
+    const bindingManager = node.bindingManager;
+    const rebindSpy = jest
+      .spyOn(bindingManager, 'rebindAddressesUpstream')
+      .mockResolvedValue(undefined);
+    const readvertiseSpy = jest
+      .spyOn(bindingManager, 'readvertiseCapabilitiesUpstream')
+      .mockResolvedValue(undefined);
+
+    const attachInfo: AttachInfo = {
+      systemId: 'rebind-node',
+      targetSystemId: 'parent-node',
+      targetPhysicalPath: '/parent-node',
+      assignedPath: '/parent-node/rebind-node',
+    };
+
+    const connector = {} as FameConnector;
+
+    await (node as any).handleAttach(attachInfo, connector);
+
+    expect(rebindSpy).not.toHaveBeenCalled();
+    expect(readvertiseSpy).not.toHaveBeenCalled();
+
+    rebindSpy.mockRestore();
+    readvertiseSpy.mockRestore();
+  });
+
+  it('rebinds upstream addresses when epoch changes', async () => {
+    const node = new FameNode({
+      systemId: 'epoch-node',
+      physicalPath: '/epoch-node',
+      hasParent: true,
+    });
+
+    const bindingManager = node.bindingManager;
+    const rebindSpy = jest
+      .spyOn(bindingManager, 'rebindAddressesUpstream')
+      .mockResolvedValue(undefined);
+    const readvertiseSpy = jest
+      .spyOn(bindingManager, 'readvertiseCapabilitiesUpstream')
+      .mockResolvedValue(undefined);
+
+    await (node as any).handleEpochChange('epoch-123');
+
+    expect(rebindSpy).toHaveBeenCalledTimes(1);
+    expect(readvertiseSpy).toHaveBeenCalledTimes(1);
+
+    rebindSpy.mockRestore();
+    readvertiseSpy.mockRestore();
   });
 
   it('ignores envelopes without a destination when no capability is provided', async () => {
@@ -642,13 +745,11 @@ describe('FameNode', () => {
     const stubTracker = {
       priority: 100,
       track: jest.fn().mockResolvedValue(undefined),
-      awaitAck: jest
-        .fn()
-        .mockResolvedValue(
-          node.envelopeFactory.createEnvelope({
-            frame: { type: 'Data', payload: {} },
-          })
-        ),
+      awaitAck: jest.fn().mockResolvedValue(
+        node.envelopeFactory.createEnvelope({
+          frame: { type: 'Data', payload: {} },
+        })
+      ),
       onEnvelopeDelivered: jest.fn().mockResolvedValue(undefined),
     };
     (node as any)._deliveryTracker = stubTracker;

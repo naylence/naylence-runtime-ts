@@ -30,7 +30,7 @@ import type { KeyValueStore } from '../storage/key-value-store.js';
 import type { NodeLike } from '../node/node-like.js';
 import type { NodeEventListener } from '../node/node-event-listener.js';
 
-const logger = getLogger('default-delivery-tracker');
+const logger = getLogger('naylence.fame.delivery.default_delivery_tracker');
 
 const STREAM_END = Symbol('stream-end');
 const SWEEPER_TICK = Symbol('tracker-sweeper-tick');
@@ -310,7 +310,8 @@ export class DefaultDeliveryTracker
     return envelope;
   }
 
-  async onHeartbeatSent(envelope: FameEnvelope): Promise<void> {
+  async onHeartbeatSent(node: NodeLike, envelope: FameEnvelope): Promise<void> {
+    void node;
     if (showEnvelopes) {
       console.log(
         `\n${formatTimestampForConsole()} - ${color('Sent envelope', AnsiColor.BLUE)} 🚀\n${prettyModel(

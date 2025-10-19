@@ -12,7 +12,9 @@ import { getLogger } from '../../util/logging.js';
 import { validateTtlSec } from '../../util/ttl-validation.js';
 import type { AdmissionClient } from './admission-client.js';
 
-const logger = getLogger('direct-admission-client');
+const logger = getLogger(
+  'naylence.fame.node.admission.direct_admission_client'
+);
 
 export interface DirectAdmissionClientOptions {
   readonly connectionGrants: Array<Record<string, unknown>>;

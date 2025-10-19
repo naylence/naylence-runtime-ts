@@ -9,7 +9,7 @@ import { FameConnectError } from '../errors/errors.js';
 import type { SpawnedTask } from '../util/task-types.js';
 import { TaskCancelledError } from '../util/task-types.js';
 
-const logger = getLogger('root-session-manager');
+const logger = getLogger('naylence.fame.node.root_session_manager');
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -189,6 +189,10 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
         welcome.frame.acceptedLogicals ?? []
       );
     }
+
+    // Close the admission client immediately after handshake completes
+    // This releases HTTP keep-alive connections (Node.js fetch/undici requires explicit cleanup)
+    await this.admissionClient.close();
 
     return welcome.frame;
   }

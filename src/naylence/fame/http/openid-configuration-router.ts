@@ -1,13 +1,13 @@
 /**
  * OpenID Connect Discovery configuration router for Express
- * 
+ *
  * Provides /.well-known/openid-configuration endpoint for OAuth2/OIDC client auto-discovery
  */
 
 import express, { type Router } from 'express';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('openid-configuration-router');
+const logger = getLogger('naylence.fame.http.openid_configuration_router');
 
 const DEFAULT_PREFIX = '';
 
@@ -91,20 +91,20 @@ function getAllowedScopes(configScopes?: string[]): string[] {
 
 /**
  * Create an Express router that implements OpenID Connect Discovery
- * 
+ *
  * @param options - Router configuration options
  * @returns Express router with OpenID configuration endpoint
- * 
+ *
  * Environment Variables:
  *   FAME_JWT_ISSUER: JWT issuer claim (optional)
  *   FAME_JWT_ALLOWED_SCOPES: Allowed scopes (optional, default: node.connect)
  *   FAME_JWT_ALGORITHM: JWT signing algorithm (optional, default: EdDSA)
- * 
+ *
  * @example
  * ```typescript
  * import express from 'express';
  * import { createOpenIDConfigurationRouter } from 'naylence-runtime';
- * 
+ *
  * const app = express();
  * app.use(createOpenIDConfigurationRouter({
  *   issuer: 'https://auth.example.com',
@@ -127,9 +127,13 @@ export function createOpenIDConfigurationRouter(
   } = options;
 
   // Resolve configuration with environment variable priority
-  const defaultIssuer = process.env[ENV_VAR_JWT_ISSUER] ?? issuer ?? 'https://auth.fame.fabric';
+  const defaultIssuer =
+    process.env[ENV_VAR_JWT_ISSUER] ?? issuer ?? 'https://auth.fame.fabric';
   const defaultBaseUrl = baseUrl ?? defaultIssuer;
-  const algorithm = process.env[ENV_VAR_JWT_ALGORITHM] ?? configAlgorithm ?? DEFAULT_JWT_ALGORITHM;
+  const algorithm =
+    process.env[ENV_VAR_JWT_ALGORITHM] ??
+    configAlgorithm ??
+    DEFAULT_JWT_ALGORITHM;
   const allowedScopes = getAllowedScopes(configAllowedScopes);
 
   logger.debug('openid_config_router_created', {
@@ -141,27 +145,33 @@ export function createOpenIDConfigurationRouter(
   });
 
   // OpenID Connect Discovery endpoint
-  router.get(`${prefix}/.well-known/openid-configuration`, (_req: unknown, res: any) => {
-    // Construct absolute URLs for endpoints
-    const tokenEndpoint = `${defaultBaseUrl.replace(/\/$/, '')}${tokenEndpointPath}`;
-    const jwksUri = `${defaultBaseUrl.replace(/\/$/, '')}${jwksEndpointPath}`;
+  router.get(
+    `${prefix}/.well-known/openid-configuration`,
+    (_req: unknown, res: any) => {
+      // Construct absolute URLs for endpoints
+      const tokenEndpoint = `${defaultBaseUrl.replace(/\/$/, '')}${tokenEndpointPath}`;
+      const jwksUri = `${defaultBaseUrl.replace(/\/$/, '')}${jwksEndpointPath}`;
 
-    const config: OpenIDConfiguration = {
-      issuer: defaultIssuer,
-      token_endpoint: tokenEndpoint,
-      jwks_uri: jwksUri,
-      scopes_supported: allowedScopes,
-      response_types_supported: ['token'],
-      grant_types_supported: ['client_credentials'],
-      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
-      subject_types_supported: ['public'],
-      id_token_signing_alg_values_supported: [algorithm],
-    };
+      const config: OpenIDConfiguration = {
+        issuer: defaultIssuer,
+        token_endpoint: tokenEndpoint,
+        jwks_uri: jwksUri,
+        scopes_supported: allowedScopes,
+        response_types_supported: ['token'],
+        grant_types_supported: ['client_credentials'],
+        token_endpoint_auth_methods_supported: [
+          'client_secret_basic',
+          'client_secret_post',
+        ],
+        subject_types_supported: ['public'],
+        id_token_signing_alg_values_supported: [algorithm],
+      };
 
-    logger.debug('openid_config_served', { config });
+      logger.debug('openid_config_served', { config });
 
-    res.json(config);
-  });
+      res.json(config);
+    }
+  );
 
   return router;
 }

@@ -184,10 +184,13 @@ describe('RouteManager', () => {
       manager as unknown as {
         removeDownstreamRoute: (
           segment: string,
-          options?: { stop?: boolean }
+          options?: { stop?: boolean; retainAddresses?: boolean }
         ) => Promise<void>;
       }
-    ).removeDownstreamRoute('child', { stop: false });
+    ).removeDownstreamRoute('child', {
+      stop: false,
+      retainAddresses: false,
+    });
 
     await manager.shutdownTasks({ cancelHanging: true });
 
@@ -197,6 +200,71 @@ describe('RouteManager', () => {
     expect(manager._peer_addresses_routes.size).toBe(0);
     expect(manager._downstream_addresses_legacy.size).toBe(0);
     expect(manager._pools.get('pool')?.size).toBe(0);
+  });
+
+  it('retains downstream address references when removing route with default retention', async () => {
+    const store = createRouteStore();
+    const manager = new RouteManager({ deliver: jest.fn(), routeStore: store });
+    const connector = createConnectorStub();
+    await manager.registerDownstreamRoute('child', connector);
+
+    manager._downstream_addresses_routes.set('svc@/child', {
+      segment: 'child',
+    } as AddressRouteInfo);
+    manager._downstream_addresses_legacy.set('svc@/child', {
+      segment: 'child',
+    } as AddressRouteInfo);
+    manager._peer_addresses_routes.set('svc@/child', 'child');
+    manager._pools.set('pool', new Set(['child']));
+
+    await (
+      manager as unknown as {
+        removeDownstreamRoute: (
+          segment: string,
+          options?: { stop?: boolean; retainAddresses?: boolean }
+        ) => Promise<void>;
+      }
+    ).removeDownstreamRoute('child', { stop: false });
+
+    expect(manager._downstream_addresses_routes.get('svc@/child')).toEqual({
+      segment: 'child',
+    });
+    expect(manager._downstream_addresses_legacy.get('svc@/child')).toEqual({
+      segment: 'child',
+    });
+    expect(manager._peer_addresses_routes.get('svc@/child')).toBe('child');
+    expect(manager._pools.get('pool')?.has('child')).toBe(true);
+
+    await manager.shutdownTasks({ cancelHanging: true });
+  });
+
+  it('purges address references when retention is disabled globally', async () => {
+    const store = createRouteStore();
+    const manager = new RouteManager({
+      deliver: jest.fn(),
+      routeStore: store,
+      retainAddressBindingsOnDisconnect: false,
+    });
+    const connector = createConnectorStub();
+    await manager.registerDownstreamRoute('child', connector);
+
+    manager._downstream_addresses_routes.set('svc@/child', {
+      segment: 'child',
+    } as AddressRouteInfo);
+    manager._downstream_addresses_legacy.set('svc@/child', {
+      segment: 'child',
+    } as AddressRouteInfo);
+    manager._peer_addresses_routes.set('svc@/child', 'child');
+    manager._pools.set('pool', new Set(['child']));
+
+    await manager.unregisterDownstreamRoute('child', { stop: false });
+
+    expect(manager._downstream_addresses_routes.size).toBe(0);
+    expect(manager._downstream_addresses_legacy.size).toBe(0);
+    expect(manager._peer_addresses_routes.size).toBe(0);
+    expect(manager._pools.get('pool')?.size).toBe(0);
+
+    await manager.shutdownTasks({ cancelHanging: true });
   });
 
   it('stops connector immediately when delay is non-positive', async () => {

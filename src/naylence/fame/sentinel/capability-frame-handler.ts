@@ -15,7 +15,7 @@ import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import { getLogger } from '../util/logging.js';
 import type { RouteManager } from './route-manager.js';
 
-const logger = getLogger('capability-frame-handler');
+const logger = getLogger('naylence.fame.sentinel.capability_frame_handler');
 
 type CapabilityRoutesMap = Map<string, Map<string, CapabilityRouteEntry>>;
 

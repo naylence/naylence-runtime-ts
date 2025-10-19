@@ -31,7 +31,9 @@ import {
   type SigningConfig,
 } from './security-policy.js';
 
-const logger = getLogger('default-security-policy');
+const logger = getLogger(
+  'naylence.fame.security.policy.default_security_policy'
+);
 
 export interface DefaultSecurityPolicyOptions {
   customSigningPolicy?: (

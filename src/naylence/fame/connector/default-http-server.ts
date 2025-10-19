@@ -9,7 +9,7 @@ import { getLogger } from '../util/logging.js';
 import { AsyncLock, withLock } from '../util/lock.js';
 import type { HttpRouter, HttpServer } from './http-server.js';
 
-const logger = getLogger('default-http-server');
+const logger = getLogger('naylence.fame.connector.default_http_server');
 
 type ServerKey = string;
 

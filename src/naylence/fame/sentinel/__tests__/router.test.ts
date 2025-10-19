@@ -172,7 +172,14 @@ describe('RoutingAction implementations', () => {
 
     await action.execute(envelope, router as unknown as any, state, undefined);
 
-    expect(router.removeDownstreamRoute).toHaveBeenCalledWith('child-seg');
+    expect(router.removeDownstreamRoute).toHaveBeenCalledWith(
+      'child-seg',
+      expect.objectContaining({
+        reason: 'transport_closed_forward_child',
+        meta: expect.objectContaining({ segment: 'child-seg' }),
+        captureStack: false,
+      })
+    );
     expect(router.deliverLocal).toHaveBeenCalled();
     expect(loggerMock.error).toHaveBeenCalledWith(
       'transport_closed_forward_child',
@@ -211,7 +218,14 @@ describe('RoutingAction implementations', () => {
 
     await action.execute(envelope, router as unknown as any, state, undefined);
 
-    expect(router.removePeerRoute).toHaveBeenCalledWith('peer-seg');
+    expect(router.removePeerRoute).toHaveBeenCalledWith(
+      'peer-seg',
+      expect.objectContaining({
+        reason: 'transport_closed_forward_peer',
+        meta: expect.objectContaining({ segment: 'peer-seg' }),
+        captureStack: false,
+      })
+    );
     expect(router.deliverLocal).not.toHaveBeenCalled();
   });
 

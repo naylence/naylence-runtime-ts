@@ -19,7 +19,7 @@ import {
   extractScopesFromPayload,
 } from './jwt-authorization-utils.js';
 
-const logger = getLogger('jwt-token-verifier');
+const logger = getLogger('naylence.fame.security.auth.jwt_token_verifier');
 
 type SigningKey = JoseCryptoKey | KeyObject | JWK | Uint8Array;
 

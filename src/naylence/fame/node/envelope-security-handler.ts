@@ -22,7 +22,7 @@ import type { EnvelopeVerifier } from '../security/signing/envelope-verifier.js'
 import type { NodeLike } from './node-like.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('envelope-security-handler');
+const logger = getLogger('naylence.fame.node.envelope_security_handler');
 
 type EncryptionTarget = string;
 

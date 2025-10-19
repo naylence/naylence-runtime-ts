@@ -16,7 +16,9 @@ import { TaskSpawner } from '../../util/task-spawner.js';
 import { withEnvelopeContextAsync } from '../../util/envelope-context.js';
 import { getLogger } from '../../util/logging.js';
 
-const logger = getLogger('in-memory-fanout-broker');
+const logger = getLogger(
+  'naylence.fame.channel.in_memory.in_memory_fanout_broker'
+);
 
 // Sentinel object for shutdown signaling
 const SENTINEL = Symbol('fanout-broker-sentinel');

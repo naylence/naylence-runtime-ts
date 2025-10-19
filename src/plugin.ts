@@ -10,12 +10,24 @@ let initialized = false;
 const runtimePlugin: FamePlugin = {
   name: 'naylence:runtime',
   async register(): Promise<void> {
+    // console.log('[naylence:runtime] register() called, initialized=', initialized);
     if (initialized) {
+      // console.log('[naylence:runtime] already initialized, skipping');
       return;
     }
 
     initialized = true;
+    // console.log('[naylence:runtime] registering runtime factories...');
+
+    // Register factories from manifest
     await registerRuntimeFactories();
+
+    // Import modules with side-effect registrations (not in manifest)
+    await import(
+      './naylence/fame/transport/websocket-transport-provisioner.js'
+    );
+
+    // console.log('[naylence:runtime] runtime factories registered');
   },
 };
 

@@ -346,6 +346,55 @@ describe('KeyManagementHandler.acceptKeyAnnounce', () => {
     expect(keyManager.addKeys).not.toHaveBeenCalled();
   });
 
+  it('indexes announced keys under logical address aliases', async () => {
+    const alias = FameAddress.create('svc@fame.fabric');
+    const key = {
+      kid: 'enc-1',
+      use: 'enc',
+      kty: 'OKP',
+      crv: 'X25519',
+      x: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    } as Record<string, unknown>;
+
+    const keyManager = {
+      addKeys: jest.fn(async () => undefined),
+      hasKey: jest.fn(async () => false),
+    } as unknown as KeyManager;
+
+    const { handler } = createHandler({ keyManager });
+
+    const announce = makeKeyAnnounceEnvelope({
+      id: 'env-alias',
+      frame: {
+        keys: [key],
+        physicalPath: '/origin/system',
+        address: alias,
+      },
+    });
+
+    await handler.acceptKeyAnnounce(announce, {
+      originType: DeliveryOriginType.UPSTREAM,
+      fromSystemId: 'upstream-id',
+    } as FameDeliveryContext);
+
+    expect(keyManager.addKeys).toHaveBeenCalledTimes(2);
+    expect(keyManager.addKeys).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        physicalPath: '/origin/system',
+        keys: [key],
+      })
+    );
+    expect(keyManager.addKeys).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        physicalPath: String(alias),
+        keys: [key],
+        skipSidValidation: true,
+      })
+    );
+  });
+
   it('adds validated keys, handles correlations, and replays pending envelopes', async () => {
     const keyValidator = {
       validateKey: jest

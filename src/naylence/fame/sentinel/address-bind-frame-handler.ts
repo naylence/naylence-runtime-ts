@@ -68,7 +68,8 @@ export interface PoolKey {
   readonly pattern: string;
 }
 
-const logger = getLogger('address-bind-frame-handler');
+const logger = getLogger('naylence.fame.sentinel.address_bind_frame_handler');
+const RESERVED_ADDRESS_NAMES = new Set(['__sys__', '__rpc__']);
 
 function hasRoute(container: RouteRegistryLike, key: string): boolean {
   if (!container) {
@@ -206,6 +207,13 @@ function findPoolEntryKey(
   return undefined;
 }
 
+function isReservedAddressName(name: string | null): boolean {
+  if (!name) {
+    return false;
+  }
+  return RESERVED_ADDRESS_NAMES.has(name.toLowerCase());
+}
+
 export class AddressBindFrameHandler {
   private readonly routingNode: RoutingNodeLike;
   private readonly routeManager: RouteManagerLike;
@@ -282,6 +290,8 @@ export class AddressBindFrameHandler {
       isHostBased = false;
     }
 
+    const isReservedAddress = isReservedAddressName(name);
+
     let isPoolBind = false;
     let poolKey: PoolKey | null = null;
 
@@ -304,10 +314,7 @@ export class AddressBindFrameHandler {
 
     const upstreamConnector = this.upstreamConnector();
     const shouldForwardUpstream =
-      Boolean(upstreamConnector) &&
-      (context.originType !== DeliveryOriginType.DOWNSTREAM ||
-        isHostBased ||
-        isPoolBind);
+      Boolean(upstreamConnector) && !isReservedAddress;
 
     if (isPoolBind && poolKey) {
       const existingKey = findPoolEntryKey(this.poolsMap, poolKey) ?? poolKey;
@@ -469,10 +476,7 @@ export class AddressBindFrameHandler {
 
     const upstreamConnector = this.upstreamConnector();
     const shouldForwardUpstream =
-      Boolean(upstreamConnector) &&
-      (context?.originType !== DeliveryOriginType.DOWNSTREAM ||
-        isHostBased ||
-        isPoolUnbind);
+      Boolean(upstreamConnector) && !isReservedAddressName(name);
 
     if (isPoolUnbind && poolKey) {
       const existingKey = findPoolEntryKey(this.poolsMap, poolKey);

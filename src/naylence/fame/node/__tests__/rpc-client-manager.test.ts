@@ -93,8 +93,10 @@ describe('RPCClientManager', () => {
     .fn()
     .mockResolvedValue({ toString: () => 'listener@/node' });
 
-  const createManager = () =>
-    new RPCClientManager(
+  const managers: RPCClientManager[] = [];
+
+  const createManager = () => {
+    const manager = new RPCClientManager(
       () => '/node',
       () => 'node-1',
       defaultDeliverWrapper,
@@ -102,6 +104,9 @@ describe('RPCClientManager', () => {
       defaultListenCallback as never,
       defaultDeliveryTracker as never
     );
+    managers.push(manager);
+    return manager;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -141,6 +146,11 @@ describe('RPCClientManager', () => {
     });
   });
 
+  afterEach(async () => {
+    await Promise.all(managers.map((m) => m.cleanup()));
+    managers.length = 0;
+  });
+
   it('rejects when neither target nor capabilities are provided', async () => {
     const manager = createManager();
     await expect(
@@ -167,6 +177,7 @@ describe('RPCClientManager', () => {
     const mocks = getCoreMocks();
     const traceMock = getCurrentTraceMock();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient-1');
     mocks.formatAddress.mockReturnValueOnce(null as never);
     traceMock.mockReturnValueOnce('trace-single');
     mocks.generateId.mockReturnValueOnce('no-reply-single');
@@ -273,6 +284,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
     const traceMock = getCurrentTraceMock();
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     traceMock.mockReturnValueOnce('trace-1');
     mocks.generateId.mockReturnValueOnce('req-1');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request-1' });
@@ -320,7 +332,7 @@ describe('RPCClientManager', () => {
     expect(defaultEnvelopeFactory.createEnvelope).toHaveBeenCalledTimes(2);
     const [firstCall] = defaultEnvelopeFactory.createEnvelope.mock.calls;
     expect(firstCall[0].capabilities).toEqual(['cap']);
-    expect(firstCall[0].replyTo?.toString()).toBe('__rpc__@/node');
+    expect(firstCall[0].replyTo?.toString()).toMatch(/__rpc__[\w-]+@\/node/);
     const secondCall = defaultEnvelopeFactory.createEnvelope.mock.calls[1][0];
     expect(secondCall.to).toBe(targetAddr);
     expect(secondCall.capabilities).toBeUndefined();
@@ -337,6 +349,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('req-track');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
     mocks.parseResponse.mockReturnValueOnce({ result: 'ok' });
@@ -390,7 +403,9 @@ describe('RPCClientManager', () => {
       defaultListenCallback as never,
       undefined as never
     );
+    managers.push(manager);
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('no-tracker');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'body' });
     mocks.parseResponse.mockReturnValueOnce({ result: 'ok' });
@@ -418,6 +433,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValue('dup-id');
     mocks.makeRequest.mockReturnValue({ payload: 'dup' });
     mocks.parseResponse.mockReturnValue({ result: 'ok' });
@@ -444,6 +460,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('timeout-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'slow' });
 
@@ -467,6 +484,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('stream-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
     mocks.parseResponse.mockReturnValueOnce({ result: 'first' });
@@ -506,6 +524,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('await-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
     mocks.parseResponse.mockReturnValueOnce({ result: 'delayed' });
@@ -562,6 +581,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('throw-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
     mocks.parseResponse.mockReturnValueOnce({ result: 'first' });
@@ -590,6 +610,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('frame-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
@@ -620,6 +641,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('error-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
     mocks.parseResponse.mockReturnValueOnce({
@@ -649,6 +671,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('parse-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
     mocks.parseResponse.mockImplementationOnce(() => {
@@ -678,6 +701,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('ack-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
@@ -721,6 +745,7 @@ describe('RPCClientManager', () => {
       const manager = createManager();
       const mocks = getCoreMocks();
 
+      mocks.generateId.mockReturnValueOnce('listener-recipient');
       mocks.generateId.mockReturnValueOnce(`ack-${code}`);
       mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
@@ -751,6 +776,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('ack-stream');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
@@ -814,6 +840,7 @@ describe('RPCClientManager', () => {
     expect(defaultDeliveryTracker.addEventHandler).toHaveBeenCalledTimes(1);
 
     const mocks = getCoreMocks();
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('cleanup-id');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'request' });
 
@@ -839,6 +866,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
+    mocks.generateId.mockReturnValueOnce('listener-recipient');
     mocks.generateId.mockReturnValueOnce('cleanup-stream');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'stream request' });
 

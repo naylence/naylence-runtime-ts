@@ -38,7 +38,7 @@ import { getLogger } from '../util/logging.js';
 import type { NoAuthInjectionStrategyConfig } from '../security/auth/no-auth-injection-strategy-factory.js';
 import type { RouteManager } from '../sentinel/route-manager.js';
 
-const logger = getLogger('http-listener');
+const logger = getLogger('naylence.fame.connector.http_listener');
 
 function isRoutingNodeLike(node: NodeLike): node is RoutingNodeLike {
   return typeof (node as RoutingNodeLike).createOriginConnector === 'function';

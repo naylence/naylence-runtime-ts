@@ -13,7 +13,7 @@ import { getLogger } from '../util/logging.js';
 import type { ConnectionGrant } from '../grants/index.js';
 export type { ConnectionGrant } from '../grants/index.js';
 
-const logger = getLogger('connector-factory');
+const logger = getLogger('naylence.fame.connector.connector_factory');
 
 export const CONNECTOR_FACTORY_BASE_TYPE = 'ConnectorFactory';
 

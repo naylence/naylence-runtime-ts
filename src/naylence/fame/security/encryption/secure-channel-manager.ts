@@ -38,4 +38,12 @@ export interface SecureChannelManager {
   addChannel(channelId: string, channelState: SecureChannelState): void;
 
   removeChannel(channelId: string): boolean;
+
+  /**
+   * Remove all channels for a given destination.
+   * Used to cleanup stale channels when a route is removed or rebound.
+   * @param destination The destination address
+   * @returns Number of channels removed
+   */
+  removeChannelsForDestination(destination: string): number;
 }

@@ -182,7 +182,7 @@ describe('basicConfig', () => {
 
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     basicConfig({ level: LogLevel.INFO, format: 'json' });
-    const logger = getLogger('test.structlog-json');
+    const logger = getLogger('test.structlog_json');
 
     try {
       logger.info('json log', { foo: 'bar' });
@@ -195,7 +195,7 @@ describe('basicConfig', () => {
         foo: 'bar',
         level: LogLevel.INFO,
         level_name: 'INFO',
-        logger: 'test.structlog-json',
+        logger: 'test.structlog_json',
         timestamp: '2025-09-28T05:36:00.361Z',
       });
     } finally {

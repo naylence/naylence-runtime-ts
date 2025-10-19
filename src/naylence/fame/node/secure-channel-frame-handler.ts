@@ -15,7 +15,7 @@ import type { SecureChannelManager } from '../security/encryption/secure-channel
 import type { EnvelopeSecurityHandler } from './envelope-security-handler.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('secure-channel-frame-handler');
+const logger = getLogger('naylence.fame.node.secure_channel_frame_handler');
 
 type SendCallback = (
   envelope: FameEnvelope,

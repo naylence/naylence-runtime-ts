@@ -14,7 +14,7 @@ import type { KeyManager } from '../security/keys/key-manager.js';
 import type { KeyRecord } from '../security/keys/key-store.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('key-frame-handler');
+const logger = getLogger('naylence.fame.sentinel.key_frame_handler');
 
 export interface AddressRouteInfo {
   segment?: string | null;
@@ -447,37 +447,6 @@ export class KeyFrameHandler {
         logger.trace('key_lookup_by_physical_path_failed', {
           address: addressStr,
           path: routeInfo.physicalPath,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    if (physicalPath) {
-      try {
-        const keys = toRecordKeys(
-          await this.keyManager.getKeysForPath(physicalPath)
-        );
-        const encryptionKeys = keys.filter((key) => key.use === 'enc');
-        if (encryptionKeys.length > 0) {
-          const kid = encryptionKeys[0]?.kid;
-          if (kid && typeof kid === 'string') {
-            context.stickinessRequired = true;
-            context.stickySid = originalEnvelope?.sid ?? fromSegment;
-            await this.sendKeyRequest({
-              kid,
-              fromSegment,
-              originType: context.originType!,
-              physicalPath,
-              ...(corrId ? { corrId } : {}),
-              originalSid: originalEnvelope?.sid,
-            });
-            return true;
-          }
-        }
-      } catch (error) {
-        logger.trace('key_lookup_by_request_physical_path_failed', {
-          address: addressStr,
-          path: physicalPath,
           error: error instanceof Error ? error.message : String(error),
         });
       }

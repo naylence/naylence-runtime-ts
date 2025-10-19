@@ -45,7 +45,7 @@ import type { CryptoProvider } from '../security/crypto/providers/crypto-provide
 
 const BINDING_STORE_NAMESPACE = '__binding_store';
 
-const logger = getLogger('node-factory');
+const logger = getLogger('naylence.fame.node.factory_commons');
 
 export interface CommonNodeComponents {
   systemId: string;
@@ -505,12 +505,12 @@ async function resolveCryptoProvider(
       logger.debug('auto_creating_crypto_provider', {
         reason: 'overlay_security_requires_signing',
       });
-      
+
       // Dynamically import to avoid circular dependencies
       const { DefaultCryptoProvider } = await import(
         '../security/crypto/providers/default-crypto-provider.js'
       );
-      
+
       // Extract environment variables for issuer and audience
       const env = options.env ?? {};
       const issuer =
@@ -521,7 +521,7 @@ async function resolveCryptoProvider(
         typeof env.FAME_JWT_AUDIENCE === 'string'
           ? env.FAME_JWT_AUDIENCE
           : 'fame.fabric';
-      
+
       return await DefaultCryptoProvider.create({
         issuer,
         audience,
@@ -548,7 +548,10 @@ function requiresCryptoProvider(
   const record = config as Record<string, unknown>;
 
   // Check if using SecurityProfile with overlay variant
-  if (record.type === 'SecurityProfile' || record.type === 'NodeSecurityProfile') {
+  if (
+    record.type === 'SecurityProfile' ||
+    record.type === 'NodeSecurityProfile'
+  ) {
     const profile = record.profile;
     if (typeof profile === 'string') {
       const profileLower = profile.toLowerCase();

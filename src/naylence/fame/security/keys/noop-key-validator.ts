@@ -7,7 +7,7 @@ import {
   type AttachmentKeyValidationResult,
 } from './attachment-key-validator.js';
 
-const logger = getLogger('noop-key-validator');
+const logger = getLogger('naylence.fame.security.keys.noop_key_validator');
 
 export class NoopKeyValidator extends AttachmentKeyValidator {
   constructor() {

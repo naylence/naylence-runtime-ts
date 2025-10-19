@@ -30,7 +30,7 @@ import { currentTraceId } from '../util/envelope-context.js';
 import { getLogger } from '../util/logging.js';
 import { isPoolLogical, matchesPoolLogical } from '../util/logicals.js';
 
-const logger = getLogger('binding-manager');
+const logger = getLogger('naylence.fame.node.binding_manager');
 
 const SYSTEM_INBOX = '__sys__';
 const DEFAULT_ACK_TIMEOUT_MS = 20_000;
@@ -216,10 +216,10 @@ export class BindingManager {
     }
 
     for (const address of addresses) {
-      await this.bindingStore.set(address, { 
-        address, 
-        encryptionKeyId: null, 
-        physicalPath: null 
+      await this.bindingStore.set(address, {
+        address,
+        encryptionKeyId: null,
+        physicalPath: null,
       });
     }
 

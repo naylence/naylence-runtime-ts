@@ -25,10 +25,10 @@ interface VerifierJwk extends Record<string, unknown> {
   x5c?: unknown;
 }
 
-function loadPublicKey(
+async function loadPublicKey(
   jwk: VerifierJwk,
   signingConfig: SigningConfig
-): Uint8Array {
+): Promise<Uint8Array> {
   if (jwk.x5c) {
     if (signingConfig.signingMaterial !== SigningMaterial.X509_CHAIN) {
       throw new Error('Certificate keys are disabled by signing policy');
@@ -170,7 +170,7 @@ export class EdDSAEnvelopeVerifier {
       throw new Error('Signature must be 64 bytes for Ed25519');
     }
 
-    const publicKey = loadPublicKey(jwk, this.signingConfig);
+    const publicKey = await loadPublicKey(jwk, this.signingConfig);
     if (publicKey.length !== 32) {
       throw new Error('Ed25519 public key must be 32 bytes');
     }

@@ -1,6 +1,6 @@
 /**
  * JWKS (JSON Web Key Set) API router for Express
- * 
+ *
  * Provides /.well-known/jwks.json endpoint for public key discovery
  * Used by OAuth2/JWT token verification
  */
@@ -9,7 +9,7 @@ import express, { type Router } from 'express';
 import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('jwks-api-router');
+const logger = getLogger('naylence.fame.http.jwks_api_router');
 
 const DEFAULT_PREFIX = '';
 const ENV_VAR_KEY_TYPES = 'FAME_JWKS_KEY_TYPES';
@@ -20,18 +20,18 @@ export interface CreateJwksRouterOptions {
    * If not provided, uses the provided crypto provider's getJwks() method
    */
   getJwksJson?: () => { keys: Array<Record<string, unknown>> };
-  
+
   /**
    * Crypto provider for getting JWKS data
    * Required if getJwksJson is not provided
    */
   cryptoProvider?: CryptoProvider;
-  
+
   /**
    * Router prefix (default: empty string)
    */
   prefix?: string;
-  
+
   /**
    * Optional list of key types to include (e.g., ['RSA', 'EC', 'OKP'])
    * If not provided, no filtering is applied
@@ -79,24 +79,31 @@ function filterKeysByType(
 
 /**
  * Create an Express router that exposes JWKS at /.well-known/jwks.json
- * 
+ *
  * @param options - Router configuration options
  * @returns Express router with JWKS endpoint
- * 
+ *
  * @example
  * ```typescript
  * import express from 'express';
  * import { createJwksRouter } from 'naylence-runtime';
- * 
+ *
  * const app = express();
  * const cryptoProvider = new MyCryptoProvider();
  * app.use(createJwksRouter({ cryptoProvider }));
  * ```
  */
-export function createJwksRouter(options: CreateJwksRouterOptions = {}): Router {
+export function createJwksRouter(
+  options: CreateJwksRouterOptions = {}
+): Router {
   const router = express.Router();
 
-  const { getJwksJson, cryptoProvider, prefix = DEFAULT_PREFIX, keyTypes } = options;
+  const {
+    getJwksJson,
+    cryptoProvider,
+    prefix = DEFAULT_PREFIX,
+    keyTypes,
+  } = options;
 
   // Get JWKS data
   let jwks: { keys: Array<Record<string, unknown>> };
@@ -123,7 +130,7 @@ export function createJwksRouter(options: CreateJwksRouterOptions = {}): Router 
   // JWKS endpoint
   router.get(`${prefix}/.well-known/jwks.json`, (_req: unknown, res: any) => {
     const filteredJwks = filterKeysByType(jwks, allowedKeyTypes);
-    
+
     logger.debug('jwks_served', {
       total_keys: jwks.keys.length,
       filtered_keys: filteredJwks.keys.length,

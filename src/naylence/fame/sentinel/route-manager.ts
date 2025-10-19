@@ -32,7 +32,7 @@ import {
   normalizeRouteEntry,
 } from './store/route-store.js';
 
-const logger = getLogger('route-manager');
+const logger = getLogger('naylence.fame.sentinel.route_manager');
 
 const DEFAULT_CONNECTOR_CLEANUP_DELAY_MS = 200;
 
@@ -46,6 +46,15 @@ export interface PendingRouteEntry {
   cancelAttachTimeout?: () => void;
 }
 
+export interface RouteRemovalOptions {
+  stop?: boolean;
+  delayMs?: number;
+  reason?: string;
+  meta?: Record<string, unknown>;
+  captureStack?: boolean;
+  retainAddresses?: boolean;
+}
+
 interface RouteManagerOptions {
   deliver: (
     envelope: FameEnvelope,
@@ -54,6 +63,7 @@ interface RouteManagerOptions {
   routeStore?: RouteStore;
   getId?: () => string;
   cleanupDelayMs?: number;
+  retainAddressBindingsOnDisconnect?: boolean;
 }
 
 export class RouteManager extends TaskSpawner {
@@ -86,6 +96,7 @@ export class RouteManager extends TaskSpawner {
 
   private readonly flowRoutes = new Map<string, FameConnector>();
   public readonly _pending_routes = new Map<string, PendingRouteEntry>();
+  private readonly retainAddressBindingsOnDisconnect: boolean;
 
   constructor(options: RouteManagerOptions) {
     super();
@@ -97,6 +108,8 @@ export class RouteManager extends TaskSpawner {
     this.cleanupDelayMs = Number.isFinite(configuredDelay ?? NaN)
       ? Math.max(0, Number(configuredDelay))
       : DEFAULT_CONNECTOR_CLEANUP_DELAY_MS;
+    this.retainAddressBindingsOnDisconnect =
+      options.retainAddressBindingsOnDisconnect ?? true;
   }
 
   public get routesLock(): AsyncLock {
@@ -166,8 +179,19 @@ export class RouteManager extends TaskSpawner {
     logger.debug('registered_downstream_route', { route: segment });
   }
 
-  public async unregisterDownstreamRoute(segment: string): Promise<void> {
-    await this.removeDownstreamRoute(segment);
+  public async unregisterDownstreamRoute(
+    segment: string,
+    options?: RouteRemovalOptions
+  ): Promise<void> {
+    await this.removeDownstreamRoute(segment, {
+      reason: options?.reason ?? 'unregisterDownstreamRoute',
+      stop: options?.stop,
+      delayMs: options?.delayMs,
+      meta: options?.meta,
+      captureStack: options?.captureStack,
+      retainAddresses:
+        options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect,
+    });
   }
 
   public async registerPeerRoute(
@@ -181,8 +205,19 @@ export class RouteManager extends TaskSpawner {
     logger.debug('registered_peer_route', { route: segment });
   }
 
-  public async unregisterPeerRoute(segment: string): Promise<void> {
-    await this.removePeerRoute(segment);
+  public async unregisterPeerRoute(
+    segment: string,
+    options?: RouteRemovalOptions
+  ): Promise<void> {
+    await this.removePeerRoute(segment, {
+      reason: options?.reason ?? 'unregisterPeerRoute',
+      stop: options?.stop,
+      delayMs: options?.delayMs,
+      meta: options?.meta,
+      captureStack: options?.captureStack,
+      retainAddresses:
+        options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect,
+    });
   }
 
   public async restoreRoutes(): Promise<void> {
@@ -301,48 +336,83 @@ export class RouteManager extends TaskSpawner {
 
   private async removeDownstreamRoute(
     segment: string,
-    options?: { stop?: boolean; delayMs?: number }
+    options?: RouteRemovalOptions
   ): Promise<void> {
+    const retainAddresses =
+      options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect;
     await this.removeRoute(
       segment,
       this.downstreamRoutes,
       this._downstream_route_store,
-      options
+      {
+        ...options,
+        retainAddresses,
+      }
     );
   }
 
   private async removePeerRoute(
     segment: string,
-    options?: { stop?: boolean; delayMs?: number }
+    options?: RouteRemovalOptions
   ): Promise<void> {
-    await this.removeRoute(
-      segment,
-      this._peer_routes,
-      this._peer_route_store,
-      options
-    );
+    const retainAddresses =
+      options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect;
+    await this.removeRoute(segment, this._peer_routes, this._peer_route_store, {
+      ...options,
+      retainAddresses,
+    });
   }
 
   private async removeRoute(
     segment: string,
     routes: Map<string, FameConnector>,
     store: RouteStore,
-    options?: { stop?: boolean; delayMs?: number }
+    options?: RouteRemovalOptions
   ): Promise<void> {
-    let connector: FameConnector | undefined;
-    await this._routesLock.runExclusive(async () => {
-      connector = routes.get(segment);
-      routes.delete(segment);
-    });
-
     const stop = options?.stop ?? true;
     const delayMs = options?.delayMs ?? this.cleanupDelayMs;
+    const reason = options?.reason ?? 'unspecified';
+    const captureStack = options?.captureStack !== false;
+    const retainAddresses = options?.retainAddresses ?? false;
+
+    let connector: FameConnector | undefined;
+    let existed = false;
+    await this._routesLock.runExclusive(async () => {
+      connector = routes.get(segment);
+      existed = routes.delete(segment);
+    });
 
     if (connector && stop) {
       await this.cleanupConnector(segment, connector, delayMs);
     }
 
-    this.purgeRouteReferences(segment);
+    const orphanedDownstream: string[] = [];
+    for (const [address, info] of this._downstream_addresses_routes.entries()) {
+      if (info.segment === segment) {
+        orphanedDownstream.push(address);
+      }
+    }
+
+    const orphanedLegacy: string[] = [];
+    for (const [address, info] of this._downstream_addresses_legacy.entries()) {
+      if (info.segment === segment) {
+        orphanedLegacy.push(address);
+      }
+    }
+
+    const orphanedPeerAddresses: string[] = [];
+    for (const [
+      address,
+      mappedSegment,
+    ] of this._peer_addresses_routes.entries()) {
+      if (mappedSegment === segment) {
+        orphanedPeerAddresses.push(address);
+      }
+    }
+
+    if (!retainAddresses) {
+      this.purgeRouteReferences(segment);
+    }
 
     await store.delete(segment).catch((error: unknown) => {
       logger.warning('route_delete_failed', {
@@ -351,7 +421,22 @@ export class RouteManager extends TaskSpawner {
       });
     });
 
-    logger.debug('removed_route', { segment });
+    const removalMeta = {
+      segment,
+      reason,
+      stop,
+      delay_ms: delayMs,
+      existed,
+      had_connector: Boolean(connector),
+      orphaned_downstream_addresses: orphanedDownstream,
+      orphaned_legacy_addresses: orphanedLegacy,
+      orphaned_peer_addresses: orphanedPeerAddresses,
+      meta: options?.meta,
+      caller_stack: captureStack ? captureCallerStack() : undefined,
+      retained_addresses: retainAddresses,
+    } as const;
+
+    logger.debug('removed_route', removalMeta);
   }
 
   private purgeRouteReferences(segment: string): void {
@@ -640,4 +725,18 @@ function pickDate(value: unknown): Date | undefined {
     return Number.isNaN(date.getTime()) ? undefined : date;
   }
   return undefined;
+}
+
+function captureCallerStack(skip = 3, depth = 6): string | undefined {
+  const stack = new Error('route removal trace').stack;
+  if (!stack) {
+    return undefined;
+  }
+
+  const frames = stack.split('\n').slice(skip, skip + depth);
+  if (!frames.length) {
+    return undefined;
+  }
+
+  return frames.map((frame) => frame.trim()).join(' | ');
 }

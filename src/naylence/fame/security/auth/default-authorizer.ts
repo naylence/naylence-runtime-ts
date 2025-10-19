@@ -13,7 +13,7 @@ import type { Authorizer } from './authorizer.js';
 import type { TokenVerifier } from './token-verifier.js';
 import type { TokenVerifierProvider } from './token-verifier-provider.js';
 
-const logger = getLogger('default-authorizer');
+const logger = getLogger('naylence.fame.security.auth.default_authorizer');
 
 function decodeCredentials(credentials: Uint8Array): string {
   if (typeof TextDecoder !== 'undefined') {

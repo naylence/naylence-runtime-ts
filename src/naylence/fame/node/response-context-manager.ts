@@ -7,7 +7,7 @@ import {
 } from 'naylence-core';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('response-context-manager');
+const logger = getLogger('naylence.fame.node.response_context_manager');
 
 type MaybeSecurityContext = SecurityContext | null | undefined;
 

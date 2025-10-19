@@ -19,7 +19,7 @@ import {
   TaskCancelledError,
 } from './task-types.js';
 
-const logger = getLogger('task-spawner');
+const logger = getLogger('naylence.fame.util.task_spawner');
 
 // Internal task implementation
 class TaskImpl<T> implements SpawnedTask<T> {
@@ -312,6 +312,7 @@ export class TaskSpawner {
     } = options;
 
     if (this._tasks.size === 0) {
+      logger.debug('shutdown_tasks_no_tasks_to_shutdown');
       return;
     }
 
@@ -319,6 +320,7 @@ export class TaskSpawner {
 
     logger.debug('shutting_down_tasks', {
       task_count: this._tasks.size,
+      task_names: Array.from(this._tasks.values()).map((t) => t.name),
       grace_period_ms: gracePeriod,
     });
 

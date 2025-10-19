@@ -14,7 +14,7 @@ import type { TokenVerifier } from './token-verifier.js';
 import type { TokenVerifierProvider } from './token-verifier-provider.js';
 import type { Authorizer } from './authorizer.js';
 
-const logger = getLogger('oauth2-authorizer');
+const logger = getLogger('naylence.fame.security.auth.oauth2_authorizer');
 
 type StaticTokenProviderConfig = {
   type: 'StaticTokenProvider';

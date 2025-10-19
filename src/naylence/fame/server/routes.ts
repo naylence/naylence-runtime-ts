@@ -15,7 +15,7 @@ import type {
   FameServerConfig,
 } from './fame-server-config.js';
 
-const logger = getLogger('fame-fastify-default-routes');
+const logger = getLogger('naylence.fame.server.routes');
 
 const SUPPORTED_GRANT_TYPES = new Set(['client_credentials']);
 const DEFAULT_EXPIRES_IN_SECONDS = 3600;

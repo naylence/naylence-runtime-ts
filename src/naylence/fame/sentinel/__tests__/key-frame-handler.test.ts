@@ -808,7 +808,7 @@ describe('KeyFrameHandler', () => {
             { kid: 12345 as unknown as string, use: 'enc' },
           ] as unknown as KeyRecord[];
         }
-        if (path === '/fallback/path') {
+        if (path === '/local-fallback') {
           return [
             { kid: 'kid-fallback', use: 'enc' },
           ] as unknown as KeyRecord[];
@@ -831,7 +831,6 @@ describe('KeyFrameHandler', () => {
     const frame: KeyRequestFrame = {
       type: 'KeyRequest',
       address: 'svc@/local-fallback',
-      physicalPath: '/fallback/path',
     } as KeyRequestFrame;
     const envelope = createEnvelope(frame, {
       corrId: 'corr-fallback',
@@ -845,7 +844,7 @@ describe('KeyFrameHandler', () => {
     expect(keyManager.handleKeyRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         kid: 'kid-fallback',
-        physicalPath: '/fallback/path',
+        physicalPath: '/local-fallback',
       })
     );
   });
@@ -1017,7 +1016,7 @@ describe('KeyFrameHandler', () => {
             { kid: 999 as unknown as string, use: 'enc' },
           ] as unknown as KeyRecord[];
         }
-        if (path === '/request/fallback') {
+        if (path === '/route-no-string') {
           return [{ kid: 'kid-fallback', use: 'enc' }] as KeyRecord[];
         }
         return [] as KeyRecord[];
@@ -1041,7 +1040,6 @@ describe('KeyFrameHandler', () => {
     const frame: KeyRequestFrame = {
       type: 'KeyRequest',
       address: 'svc@/route-no-string',
-      physicalPath: '/request/fallback',
     } as KeyRequestFrame;
     const envelope = createEnvelope(frame, { sid: 'sid-original' });
     const context = createContext();
@@ -1054,7 +1052,7 @@ describe('KeyFrameHandler', () => {
     expect(handleKeyRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         kid: 'kid-fallback',
-        physicalPath: '/request/fallback',
+        physicalPath: '/route-no-string',
       })
     );
   });
@@ -1062,7 +1060,7 @@ describe('KeyFrameHandler', () => {
   it('handles key request using explicit physical path metadata', async () => {
     const keyManager = createKeyManager({
       getKeysForPath: jest.fn(async (path: string) => {
-        if (path === '/explicit/path') {
+        if (path === '/explicit') {
           return [{ kid: 'kid-explicit', use: 'enc' }] as KeyRecord[];
         }
         return [] as KeyRecord[];
@@ -1081,7 +1079,6 @@ describe('KeyFrameHandler', () => {
     const frame: KeyRequestFrame = {
       type: 'KeyRequest',
       address: 'svc@/explicit',
-      physicalPath: '/explicit/path',
     } as KeyRequestFrame;
     const envelope = createEnvelope(frame, {
       corrId: 'corr-explicit',
@@ -1095,7 +1092,7 @@ describe('KeyFrameHandler', () => {
     expect(keyManager.handleKeyRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         kid: 'kid-explicit',
-        physicalPath: '/explicit/path',
+        physicalPath: '/explicit',
       })
     );
   });
@@ -1103,7 +1100,7 @@ describe('KeyFrameHandler', () => {
   it('logs when request physical path lookup fails', async () => {
     const keyManager = createKeyManager({
       getKeysForPath: jest.fn(async (path: string) => {
-        if (path === '/request/path') {
+        if (path === '/request') {
           throw 'request lookup failed';
         }
         return [] as KeyRecord[];
@@ -1122,7 +1119,6 @@ describe('KeyFrameHandler', () => {
     const frame: KeyRequestFrame = {
       type: 'KeyRequest',
       address: 'svc@/request',
-      physicalPath: '/request/path',
     } as KeyRequestFrame;
     const envelope = createEnvelope(frame);
     const context = createContext();
@@ -1131,8 +1127,8 @@ describe('KeyFrameHandler', () => {
 
     expect(handled).toBe(false);
     expect(loggerMock.trace).toHaveBeenCalledWith(
-      'key_lookup_by_request_physical_path_failed',
-      expect.objectContaining({ path: '/request/path' })
+      'key_lookup_by_extracted_path_failed',
+      expect.objectContaining({ path: '/request' })
     );
     expect(keyManager.handleKeyRequest).not.toHaveBeenCalled();
   });

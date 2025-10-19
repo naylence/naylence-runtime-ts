@@ -15,7 +15,9 @@ import {
 import { type DefaultSecurityManagerConfig } from './default-security-manager-factory.js';
 import { getLogger } from '../util/logging.js';
 
-const logger = getLogger('node-security-profile-factory');
+const logger = getLogger(
+  'naylence.fame.security.node_security_profile_factory'
+);
 
 export const ENV_VAR_JWT_TRUSTED_ISSUER = 'FAME_JWT_TRUSTED_ISSUER';
 export const ENV_VAR_JWT_ALGORITHM = 'FAME_JWT_ALGORITHM';
