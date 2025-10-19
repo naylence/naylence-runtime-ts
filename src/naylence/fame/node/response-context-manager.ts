@@ -47,8 +47,7 @@ export class ResponseContextManager {
       originType: DeliveryOriginType.LOCAL,
       fromSystemId: this.getId(),
       security: responseSecurity,
-      expectedResponseType:
-        requestContext?.expectedResponseType ?? FameResponseType.NONE,
+      expectedResponseType: FameResponseType.NONE,
     };
 
     logger.debug('created_response_context', {

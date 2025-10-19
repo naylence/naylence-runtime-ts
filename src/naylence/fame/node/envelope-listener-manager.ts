@@ -320,10 +320,13 @@ export class EnvelopeListenerManager extends TaskSpawner {
 
         const receiverPolicy =
           this.nodeLike.deliveryPolicy?.receiverRetryPolicy ?? null;
-        if (tracked && tracked.attempt > 0) {
+        const trackedForHandler: TrackedEnvelope | undefined =
+          tracked?.mailboxType === MailboxType.OUTBOX ? undefined : tracked ?? undefined;
+
+        if (trackedForHandler && trackedForHandler.attempt > 0) {
           logger.info('resuming_handler_retry_after_restart', {
             envelope_id: envelope.id,
-            current_attempts: tracked.attempt,
+            current_attempts: trackedForHandler.attempt,
             service_name: serviceName,
           });
         }
@@ -338,7 +341,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
           envelope,
           context,
           receiverPolicy ?? undefined,
-          tracked ?? undefined,
+          trackedForHandler,
           serviceName
         );
       }

@@ -14,6 +14,7 @@ import type { NodeLike } from '../node-like.js';
 import {
   TrackedEnvelope,
   EnvelopeStatus,
+  MailboxType,
 } from '../../delivery/tracked-envelope.js';
 import { RetryPolicy } from '../../delivery/retry-policy.js';
 
@@ -347,6 +348,62 @@ describe('EnvelopeListenerManager', () => {
       expect.any(Error),
       true
     );
+  });
+
+  it('does not accumulate retries for outbound stream replies', async () => {
+    const { manager, deliveryTracker, channelPollingMock } = setupManager();
+
+    (manager as any).nodeLike.deliveryPolicy = {
+      receiverRetryPolicy: new RetryPolicy({
+        maxRetries: 6,
+        baseDelayMs: 0,
+        jitterMs: 0,
+      }),
+    };
+
+    const outboundTracked = createTrackedEnvelope(
+      'svc',
+      EnvelopeStatus.PENDING,
+      6
+    );
+    outboundTracked.mailboxType = MailboxType.OUTBOX;
+    outboundTracked.expectedResponseType = FameResponseType.STREAM;
+    outboundTracked.originalEnvelope.corrId = 'corr-outbound';
+
+    deliveryTracker.onEnvelopeDelivered.mockResolvedValue(outboundTracked);
+
+    const handler = jest.fn().mockResolvedValue(null);
+
+    await manager.listen('svc', handler);
+
+    const trackingHandler = channelPollingMock.mock.calls[0][2];
+
+    const firstReply = createFameEnvelope({
+      id: 'reply-1',
+      corrId: 'corr-outbound',
+      frame: {
+        type: 'Data',
+        payload: { value: 1 },
+      },
+    });
+
+    await expect(trackingHandler(firstReply, undefined)).resolves.toBeNull();
+
+    const secondReply = createFameEnvelope({
+      id: 'reply-2',
+      corrId: 'corr-outbound',
+      frame: {
+        type: 'Data',
+        payload: { value: 2 },
+      },
+    });
+
+    await expect(trackingHandler(secondReply, undefined)).resolves.toBeNull();
+
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(deliveryTracker.onEnvelopeHandled).not.toHaveBeenCalled();
+    expect(deliveryTracker.onEnvelopeHandleFailed).not.toHaveBeenCalled();
+    expect(outboundTracked.attempt).toBe(6);
   });
 
   it('runs handler only for envelopes that need processing', async () => {
