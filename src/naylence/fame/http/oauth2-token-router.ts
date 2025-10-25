@@ -194,7 +194,7 @@ function validateScope(
  * @example
  * ```typescript
  * import express from 'express';
- * import { createOAuth2TokenRouter } from 'naylence-runtime';
+ * import { createOAuth2TokenRouter } from '@naylence/runtime';
  *
  * const app = express();
  * app.use(express.urlencoded({ extended: true }));

@@ -1,6 +1,6 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime including core Fame protocol and utilities",
   "author": "Naylence Dev <naylencedev@gmail.com>",
@@ -34,6 +34,7 @@
     ".": {
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
       "default": "./dist/esm/index.js"
     },
     "./browser": {
@@ -44,21 +45,25 @@
     "./factory-manifest": {
       "types": "./dist/types/naylence/fame/factory-manifest.d.ts",
       "import": "./dist/esm/naylence/fame/factory-manifest.js",
+      "require": "./dist/cjs/naylence/fame/factory-manifest.js",
       "default": "./dist/esm/naylence/fame/factory-manifest.js"
     },
     "./register-runtime-factories": {
       "types": "./dist/types/naylence/fame/util/register-runtime-factories.d.ts",
       "import": "./dist/esm/naylence/fame/util/register-runtime-factories.js",
+      "require": "./dist/cjs/naylence/fame/util/register-runtime-factories.js",
       "default": "./dist/esm/naylence/fame/util/register-runtime-factories.js"
     },
     "./plugin": {
       "types": "./dist/types/plugin.d.ts",
       "import": "./dist/esm/plugin.js",
+      "require": "./dist/cjs/plugin.js",
       "default": "./dist/esm/plugin.js"
     },
     "./*": {
       "types": "./dist/types/*",
       "import": "./dist/esm/*",
+      "require": "./dist/cjs/*",
       "default": "./dist/esm/*"
     }
   },

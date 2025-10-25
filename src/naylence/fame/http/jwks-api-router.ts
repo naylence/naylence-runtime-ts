@@ -86,7 +86,7 @@ function filterKeysByType(
  * @example
  * ```typescript
  * import express from 'express';
- * import { createJwksRouter } from 'naylence-runtime';
+ * import { createJwksRouter } from '@naylence/runtime';
  *
  * const app = express();
  * const cryptoProvider = new MyCryptoProvider();

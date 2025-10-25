@@ -103,7 +103,7 @@ function getAllowedScopes(configScopes?: string[]): string[] {
  * @example
  * ```typescript
  * import express from 'express';
- * import { createOpenIDConfigurationRouter } from 'naylence-runtime';
+ * import { createOpenIDConfigurationRouter } from '@naylence/runtime';
  *
  * const app = express();
  * app.use(createOpenIDConfigurationRouter({

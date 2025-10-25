@@ -32,7 +32,7 @@ function resolveFromEnv(
 
   const npmName = env.npm_package_name;
   const npmVersion = env.npm_package_version;
-  if (npmName === 'naylence-runtime' && typeof npmVersion === 'string') {
+  if (npmName === '@naylence/runtime' && typeof npmVersion === 'string') {
     return npmVersion;
   }
 
@@ -60,6 +60,18 @@ async function resolveFromPackageJson(): Promise<string | null> {
             // Continue trying remaining candidates
           }
         }
+
+        // Fallback: try direct package resolution
+        try {
+          const result = localRequire('@naylence/runtime/package.json') as {
+            version?: unknown;
+          };
+          if (result && typeof result.version === 'string') {
+            return result.version;
+          }
+        } catch {
+          // Continue to next strategy
+        }
       }
     } catch {
       // ignore and fall through to dynamic require resolution
@@ -82,6 +94,21 @@ async function resolveFromPackageJson(): Promise<string | null> {
       } catch {
         // Continue trying remaining candidates
       }
+    }
+
+    // Final fallback: try direct package resolution from process.cwd()
+    try {
+      const cwdRequire = createRequire(
+        new URL('./', `file://${processRef.cwd?.() ?? process.cwd()}/`)
+      );
+      const result = cwdRequire('@naylence/runtime/package.json') as {
+        version?: unknown;
+      };
+      if (result && typeof result.version === 'string') {
+        return result.version;
+      }
+    } catch {
+      // All attempts failed
     }
   } catch {
     // Ignore failures and fall through to null
