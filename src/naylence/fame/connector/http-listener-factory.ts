@@ -8,6 +8,7 @@ import type { HttpServer } from './http-server.js';
 import type { Authorizer } from '../security/auth/authorizer.js';
 import { AuthorizerFactory } from '../security/auth/authorizer-factory.js';
 import { safeImport } from '../util/lazy-import.js';
+import type { NodeEventListener } from '../node/node-event-listener.js';
 
 export interface HttpListenerFactoryConfig extends TransportListenerConfig {
   type: 'HttpListener';
@@ -47,6 +48,33 @@ function getHttpListenerModule(): Promise<HttpListenerModule> {
   return httpListenerModulePromise;
 }
 
+function addServerEventListener(
+  server: HttpServer | null | undefined,
+  listeners: NodeEventListener[]
+): void {
+  if (!server || !Array.isArray(listeners)) {
+    return;
+  }
+
+  const candidate = server as unknown;
+  if (!isNodeEventListener(candidate)) {
+    return;
+  }
+
+  const listener = candidate as NodeEventListener;
+  if (!listeners.includes(listener)) {
+    listeners.push(listener);
+  }
+}
+
+function isNodeEventListener(value: unknown): value is NodeEventListener {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as NodeEventListener).priority === 'number'
+  );
+}
+
 function normalizeConfig(
   config?: HttpListenerFactoryConfig | Record<string, unknown> | null
 ): Required<Pick<HttpListenerFactoryConfig, 'host' | 'port'>> & {
@@ -57,12 +85,19 @@ function normalizeConfig(
 
   const hostValue =
     typeof record.host === 'string' && record.host.trim().length > 0
-      ? record.host
+      ? record.host.trim()
       : '0.0.0.0';
-  const portValue =
-    typeof record.port === 'number' && Number.isFinite(record.port)
-      ? record.port
-      : 0;
+
+  const rawPort = record.port;
+  let portValue = 0;
+  if (typeof rawPort === 'number' && Number.isFinite(rawPort)) {
+    portValue = rawPort;
+  } else if (typeof rawPort === 'string') {
+    const parsed = Number.parseInt(rawPort.trim(), 10);
+    if (Number.isFinite(parsed)) {
+      portValue = parsed;
+    }
+  }
 
   const rawAuthorizer = record.authorizer ?? null;
   const authorizerValue =
@@ -96,13 +131,21 @@ export class HttpListenerFactory extends TransportListenerFactory<HttpListenerFa
   ): Promise<TransportListener> {
     const normalized = normalizeConfig(config);
 
-    const options = (factoryArgs[0] ??
-      null) as CreateHttpListenerOptions | null;
+    const [firstArg, ...remainingArgs] = factoryArgs;
+    const eventListeners = Array.isArray(firstArg)
+      ? (firstArg as NodeEventListener[])
+      : [];
+    const optionsSource = Array.isArray(firstArg)
+      ? (remainingArgs[0] ?? null)
+      : (firstArg ?? null);
+    const options = optionsSource as CreateHttpListenerOptions | null;
 
     const { HttpListener } = await getHttpListenerModule();
 
     const httpServer =
       options?.httpServer ?? (await this._createDefaultHttpServer(normalized));
+
+    addServerEventListener(httpServer, eventListeners);
 
     let authorizer = options?.authorizer ?? null;
     if (!authorizer && normalized.authorizer) {

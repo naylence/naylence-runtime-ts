@@ -10,8 +10,8 @@ import {
   type FameEnvelopeWith,
   type NodeAttachAckFrame,
   type NodeWelcomeFrame,
-} from 'naylence-core';
-import * as Core from 'naylence-core';
+} from '@naylence/core';
+import * as Core from '@naylence/core';
 
 let DefaultNodeAttachClient: any;
 let KeyValidationErrorCtor: any;

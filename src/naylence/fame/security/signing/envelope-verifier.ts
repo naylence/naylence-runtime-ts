@@ -1,10 +1,10 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
-import type { FameEnvelope } from 'naylence-core';
+} from '@naylence/factory';
+import type { FameEnvelope } from '@naylence/core';
 
 export interface EnvelopeVerifier {
   verifyEnvelope(

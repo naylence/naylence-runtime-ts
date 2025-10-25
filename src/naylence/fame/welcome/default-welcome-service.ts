@@ -2,7 +2,7 @@ import {
   generateId,
   type NodeHelloFrame,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type {
   NodePlacementStrategy,

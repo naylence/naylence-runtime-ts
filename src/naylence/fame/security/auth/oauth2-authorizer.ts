@@ -3,8 +3,8 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { createAuthorizationContext } from 'naylence-core';
+} from '@naylence/core';
+import { createAuthorizationContext } from '@naylence/core';
 import { DEFAULT_REVERSE_AUTH_TTL_SEC } from '../../constants/ttl-constants.js';
 import { getLogger } from '../../util/logging.js';
 import type { NodeLike } from '../../node/node-like.js';

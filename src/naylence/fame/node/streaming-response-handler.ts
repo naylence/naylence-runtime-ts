@@ -5,7 +5,7 @@ import {
   FameEnvelope,
   FameMessageResponse,
   makeResponse,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 import { ResponseContextManager } from './response-context-manager.js';
 

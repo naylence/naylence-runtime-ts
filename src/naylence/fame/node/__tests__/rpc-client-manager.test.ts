@@ -1,4 +1,4 @@
-import { DeliveryOriginType, FameResponseType } from 'naylence-core';
+import { DeliveryOriginType, FameResponseType } from '@naylence/core';
 import { RPCClientManager } from '../rpc-client-manager.js';
 
 var loggerInstance: {
@@ -48,8 +48,8 @@ const getLoggerMock = () =>
   (jest.requireMock('../../util/logging.js') as { getLogger: jest.Mock })
     .getLogger;
 
-jest.mock('naylence-core', () => {
-  const actual = jest.requireActual('naylence-core');
+jest.mock('@naylence/core', () => {
+  const actual = jest.requireActual('@naylence/core');
   coreMocks = {
     generateId: jest.fn(),
     makeRequest: jest.fn(),

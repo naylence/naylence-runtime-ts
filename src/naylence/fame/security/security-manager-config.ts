@@ -1,4 +1,4 @@
-import type { ResourceConfig } from 'naylence-factory';
+import type { ResourceConfig } from '@naylence/factory';
 
 /**
  * Base configuration shape for security manager factories.

@@ -3,8 +3,8 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { createAuthorizationContext } from 'naylence-core';
+} from '@naylence/core';
+import { createAuthorizationContext } from '@naylence/core';
 
 import {
   credentialToString,

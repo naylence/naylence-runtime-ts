@@ -7,6 +7,8 @@ import type { TransportListenerConfig } from './transport-listener-config.js';
 import type { Authorizer } from '../security/auth/authorizer.js';
 import { AuthorizerFactory } from '../security/auth/authorizer-factory.js';
 import { safeImport } from '../util/lazy-import.js';
+import type { NodeEventListener } from '../node/node-event-listener.js';
+import type { HttpServer } from './http-server.js';
 
 export interface WebSocketListenerFactoryConfig
   extends TransportListenerConfig {
@@ -48,6 +50,33 @@ function getDefaultHttpServerModule(): Promise<DefaultHttpServerModule> {
     );
   }
   return defaultHttpServerModulePromise;
+}
+
+function addServerEventListener(
+  server: HttpServer | null | undefined,
+  listeners: NodeEventListener[]
+): void {
+  if (!server || !Array.isArray(listeners)) {
+    return;
+  }
+
+  const candidate = server as unknown;
+  if (!isNodeEventListener(candidate)) {
+    return;
+  }
+
+  const listener = candidate as NodeEventListener;
+  if (!listeners.includes(listener)) {
+    listeners.push(listener);
+  }
+}
+
+function isNodeEventListener(value: unknown): value is NodeEventListener {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as NodeEventListener).priority === 'number'
+  );
 }
 
 function normalizeConfig(
@@ -103,6 +132,7 @@ export class WebSocketListenerFactory extends TransportListenerFactory<WebSocket
 
   public async create(
     config?: WebSocketListenerFactoryConfig | Record<string, unknown> | null,
+
     ...factoryArgs: unknown[]
   ): Promise<TransportListener> {
     const normalized = normalizeConfig(config);
@@ -112,7 +142,14 @@ export class WebSocketListenerFactory extends TransportListenerFactory<WebSocket
       getDefaultHttpServerModule(),
     ]);
 
-    const options = (factoryArgs[0] ?? null) as {
+    const [firstArg, ...remainingArgs] = factoryArgs;
+    const eventListeners = Array.isArray(firstArg)
+      ? (firstArg as NodeEventListener[])
+      : [];
+
+    const options = (
+      Array.isArray(firstArg) ? remainingArgs[0] : (firstArg ?? null)
+    ) as {
       authorizer?: Authorizer;
     } | null;
     const providedAuthorizer = options?.authorizer ?? null;
@@ -129,6 +166,8 @@ export class WebSocketListenerFactory extends TransportListenerFactory<WebSocket
       host: normalized.host,
       port: normalized.port,
     });
+
+    addServerEventListener(httpServer, eventListeners);
 
     return new WebSocketListener({
       httpServer,

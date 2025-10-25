@@ -2,17 +2,17 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   FameMessageResponse,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   FameResponseType,
   extractEnvelopeAndContext,
   isFameMessageResponse,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { ChannelPollingManager } from '../channel-polling-manager.js';
 import { FameTransportClose } from '../../errors/errors.js';
 import { TaskTimeoutError } from '../../util/task-types.js';
-import type { ReadWriteChannel } from 'naylence-core';
+import type { ReadWriteChannel } from '@naylence/core';
 import type { ResponseContextManager } from '../response-context-manager.js';
 import type { StreamingResponseHandler } from '../streaming-response-handler.js';
 
@@ -31,8 +31,8 @@ jest.mock('../../util/envelope-context.js', () => ({
   ),
 }));
 
-jest.mock('naylence-core', () => {
-  const actual = jest.requireActual('naylence-core');
+jest.mock('@naylence/core', () => {
+  const actual = jest.requireActual('@naylence/core');
   return {
     __esModule: true,
     ...actual,

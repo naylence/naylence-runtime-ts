@@ -5,7 +5,7 @@ import {
   FameEnvelope,
   FameResponseType,
   generateId,
-} from 'naylence-core';
+} from '@naylence/core';
 import { DefaultDeliveryTracker } from '../default-delivery-tracker.js';
 import { InMemoryStorageProvider } from '../../storage/in-memory-storage.js';
 import type { NodeLike } from '../../node/node-like.js';

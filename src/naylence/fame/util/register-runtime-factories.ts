@@ -6,8 +6,8 @@
  * the global {@link Registry} from `naylence-factory`, but callers can provide their own
  * registry instance for isolated testing or multi-runtime scenarios.
  */
-import type { ResourceFactory } from 'naylence-factory';
-import { Registry as DefaultRegistry } from 'naylence-factory';
+import type { ResourceFactory } from '@naylence/factory';
+import { Registry as DefaultRegistry } from '@naylence/factory';
 
 import { MODULES, type FactoryModuleSpec } from '../factory-manifest.js';
 

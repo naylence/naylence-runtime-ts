@@ -1,5 +1,5 @@
-import type { FameFabric, FameFabricConfig, FameConfig } from 'naylence-core';
-import { FameFabricFactory } from 'naylence-core';
+import type { FameFabric, FameFabricConfig, FameConfig } from '@naylence/core';
+import { FameFabricFactory } from '@naylence/core';
 
 import { InProcessFameFabric } from './in-process-fame-fabric.js';
 // import { registerRuntimeFactories } from "../util/register-runtime-factories.js";

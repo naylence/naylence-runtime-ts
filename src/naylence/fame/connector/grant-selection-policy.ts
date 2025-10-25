@@ -1,4 +1,4 @@
-import type { NodeAttachFrame } from 'naylence-core';
+import type { NodeAttachFrame } from '@naylence/core';
 
 import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import type { ConnectionGrant } from '../grants/connection-grant.js';

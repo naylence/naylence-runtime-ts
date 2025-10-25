@@ -8,10 +8,14 @@ export default {
   ],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^@naylence/core$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
     '^naylence-core$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
     '^naylence-core-ts$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
+    '^@naylence/factory$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
     '^naylence-factory$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
     '^naylence-factory-ts$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
+    '^@naylence/runtime$': '<rootDir>/dist/cjs/index.js',
+    '^naylence-runtime$': '<rootDir>/dist/cjs/index.js',
   },
   transformIgnorePatterns: [
     'node_modules/(?!(@noble|yaml|jose|@peculiar)/)',

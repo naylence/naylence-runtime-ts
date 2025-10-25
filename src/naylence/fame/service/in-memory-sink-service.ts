@@ -11,7 +11,7 @@ import {
   type FameEnvelope,
   type FameServiceFactory,
   type WriteChannel,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import {
   InMemoryFanoutBroker,

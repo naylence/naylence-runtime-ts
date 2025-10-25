@@ -1,4 +1,4 @@
-import { createFameEnvelope, FameAddress } from 'naylence-core';
+import { createFameEnvelope, FameAddress } from '@naylence/core';
 
 import { CapabilityAwareRoutingPolicy } from '../capability-aware-routing-policy.js';
 import type { LoadBalancingStrategy } from '../load-balancing/load-balancing-strategy.js';

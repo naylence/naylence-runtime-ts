@@ -1,4 +1,4 @@
-import type { FameEnvelope, Stickiness } from 'naylence-core';
+import type { FameEnvelope, Stickiness } from '@naylence/core';
 
 import { BaseNodeEventListener } from '../node/node-event-listener.js';
 import { getLogger } from '../util/logging.js';

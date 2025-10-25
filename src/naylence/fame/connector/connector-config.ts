@@ -6,8 +6,8 @@
  * • Used by connector factories to configure connectors in this process
  */
 
-import type { ResourceConfig } from 'naylence-factory';
-export type { ResourceConfig } from 'naylence-factory';
+import type { ResourceConfig } from '@naylence/factory';
+export type { ResourceConfig } from '@naylence/factory';
 
 /**
  * Base class for connector configurations.

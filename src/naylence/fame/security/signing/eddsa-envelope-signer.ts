@@ -4,8 +4,8 @@ import type {
   FameEnvelope,
   SecurityHeader,
   SignatureHeader,
-} from 'naylence-core';
-import { SigningMaterial } from 'naylence-core';
+} from '@naylence/core';
+import { SigningMaterial } from '@naylence/core';
 import { secureDigest, urlsafeBase64Encode } from '../../util/util.js';
 import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
 import { SigningConfig } from './signing-config.js';

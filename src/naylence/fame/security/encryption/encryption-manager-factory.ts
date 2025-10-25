@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { KeyProvider } from '../keys/key-provider.js';

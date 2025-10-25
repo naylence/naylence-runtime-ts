@@ -4,7 +4,7 @@ import type {
   JWK,
   KeyObject,
 } from 'jose';
-import type { AuthorizationContext } from 'naylence-core';
+import type { AuthorizationContext } from '@naylence/core';
 import { getLogger } from '../../util/logging.js';
 import { TTL_NEVER_EXPIRES } from '../../constants/ttl-constants.js';
 import { validateJwtTokenTtlSec } from '../../util/ttl-validation.js';

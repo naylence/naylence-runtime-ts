@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type FameConfig, snakeToCamelObject } from 'naylence-core';
+import { type FameConfig, snakeToCamelObject } from '@naylence/core';
 import { parse as parseYaml } from 'yaml';
 
 import { getLogger } from '../util/logging.js';

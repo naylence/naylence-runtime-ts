@@ -6,8 +6,8 @@ import {
   jest,
   test,
 } from '@jest/globals';
-import type { PluginResolver } from 'naylence-factory';
-import { loadPlugins } from 'naylence-factory';
+import type { PluginResolver } from '@naylence/factory';
+import { loadPlugins } from '@naylence/factory';
 
 jest.mock('../naylence/fame/util/register-runtime-factories.js', () => ({
   registerRuntimeFactories: jest.fn(() => Promise.resolve()),

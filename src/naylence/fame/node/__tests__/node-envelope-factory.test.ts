@@ -1,4 +1,4 @@
-import { FameResponseType, FlowFlags } from 'naylence-core';
+import { FameResponseType, FlowFlags } from '@naylence/core';
 import { withEnvelopeContext } from '../../util/envelope-context.js';
 import { NodeEnvelopeFactory } from '../node-envelope-factory.js';
 

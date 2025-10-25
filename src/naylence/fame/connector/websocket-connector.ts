@@ -16,7 +16,7 @@ import type {
   AuthorizationContext as CoreAuthorizationContext,
   FameEnvelope,
   FameChannelMessage,
-} from 'naylence-core';
+} from '@naylence/core';
 
 const logger = getLogger('naylence.fame.connector.websocket_connector');
 

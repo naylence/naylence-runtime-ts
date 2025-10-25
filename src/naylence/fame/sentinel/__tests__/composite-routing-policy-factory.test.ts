@@ -6,8 +6,8 @@ type LoggerInstance = {
   warning: jest.Mock<void, [string, Record<string, unknown>]>;
 };
 
-jest.mock('naylence-factory', () => {
-  const actual = jest.requireActual('naylence-factory');
+jest.mock('@naylence/factory', () => {
+  const actual = jest.requireActual('@naylence/factory');
   return {
     ...actual,
     createResource: jest.fn(),
@@ -54,7 +54,7 @@ jest.mock('../hybrid-path-routing-policy.js', () => ({
 }));
 
 const { createResource: createResourceMock } = jest.requireMock(
-  'naylence-factory'
+  '@naylence/factory'
 ) as {
   createResource: jest.Mock;
 };

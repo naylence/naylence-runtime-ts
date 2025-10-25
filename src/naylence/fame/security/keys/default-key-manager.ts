@@ -3,7 +3,7 @@ import {
   localDeliveryContext,
   type EnvelopeFactory,
   type KeyAnnounceFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { currentTraceId } from '../../util/envelope-context.js';
 import { getLogger } from '../../util/logging.js';
@@ -97,12 +97,6 @@ export class DefaultKeyManager implements KeyManager {
       physical_path: this.physicalPath,
       has_upstream: this.hasUpstream,
     });
-
-    // Announce own keys to upstream after node is fully initialized
-    // This is critical for sealed encryption to work - other nodes need our public encryption key
-    if (this.hasUpstream) {
-      await this.announceKeysToUpstream();
-    }
   }
 
   public async onNodeStopped(_node: NodeLike): Promise<void> {

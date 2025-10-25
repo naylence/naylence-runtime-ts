@@ -1,4 +1,4 @@
-import type { CreateResourceOptions } from 'naylence-factory';
+import type { CreateResourceOptions } from '@naylence/factory';
 import type { Authorizer } from './auth/authorizer.js';
 import { AuthorizerFactory } from './auth/authorizer-factory.js';
 import { NoopTokenVerifier } from './auth/noop-token-verifier.js';

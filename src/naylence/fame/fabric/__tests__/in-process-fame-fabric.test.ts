@@ -4,13 +4,13 @@ import {
   createFameEnvelope,
   type DataFrame,
   type NodeHelloFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { InProcessFameFabric } from '../in-process-fame-fabric.js';
 import type { NodeLike } from '../../node/node-like.js';
 import type { ServiceManager } from '../../service/service-manager.js';
 import type { SinkService } from '../../service/sink-service.js';
-import type { FameEnvelopeHandler } from 'naylence-core';
+import type { FameEnvelopeHandler } from '@naylence/core';
 
 jest.mock('../../node/node-like-factory.js', () => ({
   NodeLikeFactory: {

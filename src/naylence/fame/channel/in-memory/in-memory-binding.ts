@@ -5,7 +5,7 @@
  * to an InMemoryReadWriteChannel, managing the binding lifecycle.
  */
 
-import { FameAddress } from 'naylence-core';
+import { FameAddress } from '@naylence/core';
 import {
   InMemoryReadWriteChannel,
   InMemoryChannelConfig,

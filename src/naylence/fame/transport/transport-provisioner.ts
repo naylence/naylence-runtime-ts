@@ -1,10 +1,10 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
-import type { NodeHelloFrame } from 'naylence-core';
+} from '@naylence/factory';
+import type { NodeHelloFrame } from '@naylence/core';
 
 import type { PlacementDecision } from '../placement/node-placement-strategy.js';
 import type { ConnectionGrant } from '../grants/connection-grant.js';

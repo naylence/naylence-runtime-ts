@@ -1,6 +1,6 @@
 import type { NodeLike } from '../node-like.js';
 import { NodeLikeFactory } from '../node-like-factory.js';
-import * as factoryModule from 'naylence-factory';
+import * as factoryModule from '@naylence/factory';
 import * as configModule from '../../config/extended-fame-config.js';
 
 describe('NodeLikeFactory.createNode', () => {

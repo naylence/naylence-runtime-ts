@@ -1,7 +1,7 @@
 import {
   AbstractResourceFactory,
   createDefaultResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { SecurityManager } from './security-manager.js';
 import type { SecurityManagerConfig } from './security-manager-config.js';

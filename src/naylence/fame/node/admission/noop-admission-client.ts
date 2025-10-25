@@ -2,7 +2,7 @@ import {
   createFameEnvelope,
   type FameEnvelopeWith,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../../util/logging.js';
 import type { AdmissionClient } from './admission-client.js';
 

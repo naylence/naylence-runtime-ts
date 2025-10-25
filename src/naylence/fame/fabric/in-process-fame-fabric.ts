@@ -13,7 +13,7 @@ import {
   isFameMessageResponse,
   type FameMessageResponse,
   type FameEnvelopeHandler,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { NodeLike } from '../node/node-like.js';
 import { NodeLikeFactory } from '../node/node-like-factory.js';

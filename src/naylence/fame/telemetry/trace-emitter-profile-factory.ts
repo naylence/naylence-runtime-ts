@@ -1,4 +1,4 @@
-import { Expressions } from 'naylence-factory';
+import { Expressions } from '@naylence/factory';
 import { getLogger } from '../util/logging.js';
 import type { TraceEmitter } from './trace-emitter.js';
 import type { TraceEmitterConfig } from './trace-emitter-config.js';

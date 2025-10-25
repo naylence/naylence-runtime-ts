@@ -4,7 +4,7 @@ import {
   type FameConnector,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { NodeHeartbeatFrameHandler } from '../node-heartbeat-frame-handler.js';
 

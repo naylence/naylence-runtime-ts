@@ -1,4 +1,4 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 
 import { HRWLoadBalancingStrategy } from '../hrw-load-balancing-strategy.js';
 

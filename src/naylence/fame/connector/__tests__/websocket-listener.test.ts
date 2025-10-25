@@ -5,7 +5,7 @@ import {
   getWebsocketListenerInstance,
 } from '../websocket-listener.js';
 import { WebSocketConnector, WebSocketState } from '../websocket-connector.js';
-import type { AuthorizationContext } from 'naylence-core';
+import type { AuthorizationContext } from '@naylence/core';
 import type { Authorizer } from '../../security/auth/authorizer.js';
 import type { HttpServer } from '../http-server.js';
 
@@ -172,9 +172,25 @@ describe('WebSocketListener grants and lifecycle', () => {
     expect(includeRouter).toHaveBeenCalledTimes(1);
   });
 
-  test('onNodeStarted starts the shared HTTP server', async () => {
+  test('onNodeStarted starts the shared HTTP server when not already running', async () => {
     const start = jest.fn(async () => {});
-    const httpServer = createHttpServerStub({ start });
+    const httpServer = createHttpServerStub({ start, isRunning: false });
+    const listener = new WebSocketListener({ httpServer });
+    const node = {
+      createOriginConnector: jest.fn(),
+      publicUrl: 'https://public.example',
+    };
+
+    await listener.onNodeInitialized(node as any);
+
+    await listener.onNodeStarted(node as any);
+
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  test('onNodeStarted does not restart an already running HTTP server', async () => {
+    const start = jest.fn(async () => {});
+    const httpServer = createHttpServerStub({ start, isRunning: true });
     const listener = new WebSocketListener({ httpServer });
     const node = {
       createOriginConnector: jest.fn(),
@@ -186,7 +202,7 @@ describe('WebSocketListener grants and lifecycle', () => {
 
     await listener.onNodeStarted(node as any);
 
-    expect(start).toHaveBeenCalledTimes(1);
+    expect(start).not.toHaveBeenCalled();
   });
 
   test('onNodeInitialized requires routing node implementation', async () => {

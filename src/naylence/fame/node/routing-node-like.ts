@@ -4,7 +4,7 @@ import type {
   FameConnector,
   FameDeliveryContext,
   FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { ConnectorConfig } from '../connector/connector-config.js';
 import type { WebSocketLike } from '../connector/websocket-connector.js';

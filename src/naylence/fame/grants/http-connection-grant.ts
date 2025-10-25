@@ -1,6 +1,8 @@
 import type { ConnectorConfig } from '../connector/connector-config.js';
 import type { AuthInjectionStrategyConfig } from '../security/auth/auth-injection-strategy-factory.js';
+import { GRANT_PURPOSE_NODE_ATTACH } from './grant.js';
 import {
+  canonicalizeAuthConfig,
   assertConnectionGrant,
   type ConnectionGrant,
   type ConnectionGrantLike,
@@ -47,17 +49,25 @@ export function isHttpConnectionGrant(
 export function normalizeHttpConnectionGrant(
   candidate: HttpConnectionGrantLike
 ): HttpConnectionGrant {
-  assertConnectionGrant(
-    candidate,
-    'HttpConnectionGrant requires a valid base grant'
-  );
-
-  const type = candidate.type ?? HTTP_CONNECTION_GRANT_TYPE;
+  const type =
+    typeof candidate.type === 'string'
+      ? candidate.type
+      : HTTP_CONNECTION_GRANT_TYPE;
   if (type !== HTTP_CONNECTION_GRANT_TYPE) {
     throw new TypeError(
       `HttpConnectionGrant expected type "${HTTP_CONNECTION_GRANT_TYPE}", received "${type}"`
     );
   }
+
+  const purpose =
+    typeof candidate.purpose === 'string' && candidate.purpose.length > 0
+      ? candidate.purpose
+      : GRANT_PURPOSE_NODE_ATTACH;
+
+  assertConnectionGrant(
+    { ...candidate, type, purpose },
+    'HttpConnectionGrant requires a valid base grant'
+  );
 
   const urlValue = candidate.url;
   if (typeof urlValue !== 'string' || urlValue.trim().length === 0) {
@@ -66,14 +76,15 @@ export function normalizeHttpConnectionGrant(
     );
   }
 
+  const authConfig = canonicalizeAuthConfig(
+    candidate.auth as Record<string, unknown> | undefined
+  );
+
   return {
     type,
-    purpose:
-      typeof candidate.purpose === 'string' && candidate.purpose.length > 0
-        ? candidate.purpose
-        : 'connection',
+    purpose,
     url: urlValue,
-    auth: candidate.auth,
+    ...(authConfig ? { auth: authConfig } : {}),
   };
 }
 

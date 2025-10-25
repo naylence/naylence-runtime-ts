@@ -1,4 +1,4 @@
-import { Expressions } from 'naylence-factory';
+import { Expressions } from '@naylence/factory';
 
 import type { DeliveryPolicy } from './delivery-policy.js';
 import type { DeliveryPolicyConfig } from './delivery-policy-config.js';

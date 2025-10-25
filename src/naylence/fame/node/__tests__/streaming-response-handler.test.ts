@@ -4,7 +4,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type FameMessageResponse,
-} from 'naylence-core';
+} from '@naylence/core';
 import { StreamingResponseHandler } from '../streaming-response-handler.js';
 import type { ResponseContextManager } from '../response-context-manager.js';
 

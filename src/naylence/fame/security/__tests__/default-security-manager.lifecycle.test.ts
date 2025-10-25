@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 
 import {
   CryptoLevel,

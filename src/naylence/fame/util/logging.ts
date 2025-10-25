@@ -14,7 +14,7 @@ import {
   LogTransport,
   isNode,
 } from './logging-types.js';
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 import { getCurrentEnvelope } from './envelope-context.js';
 
 // Default processors (similar to structlog processors)

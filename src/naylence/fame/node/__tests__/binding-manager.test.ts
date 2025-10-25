@@ -5,7 +5,7 @@ import {
   FameEnvelope,
   FameResponseType,
   formatAddressFromComponents,
-} from 'naylence-core';
+} from '@naylence/core';
 import { withEnvelopeContext } from '../../util/envelope-context.js';
 import { BindingManager, type BindingStoreEntry } from '../binding-manager.js';
 import { DeliveryTracker } from '../../delivery/delivery-tracker.js';

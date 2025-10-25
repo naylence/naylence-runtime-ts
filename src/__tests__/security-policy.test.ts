@@ -2,7 +2,7 @@ import {
   DeliveryOriginType,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { NodeLike } from '../naylence/fame/node/node-like';
 import {
@@ -27,8 +27,8 @@ import {
   SECURITY_POLICY_FACTORY_BASE_TYPE,
   SecurityPolicyFactory,
 } from '../naylence/fame/security/policy/security-policy-factory';
-import { ResourceFactoryRegistry } from 'naylence-factory';
-import { SigningMaterial } from 'naylence-core';
+import { ResourceFactoryRegistry } from '@naylence/factory';
+import { SigningMaterial } from '@naylence/core';
 
 function makeEnvelope(overrides: Partial<FameEnvelope> = {}): FameEnvelope {
   const frame = overrides.frame ?? ({ type: 'Data', payload: {} } as any);

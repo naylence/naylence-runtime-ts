@@ -2,7 +2,7 @@ import {
   ResourceFactoryRegistry,
   registerFactory,
   unregisterFactory,
-} from 'naylence-factory';
+} from '@naylence/factory';
 import { NoAuthInjectionStrategyFactory } from '../auth/no-auth-injection-strategy-factory.js';
 import { QueryParamAuthInjectionStrategyFactory } from '../auth/query-param-auth-injection-strategy-factory.js';
 import { QueryParamAuthInjectionStrategy } from '../auth/query-param-auth-injection-strategy.js';

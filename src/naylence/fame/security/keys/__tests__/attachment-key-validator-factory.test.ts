@@ -1,4 +1,4 @@
-import { registerFactory, ResourceFactoryRegistry } from 'naylence-factory';
+import { registerFactory, ResourceFactoryRegistry } from '@naylence/factory';
 
 import {
   AttachmentKeyValidator,

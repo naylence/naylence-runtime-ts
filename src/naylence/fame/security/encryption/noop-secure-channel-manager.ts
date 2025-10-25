@@ -3,7 +3,7 @@ import type {
   SecureAcceptFrame,
   SecureCloseFrame,
   SecureOpenFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type {
   SecureChannelManager,

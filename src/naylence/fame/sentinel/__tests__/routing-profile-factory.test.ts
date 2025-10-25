@@ -6,8 +6,8 @@ import {
 } from '../routing-profile-factory.js';
 import { ROUTING_POLICY_FACTORY_BASE } from '../routing-policy.js';
 
-jest.mock('naylence-factory', () => {
-  const actual = jest.requireActual('naylence-factory');
+jest.mock('@naylence/factory', () => {
+  const actual = jest.requireActual('@naylence/factory');
   return {
     ...actual,
     createResource: jest.fn(),
@@ -18,9 +18,9 @@ jest.mock('naylence-factory', () => {
 const {
   createResource: createResourceMock,
   registerFactory: registerFactoryMock,
-} = jest.requireMock('naylence-factory') as {
+} = jest.requireMock('@naylence/factory') as {
   createResource: jest.MockedFunction<
-    (typeof import('naylence-factory'))['createResource']
+    (typeof import('@naylence/factory'))['createResource']
   >;
   registerFactory: jest.Mock;
 };

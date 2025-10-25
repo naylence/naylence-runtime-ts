@@ -6,7 +6,7 @@ import {
   KeyRequestFrame,
   parseAddress,
   parseAddressComponents,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { isPoolLogical, matchesPoolLogical } from '../util/logicals.js';
 import { normalizePath } from '../util/util.js';

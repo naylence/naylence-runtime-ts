@@ -1,4 +1,4 @@
-import { parseAddressComponents } from 'naylence-core';
+import { parseAddressComponents } from '@naylence/core';
 import {
   getFameRoot,
   isPoolLogical,
@@ -21,7 +21,7 @@ import {
   isPoolAddress,
 } from '../logicals.js';
 
-jest.mock('naylence-core', () => ({
+jest.mock('@naylence/core', () => ({
   parseAddressComponents: jest.fn(),
 }));
 

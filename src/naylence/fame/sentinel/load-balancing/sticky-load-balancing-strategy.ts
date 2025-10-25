@@ -1,4 +1,4 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 
 import { getLogger } from '../../util/logging.js';
 import type { LoadBalancerStickinessManager } from '../../stickiness/load-balancer-stickiness-manager.js';

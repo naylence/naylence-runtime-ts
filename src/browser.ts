@@ -8,7 +8,7 @@
  */
 
 // Re-export everything from naylence-core for protocol primitives
-export * from 'naylence-core';
+export * from '@naylence/core';
 
 // Cross-platform Fame runtime exports
 export * from './naylence/fame/errors/index.js';

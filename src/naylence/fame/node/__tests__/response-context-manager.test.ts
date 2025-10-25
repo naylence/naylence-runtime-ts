@@ -3,7 +3,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   FameResponseType,
-} from 'naylence-core';
+} from '@naylence/core';
 import { ResponseContextManager } from '../response-context-manager.js';
 
 describe('ResponseContextManager', () => {

@@ -2,7 +2,7 @@ import type {
   AuthorizationContext,
   FameDeliveryContext,
   FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 import type { NodeLike } from '../../node/node-like.js';
 
 export interface Authorizer {

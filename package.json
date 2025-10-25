@@ -1,5 +1,5 @@
 {
-  "name": "naylence-runtime",
+  "name": "@naylence/runtime",
   "version": "0.1.0",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime including core Fame protocol and utilities",
@@ -68,6 +68,10 @@
     "LICENSE",
     "NOTICE"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm && npm run build:browser && npm run fix-source-maps",
     "build:types": "tsc --emitDeclarationOnly --outDir dist/types",
@@ -93,19 +97,19 @@
   "dependencies": {
     "@fastify/formbody": "^8.0.2",
     "@fastify/websocket": "^11.2.0",
+    "@naylence/core": "^0.3.1",
+    "@naylence/factory": "^0.1.0",
     "@noble/ciphers": "^2.0.1",
     "@noble/curves": "^2.0.1",
     "@noble/ed25519": "^3.0.0",
     "@noble/hashes": "^2.0.1",
-  "@peculiar/asn1-csr": "^2.5.0",
-  "@peculiar/asn1-schema": "^2.5.0",
-  "@peculiar/asn1-x509": "^2.5.0",
+    "@peculiar/asn1-csr": "^2.5.0",
+    "@peculiar/asn1-schema": "^2.5.0",
+    "@peculiar/asn1-x509": "^2.5.0",
     "@types/express": "^5.0.3",
     "express": "^5.1.0",
     "fastify": "^5.6.1",
     "jose": "^6.1.0",
-    "naylence-core": "file:../naylence-core-ts",
-    "naylence-factory": "file:../naylence-factory-ts",
     "yaml": "^2.6.0",
     "zod": "^4.1.11"
   },

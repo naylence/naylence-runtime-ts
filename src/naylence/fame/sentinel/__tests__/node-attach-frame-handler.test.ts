@@ -5,7 +5,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type NodeAttachFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { NodeAttachFrameHandler } from '../node-attach-frame-handler.js';
 import { RouteManager } from '../route-manager.js';

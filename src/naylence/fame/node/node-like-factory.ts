@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import { getFameConfig } from '../config/extended-fame-config.js';
 

@@ -5,11 +5,11 @@ import {
 	DeliveryOriginType,
 	type FameDeliveryContext,
 	type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
 	ResourceFactoryRegistry,
 	registerFactory,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import {
 	CryptoLevel,

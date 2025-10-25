@@ -1,4 +1,4 @@
-import type { DeliveryOriginType } from 'naylence-core';
+import type { DeliveryOriginType } from '@naylence/core';
 
 import type { NodeEventListener } from '../../node/node-event-listener.js';
 import type { KeyProvider } from './key-provider.js';

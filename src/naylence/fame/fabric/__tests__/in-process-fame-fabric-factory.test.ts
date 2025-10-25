@@ -1,10 +1,10 @@
-import { ExtensionManager } from 'naylence-factory';
+import { ExtensionManager } from '@naylence/factory';
 import {
   FameFabric,
   type FameFabricConfig,
   type FameConfig,
   normalizeFameConfig,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { InProcessFameFabric } from '../in-process-fame-fabric.js';
 import {

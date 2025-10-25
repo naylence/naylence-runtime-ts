@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 import { InMemoryKeyValueStore } from '../../storage/in-memory-storage.js';
 import type { RouteEntry, RouteStore } from './route-store.js';
 

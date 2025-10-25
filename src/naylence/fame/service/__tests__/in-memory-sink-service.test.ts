@@ -5,7 +5,7 @@ import {
   type SinkBindingManager,
 } from '../in-memory-sink-service.js';
 
-jest.mock('naylence-core', () => {
+jest.mock('@naylence/core', () => {
   const extractEnvelopeAndContext = jest.fn((message: any) => {
     if (!message) {
       return [null, undefined];
@@ -118,7 +118,7 @@ jest.mock('../../util/logging.js', () => {
 });
 
 describe('InMemorySinkService', () => {
-  const core = require('naylence-core');
+  const core = require('@naylence/core');
   const fanoutModule = require('../../channel/in-memory/in-memory-fanout-broker.js');
   const loggingModule = require('../../util/logging.js');
   const mockLogger: Record<string, jest.Mock> = loggingModule.__mockLogger;
@@ -265,7 +265,7 @@ describe('InMemorySinkService', () => {
     );
 
     const previousCalls = deliver.mock.calls.length;
-    const coreModule = require('naylence-core');
+    const coreModule = require('@naylence/core');
     coreModule.extractEnvelopeAndContext.mockImplementationOnce(() => [
       null,
       undefined,
@@ -309,7 +309,7 @@ describe('InMemorySinkService', () => {
     const binding = createBinding('sink-default');
     const bindingManager = createBindingManager(binding);
     const service = new InMemorySinkService({ bindingManager });
-    const coreModule = require('naylence-core');
+    const coreModule = require('@naylence/core');
 
     const deliverFn = (service as any).deliver as (
       env: any,
@@ -366,7 +366,7 @@ describe('InMemorySinkService', () => {
   it('ignores unsubscribe for unknown subscriptions', async () => {
     const bindingManager = createBindingManager(createBinding('sink'));
     const service = new InMemorySinkService({ bindingManager });
-    const coreModule = require('naylence-core');
+    const coreModule = require('@naylence/core');
     const orphan = new coreModule.Subscription(
       { close: jest.fn() },
       { toString: () => 'addr' }

@@ -8,11 +8,11 @@ import {
   JSONRPCError,
   makeResponse,
   parseRequest,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 import { ResponseContextManager } from './response-context-manager.js';
 import { StreamingResponseHandler } from './streaming-response-handler.js';
-import { isFameMessageResponse } from 'naylence-core';
+import { isFameMessageResponse } from '@naylence/core';
 
 const logger = getLogger('naylence.fame.node.rpc_server_handler');
 

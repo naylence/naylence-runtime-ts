@@ -1,4 +1,4 @@
-import type { FameEnvelope, Stickiness } from 'naylence-core';
+import type { FameEnvelope, Stickiness } from '@naylence/core';
 
 export interface LoadBalancerStickinessManager {
   negotiate(stickiness?: Stickiness | null): Stickiness | null;

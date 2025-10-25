@@ -1,6 +1,6 @@
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 
 import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
 

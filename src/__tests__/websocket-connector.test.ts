@@ -7,7 +7,7 @@ import {
   WebSocketLike,
   WebSocketState,
 } from '../naylence/fame/connector/websocket-connector';
-import { createFameEnvelope, type DataFrame } from 'naylence-core';
+import { createFameEnvelope, type DataFrame } from '@naylence/core';
 import { FameTransportClose } from '../naylence/fame/errors/errors';
 
 const FAST_SHUTDOWN_CONFIG = {

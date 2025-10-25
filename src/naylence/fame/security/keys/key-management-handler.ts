@@ -8,7 +8,7 @@ import {
   type KeyRequestFrame,
   generateId,
   localDeliveryContext,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { currentTraceId } from '../../util/envelope-context.js';
 import { getLogger } from '../../util/logging.js';
@@ -133,11 +133,6 @@ export class KeyManagementHandler extends TaskSpawner {
       name: 'key-request-gc',
     });
     await this.registerOwnPublicKeys();
-
-    // Announce own keys after registration
-    if (this.keyManager) {
-      await this.keyManager.announceKeysToUpstream();
-    }
   }
 
   public async stop(): Promise<void> {

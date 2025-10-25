@@ -3,14 +3,15 @@ import {
   FameResponseType,
   createFameEnvelope,
   formatAddress,
-} from 'naylence-core';
+} from '@naylence/core';
 import type {
   FameAddress,
   FameConnector,
   NodeWelcomeFrame,
   FameEnvelopeWith,
-} from 'naylence-core';
+} from '@naylence/core';
 import { FameNode } from '../node.js';
+import { UpstreamSessionManager } from '../upstream-session-manager.js';
 import type { NodeEventListener } from '../node-event-listener.js';
 import { DeliveryPolicy } from '../../delivery/delivery-policy.js';
 import { RetryPolicy } from '../../delivery/retry-policy.js';
@@ -614,6 +615,40 @@ describe('FameNode', () => {
     });
 
     await expect(node.deliver(envelope)).resolves.toBeUndefined();
+  });
+
+  it('exposes the session manager connector before attach completes', () => {
+    const node = new FameNode({
+      systemId: 'pre-attach-node',
+      physicalPath: '/pre-attach-node',
+    });
+
+    const connector = { id: 'session-connector' } as unknown as FameConnector;
+    const manager = Object.create(
+      UpstreamSessionManager.prototype
+    ) as UpstreamSessionManager;
+    (manager as any).getActiveConnector = jest.fn(() => connector);
+    (node as any)._sessionManager = manager;
+    (node as any)._upstreamConnector = null;
+
+    expect(node.upstreamConnector).toBe(connector);
+  });
+
+  it('falls back to the stored upstream connector when the session manager has none', () => {
+    const node = new FameNode({
+      systemId: 'fallback-node',
+      physicalPath: '/fallback-node',
+    });
+
+    const connector = { id: 'stored-connector' } as unknown as FameConnector;
+    const manager = Object.create(
+      UpstreamSessionManager.prototype
+    ) as UpstreamSessionManager;
+    (manager as any).getActiveConnector = jest.fn(() => null);
+    (node as any)._sessionManager = manager;
+    (node as any)._upstreamConnector = connector;
+
+    expect(node.upstreamConnector).toBe(connector);
   });
 
   it('forwards upstream when the origin context is local', async () => {

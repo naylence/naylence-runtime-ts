@@ -1,4 +1,4 @@
-import type { NodeWelcomeFrame } from 'naylence-core';
+import type { NodeWelcomeFrame } from '@naylence/core';
 
 import type { NodeEventListener } from '../../node/node-event-listener.js';
 

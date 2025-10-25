@@ -3,12 +3,12 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   createAuthorizationContext,
   DeliveryOriginType,
   FameResponseType,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { CredentialProvider } from '../credential/credential-provider.js';
 import { SharedSecretAuthorizer } from '../auth/shared-secret-authorizer.js';

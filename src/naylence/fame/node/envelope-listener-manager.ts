@@ -10,7 +10,7 @@ import {
   FameMessageResponse,
   FameRPCHandler,
   formatAddress,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 import { TaskSpawner } from '../util/task-spawner.js';
 import { AsyncLock } from '../util/lock.js';
@@ -321,7 +321,9 @@ export class EnvelopeListenerManager extends TaskSpawner {
         const receiverPolicy =
           this.nodeLike.deliveryPolicy?.receiverRetryPolicy ?? null;
         const trackedForHandler: TrackedEnvelope | undefined =
-          tracked?.mailboxType === MailboxType.OUTBOX ? undefined : tracked ?? undefined;
+          tracked?.mailboxType === MailboxType.OUTBOX
+            ? undefined
+            : (tracked ?? undefined);
 
         if (trackedForHandler && trackedForHandler.attempt > 0) {
           logger.info('resuming_handler_retry_after_restart', {

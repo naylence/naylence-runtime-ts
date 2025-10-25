@@ -6,9 +6,9 @@ import {
   FameDeliveryContext,
   FameEnvelope,
   FameResponseType,
-} from 'naylence-core';
+} from '@naylence/core';
 import { EnvelopeListenerManager } from '../envelope-listener-manager.js';
-import type { Binding } from 'naylence-core';
+import type { Binding } from '@naylence/core';
 import type { BindingManager } from '../binding-manager.js';
 import type { NodeLike } from '../node-like.js';
 import {

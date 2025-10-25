@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 import type { TokenVerifier } from './token-verifier.js';
 
 export const TOKEN_VERIFIER_FACTORY_BASE_TYPE = 'TokenVerifierFactory';

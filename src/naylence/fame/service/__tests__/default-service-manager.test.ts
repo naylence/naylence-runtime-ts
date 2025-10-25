@@ -5,7 +5,7 @@ import {
   type FameMessageService,
   type FameRPCService,
   type FameService,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { DefaultServiceManager } from '../default-service-manager.js';
 

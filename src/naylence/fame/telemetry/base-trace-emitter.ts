@@ -2,10 +2,11 @@ import type {
   FameAddress,
   FameDeliveryContext,
   FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { BaseNodeEventListener } from '../node/node-event-listener.js';
 import type { NodeLike } from '../node/node-like.js';
+import { getLogger } from '../util/logging.js';
 import type {
   TraceEmitter,
   TraceSpan,
@@ -16,6 +17,20 @@ import type {
 interface ActiveSpan {
   scope: TraceSpanScope;
   span: TraceSpan;
+}
+
+const telemetryLogger = getLogger('naylence.fame.telemetry.base_trace_emitter');
+
+function logTelemetryFailure(
+  event: string,
+  error: unknown,
+  context: Record<string, unknown> = {}
+): void {
+  telemetryLogger.warning(event, {
+    ...context,
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error && error.stack ? error.stack : undefined,
+  });
 }
 
 function buildEnvelopeAttributes(
@@ -87,8 +102,11 @@ export abstract class BaseTraceEmitter
         this.inflight.delete(key);
         try {
           previous.scope.exit();
-        } catch {
-          // Ignore telemetry cleanup errors
+        } catch (cleanupError) {
+          logTelemetryFailure('trace_span_scope_exit_failed', cleanupError, {
+            operation: operationName,
+            span_key: key,
+          });
         }
       }
 
@@ -113,8 +131,11 @@ export abstract class BaseTraceEmitter
       const span = scope.enter();
 
       this.inflight.set(key, { scope, span });
-    } catch {
-      // Never let telemetry failures interfere with delivery
+    } catch (error) {
+      logTelemetryFailure('trace_span_start_failed', error, {
+        operation: operationName,
+        envelope_id: envelope.id,
+      });
     }
 
     return envelope;
@@ -161,25 +182,41 @@ export abstract class BaseTraceEmitter
       if (error !== null && error !== undefined) {
         try {
           active.span.recordException(error);
-        } catch {
-          // ignore span errors
+        } catch (recordError) {
+          logTelemetryFailure(
+            'trace_span_record_exception_failed',
+            recordError,
+            {
+              operation: operationName,
+              envelope_id: envelope.id,
+            }
+          );
         }
         try {
           const description =
             error instanceof Error ? error.message : String(error);
           active.span.setStatusError(description);
-        } catch {
-          // ignore span errors
+        } catch (statusError) {
+          logTelemetryFailure('trace_span_set_status_failed', statusError, {
+            operation: operationName,
+            envelope_id: envelope.id,
+          });
         }
       }
 
       try {
         active.scope.exit();
-      } catch {
-        // ignore scope errors
+      } catch (exitError) {
+        logTelemetryFailure('trace_span_scope_exit_failed', exitError, {
+          operation: operationName,
+          envelope_id: envelope.id,
+        });
       }
-    } catch {
-      // swallow telemetry failures
+    } catch (error) {
+      logTelemetryFailure('trace_span_complete_failed', error, {
+        operation: operationName,
+        envelope_id: envelope.id,
+      });
     }
 
     return envelope;
@@ -208,8 +245,10 @@ export abstract class BaseTraceEmitter
       });
       scope.enter();
       scope.exit();
-    } catch {
-      // ignore telemetry failures
+    } catch (error) {
+      logTelemetryFailure('trace_span_received_failed', error, {
+        envelope_id: envelope.id,
+      });
     }
 
     return envelope;
@@ -379,8 +418,8 @@ export abstract class BaseTraceEmitter
       if (typeof this.shutdown === 'function') {
         await this.shutdown();
       }
-    } catch {
-      // ignore telemetry shutdown errors
+    } catch (error) {
+      logTelemetryFailure('trace_span_shutdown_failed', error);
     }
   }
 

@@ -42,7 +42,7 @@ import {
   FlowFlags,
   FameResponseType,
   AuthorizationContext,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   FameMessageTooLarge,
   FameTransportClose,

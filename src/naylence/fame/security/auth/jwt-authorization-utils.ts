@@ -1,5 +1,5 @@
 import type { JWTPayload } from 'jose';
-import type { AuthorizationContext } from 'naylence-core';
+import type { AuthorizationContext } from '@naylence/core';
 
 export function extractScopesFromPayload(payload: JWTPayload): Set<string> {
   const scopes = new Set<string>();

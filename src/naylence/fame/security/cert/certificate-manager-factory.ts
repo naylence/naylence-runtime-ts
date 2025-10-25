@@ -1,9 +1,9 @@
-import type { SecuritySettings } from 'naylence-core';
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { SecuritySettings } from '@naylence/core';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { SigningConfig } from '../signing/signing-config.js';
 import type { CertificateManager } from './certificate-manager.js';

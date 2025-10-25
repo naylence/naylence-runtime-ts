@@ -2,12 +2,12 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   ResourceConfig,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { deepMerge } from '../../util/util.js';
 import type { NodeLike } from '../../node/node-like.js';
 import type { EncryptionOptions } from '../encryption/encryption-manager.js';
-import { SigningMaterial } from 'naylence-core';
+import { SigningMaterial } from '@naylence/core';
 
 export enum CryptoLevel {
   PLAINTEXT = 'plaintext',

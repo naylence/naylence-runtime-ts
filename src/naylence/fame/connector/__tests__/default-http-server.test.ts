@@ -1,5 +1,5 @@
 import type { AddressInfo } from 'node:net';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 
 jest.mock('@fastify/websocket', () => jest.fn());
 
@@ -8,12 +8,21 @@ type MockRegistration = {
   options?: unknown;
 };
 
+type MockContentTypeParser = (
+  req: FastifyRequest,
+  payload: Buffer
+) => Promise<Buffer>;
+
 type MockFastifyInstance = {
   registrations: MockRegistration[];
   register: jest.Mock<Promise<void>, any>;
   listen: jest.Mock<Promise<unknown>, any>;
   close: jest.Mock<Promise<void>, any>;
   ready: jest.Mock<Promise<void>, any>;
+  addContentTypeParser: jest.Mock<
+    void,
+    [string, { parseAs: string }, MockContentTypeParser]
+  >;
   server: {
     address: jest.Mock<unknown, []>;
     unref?: jest.Mock<void, []>;
@@ -87,6 +96,7 @@ const createFastifyInstance = (
         registrations.push({ plugin, options });
       }
     ),
+    addContentTypeParser: jest.fn(),
     listen: jest.fn(async ({ host, port }: { host: string; port: number }) => {
       void host;
       void port;
@@ -115,6 +125,35 @@ describe('DefaultHttpServer', () => {
   afterEach(async () => {
     await DefaultHttpServer.shutdownAll();
     fastifyMock.resetMock();
+  });
+
+  it('registers with lowest node event listener priority', async () => {
+    const instance = createFastifyInstance();
+    fastifyMock.prepare(instance);
+
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '0.0.0.0',
+      port: 0,
+    });
+
+    expect(server.priority).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it('starts automatically during node initialization', async () => {
+    const instance = createFastifyInstance();
+    fastifyMock.prepare(instance);
+
+    const server = await DefaultHttpServer.getOrCreate({
+      host: '0.0.0.0',
+      port: 0,
+    });
+
+    expect(server.isRunning).toBe(false);
+
+    await server.onNodeInitialized({} as any);
+
+    expect(instance.listen).toHaveBeenCalledTimes(1);
+    expect(server.isRunning).toBe(true);
   });
 
   it('starts once, loads core plugins, and tracks actual base url', async () => {
@@ -149,6 +188,18 @@ describe('DefaultHttpServer', () => {
     expect(instance.registrations[0]?.options).toEqual({
       options: { maxPayload: 1024 * 1024, perMessageDeflate: false },
     });
+    expect(instance.addContentTypeParser).toHaveBeenCalledTimes(1);
+    expect(instance.addContentTypeParser).toHaveBeenCalledWith(
+      'application/octet-stream',
+      { parseAs: 'buffer' },
+      expect.any(Function)
+    );
+    const handler = instance.addContentTypeParser.mock
+      .calls[0]?.[2] as MockContentTypeParser;
+    expect(handler).toBeDefined();
+    const payload = Buffer.from('payload');
+    const result = await handler({} as FastifyRequest, payload);
+    expect(result).toBe(payload);
     expect(server.actualBaseUrl).toBe('http://127.0.0.1:4444');
     expect(server.isRunning).toBe(true);
 

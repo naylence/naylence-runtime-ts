@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { createFameEnvelope, type FameEnvelope } from 'naylence-core';
+import { createFameEnvelope, type FameEnvelope } from '@naylence/core';
 import type { NodeLike } from '../../node/node-like.js';
 import type { StorageProvider } from '../../storage/storage-provider.js';
 

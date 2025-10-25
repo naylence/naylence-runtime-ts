@@ -1,4 +1,4 @@
-import { ResourceFactoryRegistry } from 'naylence-factory';
+import { ResourceFactoryRegistry } from '@naylence/factory';
 
 import { ATTACHMENT_KEY_VALIDATOR_FACTORY_BASE_TYPE } from '../attachment-key-validator-factory.js';
 import { KeyInfo } from '../attachment-key-validator.js';

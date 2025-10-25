@@ -2,7 +2,7 @@ import fs from 'fs';
 import {
   getDefaultFameConfigResolver,
   setDefaultFameConfigResolver,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import {
   configLogger as logger,

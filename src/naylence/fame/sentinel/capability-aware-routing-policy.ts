@@ -1,5 +1,5 @@
-import type { FameAddress } from 'naylence-core';
-import { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameAddress } from '@naylence/core';
+import { FameDeliveryContext, FameEnvelope } from '@naylence/core';
 
 import { getLogger, summarizeEnvelope } from '../util/logging.js';
 import { HRWLoadBalancingStrategy } from './load-balancing/hrw-load-balancing-strategy.js';

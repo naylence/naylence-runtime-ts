@@ -4,7 +4,7 @@ import {
   createResource,
   type CreateResourceOptions,
   type ValidationContext,
-} from 'naylence-factory';
+} from '@naylence/factory';
 import type { SecurityManager } from './security-manager.js';
 import type { SecurityProfileConfig } from './security-manager-config.js';
 import {

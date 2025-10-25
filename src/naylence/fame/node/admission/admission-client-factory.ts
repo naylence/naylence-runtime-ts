@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 import type { AdmissionClient } from './admission-client.js';
 
 export const ADMISSION_CLIENT_FACTORY_BASE_TYPE = 'AdmissionClientFactory';

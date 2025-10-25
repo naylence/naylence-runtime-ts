@@ -1,4 +1,4 @@
-import { Expressions } from 'naylence-factory';
+import { Expressions } from '@naylence/factory';
 import type { AdmissionClient } from '../admission-client.js';
 import { AdmissionClientFactory } from '../admission-client-factory.js';
 import { AdmissionProfileFactory } from '../admission-profile-factory.js';

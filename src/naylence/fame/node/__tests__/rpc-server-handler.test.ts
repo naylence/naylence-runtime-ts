@@ -2,8 +2,8 @@ import type {
   EnvelopeFactory,
   FameDeliveryContext,
   FameEnvelope,
-} from 'naylence-core';
-import * as core from 'naylence-core';
+} from '@naylence/core';
+import * as core from '@naylence/core';
 import { RPCServerHandler } from '../rpc-server-handler.js';
 import type { ResponseContextManager } from '../response-context-manager.js';
 import type { StreamingResponseHandler } from '../streaming-response-handler.js';

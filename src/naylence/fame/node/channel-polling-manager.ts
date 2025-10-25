@@ -7,11 +7,11 @@ import {
   extractEnvelopeAndContext,
   isFameMessageResponse,
   type FameBindingChannelMessage,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 import { withEnvelopeContextAsync } from '../util/envelope-context.js';
 import { FameTransportClose } from '../errors/errors.js';
-import type { ReadWriteChannel } from 'naylence-core';
+import type { ReadWriteChannel } from '@naylence/core';
 import type { ResponseContextManager } from './response-context-manager.js';
 import { StreamingResponseHandler } from './streaming-response-handler.js';
 import { TaskTimeoutError } from '../util/task-types.js';

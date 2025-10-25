@@ -1,9 +1,9 @@
-import type { CreateResourceOptions } from 'naylence-factory';
+import type { CreateResourceOptions } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { TraceEmitter } from './trace-emitter.js';
 import type { TraceEmitterConfig } from './trace-emitter-config.js';

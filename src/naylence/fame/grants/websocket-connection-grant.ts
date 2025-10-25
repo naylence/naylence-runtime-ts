@@ -1,6 +1,8 @@
 import type { ConnectorConfig } from '../connector/connector-config.js';
 import type { AuthInjectionStrategyConfig } from '../security/auth/auth-injection-strategy-factory.js';
+import { GRANT_PURPOSE_NODE_ATTACH } from './grant.js';
 import {
+  canonicalizeAuthConfig,
   assertConnectionGrant,
   type ConnectionGrant,
   type ConnectionGrantLike,
@@ -49,17 +51,25 @@ export function isWebSocketConnectionGrant(
 export function normalizeWebSocketConnectionGrant(
   candidate: WebSocketConnectionGrantLike
 ): WebSocketConnectionGrant {
-  assertConnectionGrant(
-    candidate,
-    'WebSocketConnectionGrant requires a valid base grant'
-  );
-
-  const type = candidate.type ?? WEBSOCKET_CONNECTION_GRANT_TYPE;
+  const type =
+    typeof candidate.type === 'string'
+      ? candidate.type
+      : WEBSOCKET_CONNECTION_GRANT_TYPE;
   if (type !== WEBSOCKET_CONNECTION_GRANT_TYPE) {
     throw new TypeError(
       `WebSocketConnectionGrant expected type "${WEBSOCKET_CONNECTION_GRANT_TYPE}", received "${type}"`
     );
   }
+
+  const purpose =
+    typeof candidate.purpose === 'string' && candidate.purpose.length > 0
+      ? candidate.purpose
+      : GRANT_PURPOSE_NODE_ATTACH;
+
+  assertConnectionGrant(
+    { ...candidate, type, purpose },
+    'WebSocketConnectionGrant requires a valid base grant'
+  );
 
   const urlValue = candidate.url;
   if (
@@ -73,18 +83,18 @@ export function normalizeWebSocketConnectionGrant(
 
   const base: WebSocketConnectionGrant = {
     type,
-    purpose:
-      typeof candidate.purpose === 'string' && candidate.purpose.length > 0
-        ? candidate.purpose
-        : 'connection',
+    purpose,
   };
 
   if (typeof urlValue === 'string') {
     base.url = urlValue;
   }
 
-  if (candidate.auth !== undefined) {
-    base.auth = candidate.auth;
+  const authConfig = canonicalizeAuthConfig(
+    candidate.auth as Record<string, unknown> | undefined
+  );
+  if (authConfig) {
+    base.auth = authConfig;
   }
 
   return base;

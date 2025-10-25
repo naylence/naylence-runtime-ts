@@ -4,7 +4,7 @@
  * Comprehensive tests to ensure TypeScript functionality matches Python behavior.
  */
 
-import { FameAddress, createFameEnvelope } from 'naylence-core';
+import { FameAddress, createFameEnvelope } from '@naylence/core';
 import {
   InMemoryReadWriteChannel,
   InMemoryBinding,

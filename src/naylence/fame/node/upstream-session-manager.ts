@@ -17,7 +17,7 @@ import {
   NodeWelcomeFrame,
   SecurityContext,
   generateId,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   FameConnectError,
   FameMessageTooLarge,
@@ -31,8 +31,8 @@ import type {
 import type { NodeLike } from './node-like.js';
 import type { SessionManager } from './session-manager.js';
 import { TaskCancelledError, SpawnedTask } from '../util/task-types.js';
-import type { FameAddress } from 'naylence-core';
-import { FameResponseType } from 'naylence-core';
+import type { FameAddress } from '@naylence/core';
+import { FameResponseType } from '@naylence/core';
 
 const logger = getLogger('naylence.fame.node.upstream_session_manager');
 
@@ -150,6 +150,10 @@ export class UpstreamSessionManager
     }
 
     logger.debug('upstream_session_manager_started');
+  }
+
+  getActiveConnector(): FameConnector | null {
+    return this.connector;
   }
 
   async stop(): Promise<void> {

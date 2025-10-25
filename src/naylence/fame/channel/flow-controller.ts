@@ -22,7 +22,7 @@
  * flow at any time.
  */
 
-import { FlowFlags } from 'naylence-core';
+import { FlowFlags } from '@naylence/core';
 
 /**
  * Simple condition variable implementation for TypeScript/Node.js

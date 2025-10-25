@@ -4,13 +4,13 @@ import type {
   FastifyRequest,
 } from 'fastify';
 import { ZodError } from 'zod';
-import { createFameEnvelope, FameEnvelopeSchema } from 'naylence-core';
+import { createFameEnvelope, FameEnvelopeSchema } from '@naylence/core';
 
 import type {
   FameEnvelopeWith,
   NodeHelloFrame,
   NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import type { WelcomeService } from './welcome-service.js';
 import { getLogger } from '../util/logging.js';
 

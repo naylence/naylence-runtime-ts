@@ -5,7 +5,7 @@ import {
   type FameEnvelopeWith,
   type NodeHelloFrame,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../../util/logging.js';
 import { camelToSnakeCase, snakeToCamelCase } from '../../util/util.js';
 import type { AuthInjectionStrategy } from '../../security/auth/auth-injection-strategy.js';

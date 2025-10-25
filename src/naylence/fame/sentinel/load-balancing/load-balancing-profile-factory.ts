@@ -1,4 +1,4 @@
-import { createResource } from 'naylence-factory';
+import { createResource } from '@naylence/factory';
 import { getLogger } from '../../util/logging.js';
 
 import type { LoadBalancingStrategy } from './load-balancing-strategy.js';

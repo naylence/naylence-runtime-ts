@@ -19,7 +19,7 @@ import {
   ENV_VAR_DEFAULT_ENCRYPTION_LEVEL,
 } from '../node-security-profile-factory.js';
 import { SECURITY_MANAGER_FACTORY_BASE_TYPE } from '../security-manager-factory.js';
-import * as FactoryRegistry from 'naylence-factory';
+import * as FactoryRegistry from '@naylence/factory';
 
 const REQUIRED_ENV_VARS: Record<string, string> = {
   [ENV_VAR_JWT_TRUSTED_ISSUER]: 'https://issuer.example',

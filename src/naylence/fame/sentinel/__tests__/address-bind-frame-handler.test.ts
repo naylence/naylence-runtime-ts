@@ -1,4 +1,4 @@
-import * as core from 'naylence-core';
+import * as core from '@naylence/core';
 import {
   DeliveryOriginType,
   FameResponseType,
@@ -7,7 +7,7 @@ import {
   type AddressUnbindFrame,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import {
   AddressBindFrameHandler,

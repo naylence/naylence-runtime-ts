@@ -1,4 +1,4 @@
-import { registerFactory, ResourceFactoryRegistry } from 'naylence-factory';
+import { registerFactory, ResourceFactoryRegistry } from '@naylence/factory';
 
 import { DefaultKeyManager } from '../default-key-manager.js';
 import { InMemoryKeyStore } from '../in-memory-key-store.js';

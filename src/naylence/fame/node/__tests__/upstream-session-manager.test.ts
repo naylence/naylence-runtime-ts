@@ -16,7 +16,7 @@ import {
   type FameEnvelopeHandler,
   type NodeHeartbeatAckFrame,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import { UpstreamSessionManager } from '../upstream-session-manager.js';
 import { ConnectorFactory } from '../../connector/connector-factory.js';
 import {
@@ -33,7 +33,7 @@ import type {
   AttachInfo,
 } from '../admission/node-attach-client.js';
 import type { AdmissionClient } from '../admission/admission-client.js';
-import type { FameConnector } from 'naylence-core';
+import type { FameConnector } from '@naylence/core';
 import { TaskCancelledError, type SpawnedTask } from '../../util/task-types.js';
 import type { CryptoProvider } from '../../security/crypto/providers/crypto-provider.js';
 

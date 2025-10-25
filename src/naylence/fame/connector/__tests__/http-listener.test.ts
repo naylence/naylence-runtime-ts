@@ -2,19 +2,21 @@ import { Buffer } from 'node:buffer';
 import type { FastifyReply } from 'fastify';
 
 import { HttpListener, getHttpListenerInstance } from '../http-listener.js';
+import { QueueFullError } from '../http-stateless-connector.js';
 import type { Authorizer } from '../../security/auth/authorizer.js';
 import type { HttpServer } from '../http-server.js';
 import type { RoutingNodeLike } from '../../node/routing-node-like.js';
-import type { FameConnector } from 'naylence-core';
-import { DeliveryOriginType, FameChannelMessage } from 'naylence-core';
+import type { NodeLike } from '../../node/node-like.js';
+import type { FameConnector } from '@naylence/core';
+import { DeliveryOriginType, FameChannelMessage } from '@naylence/core';
 import { DefaultHttpServer } from '../default-http-server.js';
 import * as HttpGrantModule from '../../grants/http-connection-grant.js';
 import * as WebSocketGrantModule from '../../grants/websocket-connection-grant.js';
 import { GRANT_PURPOSE_NODE_ATTACH } from '../../grants/grant.js';
 
-jest.mock('naylence-core', () => {
+jest.mock('@naylence/core', () => {
   const actual =
-    jest.requireActual<typeof import('naylence-core')>('naylence-core');
+    jest.requireActual<typeof import('@naylence/core')>('@naylence/core');
 
   class FakeFameChannelMessage {
     public envelope: unknown;
@@ -79,8 +81,10 @@ describe('HttpListener', () => {
   });
 
   describe('onNodeStarted', () => {
-    it('starts the shared HTTP server', async () => {
-      const server = createStubServer('http://listener');
+    it('starts the HTTP server when not already running', async () => {
+      const server = createStubServer('http://listener', {
+        isRunning: false,
+      });
       const listener = new HttpListener({ httpServer: server });
       const node: RoutingNodeLike & { createOriginConnector: jest.Mock } = {
         publicUrl: 'http://listener',
@@ -92,12 +96,32 @@ describe('HttpListener', () => {
       } as unknown as RoutingNodeLike & { createOriginConnector: jest.Mock };
 
       await listener.onNodeInitialized(node);
-      const startMock = server.start as jest.Mock;
-      startMock.mockClear();
 
       await listener.onNodeStarted(node);
 
-      expect(startMock).toHaveBeenCalledTimes(1);
+      expect(server.start).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not restart an already running HTTP server', async () => {
+      const server = createStubServer('http://listener', {
+        isRunning: true,
+      });
+      const listener = new HttpListener({ httpServer: server });
+      const node: RoutingNodeLike & { createOriginConnector: jest.Mock } = {
+        publicUrl: 'http://listener',
+        createOriginConnector: jest.fn().mockResolvedValue({
+          connector: { pushToReceive: jest.fn() },
+          pushToReceive: jest.fn(),
+        }),
+        securityManager: null,
+      } as unknown as RoutingNodeLike & { createOriginConnector: jest.Mock };
+
+      await listener.onNodeInitialized(node);
+      server.start.mockClear();
+
+      await listener.onNodeStarted(node);
+
+      expect(server.start).not.toHaveBeenCalled();
     });
   });
 
@@ -106,11 +130,16 @@ describe('HttpListener', () => {
   });
 
   const createStubServer = (
-    baseUrl: string | null
-  ): HttpServer & { includeRouter: jest.Mock } => ({
+    baseUrl: string | null,
+    options: { isRunning?: boolean } = {}
+  ): HttpServer & {
+    includeRouter: jest.Mock;
+    start: jest.Mock;
+    stop: jest.Mock;
+  } => ({
     host: '127.0.0.1',
     port: 8080,
-    isRunning: true,
+    isRunning: options.isRunning ?? true,
     actualHost: '127.0.0.1',
     actualPort: 8080,
     actualBaseUrl: baseUrl,
@@ -121,11 +150,14 @@ describe('HttpListener', () => {
 
   const createReply = () => {
     const send = jest.fn();
+    const code = jest.fn(() => ({ send }));
     const reply = {
-      code: jest.fn(() => ({ send })),
+      code,
       send,
-    } as unknown as FastifyReply & { send: jest.Mock };
-    return { reply, send };
+    } as unknown as FastifyReply & { send: jest.Mock } & {
+      code: jest.Mock;
+    };
+    return { reply, send, code };
   };
 
   const createConnector = () => {
@@ -182,17 +214,24 @@ describe('HttpListener', () => {
   });
 
   describe('onNodeInitialized', () => {
-    it('throws when node is not routing capable', async () => {
+    it('allows initialization with non-routing nodes', async () => {
+      const server = createStubServer('http://local');
       const listener = new HttpListener({
-        httpServer: createStubServer('http://local'),
+        httpServer: server,
       });
-      const nonRoutingNode = { publicUrl: 'http://local' } as RoutingNodeLike;
+
+      const nonRoutingNode = {
+        publicUrl: 'http://local',
+        securityManager: null,
+      } as unknown as NodeLike;
 
       await expect(
         listener.onNodeInitialized(nonRoutingNode as any)
-      ).rejects.toThrow(
-        'HttpListener requires a RoutingNodeLike node instance'
-      );
+      ).resolves.toBeUndefined();
+
+      expect(listener.baseUrl).toBe('http://local');
+      expect(listener.httpServer.includeRouter).toHaveBeenCalledTimes(1);
+      expect((listener as any)._routingNode).toBeNull();
     });
 
     it('registers router only once and refreshes reverse auth config', async () => {
@@ -389,6 +428,7 @@ describe('HttpListener', () => {
 
       const node = { routeManager: undefined } as unknown as RoutingNodeLike;
       (listener as any)._node = node;
+      (listener as any)._routingNode = node;
       expect((listener as any)._getExistingConnector('child')).toBeNull();
     });
 
@@ -401,7 +441,9 @@ describe('HttpListener', () => {
         downstreamRoutes: new Map([['child', connector]]),
         _pending_routes: new Map(),
       };
-      (listener as any)._node = { routeManager };
+      const routingNode = { routeManager } as unknown as RoutingNodeLike;
+      (listener as any)._node = routingNode;
+      (listener as any)._routingNode = routingNode;
 
       expect((listener as any)._getExistingConnector('child')).toBe(connector);
     });
@@ -415,7 +457,9 @@ describe('HttpListener', () => {
         downstreamRoutes: new Map(),
         _pending_routes: new Map([['child', { connector }]]),
       };
-      (listener as any)._node = { routeManager };
+      const routingNode = { routeManager } as unknown as RoutingNodeLike;
+      (listener as any)._node = routingNode;
+      (listener as any)._routingNode = routingNode;
 
       expect((listener as any)._getExistingConnector('child')).toBe(connector);
     });
@@ -500,6 +544,7 @@ describe('HttpListener', () => {
         securityManager: { authorizer: undefined },
       } as unknown as RoutingNodeLike & { createOriginConnector: jest.Mock };
       (listener as any)._node = node;
+      (listener as any)._routingNode = node;
 
       const attachFrame = {
         type: 'NodeAttach',
@@ -524,6 +569,29 @@ describe('HttpListener', () => {
         expect.objectContaining({ authorization: { principal: 'node' } })
       );
       expect(result).toBe(connector);
+    });
+
+    it('rejects downstream attachments for non-routing nodes', async () => {
+      const listener = new HttpListener({
+        httpServer: createStubServer('http://host'),
+      });
+      const nonRouting = {
+        publicUrl: null,
+        securityManager: { authorizer: undefined },
+      } as unknown as NodeLike;
+      (listener as any)._node = nonRouting;
+
+      await expect(
+        (listener as any)._handleNodeAttachFrame({
+          childId: 'child',
+          attachFrame: {
+            type: 'NodeAttach',
+            systemId: 'child',
+            callbackGrants: [],
+          },
+          envelope: { frame: { type: 'NodeAttach', systemId: 'child' } },
+        })
+      ).rejects.toThrow('Node does not support downstream attachments');
     });
   });
 
@@ -563,6 +631,31 @@ describe('HttpListener', () => {
   });
 
   describe('_handleIngressError', () => {
+    it('returns 429 when receive queue is full', () => {
+      const listener = new HttpListener({
+        httpServer: createStubServer('http://host'),
+      });
+      const { reply, send, code } = createReply();
+
+      (listener as any)._handleIngressError(
+        new QueueFullError(),
+        reply,
+        'downstream',
+        'child-queue'
+      );
+
+      expect(code).toHaveBeenCalledWith(429);
+      expect(send).toHaveBeenCalledWith(
+        expect.objectContaining({ error: 'receiver busy' })
+      );
+      expect(mockLogger.warning).toHaveBeenCalledWith(
+        'http_downstream_receiver_busy',
+        {
+          childId: 'child-queue',
+        }
+      );
+    });
+
     it('distinguishes authentication errors', () => {
       const listener = new HttpListener({
         httpServer: createStubServer('http://host'),
@@ -699,6 +792,7 @@ describe('HttpListener', () => {
       });
       const { node } = createNodeWithConnector();
       (listener as any)._node = node;
+      (listener as any)._routingNode = node;
 
       const { reply: invalidReply } = createReply();
       await (listener as any)._handleUpstreamIngress(
@@ -711,7 +805,12 @@ describe('HttpListener', () => {
       expect(invalidReply.code).toHaveBeenCalledWith(400);
 
       const { reply: missingConnectorReply } = createReply();
-      (listener as any)._node = { ...node, upstreamConnector: null };
+      const nodeWithoutUpstream = {
+        ...node,
+        upstreamConnector: null,
+      } as RoutingNodeLike;
+      (listener as any)._node = nodeWithoutUpstream;
+      (listener as any)._routingNode = nodeWithoutUpstream;
       await (listener as any)._handleUpstreamIngress(
         { body: {}, headers: {} },
         missingConnectorReply
@@ -729,6 +828,7 @@ describe('HttpListener', () => {
       });
       const { node, pushMock } = createNodeWithConnector();
       (listener as any)._node = node;
+      (listener as any)._routingNode = node;
 
       const { reply } = createReply();
       const envelope = { frame: { type: 'Message' } };
@@ -777,9 +877,11 @@ describe('HttpListener', () => {
         publicUrl: string | null;
       };
       (listener as any)._node = node;
+      (listener as any)._routingNode = node;
 
       const { reply: notInitialized } = createReply();
       (listener as any)._node = null;
+      (listener as any)._routingNode = null;
       await (listener as any)._handleDownstreamIngress(
         { params: { childId: 'child' }, body: {} },
         notInitialized
@@ -787,6 +889,7 @@ describe('HttpListener', () => {
       expect(notInitialized.code).toHaveBeenCalledWith(503);
 
       (listener as any)._node = node;
+      (listener as any)._routingNode = node;
       const { reply: mismatchReply } = createReply();
       const attachEnvelope = {
         frame: { type: 'NodeAttach', systemId: 'other' },

@@ -2,8 +2,8 @@ import {
   FameDeliveryContext,
   FameEnvelope,
   FameResponseType,
-} from 'naylence-core';
-import type { DeliveryAckFrame } from 'naylence-core';
+} from '@naylence/core';
+import type { DeliveryAckFrame } from '@naylence/core';
 
 export class AckTimeoutError extends Error {
   constructor(message: string) {

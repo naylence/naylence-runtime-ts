@@ -294,7 +294,9 @@ describe('WebSocketConnectorFactory', () => {
 
       expect(() => {
         factory.configFromGrant(invalidGrant as any);
-      }).toThrow('WebSocketConnectionGrant requires a valid base grant');
+      }).toThrow(
+        'WebSocketConnectionGrant expected type "WebSocketConnectionGrant", received "UnsupportedGrant"'
+      );
     });
 
     it('should throw error for unsupported config type', () => {

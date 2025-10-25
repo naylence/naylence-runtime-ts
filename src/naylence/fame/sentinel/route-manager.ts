@@ -5,7 +5,7 @@ import {
   type FameConnector,
   type FameEnvelope,
   type FameMessageResponse,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import {
   ConnectorFactory,
@@ -622,8 +622,7 @@ export class RouteManager extends TaskSpawner {
     try {
       const base = AuthorizationContextSchema.parse(metadata);
       const record = metadata;
-      return {
-        ...base,
+      const extraFields = {
         sub: pickString(record.sub ?? record['sub']),
         aud: pickString(record.aud ?? record['aud']),
         assignedPath: pickString(
@@ -640,7 +639,8 @@ export class RouteManager extends TaskSpawner {
         attachExpiresAt: pickDate(
           record.attachExpiresAt ?? record['attach_expires_at']
         ),
-      } satisfies FameNodeAuthorizationContext;
+      };
+      return { ...base, ...extraFields } as FameNodeAuthorizationContext;
     } catch (error) {
       logger.error('corrupt_route_metadata', {
         error: error instanceof Error ? error.message : String(error),

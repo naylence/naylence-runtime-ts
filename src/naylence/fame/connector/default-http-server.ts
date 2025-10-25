@@ -1,6 +1,7 @@
 import fastify, {
   type FastifyInstance,
   type FastifyPluginAsync,
+  type FastifyRequest,
 } from 'fastify';
 import websocketPlugin from '@fastify/websocket';
 import type { AddressInfo } from 'node:net';
@@ -8,6 +9,8 @@ import type { AddressInfo } from 'node:net';
 import { getLogger } from '../util/logging.js';
 import { AsyncLock, withLock } from '../util/lock.js';
 import type { HttpRouter, HttpServer } from './http-server.js';
+import { BaseNodeEventListener } from '../node/node-event-listener.js';
+import type { NodeLike } from '../node/node-like.js';
 
 const logger = getLogger('naylence.fame.connector.default_http_server');
 
@@ -20,7 +23,10 @@ function makeKey(host: string, port: number): ServerKey {
 /**
  * Default Fastify-based HTTP server shared by transport listeners.
  */
-export class DefaultHttpServer implements HttpServer {
+export class DefaultHttpServer
+  extends BaseNodeEventListener
+  implements HttpServer
+{
   private static readonly registry = new Map<ServerKey, DefaultHttpServer>();
   private static readonly referenceCounts = new Map<ServerKey, number>();
   private static readonly lock = new AsyncLock();
@@ -34,6 +40,7 @@ export class DefaultHttpServer implements HttpServer {
   private _actualPort: number | null = null;
 
   private constructor(host: string, port: number) {
+    super(Number.MAX_SAFE_INTEGER);
     this._host = host;
     this._port = port;
     this._app = fastify({ logger: false });
@@ -161,6 +168,14 @@ export class DefaultHttpServer implements HttpServer {
     }
   }
 
+  async onNodeInitialized(_node: NodeLike): Promise<void> {
+    if (this._started) {
+      return;
+    }
+
+    await this.start();
+  }
+
   private async _ensureCorePlugins(): Promise<void> {
     if (this._corePluginsLoaded) {
       return;
@@ -172,6 +187,13 @@ export class DefaultHttpServer implements HttpServer {
         perMessageDeflate: false,
       },
     });
+
+    // Accept raw Fame envelopes posted as application/octet-stream
+    this._app.addContentTypeParser(
+      'application/octet-stream',
+      { parseAs: 'buffer' },
+      async (_req: FastifyRequest, payload: Buffer): Promise<Buffer> => payload
+    );
 
     this._corePluginsLoaded = true;
   }

@@ -1,4 +1,4 @@
-import type { AllFramesUnion, DataFrame, FameEnvelope } from 'naylence-core';
+import type { AllFramesUnion, DataFrame, FameEnvelope } from '@naylence/core';
 import { secureDigest } from '../../util/util.js';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

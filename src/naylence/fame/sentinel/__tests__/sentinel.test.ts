@@ -1,4 +1,4 @@
-import * as core from 'naylence-core';
+import * as core from '@naylence/core';
 import {
   DeliveryOriginType,
   FameAddress,
@@ -8,7 +8,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type FameFabric,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { Sentinel, type SentinelOptions } from '../sentinel.js';
 import * as routeStore from '../store/route-store.js';

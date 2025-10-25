@@ -10,7 +10,7 @@ import {
   type SecureOpenFrame,
   type SecureAcceptFrame,
   type EnvelopeFactory,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { FameTransportClose } from '../errors/errors.js';
 import type { RoutingNodeLike } from '../node/routing-node-like.js';

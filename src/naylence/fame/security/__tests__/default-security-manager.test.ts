@@ -4,7 +4,7 @@ import {
   FameResponseType,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { DefaultSecurityManager } from '../default-security-manager.js';
 import type { NodeLike } from '../../node/node-like.js';

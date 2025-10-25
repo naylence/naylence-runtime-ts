@@ -1,4 +1,4 @@
-import { ResourceFactoryRegistry } from 'naylence-factory';
+import { ResourceFactoryRegistry } from '@naylence/factory';
 import {
   InMemoryKeyStoreFactory,
   type InMemoryKeyStoreConfig,

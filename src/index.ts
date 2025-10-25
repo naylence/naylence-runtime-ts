@@ -2,7 +2,7 @@
 import './naylence/fame/connector/websocket-connector-node-ssl.js';
 
 // Re-export everything from naylence-core
-export * from 'naylence-core';
+export * from '@naylence/core';
 
 // Export naylence runtime modules selectively to avoid conflicts
 export * from './naylence/fame/errors/index.js';
@@ -39,6 +39,11 @@ export {
   WebSocketLike,
   WebSocketAuthorizationContext,
   WebSocketState,
+
+  // HTTP stateless connector
+  HttpStatelessConnector,
+  QueueFullError,
+  type HttpStatelessConnectorConfig,
 
   // Flow controller
   _NoopFlowController,

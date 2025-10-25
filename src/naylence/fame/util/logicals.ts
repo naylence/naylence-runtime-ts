@@ -1,4 +1,4 @@
-import { parseAddressComponents } from 'naylence-core';
+import { parseAddressComponents } from '@naylence/core';
 
 const POOL_WILDCARD_PREFIX = '*.';
 

@@ -8,7 +8,7 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { AttachInfo } from './admission/node-attach-client.js';
 // Import NodeLike from the proper module

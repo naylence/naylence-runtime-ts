@@ -7,7 +7,7 @@ import {
   type FameConnector,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { CapabilityFrameHandler } from '../capability-frame-handler.js';
 import type { RoutingNodeLike } from '../../node/routing-node-like.js';
@@ -230,6 +230,11 @@ describe('CapabilityFrameHandler', () => {
     await handler.acceptCapabilityAdvertise(envelope, context);
 
     expect(routingNode.forwardToRoute).toHaveBeenCalledTimes(1);
+    const advertiseAckCalls =
+      routingNode.envelopeFactory?.createEnvelope.mock.calls ?? [];
+    expect(advertiseAckCalls).toHaveLength(1);
+    const [advertiseAckOptions] = advertiseAckCalls[0];
+    expect((advertiseAckOptions as any).frame.address).toBe(address.toString());
     const [targetSegment, ackEnvelope, ackContext] =
       routingNode.forwardToRoute.mock.calls[0];
     expect(targetSegment).toBe('segment-a');
@@ -370,6 +375,11 @@ describe('CapabilityFrameHandler', () => {
     await handler.acceptCapabilityWithdraw(withdraw, context);
 
     expect(routingNode.forwardToRoute).toHaveBeenCalledTimes(2);
+    const withdrawAckCalls =
+      routingNode.envelopeFactory?.createEnvelope.mock.calls ?? [];
+    for (const [options] of withdrawAckCalls) {
+      expect((options as any).frame.address).toBe(address.toString());
+    }
     expect(routingNode.forwardUpstream).toHaveBeenCalledWith(
       withdraw,
       expect.any(Object)

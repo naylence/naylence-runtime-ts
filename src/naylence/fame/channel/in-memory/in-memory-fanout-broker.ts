@@ -11,7 +11,7 @@ import {
   DEFAULT_POLLING_TIMEOUT_MS,
   extractEnvelopeAndContext,
   createChannelMessage,
-} from 'naylence-core';
+} from '@naylence/core';
 import { TaskSpawner } from '../../util/task-spawner.js';
 import { withEnvelopeContextAsync } from '../../util/envelope-context.js';
 import { getLogger } from '../../util/logging.js';

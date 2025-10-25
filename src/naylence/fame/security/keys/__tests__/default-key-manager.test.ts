@@ -2,7 +2,7 @@ import {
   DeliveryOriginType,
   type EnvelopeFactory,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { secureDigest } from '../../../util/util.js';
 import * as jwkValidation from '../../crypto/jwk-validation.js';
@@ -701,7 +701,7 @@ describe('DefaultKeyManager', () => {
       use: 'sig',
       physical_path: '/parent/node/child',
     } as KeyRecord;
-    // Mock for both auto-announce in onNodeStarted and the explicit test call
+    // Mock for the explicit announceKeysToUpstream call
     mocks.getKeysGroupedByPath.mockResolvedValue({
       '/parent/node/child': [storedKey],
     });
@@ -709,7 +709,7 @@ describe('DefaultKeyManager', () => {
     await manager.onNodeStarted(helper.node);
     await manager.announceKeysToUpstream();
 
-    expect(mocks.getKeysGroupedByPath).toHaveBeenCalledTimes(2);
+    expect(mocks.getKeysGroupedByPath).toHaveBeenCalledTimes(1);
   });
 
   it('throws when routing peer forwarding lacks node id', async () => {

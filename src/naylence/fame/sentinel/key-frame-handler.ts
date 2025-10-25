@@ -5,7 +5,7 @@ import {
   type FameEnvelope,
   type KeyAnnounceFrame,
   type KeyRequestFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { KeyCorrelationMap } from './key-correlation-map.js';
 import type { RoutingNodeLike } from '../node/routing-node-like.js';

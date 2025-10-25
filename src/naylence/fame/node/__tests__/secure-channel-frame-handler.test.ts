@@ -1,14 +1,14 @@
 import { Buffer } from 'node:buffer';
-import type { FameEnvelope, FameDeliveryContext } from 'naylence-core';
-import { DeliveryOriginType, FameResponseType } from 'naylence-core';
+import type { FameEnvelope, FameDeliveryContext } from '@naylence/core';
+import { DeliveryOriginType, FameResponseType } from '@naylence/core';
 
 import type {
   SecureOpenFrame,
   SecureAcceptFrame,
   SecureCloseFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import type { SecureChannelManager } from '../../security/encryption/secure-channel-manager.js';
-import type { EnvelopeFactory } from 'naylence-core';
+import type { EnvelopeFactory } from '@naylence/core';
 import type { EnvelopeSecurityHandler } from '../envelope-security-handler.js';
 import { SecureChannelFrameHandler } from '../secure-channel-frame-handler.js';
 

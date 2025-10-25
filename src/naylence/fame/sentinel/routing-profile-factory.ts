@@ -1,4 +1,4 @@
-import { createResource } from 'naylence-factory';
+import { createResource } from '@naylence/factory';
 import { getLogger } from '../util/logging.js';
 import {
   ROUTING_POLICY_FACTORY_BASE,

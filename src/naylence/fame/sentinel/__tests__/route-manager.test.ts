@@ -3,7 +3,7 @@ import {
   FameResponseType,
   type FameConnector,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { RouteManager } from '../route-manager.js';
 import type { RouteEntry } from '../store/route-store.js';

@@ -1,5 +1,5 @@
-import { createAuthorizationContext } from 'naylence-core';
-import type { AuthorizationContext } from 'naylence-core';
+import { createAuthorizationContext } from '@naylence/core';
+import type { AuthorizationContext } from '@naylence/core';
 import type { TokenVerifier } from './token-verifier.js';
 
 /**

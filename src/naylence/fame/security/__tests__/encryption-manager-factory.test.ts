@@ -5,8 +5,8 @@ import type {
   SecureAcceptFrame,
   SecureCloseFrame,
   SecureOpenFrame,
-} from 'naylence-core';
-import * as FactoryRegistry from 'naylence-factory';
+} from '@naylence/core';
+import * as FactoryRegistry from '@naylence/factory';
 
 import {
   ENCRYPTION_MANAGER_FACTORY_BASE_TYPE,

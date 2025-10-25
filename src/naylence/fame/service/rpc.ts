@@ -2,7 +2,7 @@ import {
   FameFabric,
   FameServiceProxy,
   type FameServiceProxyOptions,
-} from 'naylence-core';
+} from '@naylence/core';
 
 const RPC_REGISTRY = Symbol('naylence.rpc.registry');
 

@@ -1,4 +1,4 @@
-import { SigningMaterial } from 'naylence-core';
+import { SigningMaterial } from '@naylence/core';
 
 export interface SigningConfigOptions {
   signingMaterial?: SigningMaterial;

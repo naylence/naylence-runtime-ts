@@ -1,15 +1,15 @@
-import { ResourceFactoryRegistry } from 'naylence-factory';
+import { ResourceFactoryRegistry } from '@naylence/factory';
 import type {
   AuthorizationContext,
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   createAuthorizationContext,
   DeliveryOriginType,
   FameResponseType,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { NodeLike } from '../../node/node-like.js';
 import type { TokenVerifier } from '../auth/token-verifier.js';

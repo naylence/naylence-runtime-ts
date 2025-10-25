@@ -8,7 +8,7 @@ import {
   type KeyAnnounceFrame,
   type KeyRequestFrame,
   type ReadWriteChannel,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { KeyFrameHandler } from '../key-frame-handler.js';
 import type { RoutingNodeLike } from '../../node/routing-node-like.js';
@@ -16,7 +16,7 @@ import type { BindingManager } from '../../node/binding-manager.js';
 import type { KeyManager } from '../../security/keys/key-manager.js';
 import type { KeyRecord } from '../../security/keys/key-store.js';
 import type { KeyCorrelationMap } from '../key-correlation-map.js';
-import { Binding as CoreBinding } from 'naylence-core';
+import { Binding as CoreBinding } from '@naylence/core';
 
 jest.mock('../../util/logging.js', () => {
   const logger = {

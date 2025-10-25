@@ -5,10 +5,13 @@
  * conversion logic.
  */
 
-import type { FactoryInfo, ResourceFactory } from 'naylence-factory';
-import { ExtensionManager, ExpressionEvaluationPolicy } from 'naylence-factory';
+import type { FactoryInfo, ResourceFactory } from '@naylence/factory';
+import {
+  ExtensionManager,
+  ExpressionEvaluationPolicy,
+} from '@naylence/factory';
 import { ConnectorConfig } from './connector-config.js';
-import { FameConnector } from 'naylence-core';
+import { FameConnector } from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 import type { ConnectionGrant } from '../grants/index.js';
 export type { ConnectionGrant } from '../grants/index.js';

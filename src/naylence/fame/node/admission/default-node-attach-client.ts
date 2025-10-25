@@ -12,7 +12,7 @@ import {
   type NodeAttachAckFrame,
   type NodeAttachFrame,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../../util/logging.js';
 import { delay } from '../../util/task-utils.js';
 import {

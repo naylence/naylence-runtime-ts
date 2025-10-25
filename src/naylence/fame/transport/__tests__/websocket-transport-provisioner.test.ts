@@ -1,5 +1,5 @@
-import { ResourceFactoryRegistry } from 'naylence-factory';
-import type { NodeHelloFrame } from 'naylence-core';
+import { ResourceFactoryRegistry } from '@naylence/factory';
+import type { NodeHelloFrame } from '@naylence/core';
 
 import {
   TransportProvisionerFactory,

@@ -7,7 +7,7 @@ import {
   type SecureAcceptFrame,
   type SecureCloseFrame,
   type SecureOpenFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { DefaultSecurityManagerFactory } from '../default-security-manager-factory.js';
 import { SecurityManagerFactory } from '../security-manager-factory.js';

@@ -10,7 +10,7 @@ import {
   type FameEnvelope,
   type NodeAttachFrame,
   type SecurityContext,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { TransportListener } from './transport-listener.js';
 import type { HttpRouter, HttpServer } from './http-server.js';
@@ -37,6 +37,7 @@ import type { ConnectorConfig } from './connector-config.js';
 import { getLogger } from '../util/logging.js';
 import type { NoAuthInjectionStrategyConfig } from '../security/auth/no-auth-injection-strategy-factory.js';
 import type { RouteManager } from '../sentinel/route-manager.js';
+import { QueueFullError } from './http-stateless-connector.js';
 
 const logger = getLogger('naylence.fame.connector.http_listener');
 
@@ -54,7 +55,8 @@ export class HttpListener extends TransportListener {
 
   private _publicUrl: string | null = null;
   private _routerRegistered = false;
-  private _node: RoutingNodeLike | null = null;
+  private _node: NodeLike | null = null;
+  private _routingNode: RoutingNodeLike | null = null;
   private _reverseAuthConfig:
     | (NoAuthInjectionStrategyConfig | Record<string, unknown>)
     | null = {
@@ -110,11 +112,8 @@ export class HttpListener extends TransportListener {
       return;
     }
 
-    if (!isRoutingNodeLike(node)) {
-      throw new Error('HttpListener requires a RoutingNodeLike node instance');
-    }
-
     this._node = node;
+    this._routingNode = isRoutingNodeLike(node) ? node : null;
     this._publicUrl = node.publicUrl ?? null;
 
     logger.debug('registering_http_routes', {
@@ -135,11 +134,16 @@ export class HttpListener extends TransportListener {
   }
 
   async onNodeStarted(_node: NodeLike): Promise<void> {
+    if (this._httpServer.isRunning) {
+      return;
+    }
+
     await this._httpServer.start();
   }
-
   async onNodeStopped(_node: NodeLike): Promise<void> {
     this._routerRegistered = false;
+    this._node = null;
+    this._routingNode = null;
 
     if (this._httpServer instanceof DefaultHttpServer) {
       await DefaultHttpServer.release({
@@ -327,11 +331,16 @@ export class HttpListener extends TransportListener {
       throw new Error('Node not initialized');
     }
 
+    const routingNode = this._routingNode;
+    if (!routingNode) {
+      throw new Error('Node does not support downstream attachments');
+    }
+
     const selectionContext = new GrantSelectionContext({
       childId: params.childId,
       attachFrame: params.attachFrame,
       callbackGrantType: HTTP_CONNECTION_GRANT_TYPE,
-      node,
+      node: routingNode,
     });
 
     const selection =
@@ -345,7 +354,7 @@ export class HttpListener extends TransportListener {
       ...(params.authorization ? { authorization: params.authorization } : {}),
     };
 
-    const connector = await node.createOriginConnector(options);
+    const connector = await routingNode.createOriginConnector(options);
 
     logger.debug('created_http_connector', {
       child: params.childId,
@@ -374,13 +383,13 @@ export class HttpListener extends TransportListener {
   }
 
   private _getExistingConnector(childId: string): FameConnector | null {
-    const node = this._node;
-    if (!node) {
+    const routingNode = this._routingNode;
+    if (!routingNode) {
       return null;
     }
 
     const routeManager = (
-      node as unknown as { routeManager?: RouteManager | undefined }
+      routingNode as unknown as { routeManager?: RouteManager | undefined }
     ).routeManager;
     if (!routeManager) {
       return null;
@@ -480,6 +489,13 @@ export class HttpListener extends TransportListener {
     direction: 'upstream' | 'downstream',
     childId?: string
   ) {
+    if (error instanceof QueueFullError) {
+      logger.warning(`http_${direction}_receiver_busy`, {
+        childId,
+      });
+      return reply.code(429).send({ error: 'receiver busy' });
+    }
+
     if (error instanceof Error) {
       const status = error.message.includes('Authentication failed')
         ? 401
@@ -498,9 +514,7 @@ export class HttpListener extends TransportListener {
     return reply.code(500).send({ error: 'Internal server error' });
   }
 
-  private async _refreshReverseAuthConfig(
-    node: RoutingNodeLike
-  ): Promise<void> {
+  private async _refreshReverseAuthConfig(node: NodeLike): Promise<void> {
     const defaultAuth: NoAuthInjectionStrategyConfig = { type: 'NoAuth' };
     const securityManager = node.securityManager;
     const authorizer = this._authorizer ?? securityManager?.authorizer;

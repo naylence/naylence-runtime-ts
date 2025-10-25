@@ -1,5 +1,5 @@
-import type { CreateResourceOptions } from 'naylence-factory';
-import { createDefaultResource, createResource } from 'naylence-factory';
+import type { CreateResourceOptions } from '@naylence/factory';
+import { createDefaultResource, createResource } from '@naylence/factory';
 
 import { GRANT_PURPOSE_NODE_ATTACH } from '../grants/grant.js';
 import { TTL_NEVER_EXPIRES } from '../constants/ttl-constants.js';
@@ -140,7 +140,10 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
 
     if (!resolved.length) {
       const defaultListener =
-        await TransportListenerFactory.createTransportListener();
+        await TransportListenerFactory.createTransportListener(
+          undefined,
+          eventListeners
+        );
       if (defaultListener) {
         resolved.push(defaultListener);
         this.addEventListenerIfNeeded(defaultListener, eventListeners);

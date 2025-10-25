@@ -6,7 +6,7 @@ import {
   type KeyRequestFrame,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { HybridPathRoutingPolicy } from '../hybrid-path-routing-policy.js';
 import type { LoadBalancingStrategy } from '../load-balancing/load-balancing-strategy.js';

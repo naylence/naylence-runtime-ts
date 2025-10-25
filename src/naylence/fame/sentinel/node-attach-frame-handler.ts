@@ -8,7 +8,7 @@ import {
   NodeAttachAckFrame,
   NodeAttachFrame,
   type Stickiness,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import type { RouteManager, PendingRouteEntry } from './route-manager.js';

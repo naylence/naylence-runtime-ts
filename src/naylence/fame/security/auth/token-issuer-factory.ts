@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 import type { TokenIssuer } from './token-issuer.js';
 
 export const TOKEN_ISSUER_FACTORY_BASE_TYPE = 'TokenIssuerFactory';

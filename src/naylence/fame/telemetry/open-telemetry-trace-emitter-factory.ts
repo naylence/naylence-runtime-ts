@@ -4,7 +4,9 @@ import {
   AuthInjectionStrategyFactory,
   type AuthInjectionStrategyConfig,
 } from '../security/auth/auth-injection-strategy-factory.js';
+import type { AuthInjectionStrategy } from '../security/auth/auth-injection-strategy.js';
 import { setupOtel } from './otel-setup.js';
+import type { OtelLifecycleControl } from './otel-setup.js';
 import { safeImport } from '../util/lazy-import.js';
 import type { TraceEmitter } from './trace-emitter.js';
 import type { TraceEmitterConfig } from './trace-emitter-config.js';
@@ -12,6 +14,7 @@ import {
   TRACE_EMITTER_FACTORY_BASE_TYPE,
   TraceEmitterFactory,
 } from './trace-emitter-factory.js';
+import { getLogger } from '../util/logging.js';
 
 export interface OpenTelemetryTraceEmitterConfig extends TraceEmitterConfig {
   type: 'OpenTelemetryTraceEmitter';
@@ -42,6 +45,10 @@ type OpenTelemetryTraceEmitterModule =
 
 let openTelemetryTraceEmitterModulePromise: Promise<OpenTelemetryTraceEmitterModule> | null =
   null;
+
+const logger = getLogger(
+  'naylence.fame.telemetry.open_telemetry_trace_emitter_factory'
+);
 
 function getOpenTelemetryTraceEmitterModule(): Promise<OpenTelemetryTraceEmitterModule> {
   if (!openTelemetryTraceEmitterModulePromise) {
@@ -78,27 +85,62 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
       ...(options.headers ?? {}),
     };
 
+    let authStrategy: AuthInjectionStrategy | null = null;
+
     if (normalized.auth) {
-      const authStrategy =
+      authStrategy =
         await AuthInjectionStrategyFactory.createAuthInjectionStrategy(
           normalized.auth
         );
-      await authStrategy.apply(mergedHeaders);
+      try {
+        await authStrategy.apply(mergedHeaders);
+        logger.info('trace_emitter_auth_applied', {
+          service_name: normalized.serviceName,
+        });
+      } catch (error) {
+        try {
+          await authStrategy.cleanup();
+        } catch {
+          // Ignore cleanup errors while propagating original failure
+        }
+        throw error;
+      }
     }
 
-    await setupOtel({
-      serviceName: normalized.serviceName,
-      endpoint: normalized.endpoint,
-      environment: normalized.environment,
-      sampler: normalized.sampler,
-      headers:
-        Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
-    });
+    let lifecycle: OtelLifecycleControl | null = null;
+    try {
+      lifecycle = await setupOtel({
+        serviceName: normalized.serviceName,
+        endpoint: normalized.endpoint,
+        environment: normalized.environment,
+        sampler: normalized.sampler,
+        headers:
+          Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
+      });
+      logger.info('trace_emitter_lifecycle_acquired', {
+        service_name: normalized.serviceName,
+        lifecycle_available: Boolean(lifecycle),
+      });
+    } catch (error) {
+      if (authStrategy) {
+        try {
+          await authStrategy.cleanup();
+        } catch {
+          // Ignore cleanup errors while propagating original failure
+        }
+      }
+      throw error;
+    }
 
     const { OpenTelemetryTraceEmitter } =
       await getOpenTelemetryTraceEmitterModule();
 
-    const emitterOptions: { serviceName: string; tracer?: Tracer } = {
+    const emitterOptions: {
+      serviceName: string;
+      tracer?: Tracer;
+      lifecycle?: OtelLifecycleControl | null;
+      authStrategy?: AuthInjectionStrategy | null;
+    } = {
       serviceName: normalized.serviceName,
     };
 
@@ -106,7 +148,32 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
       emitterOptions.tracer = options.tracer;
     }
 
-    return new OpenTelemetryTraceEmitter(emitterOptions);
+    if (lifecycle) {
+      emitterOptions.lifecycle = lifecycle;
+    }
+
+    if (authStrategy) {
+      emitterOptions.authStrategy = authStrategy;
+    }
+
+    try {
+      const emitter = new OpenTelemetryTraceEmitter(emitterOptions);
+      logger.info('trace_emitter_created', {
+        service_name: normalized.serviceName,
+        has_lifecycle: Boolean(lifecycle),
+        has_auth_strategy: Boolean(authStrategy),
+      });
+      return emitter;
+    } catch (error) {
+      if (authStrategy) {
+        try {
+          await authStrategy.cleanup();
+        } catch {
+          // Best effort cleanup
+        }
+      }
+      throw error;
+    }
   }
 }
 

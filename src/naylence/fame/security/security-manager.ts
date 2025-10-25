@@ -1,4 +1,4 @@
-import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope } from '@naylence/core';
 
 import type { NodeEventListener } from '../node/node-event-listener.js';
 import type { NodeLike } from '../node/node-like.js';

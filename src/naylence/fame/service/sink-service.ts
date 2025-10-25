@@ -2,7 +2,7 @@ import {
   SINK_CAPABILITY,
   FameAddress,
   type FameRPCService,
-} from 'naylence-core';
+} from '@naylence/core';
 
 export interface CreateSinkParams {
   name: string;

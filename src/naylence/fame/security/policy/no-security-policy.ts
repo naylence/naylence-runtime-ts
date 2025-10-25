@@ -1,4 +1,4 @@
-import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope } from '@naylence/core';
 
 import type { NodeLike } from '../../node/node-like.js';
 import type { EncryptionOptions } from '../encryption/encryption-manager.js';

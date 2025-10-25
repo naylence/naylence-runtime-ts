@@ -1,6 +1,6 @@
 import { verify } from '@noble/ed25519';
-import type { DataFrame, FameEnvelope } from 'naylence-core';
-import { SigningMaterial } from 'naylence-core';
+import type { DataFrame, FameEnvelope } from '@naylence/core';
+import { SigningMaterial } from '@naylence/core';
 import { secureDigest } from '../../util/util.js';
 import type { KeyProvider } from '../keys/key-provider.js';
 import { SigningConfig } from './signing-config.js';

@@ -9,14 +9,14 @@ import {
   formatAddress,
   localDeliveryContext,
   parseAddress,
-} from 'naylence-core';
+} from '@naylence/core';
 import type {
   DeliveryAckFrame,
   FameConnector,
   FameEnvelopeHandler,
   FameRPCHandler,
-} from 'naylence-core';
-import { generateId } from 'naylence-core';
+} from '@naylence/core';
+import { generateId } from '@naylence/core';
 import { secureDigest } from '../util/util.js';
 import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
 import type { SecurityManager } from '../security/security-manager.js';
@@ -26,7 +26,7 @@ import type { NodeEventListener } from './node-event-listener.js';
 import type { StorageProvider, KeyValueStore } from '../storage/index.js';
 import { InMemoryStorageProvider } from '../storage/in-memory-storage.js';
 import { NodeEnvelopeFactory } from './node-envelope-factory.js';
-import type { EnvelopeFactory } from 'naylence-core';
+import type { EnvelopeFactory } from '@naylence/core';
 import { BindingManager } from './binding-manager.js';
 import type {
   BindingStoreEntry,
@@ -44,7 +44,7 @@ import type {
   NodeAttachClient,
   AttachInfo,
 } from './admission/node-attach-client.js';
-import type { NodeWelcomeFrame } from 'naylence-core';
+import type { NodeWelcomeFrame } from '@naylence/core';
 import { RootSessionManager } from './root-session-manager.js';
 import { UpstreamSessionManager } from './upstream-session-manager.js';
 import type { SessionManager } from './session-manager.js';
@@ -583,6 +583,13 @@ export class FameNode extends TaskSpawner implements NodeLike {
   }
 
   get upstreamConnector(): FameConnector | null {
+    const manager = this._sessionManager;
+    if (manager instanceof UpstreamSessionManager) {
+      const activeConnector = manager.getActiveConnector();
+      if (activeConnector) {
+        return activeConnector;
+      }
+    }
     return this._upstreamConnector;
   }
 

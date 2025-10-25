@@ -11,7 +11,7 @@ import {
   type KeyRequestFrame,
   type NodeAttachFrame,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { Authorizer } from './auth/authorizer.js';
 import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
@@ -40,7 +40,7 @@ import { secureDigest } from '../util/util.js';
 import { canonicalJson } from '../security/signing/eddsa-signer-verifier.js';
 import { currentTraceId } from '../util/envelope-context.js';
 import { FameTransportClose } from '../errors/errors.js';
-import type { SecurityContext } from 'naylence-core';
+import type { SecurityContext } from '@naylence/core';
 
 type KeyFrameHandlerOptions = ConstructorParameters<typeof KeyFrameHandler>[0];
 type KeyFrameRouteManager = KeyFrameHandlerOptions['routeManager'];

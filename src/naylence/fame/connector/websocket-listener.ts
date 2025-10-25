@@ -3,8 +3,8 @@ import type {
   AuthorizationContext,
   DeliveryOriginType,
   NodeAttachAckFrame,
-} from 'naylence-core';
-import { createFameEnvelope, serializeEnvelope } from 'naylence-core';
+} from '@naylence/core';
+import { createFameEnvelope, serializeEnvelope } from '@naylence/core';
 
 import { TransportListener } from './transport-listener.js';
 import type { NodeEventListener } from '../node/node-event-listener.js';
@@ -19,7 +19,7 @@ import {
   type WebSocketConnectorConfig,
   type WebSocketLike,
 } from './websocket-connector.js';
-import { DeliveryOriginType as DeliveryOriginTypeEnum } from 'naylence-core';
+import { DeliveryOriginType as DeliveryOriginTypeEnum } from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.connector.websocket_listener');
@@ -148,6 +148,10 @@ export class WebSocketListener
   }
 
   async onNodeStarted(_node: NodeLike): Promise<void> {
+    if (this._httpServer.isRunning) {
+      return;
+    }
+
     await this._httpServer.start();
   }
 

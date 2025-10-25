@@ -3,7 +3,7 @@ import {
   createResource,
   Expressions,
   type CreateResourceOptions,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { StorageProvider } from './storage-provider.js';
 import {

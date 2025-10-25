@@ -1,4 +1,4 @@
-import { ConnectorState } from 'naylence-core';
+import { ConnectorState } from '@naylence/core';
 
 import '../../security/index.js';
 import '../../node/index.js';

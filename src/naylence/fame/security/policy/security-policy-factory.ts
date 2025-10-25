@@ -1,9 +1,9 @@
-import type { CreateResourceOptions } from 'naylence-factory';
+import type { CreateResourceOptions } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { SecurityPolicy } from './security-policy.js';
 import type { SecurityPolicyConfig } from './security-policy.js';

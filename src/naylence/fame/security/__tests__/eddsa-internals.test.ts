@@ -1,7 +1,7 @@
 import * as ed25519 from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2.js';
-import { SigningMaterial } from 'naylence-core';
-import type { FameEnvelope } from 'naylence-core';
+import { SigningMaterial } from '@naylence/core';
+import type { FameEnvelope } from '@naylence/core';
 import { secureDigest, urlsafeBase64Encode } from '../../util/util.js';
 import {
   canonicalJson,

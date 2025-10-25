@@ -1,10 +1,10 @@
-import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope } from '@naylence/core';
 import {
   createDefaultResource,
   createResource,
   type ResourceConfig,
   type ResourceFactory as BaseResourceFactory,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { RouterState, RoutingAction } from './router.js';
 import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';

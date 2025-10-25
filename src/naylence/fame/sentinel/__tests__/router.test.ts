@@ -2,7 +2,7 @@ import {
   type FameEnvelope,
   type FameAddress,
   type EnvelopeFactory,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import {
   Drop,

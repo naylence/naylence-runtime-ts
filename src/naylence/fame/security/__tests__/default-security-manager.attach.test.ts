@@ -5,7 +5,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { DefaultSecurityManager } from '../default-security-manager.js';
 import { FameTransportClose } from '../../errors/errors.js';

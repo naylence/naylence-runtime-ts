@@ -1,4 +1,4 @@
-import type { AuthorizationContext } from 'naylence-core';
+import type { AuthorizationContext } from '@naylence/core';
 
 /**
  * Validates bearer tokens and returns decoded authorization context claims.

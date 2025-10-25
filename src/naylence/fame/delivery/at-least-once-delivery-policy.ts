@@ -1,4 +1,4 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 
 import type { DeliveryPolicyOptions } from './delivery-policy.js';
 import { DeliveryPolicy } from './delivery-policy.js';

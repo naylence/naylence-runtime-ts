@@ -3,7 +3,7 @@
  */
 
 import { FlowController } from '../naylence/fame/channel/flow-controller';
-import { FlowFlags } from 'naylence-core';
+import { FlowFlags } from '@naylence/core';
 
 describe('FlowController', () => {
   describe('constructor', () => {

@@ -7,6 +7,7 @@
 
 export const MODULES = [
   "./connector/http-listener-factory.js",
+  "./connector/http-stateless-connector-factory.js",
   "./connector/websocket-connector-factory.js",
   "./connector/websocket-listener-factory.js",
   "./delivery/at-least-once-delivery-policy-factory.js",

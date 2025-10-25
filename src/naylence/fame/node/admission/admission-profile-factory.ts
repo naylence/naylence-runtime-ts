@@ -1,4 +1,4 @@
-import { Expressions } from 'naylence-factory';
+import { Expressions } from '@naylence/factory';
 import { GRANT_PURPOSE_NODE_ATTACH } from '../../grants/grant.js';
 import { getLogger } from '../../util/logging.js';
 import {

@@ -10,8 +10,8 @@ import {
   type InvokeProtocol,
   type ServeProtocol,
   type ServeRPCProtocol,
-} from 'naylence-core';
-import { createResource, ExtensionManager } from 'naylence-factory';
+} from '@naylence/core';
+import { createResource, ExtensionManager } from '@naylence/factory';
 
 import type { ServiceManager } from './service-manager.js';
 

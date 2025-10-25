@@ -1,4 +1,4 @@
-import type { AuthorizationContext } from 'naylence-core';
+import type { AuthorizationContext } from '@naylence/core';
 import { DEFAULT_JWKS_CACHE_TTL_SEC } from '../../constants/ttl-constants.js';
 import { getLogger } from '../../util/logging.js';
 import type { TokenVerifier } from './token-verifier.js';

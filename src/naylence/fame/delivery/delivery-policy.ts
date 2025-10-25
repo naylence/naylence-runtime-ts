@@ -1,4 +1,4 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 
 import type { RetryPolicy } from './retry-policy.js';
 

@@ -1,4 +1,4 @@
-import type { FameEnvelope, Stickiness } from 'naylence-core';
+import type { FameEnvelope, Stickiness } from '@naylence/core';
 
 import { LoadBalancerStickinessManagerFactory } from '../load-balancer-stickiness-manager-factory.js';
 import * as StickinessExports from '../index.js';

@@ -4,7 +4,7 @@ import {
   FameEnvelope,
   FameResponseType,
   SecurityContext,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.node.response_context_manager');

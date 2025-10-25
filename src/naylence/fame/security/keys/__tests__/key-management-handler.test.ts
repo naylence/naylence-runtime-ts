@@ -6,7 +6,7 @@ import {
   type FameEnvelope,
   type KeyAnnounceFrame,
   type KeyRequestFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { KeyManagementHandler } from '../key-management-handler.js';
 import { KeyValidationError } from '../attachment-key-validator.js';

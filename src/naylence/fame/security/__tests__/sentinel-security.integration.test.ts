@@ -4,7 +4,7 @@ import {
   type AuthorizationContext,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { SignJWT } from 'jose';
 

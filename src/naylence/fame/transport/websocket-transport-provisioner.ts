@@ -1,5 +1,5 @@
-import { registerFactory } from 'naylence-factory';
-import type { NodeHelloFrame } from 'naylence-core';
+import { registerFactory } from '@naylence/factory';
+import type { NodeHelloFrame } from '@naylence/core';
 
 import { GRANT_PURPOSE_NODE_ATTACH } from '../grants/grant.js';
 import {

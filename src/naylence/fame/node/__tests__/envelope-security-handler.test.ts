@@ -4,7 +4,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type DataFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   EncryptionResult,
   EncryptionStatus,

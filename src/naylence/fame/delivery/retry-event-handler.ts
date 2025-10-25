@@ -1,4 +1,4 @@
-import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope } from '@naylence/core';
 
 export interface RetryEventHandler {
   onRetryNeeded(

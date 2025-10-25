@@ -9,7 +9,7 @@ import {
   type FameConnector,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import { getLogger } from '../util/logging.js';
@@ -87,7 +87,7 @@ export class CapabilityFrameHandler {
     const ackFrame: CapabilityAdvertiseAckFrame = {
       type: 'CapabilityAdvertiseAck',
       capabilities: [...frame.capabilities],
-      address: frame.address,
+      address: frame.address.toString(),
       ok: true,
       refId: envelope.id ?? undefined,
     };
@@ -137,7 +137,7 @@ export class CapabilityFrameHandler {
     const ackFrame: CapabilityWithdrawAckFrame = {
       type: 'CapabilityWithdrawAck',
       capabilities: [...frame.capabilities],
-      address: frame.address,
+      address: frame.address.toString(),
       ok: true,
       refId: envelope.id ?? undefined,
     };

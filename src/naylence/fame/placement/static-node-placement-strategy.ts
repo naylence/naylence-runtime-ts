@@ -1,4 +1,4 @@
-import type { NodeHelloFrame } from 'naylence-core';
+import type { NodeHelloFrame } from '@naylence/core';
 
 import type {
   NodePlacementStrategy,

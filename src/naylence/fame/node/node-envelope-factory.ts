@@ -1,11 +1,11 @@
-import { createFameEnvelope, FlowFlags, generateId } from 'naylence-core';
+import { createFameEnvelope, FlowFlags, generateId } from '@naylence/core';
 import type {
   AllFramesUnion,
   CreateFameEnvelopeOptions,
   EnvelopeFactory,
   FameEnvelope,
   FameResponseType,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getCurrentEnvelope } from '../util/envelope-context.js';
 
 export class NodeEnvelopeFactory implements EnvelopeFactory {

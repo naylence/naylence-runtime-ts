@@ -1,4 +1,4 @@
-import type { FameAddress, FameEnvelope } from 'naylence-core';
+import type { FameAddress, FameEnvelope } from '@naylence/core';
 
 export const FIXED_PREFIX_LEN = 44; // 32-byte ephemeral public key + 12-byte nonce prefix
 

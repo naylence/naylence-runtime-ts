@@ -1,7 +1,7 @@
 import fastify from 'fastify';
-import { createFameEnvelope, type FameEnvelope } from 'naylence-core';
+import { createFameEnvelope, type FameEnvelope } from '@naylence/core';
 
-import type { NodeHelloFrame, NodeWelcomeFrame } from 'naylence-core';
+import type { NodeHelloFrame, NodeWelcomeFrame } from '@naylence/core';
 import type { WelcomeService } from '../welcome-service.js';
 import { nodeWelcomeRouter } from '../node-welcome-router.js';
 import type { Authorizer } from '../../security/auth/authorizer.js';

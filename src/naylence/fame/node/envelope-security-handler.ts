@@ -3,8 +3,8 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   SecurityContext,
-} from 'naylence-core';
-import { DeliveryOriginType } from 'naylence-core';
+} from '@naylence/core';
+import { DeliveryOriginType } from '@naylence/core';
 
 import type {
   EncryptionManager,

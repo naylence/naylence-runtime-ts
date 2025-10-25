@@ -3,7 +3,7 @@ import {
   FameAddress,
   type FameDeliveryContext,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { DefaultSecurityManager } from '../default-security-manager.js';
 import {

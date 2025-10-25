@@ -1,4 +1,4 @@
-import { FameEnvelope, FameResponseType } from 'naylence-core';
+import { FameEnvelope, FameResponseType } from '@naylence/core';
 
 export enum EnvelopeStatus {
   PENDING = 'pending',

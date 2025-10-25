@@ -1,320 +1,88 @@
-# Naylence Runtime TypeScript
+[![Join our Discord](https://img.shields.io/badge/Discord-Join%20Chat-blue?logo=discord)](https://discord.gg/nwZAeqdv7y)
 
-Complete TypeScript/JavaScript implementation of the Naylence Fame runtime, providing cross-platform messaging, agent orchestration, and async task management capabilities.
+# Naylence Runtime (TypeScript)
 
-## Features
+> Message fabric, connectors, listeners, and security primitives that power Naylence agents, nodes and sentinels. This package provides the **runtime substrate**—not the high‑level Agent SDK or tutorials.
 
-### ✅ Complete Fame Protocol Support
+---
 
-- **Core Fame Protocol** - Full implementation of envelopes, frames, and messaging
-- **Connector abstractions** - Base classes for building transport connectors
-- **Flow control mechanisms** - Backpressure and credit-based flow management
-- **Security framework** - Encryption, signing, and authentication support
-- **Service abstractions** - RPC and message-based service patterns
+## What this is
 
-### ✅ Cross-Platform Logging
+**@naylence/runtime** is the foundational TypeScript/JavaScript library that implements:
 
-- **Structured logging** with processors (similar to Python's structlog)
-- **Cross-platform support** - works in both Node.js and browser environments
-- **Envelope context injection** - automatic context propagation for distributed tracing
-- **Multiple log levels** including custom TRACE level
-- **Configurable transports** - console, JSON, or Pino (Node.js only)
-- **Child loggers** with bound context
+* **FAME fabric** (in‑process and networked) for routing envelopes between clients, agents, and sentinels.
+* **Connectors & listeners** for WebSocket/HTTP transports, back‑pressure, flow control, and streaming.
+* **Profiles & admission**: pluggable admission flows (e.g., token‑based), logical addressing, and attach APIs.
+* **Security building blocks**: envelope signing, overlay encryption, JWT/JWKS helpers, and identity hooks.
+* **Cross-platform support**: runs in Node.js and browser environments with unified APIs.
 
-### ✅ Async Task Management
+It is meant to be **embedded** by the Agent SDK, sentinels, and security add‑ons. Most users should not call it directly unless they're extending transports, writing custom admission, or integrating Naylence into an existing control plane.
 
-- **TaskSpawner** - Promise-based task management (equivalent to Python's asyncio)
-- **Cancellation support** - AbortSignal-based task cancellation
-- **Graceful shutdown** - Clean task termination with configurable timeouts
-- **Error handling** - Comprehensive error classification and reporting
-- **Concurrency limits** - Control maximum concurrent tasks
-- **Task utilities** - retry, debounce, throttle, race conditions, and more
+---
+
+## When to use (and when not)
+
+Use **@naylence/runtime** if you need to:
+
+* Build or customize **transport connectors/listeners**.
+* Implement or extend **admission/identity** flows.
+* Operate a bespoke **sentinel** or welcome/CA services.
+* Integrate Naylence into browser-based or Node.js applications.
+
+Prefer the higher‑level packages for day‑to‑day development:
+
+* **Naylence Agent SDK (TypeScript)** — idiomatic agent APIs & ergonomics. → Coming soon
+* **Naylence Examples (TypeScript)** — runnable learning path & patterns. → Coming soon
+
+For Python development, refer to:
+
+* **Naylence Agent SDK (Python)** → [https://github.com/naylence/naylence-agent-sdk-python](https://github.com/naylence/naylence-agent-sdk-python)
+* **Naylence Examples (Python)** → [https://github.com/naylence/naylence-examples-python](https://github.com/naylence/naylence-examples-python)
+
+If you're just getting started, learn with the **Agent SDK** and **Examples** first; drop down to **Runtime** only when you need lower‑level control.
+
+---
+
+## Security profiles
+
+The runtime exposes security primitives used by sentinels and agents through **profiles**:
+
+* **direct** — no admission; useful for local/dev.
+* **gated** — OAuth2/JWT‑gated admission; TLS via your reverse proxy.
+* **strict‑overlay** — sealed, end‑to‑end overlay encryption with SPIFFE/X.509‑style identities.
+
+> **Important:** The **strict‑overlay** profile is supported **only** when the **`@naylence/advanced-security`** package is installed. Install that add‑on to enable sealed channels and SVID‑backed identities.
+
+---
 
 ## Installation
 
 ```bash
-npm install naylence-runtime
+npm install @naylence/runtime
 ```
 
-## Quick Start
+---
 
-### Complete Runtime Example
+## Relationship to other repos
 
-```typescript
-import { 
-  // Core Fame protocol
-  createFameEnvelope,
-  ConnectorState,
-  generateId,
-  // Task management
-  TaskSpawner,
-  delay,
-  retryWithBackoff,
-  // Logging  
-  getLogger,
-  basicConfig,
-  LogLevel,
-  withEnvelopeContextAsync
-} from 'naylence-runtime';
+* **Runtime (TypeScript):** [https://github.com/naylence/naylence-runtime-ts](https://github.com/naylence/naylence-runtime-ts)
+* **Runtime (Python):** [https://github.com/naylence/naylence-runtime-python](https://github.com/naylence/naylence-runtime-python)
+* **Agent SDK (Python):** [https://github.com/naylence/naylence-agent-sdk-python](https://github.com/naylence/naylence-agent-sdk-python)
+* **Examples (Python):** [https://github.com/naylence/naylence-examples-python](https://github.com/naylence/naylence-examples-python)
+* **Advanced Security add‑on (Python):** [https://github.com/naylence/naylence-advanced-security-python](https://github.com/naylence/naylence-advanced-security-python)
 
-// Configure logging
-basicConfig({ level: LogLevel.DEBUG });
-const logger = getLogger('example');
+---
 
-async function demonstrateRuntime() {
-  // Create a Fame envelope
-  const envelope = createFameEnvelope({
-    to: 'service@remote',
-    frame: {
-      type: 'Data',
-      payload: { message: 'Hello Fame!' }
-    }
-  });
+## What this README intentionally omits
 
-  // Use TaskSpawner for async task management
-  const spawner = new TaskSpawner();
-  
-  try {
-    // Process within envelope context 
-    await withEnvelopeContextAsync(envelope, async () => {
-      logger.info('Processing envelope');
-      
-      // Spawn concurrent tasks
-      const validationTask = spawner.spawn(async () => {
-        await delay(100);
-        return 'validation_passed';
-      }, { name: 'validate' });
-      
-      const authTask = spawner.spawn(async () => {
-        await delay(150);  
-        return 'auth_approved';
-      }, { name: 'authorize' });
-      
-      const [validation, auth] = await Promise.all([
-        validationTask.promise,
-        authTask.promise
-      ]);
-      
-      logger.info('Processing completed', { validation, auth });
-    });
-    
-  } finally {
-    await spawner.shutdownTasks();
-  }
-}
-```
+This page explains **purpose and scope** only. It does **not** include code samples, quick starts, or container recipes. For that:
 
-### Fame Protocol Usage
+* Start with the **Agent SDK** docs and examples to learn the development model.
+* Refer to the **Examples** repository for runnable demos from simple to distributed to security‑hardened.
 
-```typescript
-import { 
-  createFameEnvelope,
-  FameAddress,
-  Priority,
-  ConnectorState,
-  ConnectorStateHelper
-} from 'naylence-runtime';
+---
 
-// Create envelopes
-const envelope = createFameEnvelope({
-  to: 'user-service@cloud',
-  frame: {
-    type: 'Data',
-    payload: { action: 'get_profile', user_id: '123' }
-  }
-});
+## Support & license
 
-// Work with connector states
-const helper = new ConnectorStateHelper(ConnectorState.STARTED);
-console.log(helper.isActive); // true
-console.log(helper.canStart); // false
-```
-
-### Advanced Task Management
-
-```typescript
-import { TaskSpawner, retryWithBackoff, waitForAny, throttle } from 'naylence-runtime';
-
-const spawner = new TaskSpawner({ maxConcurrent: 5 });
-
-// Retry with exponential backoff
-const result = await retryWithBackoff(async () => {
-  // Operation that might fail
-  const response = await fetch('/api/data');
-  if (!response.ok) throw new Error('API failed');
-  return response.json();
-}, {
-  maxRetries: 3,
-  baseDelayMs: 100,
-  backoffMultiplier: 2
-});
-
-// Race multiple tasks
-const tasks = [
-  spawner.spawn(() => fetchFromCache(), { name: 'cache' }),
-  spawner.spawn(() => fetchFromAPI(), { name: 'api' }),
-  spawner.spawn(() => fetchFromBackup(), { name: 'backup' })
-];
-
-const winner = await waitForAny(tasks);
-
-// Throttle function calls
-const throttledSave = throttle(async (data) => {
-  await saveToDatabase(data);
-}, 1000);
-```
-
-### Structured Logging
-
-```typescript
-import { getLogger, withEnvelopeContext } from 'naylence-runtime';
-
-const logger = getLogger('auth.service');
-
-// Log with structured data
-logger.info('User login', {
-  user_id: 'user123',
-  ip_address: '192.168.1.1',
-  success: true,
-  duration_ms: 150
-});
-
-// Create child loggers with bound context
-const userLogger = logger.child({ user_id: 'user123', session_id: 'sess456' });
-userLogger.info('Profile updated'); // Automatically includes user_id and session_id
-```
-
-## Examples
-
-### Docker RPC sentinel example
-
-The repository now ships a manual Docker Compose harness under
-`examples/docker-rpc`. It builds the runtime and mounts a calculator sentinel
-script so you can experiment with RPC endpoints end-to-end. To try it out:
-
-```bash
-make -C examples/docker-rpc up
-```
-
-See the example's README for more background and cleanup instructions. This
-scenario replaced the old Jest-driven Docker integration test and is designed
-for manual exploration.
-
-## Plugin usage
-
-The runtime now ships with a `naylence:runtime` plugin that automatically
-registers every generated factory when used inside the `naylence-factory`
-ecosystem.
-
-### Load via resolver
-
-```ts
-import { ConventionPluginResolver, loadPlugins } from 'naylence-factory';
-
-const resolver = new ConventionPluginResolver({
-  'naylence:runtime': 'naylence-runtime/plugin',
-});
-
-await loadPlugins('naylence:runtime', resolver);
-```
-
-### Load directly from specs
-
-```ts
-import { loadPluginsFromSpecs } from 'naylence-factory';
-
-await loadPluginsFromSpecs([
-  { name: 'naylence-runtime/plugin' },
-]);
-```
-
-## Architecture
-
-This implementation provides a complete Fame runtime that closely mirrors the Python version:
-
-- **Complete Fame Protocol** - All core types, envelopes, frames, and messaging patterns
-- **Cross-platform compatibility** - single codebase for Node.js and browser
-- **Promise-based async** - TaskSpawner provides asyncio-like task management
-- **Structured logging** with configurable processors and context propagation  
-- **Modular design** - easily extensible with custom connectors and services
-
-## Key Components
-
-### Core Protocol
-- **Envelopes & Frames** - Complete message structure implementation
-- **Addressing** - Fame address parsing and validation
-
-### Storage Providers
-- **Configurable factories** – `InMemoryStorageProviderFactory`, `IndexedDBStorageProviderFactory`, `SQLiteStorageProviderFactory`, and `StorageProfileFactory` mirror the Python runtime profiles while adding a browser-first default backend.
-- **Schema validation** – Storage factory inputs are validated with Zod before instantiation, ensuring early feedback on misconfiguration.
-- **Parity note** – The encrypted key-value store in this port exposes an explicit `update` method while the Python implementation still delegates updates via `set`. We retain the method here for backwards compatibility and will upstream an equivalent helper to Python in a follow-up release.
-- **Security** - Encryption, signing, and authentication headers
-- **Flow Control** - Credit-based backpressure management
-
-### Node Placement
-- **Static placement strategy** – `StaticNodePlacementStrategy` deterministically assigns child nodes under a configured parent system and path, returning structured metadata equal to the Python implementation.
-- **Factory parity** – `StaticNodePlacementStrategyFactory` and `WebSocketPlacementStrategyFactory` register with the shared factory registry, including a default static strategy and a deprecated alias that still issues a `DeprecationWarning` like the Python runtime.
-- **Legacy compatibility** – Configuration dictionaries using the historical `WebSocketNodePlacementStrategy` type are automatically normalized to the static strategy while preserving snake_case fields and parity semantics.
-
-### Task Management  
-- **TaskSpawner** - Spawn and manage concurrent async tasks
-- **Cancellation** - Proper AbortSignal support throughout
-- **Error Handling** - Comprehensive error classification
-- **Utilities** - retry, debounce, throttle, timeouts, and more
-
-### Logging & Observability
-- **Structured Logging** - JSON/pretty output with processors
-- **Context Propagation** - Envelope context injection for tracing
-- **Cross-Platform** - Adapts to Node.js (Pino) or browser (console)
-
-### Integration
-- **Service Patterns** - RPC and message-based service abstractions  
-- **Connector Framework** - Base classes for transport implementations
-- **Factory Pattern** - Configurable resource and service factories
-
-## Migration from Python
-
-The TypeScript API maintains compatibility with Python patterns:
-
-| Python | TypeScript |
-|--------|------------|
-| `from naylence.fame.core import createFameEnvelope` | `import { createFameEnvelope } from 'naylence-runtime'` |
-| `spawner = TaskSpawner()` | `const spawner = new TaskSpawner()` |
-| `task = spawner.spawn(coro(), name="task")` | `const task = spawner.spawn(async () => {}, { name: "task" })` |
-| `await spawner.shutdown_tasks()` | `await spawner.shutdownTasks()` |
-| `with envelope_context(env):` | `withEnvelopeContext(env, () => {` |
-
-## Development
-
-```bash
-# Install dependencies
-npm install
-
-# Build the project  
-npm run build
-
-# Run tests
-npm test
-
-# Run examples
-npx tsx examples/complete-runtime-example.ts
-npx tsx examples/task-spawner-example.ts
-npx tsx examples/logging-example.ts
-
-# Development mode
-npm run dev
-
-# Lint and format
-npm run lint
-npm run format
-```
-
-## Dependencies
-
-- **naylence-core** - Core Fame protocol implementation
-- **zod** - Runtime type validation
-- **pino** (optional) - High-performance logging in Node.js
-
-## License
-
-Apache-2.0 - See [LICENSE](LICENSE) file for details.
+* **Issues:** open tickets in the corresponding repository (Runtime, SDK, Examples, or Advanced Security) based on where the problem belongs.
+* **License:** Apache‑2.0.

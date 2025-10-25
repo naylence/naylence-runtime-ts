@@ -1,5 +1,5 @@
-import * as core from 'naylence-core';
-import type { FameEnvelopeWith, NodeWelcomeFrame } from 'naylence-core';
+import * as core from '@naylence/core';
+import type { FameEnvelopeWith, NodeWelcomeFrame } from '@naylence/core';
 import {
   RootSessionManager,
   type RootSessionManagerOptions,

@@ -5,9 +5,9 @@ import {
   FameDeliveryContextSchema,
   type FameDeliveryContext,
   SecurityContextSchema,
-} from 'naylence-core';
+} from '@naylence/core';
 
-export const FameNodeAuthorizationContextSchema =
+export const FameNodeAuthorizationContextSchema: z.ZodTypeAny =
   AuthorizationContextSchema.and(
     z.object({
       sub: z.string().optional(),
@@ -24,7 +24,7 @@ export const FameNodeAuthorizationContextSchema =
 export type FameNodeAuthorizationContext = AuthorizationContext &
   z.infer<typeof FameNodeAuthorizationContextSchema>;
 
-export const FameAuthorizedDeliveryContextSchema =
+export const FameAuthorizedDeliveryContextSchema: z.ZodTypeAny =
   FameDeliveryContextSchema.extend({
     security: SecurityContextSchema.extend({
       authorization: FameNodeAuthorizationContextSchema.optional(),
@@ -76,5 +76,5 @@ export function createNodeDeliveryContext(
   return FameAuthorizedDeliveryContextSchema.parse({
     ...rest,
     security: securityPayload,
-  });
+  }) as FameAuthorizedDeliveryContext;
 }

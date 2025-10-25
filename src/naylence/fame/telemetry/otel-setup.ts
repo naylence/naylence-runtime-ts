@@ -1,11 +1,11 @@
 import type { Sampler } from '@opentelemetry/api';
-import type {
-  SpanExporter,
-  SpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+import type { SpanExporter } from '@opentelemetry/sdk-trace-base';
 import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.telemetry.otel_setup');
+
+type NodeTracerProvider =
+  import('@opentelemetry/sdk-trace-node').NodeTracerProvider;
 
 export interface SetupOtelOptions {
   serviceName: string;
@@ -15,8 +15,27 @@ export interface SetupOtelOptions {
   headers?: Record<string, string> | undefined;
 }
 
-export async function setupOtel(options: SetupOtelOptions): Promise<void> {
+export interface OtelLifecycleControl {
+  forceFlush?: () => Promise<void>;
+  shutdown?: () => Promise<void>;
+}
+
+let registeredOtel: {
+  provider: NodeTracerProvider;
+  control: OtelLifecycleControl;
+} | null = null;
+
+export async function setupOtel(
+  options: SetupOtelOptions
+): Promise<OtelLifecycleControl | null> {
   try {
+    if (registeredOtel) {
+      logger.debug('open_telemetry_reusing_provider', {
+        service_name: options.serviceName,
+      });
+      return registeredOtel.control;
+    }
+
     const [apiModule, resourcesModule, nodeModule, traceBaseModule] =
       await Promise.all([
         import('@opentelemetry/api'),
@@ -41,14 +60,27 @@ export async function setupOtel(options: SetupOtelOptions): Promise<void> {
 
     const currentProvider = trace.getTracerProvider();
     if (currentProvider && currentProvider instanceof NodeTracerProvider) {
-      return;
+      return null;
     }
     if (
       currentProvider &&
       currentProvider.constructor?.name === 'NodeTracerProvider'
     ) {
-      return;
+      logger.debug('open_telemetry_existing_node_provider', {
+        service_name: options.serviceName,
+      });
+      return null;
     }
+
+    logger.info('open_telemetry_initializing', {
+      service_name: options.serviceName,
+      endpoint: options.endpoint ?? null,
+      environment: options.environment ?? null,
+      sampler: options.sampler ?? null,
+      headers_present: Boolean(
+        options.headers && Object.keys(options.headers).length
+      ),
+    });
 
     const sampler = resolveSampler(options.sampler, {
       ParentBasedSampler,
@@ -65,11 +97,6 @@ export async function setupOtel(options: SetupOtelOptions): Promise<void> {
     });
     const resource = baseResource.merge(mergedResource);
 
-    const provider = new NodeTracerProvider({
-      resource,
-      sampler,
-    });
-
     const exporter = await resolveExporter(
       options.endpoint ?? undefined,
       options.headers,
@@ -77,13 +104,59 @@ export async function setupOtel(options: SetupOtelOptions): Promise<void> {
     );
 
     const spanProcessor = new BatchSpanProcessor(exporter);
-    const providerWithProcessor = provider as unknown as {
-      addSpanProcessor?: (processor: SpanProcessor) => void;
-    };
-    providerWithProcessor.addSpanProcessor?.(spanProcessor);
+    const provider = new NodeTracerProvider({
+      resource,
+      sampler,
+      spanProcessors: [spanProcessor],
+    });
     provider.register();
+
+    logger.info('open_telemetry_initialized', {
+      service_name: options.serviceName,
+      exporter: exporter.constructor?.name ?? 'unknown_exporter',
+    });
+
+    const control: OtelLifecycleControl = {
+      forceFlush: async () => {
+        try {
+          await provider.forceFlush();
+        } catch (flushError) {
+          logger.warning('open_telemetry_force_flush_failed', {
+            error:
+              flushError instanceof Error
+                ? flushError.message
+                : String(flushError),
+          });
+        }
+      },
+      shutdown: async () => {
+        try {
+          await provider.shutdown();
+        } catch (shutdownError) {
+          logger.warning('open_telemetry_shutdown_failed', {
+            error:
+              shutdownError instanceof Error
+                ? shutdownError.message
+                : String(shutdownError),
+          });
+        } finally {
+          registeredOtel = null;
+        }
+      },
+    };
+
+    registeredOtel = {
+      provider,
+      control,
+    };
+
+    return control;
   } catch (error) {
-    logger.error('open_telemetry_not_available', { error });
+    logger.error('open_telemetry_not_available', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error && error.stack ? error.stack : undefined,
+    });
+    return null;
   }
 }
 
@@ -160,12 +233,19 @@ async function resolveExporter(
         if (headers && Object.keys(headers).length > 0) {
           exporterOptions.headers = headers;
         }
+        logger.info('open_telemetry_using_otlp_http_exporter', {
+          endpoint,
+          headers_present: Boolean(headers && Object.keys(headers).length),
+        });
         return new OTLPTraceExporter(exporterOptions);
       }
     } catch (error) {
-      logger.error('open_telemetry_exporter_not_available', { error });
+      logger.error('open_telemetry_exporter_not_available', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
+  logger.warning('open_telemetry_falling_back_to_console_exporter');
   return new ConsoleSpanExporter();
 }

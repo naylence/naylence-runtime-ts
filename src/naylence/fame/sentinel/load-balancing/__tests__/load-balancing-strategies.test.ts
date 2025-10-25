@@ -1,4 +1,4 @@
-import type { FameEnvelope } from 'naylence-core';
+import type { FameEnvelope } from '@naylence/core';
 
 import { CompositeLoadBalancingStrategy } from '../composite-load-balancing-strategy.js';
 import { CompositeLoadBalancingStrategyFactory } from '../composite-load-balancing-strategy-factory.js';

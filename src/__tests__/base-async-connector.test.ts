@@ -17,7 +17,7 @@ import {
   CreditUpdateFrame,
   FameResponseType,
   createChannelMessage,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   FameTransportClose,
   FameMessageTooLarge,

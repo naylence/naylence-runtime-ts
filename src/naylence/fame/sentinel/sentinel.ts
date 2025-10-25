@@ -20,7 +20,7 @@ import {
   withFabric,
   type FameConfig,
   // type NodeAttachAckFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { currentTraceId } from '../util/envelope-context.js';
 import { FameNode, type FameNodeOptions } from '../node/node.js';

@@ -1,4 +1,4 @@
-import { createResource } from 'naylence-factory';
+import { createResource } from '@naylence/factory';
 import { getLogger } from '../util/logging.js';
 import { CapabilityAwareRoutingPolicy } from './capability-aware-routing-policy.js';
 import { CompositeRoutingPolicy } from './composite-routing-policy.js';

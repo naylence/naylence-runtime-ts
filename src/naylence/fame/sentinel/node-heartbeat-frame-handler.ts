@@ -4,7 +4,7 @@ import {
   type FameEnvelope,
   NodeHeartbeatAckFrame,
   NodeHeartbeatFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import { getLogger } from '../util/logging.js';

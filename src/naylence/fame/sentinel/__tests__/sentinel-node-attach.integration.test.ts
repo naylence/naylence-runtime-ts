@@ -1,4 +1,4 @@
-import { ConnectorState, type FameEnvelope } from 'naylence-core';
+import { ConnectorState, type FameEnvelope } from '@naylence/core';
 
 import '../../security/index.js';
 import '../../node/index.js';

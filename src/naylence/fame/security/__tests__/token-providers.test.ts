@@ -1,5 +1,5 @@
-import { ResourceFactoryRegistry } from 'naylence-factory';
-import { createAuthorizationContext } from 'naylence-core';
+import { ResourceFactoryRegistry } from '@naylence/factory';
+import { createAuthorizationContext } from '@naylence/core';
 
 import type { CredentialProvider } from '../credential/credential-provider.js';
 import { NoneTokenProvider } from '../auth/none-token-provider.js';

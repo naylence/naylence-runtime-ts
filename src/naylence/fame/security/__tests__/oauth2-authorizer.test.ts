@@ -3,8 +3,8 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { DeliveryOriginType, FameResponseType } from 'naylence-core';
+} from '@naylence/core';
+import { DeliveryOriginType, FameResponseType } from '@naylence/core';
 import { OAuth2Authorizer } from '../auth/oauth2-authorizer.js';
 import { JWTTokenIssuer } from '../auth/jwt-token-issuer.js';
 import { JWTTokenVerifier } from '../auth/jwt-token-verifier.js';

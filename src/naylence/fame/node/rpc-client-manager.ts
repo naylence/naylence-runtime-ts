@@ -13,14 +13,14 @@ import {
   makeRequest,
   parseResponse,
   type DeliveryAckFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import { getLogger } from '../util/logging.js';
 import { currentTraceId } from '../util/envelope-context.js';
 import { formatDeliveryErrorMessage } from '../delivery/delivery-error.js';
 import type { DeliveryTracker as BasicDeliveryTracker } from '../delivery/delivery-tracker.js';
 import type { DeliveryTrackerEventHandler } from '../delivery/default-delivery-tracker.js';
 import type { TrackedEnvelope } from '../delivery/tracked-envelope.js';
-import type { FameEnvelopeHandler } from 'naylence-core';
+import type { FameEnvelopeHandler } from '@naylence/core';
 
 const logger = getLogger('naylence.fame.node.rpc_client_manager');
 

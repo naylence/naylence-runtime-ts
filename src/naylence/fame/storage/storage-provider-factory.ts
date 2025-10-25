@@ -1,10 +1,10 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
   registerFactory,
-} from 'naylence-factory';
+} from '@naylence/factory';
 
 import type { StorageProvider } from './storage-provider.js';
 

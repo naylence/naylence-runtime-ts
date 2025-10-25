@@ -1,4 +1,4 @@
-import type { FameDeliveryContext, FameEnvelope } from 'naylence-core';
+import type { FameDeliveryContext, FameEnvelope } from '@naylence/core';
 
 import { getLogger } from '../util/logging.js';
 import type { RouteManager } from './route-manager.js';

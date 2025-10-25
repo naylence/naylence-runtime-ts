@@ -1,4 +1,4 @@
-import type { FameAddress, FameService } from 'naylence-core';
+import type { FameAddress, FameService } from '@naylence/core';
 
 export interface ServiceManager {
   start(): Promise<void>;

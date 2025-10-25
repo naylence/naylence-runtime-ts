@@ -1,9 +1,9 @@
-import type { CreateResourceOptions, ResourceConfig } from 'naylence-factory';
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from 'naylence-factory';
+} from '@naylence/factory';
 import type { AuthInjectionStrategy } from './auth-injection-strategy.js';
 
 export const AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE =

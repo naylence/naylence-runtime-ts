@@ -3,8 +3,8 @@ import type {
   FameDeliveryContext,
   FameEnvelope,
   NodeAttachFrame,
-} from 'naylence-core';
-import { createAuthorizationContext, DeliveryOriginType } from 'naylence-core';
+} from '@naylence/core';
+import { createAuthorizationContext, DeliveryOriginType } from '@naylence/core';
 
 import { getLogger } from '../../util/logging.js';
 import type { NodeEventListener } from '../../node/node-event-listener.js';

@@ -1,4 +1,4 @@
-import type { NodeAttachFrame } from 'naylence-core';
+import type { NodeAttachFrame } from '@naylence/core';
 
 import {
   GrantSelectionContext,

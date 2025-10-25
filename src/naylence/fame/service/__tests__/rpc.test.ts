@@ -1,4 +1,4 @@
-import { FameFabric } from 'naylence-core';
+import { FameFabric } from '@naylence/core';
 import { RpcMixin, operation, createRpcProxy, RpcProxy } from '../rpc.js';
 
 describe('RPC decorators and mixins', () => {

@@ -4,7 +4,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type DeliveryAckFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import '../../security/index.js';
 import '../../node/index.js';

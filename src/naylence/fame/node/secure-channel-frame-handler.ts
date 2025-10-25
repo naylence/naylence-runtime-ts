@@ -3,13 +3,13 @@ import type {
   EnvelopeFactory,
   FameDeliveryContext,
   FameEnvelope,
-} from 'naylence-core';
-import { DeliveryOriginType, FameResponseType } from 'naylence-core';
+} from '@naylence/core';
+import { DeliveryOriginType, FameResponseType } from '@naylence/core';
 import type {
   SecureAcceptFrame,
   SecureCloseFrame,
   SecureOpenFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { SecureChannelManager } from '../security/encryption/secure-channel-manager.js';
 import type { EnvelopeSecurityHandler } from './envelope-security-handler.js';

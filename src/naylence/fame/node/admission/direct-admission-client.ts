@@ -3,7 +3,7 @@ import {
   generateIdAsync,
   type FameEnvelopeWith,
   type NodeWelcomeFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import {
   DEFAULT_DIRECT_ADMISSION_TTL_SEC,
   TTL_NEVER_EXPIRES,

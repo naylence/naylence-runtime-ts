@@ -5,7 +5,7 @@ import {
   type FameEnvelope,
   parseAddress,
   SigningMaterial,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { getLogger } from '../../util/logging.js';
 import { urlsafeBase64Decode } from '../../util/util.js';

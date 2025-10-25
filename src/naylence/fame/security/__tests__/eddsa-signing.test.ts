@@ -3,7 +3,7 @@ import {
   createFameEnvelope,
   type DataFrame,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 import { secureDigest, urlsafeBase64Encode } from '../../util/util.js';
 import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { KeyProvider } from '../keys/key-provider.js';

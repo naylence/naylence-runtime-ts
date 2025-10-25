@@ -4,7 +4,7 @@ import {
   FameResponseType,
   type FameDeliveryContext,
   type NodeAttachFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { NoopAuthorizer } from '../auth/noop-authorizer.js';
 import { NoopAuthorizerFactory } from '../auth/noop-authorizer-factory.js';
@@ -18,7 +18,7 @@ import { TokenVerifierFactory } from '../auth/token-verifier-factory.js';
 import type { NodeLike } from '../../node/node-like.js';
 
 const nodeStub = { id: 'node-id' } as unknown as NodeLike;
-const envelopeStub = {} as import('naylence-core').FameEnvelope;
+const envelopeStub = {} as import('@naylence/core').FameEnvelope;
 
 describe('NoopAuthorizer', () => {
   const authorizer = new NoopAuthorizer();

@@ -1,4 +1,4 @@
-import { generateId, type NodeWelcomeFrame } from 'naylence-core';
+import { generateId, type NodeWelcomeFrame } from '@naylence/core';
 import { TaskSpawner } from '../util/task-spawner.js';
 import { AsyncEvent } from '../util/async-event.js';
 import { getLogger } from '../util/logging.js';

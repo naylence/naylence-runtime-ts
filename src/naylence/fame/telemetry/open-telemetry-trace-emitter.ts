@@ -20,6 +20,8 @@ import {
   setOtelSpanId,
   setOtelTraceId,
 } from './otel-context.js';
+import type { OtelLifecycleControl } from './otel-setup.js';
+import type { AuthInjectionStrategy } from '../security/auth/auth-injection-strategy.js';
 
 class OpenTelemetryTraceSpan implements TraceSpan {
   public constructor(private readonly span: OtelSpan) {}
@@ -99,10 +101,20 @@ class OpenTelemetrySpanScope implements TraceSpanScope {
 
 export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   private readonly tracer: Tracer;
+  private lifecycle: OtelLifecycleControl | null;
+  private authStrategy: AuthInjectionStrategy | null;
+  private shutdownInvoked = false;
 
-  public constructor(options: { serviceName: string; tracer?: Tracer }) {
+  public constructor(options: {
+    serviceName: string;
+    tracer?: Tracer;
+    lifecycle?: OtelLifecycleControl | null;
+    authStrategy?: AuthInjectionStrategy | null;
+  }) {
     super();
     this.tracer = options.tracer ?? trace.getTracer(options.serviceName);
+    this.lifecycle = options.lifecycle ?? null;
+    this.authStrategy = options.authStrategy ?? null;
   }
 
   public startSpan(name: string, options?: TraceSpanOptions): TraceSpanScope {
@@ -126,6 +138,15 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   }
 
   public override async flush(): Promise<void> {
+    if (this.lifecycle?.forceFlush) {
+      try {
+        await this.lifecycle.forceFlush();
+        return;
+      } catch {
+        // fall through to global flush fallback
+      }
+    }
+
     try {
       const provider = trace.getTracerProvider() as unknown as {
         forceFlush?: () => Promise<void>;
@@ -139,6 +160,35 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   }
 
   public override async shutdown(): Promise<void> {
+    if (this.shutdownInvoked) {
+      return;
+    }
+    this.shutdownInvoked = true;
+
+    const cleanupTasks: Array<Promise<void>> = [];
+
+    const strategy = this.authStrategy;
+    if (strategy) {
+      this.authStrategy = null;
+      cleanupTasks.push(
+        strategy.cleanup().catch(() => {
+          // Ignore auth cleanup failures
+        })
+      );
+    }
+
+    if (this.lifecycle?.shutdown) {
+      try {
+        await this.lifecycle.shutdown();
+        this.lifecycle = null;
+        await Promise.all(cleanupTasks);
+        return;
+      } catch {
+        // fall through to global shutdown fallback
+        this.lifecycle = null;
+      }
+    }
+
     try {
       const provider = trace.getTracerProvider() as unknown as {
         shutdown?: () => Promise<void>;
@@ -148,6 +198,10 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
       }
     } catch {
       // Ignore shutdown errors
+    } finally {
+      if (cleanupTasks.length > 0) {
+        await Promise.all(cleanupTasks);
+      }
     }
   }
 

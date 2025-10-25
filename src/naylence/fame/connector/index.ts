@@ -1,6 +1,7 @@
 import './http-listener-factory.js';
 import './websocket-listener-factory.js';
 import './websocket-connector-factory.js';
+import './http-stateless-connector-factory.js';
 
 /**
  * Fame Connector Exports
@@ -33,6 +34,12 @@ export {
   AuthorizationContext as WebSocketAuthorizationContext,
   WebSocketState,
 } from './websocket-connector.js';
+
+export {
+  HttpStatelessConnector,
+  QueueFullError,
+  type HttpStatelessConnectorConfig,
+} from './http-stateless-connector.js';
 
 // Flow controller
 export { _NoopFlowController } from './noop-flow-controller.js';

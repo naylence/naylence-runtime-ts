@@ -1,4 +1,4 @@
-import { createResource } from 'naylence-factory';
+import { createResource } from '@naylence/factory';
 import { HybridPathRoutingPolicy } from './hybrid-path-routing-policy.js';
 import type { LoadBalancingStrategy } from './load-balancing/load-balancing-strategy.js';
 import {

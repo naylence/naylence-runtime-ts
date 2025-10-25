@@ -6,7 +6,7 @@
  * timeout support.
  */
 
-import { ReadWriteChannel } from 'naylence-core';
+import { ReadWriteChannel } from '@naylence/core';
 import { TaskTimeoutError } from '../../util/task-types.js';
 import { getLogger } from '../../util/logging.js';
 

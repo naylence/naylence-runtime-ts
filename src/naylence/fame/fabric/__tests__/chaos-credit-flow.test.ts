@@ -5,7 +5,7 @@ import {
   type DataFrame,
   type DeliveryAckFrame,
   type FameEnvelope,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { DefaultDeliveryTrackerFactory } from '../../delivery/default-delivery-tracker-factory.js';
 import { InProcessFameFabric } from '../in-process-fame-fabric.js';

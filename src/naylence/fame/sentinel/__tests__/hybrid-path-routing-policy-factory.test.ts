@@ -5,8 +5,8 @@ import {
 } from '../load-balancing/load-balancing-strategy-factory.js';
 import { HybridPathRoutingPolicyFactory } from '../hybrid-path-routing-policy-factory.js';
 
-jest.mock('naylence-factory', () => {
-  const actual = jest.requireActual('naylence-factory');
+jest.mock('@naylence/factory', () => {
+  const actual = jest.requireActual('@naylence/factory');
   return {
     ...actual,
     createResource: jest.fn(),
@@ -22,10 +22,10 @@ jest.mock('../hybrid-path-routing-policy.js', () => ({
 }));
 
 const { createResource: createResourceMock } = jest.requireMock(
-  'naylence-factory'
+  '@naylence/factory'
 ) as {
   createResource: jest.MockedFunction<
-    (typeof import('naylence-factory'))['createResource']
+    (typeof import('@naylence/factory'))['createResource']
   >;
 };
 

@@ -15,17 +15,17 @@ import {
   localDeliveryContext,
   parseAddress,
   parseAddressComponents,
-} from 'naylence-core';
+} from '@naylence/core';
 import type {
   AddressBindAckFrame,
   AddressUnbindAckFrame,
   CapabilityAdvertiseAckFrame,
   CapabilityWithdrawAckFrame,
-} from 'naylence-core';
+} from '@naylence/core';
 import { InMemoryReadWriteChannel } from '../channel/in-memory/in-memory-channel.js';
 import type { KeyValueStore } from '../storage/key-value-store.js';
 import { InMemoryKeyValueStore } from '../storage/in-memory-storage.js';
-import type { EnvelopeFactory } from 'naylence-core';
+import type { EnvelopeFactory } from '@naylence/core';
 import { currentTraceId } from '../util/envelope-context.js';
 import { getLogger } from '../util/logging.js';
 import { isPoolLogical, matchesPoolLogical } from '../util/logicals.js';

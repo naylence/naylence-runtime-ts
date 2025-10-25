@@ -26,7 +26,7 @@ import {
   type AuthInjectionStrategyConfig,
 } from '../security/auth/auth-injection-strategy-factory.js';
 import type { AuthInjectionStrategy } from '../security/auth/auth-injection-strategy.js';
-import { ExpressionEvaluationPolicy } from 'naylence-factory';
+import { ExpressionEvaluationPolicy } from '@naylence/factory';
 const logger = getLogger('naylence.fame.connector.websocket_connector_factory');
 
 type WebSocketSslLoader = (logger: Logger) => Promise<Buffer | undefined>;

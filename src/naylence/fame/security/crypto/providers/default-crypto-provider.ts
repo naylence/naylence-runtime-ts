@@ -18,7 +18,7 @@ import {
   CertificationRequest,
   CertificationRequestInfo,
 } from '@peculiar/asn1-csr';
-import { generateId } from 'naylence-core';
+import { generateId } from '@naylence/core';
 import { getLogger } from '../../../util/logging.js';
 import { secureDigest } from '../../../util/util.js';
 import type { NodeLike } from '../../../node/node-like.js';

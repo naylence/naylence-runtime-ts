@@ -1,6 +1,6 @@
-import { generateIdAsync } from 'naylence-core';
-import type { CreateResourceOptions } from 'naylence-factory';
-import { createResource } from 'naylence-factory';
+import { generateIdAsync } from '@naylence/core';
+import type { CreateResourceOptions } from '@naylence/factory';
+import { createResource } from '@naylence/factory';
 
 import type { AdmissionClient } from './admission/admission-client.js';
 import { AdmissionClientFactory } from './admission/admission-client-factory.js';
@@ -122,15 +122,16 @@ export async function makeCommonOptions(
     expressionOptions
   );
 
+  const eventListeners: NodeEventListener[] = [];
+
   const deliveryTracker = new DefaultDeliveryTracker(storageProvider);
+  addEventListener(deliveryTracker, eventListeners);
 
   const transportListeners = await resolveTransportListeners(
     config.listeners,
+    eventListeners,
     expressionOptions
   );
-
-  const eventListeners: NodeEventListener[] = [];
-  addEventListener(deliveryTracker, eventListeners);
 
   const traceEmitter = await resolveTraceEmitter(
     config.telemetry ?? null,
@@ -345,6 +346,7 @@ async function resolveDeliveryPolicy(
 
 async function resolveTransportListeners(
   configs: TransportListenerConfig[],
+  eventListeners: NodeEventListener[],
   options: CreateResourceOptions
 ): Promise<TransportListener[]> {
   if (!configs.length) {
@@ -354,6 +356,7 @@ async function resolveTransportListeners(
   try {
     return await TransportListenerFactory.createTransportListeners(
       configs,
+      eventListeners,
       cloneCreateOptions(options)
     );
   } catch (error) {

@@ -5,7 +5,7 @@ import {
   FameEnvelope,
   FameResponseType,
   generateId,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import { getLogger } from '../util/logging.js';
 import { color, AnsiColor } from '../util/formatter.js';

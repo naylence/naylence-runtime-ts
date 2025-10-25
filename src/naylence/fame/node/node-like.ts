@@ -15,7 +15,7 @@ import type {
   FameEnvelopeHandler,
   FameRPCHandler,
   Binding,
-} from 'naylence-core';
+} from '@naylence/core';
 
 import type { AdmissionClient } from './admission/admission-client.js';
 import type { NodeEventListener } from './node-event-listener.js';
