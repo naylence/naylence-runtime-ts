@@ -1,4 +1,16 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
+
+import { existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Check if we're in a local dev environment with sibling repos
+const hasLocalCore = existsSync(resolve(__dirname, '../naylence-core-ts/dist/cjs/index.js'));
+const hasLocalFactory = existsSync(resolve(__dirname, '../naylence-factory-ts/dist/cjs/index.js'));
+
 export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
@@ -8,12 +20,25 @@ export default {
   ],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
-    '^@naylence/core$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
-    '^naylence-core$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
-    '^naylence-core-ts$': '<rootDir>/../naylence-core-ts/dist/cjs/index.js',
-    '^@naylence/factory$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
-    '^naylence-factory$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
-    '^naylence-factory-ts$': '<rootDir>/../naylence-factory-ts/dist/cjs/index.js',
+    // Use local builds in dev, node_modules in CI
+    '^@naylence/core$': hasLocalCore 
+      ? '<rootDir>/../naylence-core-ts/dist/cjs/index.js'
+      : '<rootDir>/node_modules/@naylence/core/dist/cjs/index.js',
+    '^naylence-core$': hasLocalCore
+      ? '<rootDir>/../naylence-core-ts/dist/cjs/index.js'
+      : '<rootDir>/node_modules/@naylence/core/dist/cjs/index.js',
+    '^naylence-core-ts$': hasLocalCore
+      ? '<rootDir>/../naylence-core-ts/dist/cjs/index.js'
+      : '<rootDir>/node_modules/@naylence/core/dist/cjs/index.js',
+    '^@naylence/factory$': hasLocalFactory
+      ? '<rootDir>/../naylence-factory-ts/dist/cjs/index.js'
+      : '<rootDir>/node_modules/@naylence/factory/dist/cjs/index.js',
+    '^naylence-factory$': hasLocalFactory
+      ? '<rootDir>/../naylence-factory-ts/dist/cjs/index.js'
+      : '<rootDir>/node_modules/@naylence/factory/dist/cjs/index.js',
+    '^naylence-factory-ts$': hasLocalFactory
+      ? '<rootDir>/../naylence-factory-ts/dist/cjs/index.js'
+      : '<rootDir>/node_modules/@naylence/factory/dist/cjs/index.js',
     '^@naylence/runtime$': '<rootDir>/dist/cjs/index.js',
     '^naylence-runtime$': '<rootDir>/dist/cjs/index.js',
   },
