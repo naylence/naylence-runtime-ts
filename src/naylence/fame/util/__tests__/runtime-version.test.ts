@@ -16,9 +16,16 @@ async function readLocalPackageVersion(): Promise<string | null> {
   return typeof pkg.version === 'string' ? pkg.version : null;
 }
 
-async function loadRuntimeModule(): Promise<RuntimeModule> {
+async function loadRuntimeModule(
+  options?: { skipNodeModuleUnmock?: boolean; skipFsPromisesUnmock?: boolean }
+): Promise<RuntimeModule> {
   jest.resetModules();
-  jest.unmock('node:module');
+  if (!options?.skipNodeModuleUnmock) {
+    jest.unmock('node:module');
+  }
+  if (!options?.skipFsPromisesUnmock) {
+    jest.unmock('node:fs/promises');
+  }
 
   const module = (await import('../runtime-version.js')) as RuntimeModule;
   module.resetCachedRuntimeVersionForTesting();
@@ -48,8 +55,8 @@ describe('resolveRuntimeVersion', () => {
     process.env.npm_package_name = '@naylence/runtime';
     process.env.npm_package_version = '9.9.9';
 
-    const version = await runtime.resolveRuntimeVersion();
-    expect(version).toBe('9.9.9');
+  const version = await runtime.resolveRuntimeVersion();
+  expect(version).toBe('9.9.9');
   });
 
   it('falls back to the local package.json when no environment metadata is available', async () => {
@@ -134,4 +141,44 @@ describe('resolveRuntimeVersion', () => {
 
     expect(version).toBe(pkgVersion);
   });
+
+  it('uses module resolution when package.json is not directly require-able', async () => {
+    const packageJsonPath = require.resolve('../../../../../package.json');
+
+    jest.doMock('node:module', () => {
+      const notFound = Object.assign(new Error('not found'), {
+        code: 'MODULE_NOT_FOUND',
+      });
+
+      const stubRequire = Object.assign(
+        () => {
+          throw notFound;
+        },
+        {
+          resolve: (specifier: string) => {
+            if (specifier === '@naylence/runtime') {
+              return packageJsonPath;
+            }
+            throw notFound;
+          },
+        }
+      );
+
+      return {
+        createRequire: () => stubRequire,
+      };
+    });
+
+    const runtime = await loadRuntimeModule({ skipNodeModuleUnmock: true });
+    delete process.env.NAYLENCE_RUNTIME_VERSION;
+    delete process.env.npm_package_name;
+    delete process.env.npm_package_version;
+
+    const version = await runtime.resolveRuntimeVersion();
+    const pkgVersion = await readLocalPackageVersion();
+
+    expect(version).toBe(pkgVersion);
+    jest.dontMock('node:module');
+  });
+
 });

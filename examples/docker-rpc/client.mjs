@@ -3,7 +3,7 @@ import {
   LogLevel,
   RpcProxy,
   withFabric
-} from "naylence-runtime";
+} from "@naylence/runtime";
 
 
 const sentinelAddress = process.env.RPC_TARGET_ADDRESS || "calculator@/test-sentinel";

@@ -5,7 +5,7 @@ import {
   getLogger,
   LogLevel,
   withFabric
-} from "naylence-runtime";
+} from "@naylence/runtime";
 
 
 const logger = getLogger("examples.sentinel-calculator");
