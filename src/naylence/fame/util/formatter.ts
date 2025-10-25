@@ -53,18 +53,18 @@ export function color(text: string, color: AnsiColor): string {
 function _supportsColor(): boolean {
   // Check if we're in a Node.js environment
   if (typeof process !== 'undefined' && process.env) {
-    // Check for CI environments that support colors
-    if (process.env.CI && ['true', '1'].includes(process.env.CI)) {
-      return true;
-    }
-
-    // Check for NO_COLOR environment variable
+    // Check for NO_COLOR environment variable (takes precedence)
     if (process.env.NO_COLOR) {
       return false;
     }
 
-    // Check for FORCE_COLOR environment variable
+    // Check for FORCE_COLOR environment variable (takes precedence)
     if (process.env.FORCE_COLOR) {
+      return true;
+    }
+
+    // Check for CI environments that support colors
+    if (process.env.CI && ['true', '1'].includes(process.env.CI)) {
       return true;
     }
 
