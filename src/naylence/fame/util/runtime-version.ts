@@ -28,7 +28,9 @@ function readVersionFromPackageJson(
   return null;
 }
 
-async function tryReadPackageVersion(absolutePath: string): Promise<string | null> {
+async function tryReadPackageVersion(
+  absolutePath: string
+): Promise<string | null> {
   try {
     const [{ readFile }, pathModule] = await Promise.all([
       import('node:fs/promises'),
@@ -174,12 +176,12 @@ async function resolveFromPackageJson(): Promise<string | null> {
     for (const candidate of PACKAGE_JSON_RELATIVE_PATHS) {
       try {
         const result = requireForCurrentModule(candidate) as {
-              name?: unknown;
+          name?: unknown;
           version?: unknown;
         };
-            const extracted = readVersionFromPackageJson(result);
-            if (extracted) {
-              return extracted;
+        const extracted = readVersionFromPackageJson(result);
+        if (extracted) {
+          return extracted;
         }
       } catch {
         // Continue trying remaining candidates
@@ -188,8 +190,7 @@ async function resolveFromPackageJson(): Promise<string | null> {
 
     const moduleResolvedVersion = await tryResolveVersionFromModule(
       typeof requireForCurrentModule.resolve === 'function'
-        ? (specifier: string) =>
-            requireForCurrentModule.resolve(specifier)
+        ? (specifier: string) => requireForCurrentModule.resolve(specifier)
         : undefined
     );
     if (moduleResolvedVersion) {

@@ -16,9 +16,10 @@ async function readLocalPackageVersion(): Promise<string | null> {
   return typeof pkg.version === 'string' ? pkg.version : null;
 }
 
-async function loadRuntimeModule(
-  options?: { skipNodeModuleUnmock?: boolean; skipFsPromisesUnmock?: boolean }
-): Promise<RuntimeModule> {
+async function loadRuntimeModule(options?: {
+  skipNodeModuleUnmock?: boolean;
+  skipFsPromisesUnmock?: boolean;
+}): Promise<RuntimeModule> {
   jest.resetModules();
   if (!options?.skipNodeModuleUnmock) {
     jest.unmock('node:module');
@@ -55,8 +56,8 @@ describe('resolveRuntimeVersion', () => {
     process.env.npm_package_name = '@naylence/runtime';
     process.env.npm_package_version = '9.9.9';
 
-  const version = await runtime.resolveRuntimeVersion();
-  expect(version).toBe('9.9.9');
+    const version = await runtime.resolveRuntimeVersion();
+    expect(version).toBe('9.9.9');
   });
 
   it('falls back to the local package.json when no environment metadata is available', async () => {
@@ -180,5 +181,4 @@ describe('resolveRuntimeVersion', () => {
     expect(version).toBe(pkgVersion);
     jest.dontMock('node:module');
   });
-
 });

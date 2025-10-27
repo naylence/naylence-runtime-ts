@@ -732,12 +732,26 @@ function buildX5cChain(
   certificatePem: string,
   chainPem: string | null
 ): string[] {
-  const chain: string[] = [pemToDerBase64(certificatePem)];
+  const chain: string[] = [];
+  const seen = new Set<string>();
+
+  const appendIfNew = (pem: string): void => {
+    const derBase64 = pemToDerBase64(pem);
+    if (seen.has(derBase64)) {
+      return;
+    }
+    seen.add(derBase64);
+    chain.push(derBase64);
+  };
+
+  appendIfNew(certificatePem);
+
   if (chainPem) {
     for (const cert of splitPemCertificates(chainPem)) {
-      chain.push(pemToDerBase64(cert));
+      appendIfNew(cert);
     }
   }
+
   return chain;
 }
 
