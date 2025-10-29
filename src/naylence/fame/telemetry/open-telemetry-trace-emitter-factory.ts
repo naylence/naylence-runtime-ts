@@ -117,7 +117,7 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
         headers:
           Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
       });
-      logger.info('trace_emitter_lifecycle_acquired', {
+      logger.debug('trace_emitter_lifecycle_acquired', {
         service_name: normalized.serviceName,
         lifecycle_available: Boolean(lifecycle),
       });
@@ -158,7 +158,7 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
 
     try {
       const emitter = new OpenTelemetryTraceEmitter(emitterOptions);
-      logger.info('trace_emitter_created', {
+      logger.debug('trace_emitter_created', {
         service_name: normalized.serviceName,
         has_lifecycle: Boolean(lifecycle),
         has_auth_strategy: Boolean(authStrategy),

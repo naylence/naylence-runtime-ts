@@ -6,7 +6,8 @@
  * including placement decisions, attach ticket issuance, and CA grants.
  *
  * Environment Variables:
- * - FAME_LOG_LEVEL: Log level (default: warning)
+ * - FAME_LOG_LEVEL: Log level (automatically applied by framework, default: INFO)
+ *   Valid values: TRACE, DEBUG, INFO, WARNING, WARN, ERROR, CRITICAL
  * - FAME_APP_HOST: Server host (default: 0.0.0.0)
  * - FAME_APP_PORT: Server port (default: 8090)
  * - FAME_CONFIG: Path to fame-config.yml or inline YAML/JSON config
@@ -16,17 +17,13 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { WelcomeServiceFactory } from './welcome-service-factory.js';
 import { nodeWelcomeRouter } from './node-welcome-router.js';
-import { enableLogging, getLogger } from '../util/logging.js';
+import { getLogger } from '../util/logging.js';
 import { DefaultCryptoProvider } from '../security/crypto/providers/default-crypto-provider.js';
 import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 
-const ENV_VAR_LOG_LEVEL = 'FAME_LOG_LEVEL';
 const ENV_VAR_FAME_APP_HOST = 'FAME_APP_HOST';
 const ENV_VAR_FAME_APP_PORT = 'FAME_APP_PORT';
 const ENV_VAR_KEY_TYPES = 'FAME_JWKS_KEY_TYPES';
-
-const logLevel = process.env[ENV_VAR_LOG_LEVEL] || 'warning';
-enableLogging(logLevel);
 
 const logger = getLogger('naylence.fame.welcome.node_welcome_server');
 
@@ -67,13 +64,10 @@ function filterKeysByType(
 }
 
 async function createApp(): Promise<FastifyInstance> {
-  // Map Fame log levels to Pino levels
-  let fastifyLogLevel = logLevel.toLowerCase();
-  if (fastifyLogLevel === 'trace') fastifyLogLevel = 'debug';
-  if (fastifyLogLevel === 'warning') fastifyLogLevel = 'warn';
+  // Fastify uses 'info' log level by default, which is reasonable
   const fastify = Fastify({
     logger: {
-      level: fastifyLogLevel,
+      level: 'info',
     },
   });
 
@@ -141,7 +135,6 @@ async function main(): Promise<void> {
     logger.info('node_welcome_server_started', {
       host,
       port,
-      logLevel,
     });
 
     console.log(`Node Welcome Server listening on http://${host}:${port}`);

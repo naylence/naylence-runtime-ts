@@ -158,6 +158,32 @@ describe('enableLogging', () => {
   test('should reject unknown log level names', () => {
     expect(() => enableLogging('unknown-level')).toThrow('Unknown log level');
   });
+
+  test('should support FAME_LOG_LEVEL environment variable at initialization', () => {
+    // Note: Since the logging module initializes at import time,
+    // we can't test dynamic env var changes here without module reload.
+    // This test documents the expected behavior:
+    // - FAME_LOG_LEVEL env var is read during module initialization
+    // - Valid values: TRACE, DEBUG, INFO, WARNING (or WARN), ERROR, CRITICAL
+    // - If not set, defaults to INFO (or OFF in test environments)
+
+    // Verify that enableLogging still works to override the initial setting
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    try {
+      enableLogging('ERROR');
+      const logger = getLogger('naylence.test');
+
+      logger.debug('should be filtered');
+      logger.info('should be filtered');
+      logger.warning('should be filtered');
+      logger.error('should be visible');
+
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  });
 });
 
 describe('basicConfig', () => {

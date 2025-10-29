@@ -674,7 +674,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
       this._releaseNodeContext = release;
       this._isStarted = true;
 
-      logger.info('node_started', {
+      logger.debug('node_started', {
         node_id: this.id,
         sid: this.sid,
         path: this.physicalPath,

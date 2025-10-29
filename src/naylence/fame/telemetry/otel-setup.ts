@@ -72,7 +72,7 @@ export async function setupOtel(
       return null;
     }
 
-    logger.info('open_telemetry_initializing', {
+    logger.debug('open_telemetry_initializing', {
       service_name: options.serviceName,
       endpoint: options.endpoint ?? null,
       environment: options.environment ?? null,
@@ -111,7 +111,7 @@ export async function setupOtel(
     });
     provider.register();
 
-    logger.info('open_telemetry_initialized', {
+    logger.debug('open_telemetry_initialized', {
       service_name: options.serviceName,
       exporter: exporter.constructor?.name ?? 'unknown_exporter',
     });
@@ -233,7 +233,7 @@ async function resolveExporter(
         if (headers && Object.keys(headers).length > 0) {
           exporterOptions.headers = headers;
         }
-        logger.info('open_telemetry_using_otlp_http_exporter', {
+        logger.debug('open_telemetry_using_otlp_http_exporter', {
           endpoint,
           headers_present: Boolean(headers && Object.keys(headers).length),
         });

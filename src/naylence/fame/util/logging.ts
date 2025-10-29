@@ -3,6 +3,24 @@
  *
  * This module provides a unified logging interface that works in both Node.js and browser environments.
  * It includes structured logging with processors similar to Python's structlog.
+ *
+ * Environment Variables:
+ * - FAME_LOG_LEVEL: Set the initial log level at framework initialization (Node.js only)
+ *   Valid values: TRACE, DEBUG, INFO, WARNING, WARN, ERROR, CRITICAL
+ *   Default: INFO (balanced verbosity), OFF during tests
+ *
+ * Usage:
+ * ```typescript
+ * // Automatic - just set the environment variable
+ * // FAME_LOG_LEVEL=INFO node my-app.js
+ *
+ * // Or call enableLogging() to override at runtime
+ * import { enableLogging, getLogger } from '@naylence/runtime';
+ * enableLogging('DEBUG');
+ *
+ * const logger = getLogger('my.app');
+ * logger.info('Application started');
+ * ```
  */
 
 import {
@@ -315,8 +333,36 @@ export interface LoggerConfig {
   transports: LogTransport[];
 }
 
+/**
+ * Get initial log level from environment variable or defaults
+ */
+function getInitialLogLevel(): LogLevel {
+  // Tests should be silent
+  if (isTest) {
+    return LogLevel.OFF;
+  }
+
+  // Check FAME_LOG_LEVEL environment variable
+  if (isNode && typeof process !== 'undefined' && process.env.FAME_LOG_LEVEL) {
+    try {
+      const envLevel = process.env.FAME_LOG_LEVEL.trim().toUpperCase();
+      // Direct enum name match (e.g., "DEBUG", "INFO")
+      if (envLevel in LogLevel) {
+        return LogLevel[envLevel as keyof typeof LogLevel];
+      }
+      // Try alternative mappings
+      if (envLevel === 'WARN') return LogLevel.WARNING;
+    } catch {
+      // Fall through to default
+    }
+  }
+
+  // Default to INFO - balanced verbosity for most use cases
+  return LogLevel.INFO;
+}
+
 const defaultConfig: LoggerConfig = {
-  level: isTest ? LogLevel.OFF : LogLevel.TRACE, // Silent during tests
+  level: getInitialLogLevel(),
   processors: [
     addTimestamp,
     addEnvelopeFields,
