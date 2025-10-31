@@ -168,8 +168,11 @@ export async function loadPluginsFromConfig(): Promise<void> {
     // Import each plugin and call its register function
     for (const pluginName of pluginNames) {
       try {
-        // Import from the plugin subpath (all naylence plugins export ./plugin)
-        const pluginModule = await import(`${pluginName}/plugin`);
+        // Import from the plugin subpath (all naylence plugins export ./plugin).
+        // The Vite ignore hint avoids bundler analysis warnings for this runtime-only pattern.
+        const pluginModule = await import(
+          /* @vite-ignore */ `${pluginName}/plugin`
+        );
         const plugin =
           pluginModule.default ?? pluginModule.plugin ?? pluginModule;
 

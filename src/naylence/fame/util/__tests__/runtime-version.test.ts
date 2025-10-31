@@ -90,11 +90,14 @@ describe('resolveRuntimeVersion', () => {
     expect(third).toBe('9.9.9');
   });
 
-  it('returns null when the process does not expose a Node runtime', async () => {
+  it('falls back to embedded metadata when the process does not expose a Node runtime', async () => {
     const runtime = await loadRuntimeModule();
     delete process.env.NAYLENCE_RUNTIME_VERSION;
     delete process.env.npm_package_name;
     delete process.env.npm_package_version;
+
+  const expectedVersion = await readLocalPackageVersion();
+  expect(expectedVersion).not.toBeNull();
 
     const processDescriptor = Object.getOwnPropertyDescriptor(
       globalThis,
@@ -109,7 +112,7 @@ describe('resolveRuntimeVersion', () => {
 
     try {
       const version = await runtime.resolveRuntimeVersion();
-      expect(version).toBeNull();
+  expect(version).toBe(expectedVersion);
     } finally {
       if (processDescriptor) {
         Object.defineProperty(globalThis, 'process', processDescriptor);

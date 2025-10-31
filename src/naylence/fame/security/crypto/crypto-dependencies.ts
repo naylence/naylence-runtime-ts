@@ -12,17 +12,42 @@ function detectWebCrypto(): boolean {
 }
 
 function detectNativeNodeCrypto(): boolean {
-  if (typeof globalThis.process === 'undefined') {
+  if (
+    typeof globalThis.process === 'undefined' ||
+    typeof globalThis.process.versions?.node !== 'string'
+  ) {
     return false;
   }
 
+  const moduleId = `node:${'crypto'}`;
+
   try {
-    const { webcrypto } =
-      require('node:crypto') as typeof import('node:crypto');
-    return Boolean(webcrypto?.subtle);
+    const directRequire =
+      typeof require === 'function'
+        ? require
+        : (globalThis as { require?: NodeRequire }).require;
+
+    if (typeof directRequire === 'function') {
+      const { webcrypto } = directRequire(
+        moduleId
+      ) as typeof import('node:crypto');
+      return Boolean(webcrypto?.subtle);
+    }
+
+    const lazyRequire = Function(
+      'return typeof require === "function" ? require : null'
+    )();
+    if (typeof lazyRequire === 'function') {
+      const { webcrypto } = lazyRequire(
+        moduleId
+      ) as typeof import('node:crypto');
+      return Boolean(webcrypto?.subtle);
+    }
   } catch {
-    return false;
+    // Ignore resolution errors and fall through to false
   }
+
+  return false;
 }
 
 export function hasCryptoSupport(): boolean {

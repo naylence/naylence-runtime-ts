@@ -1,3 +1,5 @@
+import packageMetadata from '../../../../package.json';
+
 const PACKAGE_JSON_RELATIVE_PATHS = [
   '../../../../../package.json',
   '../../../../package.json',
@@ -6,6 +8,17 @@ const PACKAGE_JSON_RELATIVE_PATHS = [
   '../package.json',
   './package.json',
 ];
+
+type PackageMetadata = {
+  name?: string;
+  version?: string;
+};
+
+const EMBEDDED_PACKAGE_VERSION =
+  typeof (packageMetadata as PackageMetadata | undefined)?.version === 'string' &&
+  (packageMetadata as PackageMetadata | undefined)?.name === '@naylence/runtime'
+    ? (packageMetadata as PackageMetadata).version ?? null
+    : null;
 
 let cachedVersion: string | null | undefined;
 
@@ -237,6 +250,11 @@ export async function resolveRuntimeVersion(): Promise<string | null> {
   const envVersion = resolveFromEnv((globalThis as any)?.process?.env);
   if (envVersion) {
     cachedVersion = envVersion;
+    return cachedVersion;
+  }
+
+  if (EMBEDDED_PACKAGE_VERSION) {
+    cachedVersion = EMBEDDED_PACKAGE_VERSION;
     return cachedVersion;
   }
 

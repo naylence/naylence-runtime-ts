@@ -27,46 +27,63 @@
     "url": "https://github.com/naylence/naylence-runtime-ts/issues"
   },
   "homepage": "https://github.com/naylence/naylence-runtime-ts#readme",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
-  "types": "dist/types/index.d.ts",
+  "main": "dist/cjs/src/index.js",
+  "module": "dist/esm/src/index.js",
+  "types": "dist/types/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
+      "types": "./dist/types/src/index.d.ts",
+      "import": "./dist/esm/src/index.js",
+      "require": "./dist/cjs/src/index.js",
+      "default": "./dist/esm/src/index.js"
     },
     "./browser": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/browser/index.js",
-      "default": "./dist/browser/index.js"
+      "types": "./dist/types/src/browser.d.ts",
+      "import": "./dist/esm/src/browser.js"
     },
     "./factory-manifest": {
-      "types": "./dist/types/naylence/fame/factory-manifest.d.ts",
-      "import": "./dist/esm/naylence/fame/factory-manifest.js",
-      "require": "./dist/cjs/naylence/fame/factory-manifest.js",
-      "default": "./dist/esm/naylence/fame/factory-manifest.js"
+      "types": "./dist/types/src/naylence/fame/factory-manifest.d.ts",
+      "import": "./dist/esm/src/naylence/fame/factory-manifest.js",
+      "require": "./dist/cjs/src/naylence/fame/factory-manifest.js",
+      "default": "./dist/esm/src/naylence/fame/factory-manifest.js"
     },
     "./register-runtime-factories": {
-      "types": "./dist/types/naylence/fame/util/register-runtime-factories.d.ts",
-      "import": "./dist/esm/naylence/fame/util/register-runtime-factories.js",
-      "require": "./dist/cjs/naylence/fame/util/register-runtime-factories.js",
-      "default": "./dist/esm/naylence/fame/util/register-runtime-factories.js"
+      "types": "./dist/types/src/naylence/fame/util/register-runtime-factories.d.ts",
+      "import": "./dist/esm/src/naylence/fame/util/register-runtime-factories.js",
+      "require": "./dist/cjs/src/naylence/fame/util/register-runtime-factories.js",
+      "default": "./dist/esm/src/naylence/fame/util/register-runtime-factories.js"
     },
     "./plugin": {
-      "types": "./dist/types/plugin.d.ts",
-      "import": "./dist/esm/plugin.js",
-      "require": "./dist/cjs/plugin.js",
-      "default": "./dist/esm/plugin.js"
+      "types": "./dist/types/src/plugin.d.ts",
+      "import": "./dist/esm/src/plugin.js",
+      "require": "./dist/cjs/src/plugin.js",
+      "default": "./dist/esm/src/plugin.js"
     },
     "./*": {
-      "types": "./dist/types/*",
-      "import": "./dist/esm/*",
-      "require": "./dist/cjs/*",
-      "default": "./dist/esm/*"
+      "types": "./dist/types/src/*",
+      "import": "./dist/esm/src/*",
+      "require": "./dist/cjs/src/*",
+      "default": "./dist/esm/src/*"
     }
   },
+  "browser": {
+    "fastify": false,
+    "@fastify/websocket": false,
+    "@fastify/formbody": false,
+    "better-sqlite3": false,
+    "express": false,
+    "pino": false,
+    "pino-pretty": false,
+    "ws": false,
+    "node:net": false,
+    "node:module": false,
+    "node:fs": false,
+    "node:fs/promises": false,
+    "node:path": false,
+    "node:crypto": false,
+    "node:url": false
+  },
+  "sideEffects": false,
   "files": [
     "dist",
     "README.md",
@@ -85,7 +102,9 @@
     "build:browser": "rollup -c rollup.config.js",
     "fix-source-maps": "node ./scripts/fix-source-maps.js",
     "clean": "rimraf dist",
-    "test": "jest",
+    "test": "npm run test:node && npm run test:browser",
+    "test:node": "jest",
+    "test:browser": "vitest run",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src/**/*.ts",
@@ -97,13 +116,14 @@
     "predev": "npm run generate:factory-manifest",
     "prepublishOnly": "npm run build && npm test",
     "example:docker-rpc": "make -C examples/docker-rpc up",
-    "example:docker-rpc:down": "make -C examples/docker-rpc clean"
+    "example:docker-rpc:down": "make -C examples/docker-rpc clean",
+    "analyze:size": "size-limit"
   },
   "dependencies": {
     "@fastify/formbody": "^8.0.2",
     "@fastify/websocket": "^11.2.0",
     "@naylence/core": "^0.3.1",
-    "@naylence/factory": "^0.1.0",
+    "@naylence/factory": "file:../naylence-factory-ts/naylence-factory-0.1.0.tgz",
     "@noble/ciphers": "^2.0.1",
     "@noble/curves": "^2.0.1",
     "@noble/ed25519": "^3.0.0",
@@ -141,26 +161,42 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.4",
+    "@size-limit/preset-small-lib": "^11.1.5",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^29.5.14",
     "@types/node": "^24.6.0",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
+    "esbuild": "^0.24.0",
     "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.0.1",
     "fake-indexeddb": "^6.2.2",
+    "happy-dom": "^20.0.10",
     "jest": "^29.7.0",
     "jest-util": "^29.7.0",
+    "jsdom": "^27.0.1",
     "prettier": "^3.1.0",
     "rimraf": "^6.0.1",
     "rollup": "^4.52.3",
+    "size-limit": "^11.1.5",
     "ts-jest": "^29.4.4",
     "tslib": "^2.6.2",
     "typescript": "^5.3.2",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4",
     "ws": "^8.18.0"
   },
+  "size-limit": [
+    {
+      "name": "browser entry",
+      "path": "dist/esm/browser.js",
+      "limit": "110 KB",
+      "gzip": true,
+      "brotli": true
+    }
+  ],
   "engines": {
     "node": ">=18.0.0"
   }

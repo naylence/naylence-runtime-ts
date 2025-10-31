@@ -228,19 +228,19 @@ export const consoleTransport: LogTransport = (entry: LogEntry): void => {
 function getConsoleColor(level: LogLevel): string {
   switch (level) {
     case LogLevel.TRACE:
-      return 'color: #888';
+      return 'color: #9AA0A6';
     case LogLevel.DEBUG:
-      return 'color: #888';
+      return 'color: #50B5FF';
     case LogLevel.INFO:
-      return 'color: #000';
+      return 'color: #2E7D32; font-weight: 600';
     case LogLevel.WARNING:
-      return 'color: #ff8c00';
+      return 'color: #F9AB00; font-weight: 600';
     case LogLevel.ERROR:
-      return 'color: #ff0000';
+      return 'color: #E53935; font-weight: 600';
     case LogLevel.CRITICAL:
-      return 'color: #ff0000; font-weight: bold';
+      return 'color: #B71C1C; font-weight: 700; text-decoration: underline';
     default:
-      return 'color: #000';
+      return 'color: #37474F';
   }
 }
 

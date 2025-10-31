@@ -5,7 +5,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 
 export default defineConfig({
-  input: 'src/browser.ts',
+  input: 'dist/esm/src/browser.js',
   output: {
     file: 'dist/browser/index.js',
     format: 'umd',
@@ -37,14 +37,6 @@ export default defineConfig({
     }),
     json(),
     commonjs(),
-    typescript({
-      target: 'es2020',
-      module: 'esnext',
-      declaration: false,
-      declarationMap: false,
-      sourceMap: true,
-      outDir: 'dist/browser',
-    }),
   ],
   external: [
     'async_hooks',

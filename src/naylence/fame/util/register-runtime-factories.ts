@@ -17,7 +17,8 @@ function resolveModuleCandidates(spec: string): string[] {
   const base = spec.startsWith('./') ? `../${spec.slice(2)}` : spec;
 
   if (base.endsWith('.js')) {
-    return [base.replace(/\.js$/u, '.ts'), base];
+    // Prefer built JS artifacts to avoid browser bundlers fetching missing TS sources.
+    return [base, base.replace(/\.js$/u, '.ts')];
   }
 
   return [base];
@@ -35,7 +36,7 @@ export async function registerDefaultFactories(
 
         for (const candidate of candidates) {
           try {
-            mod = await import(candidate);
+            mod = await import(/* @vite-ignore */ candidate);
             lastError = undefined;
             break;
           } catch (error) {

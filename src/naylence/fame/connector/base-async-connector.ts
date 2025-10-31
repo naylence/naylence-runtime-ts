@@ -54,7 +54,10 @@ const logger = getLogger('naylence.fame.connector.base_async_connector');
 // Environment variables
 const ENV_VAR_FAME_FLOW_CONTROL = 'FAME_FLOW_CONTROL';
 
-const FLOW_CONTROL_ENABLED = process.env[ENV_VAR_FAME_FLOW_CONTROL] !== '0';
+const FLOW_CONTROL_ENABLED =
+  typeof process !== 'undefined' && process?.env
+    ? process.env[ENV_VAR_FAME_FLOW_CONTROL] !== '0'
+    : true;
 const FAME_MAX_MESSAGE_SIZE = 1024 * 256;
 
 // Sentinel object for stopping send loop

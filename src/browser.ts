@@ -18,6 +18,8 @@ export * from './naylence/fame/channel/index.js';
 // Storage providers that are safe for browsers (in-memory + IndexedDB)
 export * from './naylence/fame/storage/index.js';
 
+export { getNode, getCurrentNode, withNodeContextAsync, runWithNodeContext } from './naylence/fame/node/node-context-stack.js';
+
 // Connector layer exports trimmed to browser-safe components
 export {
   BaseAsyncConnector,
@@ -57,3 +59,52 @@ export {
   registerRuntimeFactories,
   type RuntimeFactoryRegistry,
 } from './naylence/fame/util/register-runtime-factories.js';
+
+// Browser-facing crypto helpers
+export {
+  hasCryptoSupport,
+  requireCryptoSupport,
+} from './naylence/fame/security/crypto/crypto-dependencies.js';
+export {
+  BrowserWrappedKeyCredentialProvider,
+  InvalidPassphraseError,
+} from './naylence/fame/security/credential/browser-wrapped-key-credential-provider.js';
+
+const isBrowserEnvironment =
+  typeof window !== 'undefined' && typeof document !== 'undefined';
+
+if (isBrowserEnvironment) {
+  type PluginModuleLoader = (
+    specifier: string
+  ) => Promise<Record<string, unknown>>;
+
+  const runtimePluginModulePromise = import('./plugin.js') as Promise<
+    Record<string, unknown>
+  >;
+
+  const globalScope = globalThis as {
+    __naylenceFactoryDynamicImporter?: PluginModuleLoader;
+  };
+
+  if (typeof globalScope.__naylenceFactoryDynamicImporter !== 'function') {
+    const loader: PluginModuleLoader = async (
+      specifier: string
+    ): Promise<Record<string, unknown>> => {
+      if (
+        specifier === '@naylence/runtime' ||
+        specifier === '@naylence/runtime/' ||
+        specifier === '@naylence/runtime/plugin' ||
+        specifier === '@naylence/runtime/plugin.js' ||
+        specifier === '@naylence/runtime/dist/esm/plugin.js'
+      ) {
+        return runtimePluginModulePromise;
+      }
+
+      return import(
+        /* @vite-ignore */ specifier
+      ) as Promise<Record<string, unknown>>;
+    };
+
+    globalScope.__naylenceFactoryDynamicImporter = loader;
+  }
+}
