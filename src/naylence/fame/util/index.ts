@@ -60,6 +60,8 @@ export * from './util.js';
 export * from './logicals.js';
 export * from './ttl-validation.js';
 
+export { normalizeEnvelopeSnapshot } from './logging-types.js';
+
 // Export types
 export type {
   Logger,
@@ -67,6 +69,7 @@ export type {
   LogProcessor,
   LogTransport,
   EnvelopeSnapshot,
+  EnvelopeSnapshotInput,
 } from './logging-types.js';
 
 export type {

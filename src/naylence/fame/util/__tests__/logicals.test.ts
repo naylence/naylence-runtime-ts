@@ -38,9 +38,15 @@ const restoreEnvValue = (key: string, value: string | undefined): void => {
 
 describe('environment helpers', () => {
   const originalFameRoot = process.env.FAME_ROOT;
+  const originalFameRootSnake = process.env.fame_root;
+  const originalFameRootCamel = process.env.fameRoot;
+  const originalFameRootPascal = process.env.FameRoot;
 
   afterEach(() => {
     restoreEnvValue('FAME_ROOT', originalFameRoot);
+    restoreEnvValue('fame_root', originalFameRootSnake);
+    restoreEnvValue('fameRoot', originalFameRootCamel);
+    restoreEnvValue('FameRoot', originalFameRootPascal);
     parseAddressComponentsMock.mockReset();
   });
 
@@ -60,6 +66,12 @@ describe('environment helpers', () => {
     } finally {
       (globalThis as any).process = originalProcess;
     }
+  });
+
+  it('prefers camelCase fame root alias when present', () => {
+    delete process.env.FAME_ROOT;
+    process.env.fameRoot = 'camel.alias.root';
+    expect(getFameRoot()).toBe('camel.alias.root');
   });
 });
 
@@ -301,6 +313,9 @@ describe('URI helpers', () => {
 
 describe('pool address helpers', () => {
   const originalNodeEnv = process.env.NODE_ENV;
+  const originalNodeEnvSnake = process.env.node_env;
+  const originalNodeEnvCamel = process.env.nodeEnv;
+  const originalNodeEnvPascal = process.env.NodeEnv;
 
   beforeEach(() => {
     parseAddressComponentsMock.mockReset();
@@ -308,6 +323,9 @@ describe('pool address helpers', () => {
 
   afterEach(() => {
     restoreEnvValue('NODE_ENV', originalNodeEnv);
+    restoreEnvValue('node_env', originalNodeEnvSnake);
+    restoreEnvValue('nodeEnv', originalNodeEnvCamel);
+    restoreEnvValue('NodeEnv', originalNodeEnvPascal);
   });
 
   it('matches pool address when participants, host, and path align', () => {
@@ -377,6 +395,21 @@ describe('pool address helpers', () => {
 
   it('suppresses debug logging in production', () => {
     process.env.NODE_ENV = 'production';
+    const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+
+    parseAddressComponentsMock.mockImplementation(() => {
+      throw new Error('parse failure');
+    });
+
+    expect(matchesPoolAddress('addr', 'pool')).toBe(false);
+    expect(debugSpy).not.toHaveBeenCalled();
+
+    debugSpy.mockRestore();
+  });
+
+  it('suppresses debug logging when production alias is set', () => {
+    delete process.env.NODE_ENV;
+    process.env.nodeEnv = 'production';
     const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
 
     parseAddressComponentsMock.mockImplementation(() => {

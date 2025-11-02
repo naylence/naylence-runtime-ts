@@ -19,14 +19,21 @@ type FetchLike = (
 ) => Promise<Response>;
 
 export interface WelcomeServiceClientOptions {
-  readonly hasUpstream: boolean;
+  readonly hasUpstream?: boolean;
+  readonly has_upstream?: boolean;
   readonly url: string;
-  readonly supportedTransports: readonly string[];
+  readonly supportedTransports?: ReadonlyArray<string>;
+  readonly supported_transports?: ReadonlyArray<string>;
   readonly authStrategyFactory?: () =>
     | Promise<AuthInjectionStrategy | undefined>
     | AuthInjectionStrategy
     | undefined;
+  readonly auth_strategy_factory?: () =>
+    | Promise<AuthInjectionStrategy | undefined>
+    | AuthInjectionStrategy
+    | undefined;
   readonly fetchImpl?: FetchLike;
+  readonly fetch_impl?: FetchLike;
 }
 
 export class WelcomeServiceClient implements AdmissionClient {
@@ -41,11 +48,26 @@ export class WelcomeServiceClient implements AdmissionClient {
   private readonly fetchImpl: FetchLike | undefined;
 
   constructor(options: WelcomeServiceClientOptions) {
-    this.hasUpstream = options.hasUpstream;
+    this.hasUpstream = options.hasUpstream ?? options.has_upstream ?? false;
     this.url = options.url;
-    this.supportedTransports = options.supportedTransports;
-    this.authStrategyFactory = options.authStrategyFactory;
-    this.fetchImpl = options.fetchImpl;
+    const transportsSource =
+      options.supportedTransports ?? options.supported_transports ?? [];
+
+    if (!Array.isArray(transportsSource)) {
+      throw new Error('supportedTransports must be provided as an array');
+    }
+
+    this.supportedTransports = transportsSource.map((value, index) => {
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        throw new Error(
+          `supportedTransports[${index}] must be a non-empty string`
+        );
+      }
+      return value;
+    });
+    this.authStrategyFactory =
+      options.authStrategyFactory ?? options.auth_strategy_factory;
+    this.fetchImpl = options.fetchImpl ?? options.fetch_impl;
   }
 
   public async hello(

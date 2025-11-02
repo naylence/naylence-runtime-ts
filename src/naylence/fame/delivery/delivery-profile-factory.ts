@@ -88,18 +88,38 @@ function normalizeDeliveryProfileConfig(
   }
 
   const candidate = config as DeliveryProfileConfig & Record<string, unknown>;
-  const profileValue =
-    typeof candidate.profile === 'string' && candidate.profile.trim().length > 0
-      ? candidate.profile
-      : typeof candidate.profile_name === 'string' &&
-          candidate.profile_name.trim().length > 0
-        ? candidate.profile_name
-        : typeof candidate.profileName === 'string' &&
-            candidate.profileName.trim().length > 0
-          ? candidate.profileName
-          : PROFILE_NAME_AT_LEAST_ONCE;
+  const profileValue = resolveProfileName(candidate);
+  candidate.profile = profileValue;
 
   return { profile: profileValue.toLowerCase() };
+}
+
+function resolveProfileName(
+  candidate: Record<string, unknown>
+): string {
+  const value = coerceProfileString(candidate.profile);
+  if (value) {
+    return value;
+  }
+
+  const legacyKeys = ['profile_name', 'profileName'] as const;
+  for (const legacyKey of legacyKeys) {
+    const legacyValue = coerceProfileString(candidate[legacyKey]);
+    if (legacyValue) {
+      candidate.profile = legacyValue;
+      return legacyValue;
+    }
+  }
+
+  return PROFILE_NAME_AT_LEAST_ONCE;
+}
+
+function coerceProfileString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function resolveProfileConfig(profileName: string): DeliveryPolicyConfig {

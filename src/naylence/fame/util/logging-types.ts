@@ -57,6 +57,51 @@ export interface EnvelopeSnapshot {
   flow_id?: string;
 }
 
+export interface EnvelopeSnapshotInput extends EnvelopeSnapshot {
+  traceId?: string;
+  flowId?: string;
+}
+
+function resolveSnapshotValue(
+  snapshot: EnvelopeSnapshotInput,
+  camelKey: 'traceId' | 'flowId',
+  snakeKey: 'trace_id' | 'flow_id'
+): string | undefined {
+  if (snapshot[camelKey] !== undefined) {
+    return snapshot[camelKey];
+  }
+  if (snapshot[snakeKey] !== undefined) {
+    return snapshot[snakeKey];
+  }
+  return undefined;
+}
+
+export function normalizeEnvelopeSnapshot(
+  snapshot: EnvelopeSnapshotInput | null | undefined
+): EnvelopeSnapshot {
+  if (!snapshot) {
+    return {};
+  }
+
+  const normalized: EnvelopeSnapshot = {};
+
+  const traceId = resolveSnapshotValue(snapshot, 'traceId', 'trace_id');
+  if (traceId !== undefined) {
+    normalized.trace_id = traceId;
+  }
+
+  if (snapshot.id !== undefined) {
+    normalized.id = snapshot.id;
+  }
+
+  const flowId = resolveSnapshotValue(snapshot, 'flowId', 'flow_id');
+  if (flowId !== undefined) {
+    normalized.flow_id = flowId;
+  }
+
+  return normalized;
+}
+
 // Logger interface that works across platforms
 export interface Logger {
   trace(event: string, ...args: any[]): void;

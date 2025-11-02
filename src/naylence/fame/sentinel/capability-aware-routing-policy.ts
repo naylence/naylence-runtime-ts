@@ -24,14 +24,51 @@ export interface CapabilityAwareRoutingPolicyOptions {
   resolveAddressByCapability?: ResolveAddressByCapability;
 }
 
+type CapabilityAwareRoutingPolicyOptionsInput =
+  | CapabilityAwareRoutingPolicyOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizeOptions(
+  options?: CapabilityAwareRoutingPolicyOptionsInput
+): CapabilityAwareRoutingPolicyOptions {
+  if (!options || typeof options !== 'object') {
+    return {};
+  }
+
+  const candidate = options as Record<string, unknown>;
+  const resolved: CapabilityAwareRoutingPolicyOptions = {
+    ...(options as CapabilityAwareRoutingPolicyOptions),
+  };
+
+  if ('load_balancing_strategy' in candidate) {
+    const strategy = candidate.load_balancing_strategy;
+    if (strategy && typeof strategy === 'object') {
+      resolved.loadBalancingStrategy = strategy as LoadBalancingStrategy;
+    }
+  }
+
+  if ('resolve_address_by_capability' in candidate) {
+    const resolver = candidate.resolve_address_by_capability;
+    if (typeof resolver === 'function') {
+      resolved.resolveAddressByCapability = resolver as ResolveAddressByCapability;
+    }
+  }
+
+  return resolved;
+}
+
 export class CapabilityAwareRoutingPolicy implements RoutingPolicy {
   private readonly loadBalancingStrategy: LoadBalancingStrategy;
   private readonly resolveAddressOverride: ResolveAddressByCapability | null;
 
-  constructor(options: CapabilityAwareRoutingPolicyOptions = {}) {
+  constructor(options: CapabilityAwareRoutingPolicyOptionsInput = {}) {
+    const normalized = normalizeOptions(options);
     this.loadBalancingStrategy =
-      options.loadBalancingStrategy ?? new HRWLoadBalancingStrategy();
-    this.resolveAddressOverride = options.resolveAddressByCapability ?? null;
+      normalized.loadBalancingStrategy ?? new HRWLoadBalancingStrategy();
+    this.resolveAddressOverride =
+      normalized.resolveAddressByCapability ?? null;
   }
 
   public async decide(

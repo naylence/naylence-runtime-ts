@@ -57,17 +57,28 @@ export class BindingStoreEntryRecord implements BindingStoreEntry {
 }
 
 export interface BindingManagerOptions {
-  hasUpstream: boolean;
-  getId: () => string;
-  getPhysicalPath: () => string;
-  getAcceptedLogicals: () => Iterable<string>;
-  forwardUpstream: ForwardUpstreamFn;
-  envelopeFactory: EnvelopeFactory;
-  deliveryTracker: DeliveryTrackerAdapter;
-  getEncryptionKeyId?: () => string | null | undefined;
-  bindingStore?: KeyValueStore<BindingStoreEntry>;
-  bindingFactory?: BindingFactory;
-  ackTimeoutMs?: number;
+  readonly hasUpstream?: boolean;
+  readonly has_upstream?: boolean;
+  readonly getId?: () => string;
+  readonly get_id?: () => string;
+  readonly getPhysicalPath?: () => string;
+  readonly get_physical_path?: () => string;
+  readonly getAcceptedLogicals?: () => Iterable<string>;
+  readonly get_accepted_logicals?: () => Iterable<string>;
+  readonly forwardUpstream?: ForwardUpstreamFn;
+  readonly forward_upstream?: ForwardUpstreamFn;
+  readonly envelopeFactory?: EnvelopeFactory;
+  readonly envelope_factory?: EnvelopeFactory;
+  readonly deliveryTracker?: DeliveryTrackerAdapter;
+  readonly delivery_tracker?: DeliveryTrackerAdapter;
+  readonly getEncryptionKeyId?: () => string | null | undefined;
+  readonly get_encryption_key_id?: () => string | null | undefined;
+  readonly bindingStore?: KeyValueStore<BindingStoreEntry>;
+  readonly binding_store?: KeyValueStore<BindingStoreEntry>;
+  readonly bindingFactory?: BindingFactory;
+  readonly binding_factory?: BindingFactory;
+  readonly ackTimeoutMs?: number;
+  readonly ack_timeout_ms?: number;
 }
 
 export interface DeliveryTrackerAdapter {
@@ -106,18 +117,70 @@ export class BindingManager {
   private readonly capabilitiesByAddress = new Map<string, Set<string>>();
 
   constructor(options: BindingManagerOptions) {
-    this.hasUpstream = options.hasUpstream;
-    this.getId = options.getId;
-    this.getPhysicalPath = options.getPhysicalPath;
-    this.getAcceptedLogicalsFn = options.getAcceptedLogicals;
-    this.forwardUpstream = options.forwardUpstream;
-    this.getEncryptionKeyId = options.getEncryptionKeyId;
-    this.bindingStore =
-      options.bindingStore ?? new InMemoryKeyValueStore<BindingStoreEntry>();
-    this.bindingFactory = options.bindingFactory ?? this.defaultBindingFactory;
-    this.envelopeFactory = options.envelopeFactory;
-    this.deliveryTracker = options.deliveryTracker;
-    this.ackTimeoutMs = options.ackTimeoutMs ?? DEFAULT_ACK_TIMEOUT_MS;
+    const hasUpstream =
+      options.hasUpstream ?? options.has_upstream ?? false;
+
+    const getId = options.getId ?? options.get_id;
+    if (!getId) {
+      throw new Error('BindingManager requires getId callback');
+    }
+
+    const getPhysicalPath = options.getPhysicalPath ?? options.get_physical_path;
+    if (!getPhysicalPath) {
+      throw new Error('BindingManager requires getPhysicalPath callback');
+    }
+
+    const getAcceptedLogicals =
+      options.getAcceptedLogicals ?? options.get_accepted_logicals;
+    if (!getAcceptedLogicals) {
+      throw new Error('BindingManager requires getAcceptedLogicals callback');
+    }
+
+    const forwardUpstream =
+      options.forwardUpstream ?? options.forward_upstream;
+    if (!forwardUpstream) {
+      throw new Error('BindingManager requires forwardUpstream function');
+    }
+
+    const envelopeFactory =
+      options.envelopeFactory ?? options.envelope_factory;
+    if (!envelopeFactory) {
+      throw new Error('BindingManager requires envelopeFactory');
+    }
+
+    const deliveryTracker =
+      options.deliveryTracker ?? options.delivery_tracker;
+    if (!deliveryTracker) {
+      throw new Error('BindingManager requires deliveryTracker');
+    }
+
+    const getEncryptionKeyId =
+      options.getEncryptionKeyId ?? options.get_encryption_key_id;
+
+    const bindingStore =
+      options.bindingStore ??
+      options.binding_store ??
+      new InMemoryKeyValueStore<BindingStoreEntry>();
+
+    const bindingFactory =
+      options.bindingFactory ??
+      options.binding_factory ??
+      ((address: FameAddress) => this.defaultBindingFactory(address));
+
+    const ackTimeoutMs =
+      options.ackTimeoutMs ?? options.ack_timeout_ms ?? DEFAULT_ACK_TIMEOUT_MS;
+
+    this.hasUpstream = hasUpstream;
+    this.getId = getId;
+    this.getPhysicalPath = getPhysicalPath;
+    this.getAcceptedLogicalsFn = getAcceptedLogicals;
+    this.forwardUpstream = forwardUpstream;
+    this.getEncryptionKeyId = getEncryptionKeyId;
+    this.bindingStore = bindingStore;
+    this.bindingFactory = bindingFactory;
+    this.envelopeFactory = envelopeFactory;
+    this.deliveryTracker = deliveryTracker;
+    this.ackTimeoutMs = ackTimeoutMs;
   }
 
   getBinding(address: FameAddress | string): Binding | undefined {

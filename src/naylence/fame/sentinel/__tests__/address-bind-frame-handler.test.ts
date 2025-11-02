@@ -387,6 +387,65 @@ describe('AddressBindFrameHandler', () => {
       );
     });
 
+    it('accepts snake_case context and route manager fields for downstream binds', async () => {
+      const address = formatAddress('svc', '/snake');
+      const addressKey = address.toString();
+      const downstreamRoutes: Record<string, unknown> = {
+        'segment-1': {},
+      };
+      const downstreamRouteStore = new Map([
+        [
+          'segment-1',
+          {
+            assigned_path: '/snake/physical',
+          },
+        ],
+      ]);
+      const downstreamAddressRoutes: Record<string, any> = {};
+      const routeManager: RouteManagerLike = {
+        downstream_routes: downstreamRoutes,
+        downstream_route_store: downstreamRouteStore,
+        downstream_addresses_routes: downstreamAddressRoutes,
+      };
+
+      const {
+        handler,
+        forwardToRoute,
+        forwardToPeers,
+        forwardUpstream,
+      } = createTestContext({
+        routeManager,
+      });
+
+      const envelope = createBindEnvelope(address);
+      const frameAny = envelope.frame as Record<string, unknown>;
+      delete frameAny.encryptionKeyId;
+      frameAny.encryption_key_id = 'snake-key';
+
+      const context = {
+        origin_type: DeliveryOriginType.DOWNSTREAM,
+        from_system_id: 'segment-1',
+        meta: {},
+        security: undefined,
+      } as unknown as FameDeliveryContext;
+
+      await handler.acceptAddressBind(envelope, context);
+
+      expect(downstreamAddressRoutes[addressKey]).toMatchObject({
+        segment: 'segment-1',
+        physicalPath: '/snake/physical',
+        encryptionKeyId: 'snake-key',
+      });
+      expect(forwardToRoute).toHaveBeenCalledTimes(1);
+      expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+      expect(forwardToPeers).toHaveBeenCalledWith(
+        envelope,
+        undefined,
+        ['segment-1'],
+        context
+      );
+    });
+
     it('tracks pool bindings for wildcard path addresses', async () => {
       const parseAddressSpy = jest
         .spyOn(core, 'parseAddress')
@@ -698,6 +757,37 @@ describe('AddressBindFrameHandler', () => {
       expect(legacyRoutes.has(addressKey)).toBe(false);
 
       expect(forwardUpstream).toHaveBeenCalledWith(envelope, context);
+      expect(forwardToRoute).toHaveBeenCalledTimes(1);
+    });
+
+    it('removes snake_case route containers on downstream unbinds', async () => {
+      const address = formatAddress('svc', '/snake');
+      const addressKey = address.toString();
+      const downstreamRoutes: Record<string, { segment: string }> = {
+        [addressKey]: { segment: 'segment-1' },
+      };
+      const legacyRoutes: Record<string, unknown> = {
+        [addressKey]: { legacy: true },
+      };
+      const routeManager: RouteManagerLike = {
+        downstream_addresses_routes: downstreamRoutes,
+        downstream_addresses_legacy: legacyRoutes,
+      };
+
+      const { handler, forwardToRoute } = createTestContext({ routeManager });
+
+      const envelope = createUnbindEnvelope(address);
+      const context = {
+        origin_type: DeliveryOriginType.DOWNSTREAM,
+        from_system_id: 'segment-1',
+        meta: {},
+        security: undefined,
+      } as unknown as FameDeliveryContext;
+
+      await handler.acceptAddressUnbind(envelope, context);
+
+      expect(downstreamRoutes[addressKey]).toBeUndefined();
+      expect(legacyRoutes[addressKey]).toBeUndefined();
       expect(forwardToRoute).toHaveBeenCalledTimes(1);
     });
 

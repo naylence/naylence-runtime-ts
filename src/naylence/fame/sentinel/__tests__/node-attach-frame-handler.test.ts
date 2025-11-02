@@ -5,6 +5,7 @@ import {
   type FameDeliveryContext,
   type FameEnvelope,
   type NodeAttachFrame,
+  type Stickiness,
 } from '@naylence/core';
 
 import { NodeAttachFrameHandler } from '../node-attach-frame-handler.js';
@@ -204,6 +205,95 @@ describe('NodeAttachFrameHandler', () => {
 
     expect(routeManager._pending_routes.has('child-node')).toBe(false);
     expect(routeManager._pending_route_metadata.has('child-node')).toBe(false);
+  });
+
+  it('accepts snake_case attach frames and context aliases', async () => {
+    const connector = createConnector();
+    const routingNode = createRoutingNode();
+    const routeManager = new RouteManager({
+      deliver: jest.fn(async () => undefined),
+      getId: () => 'parent-node',
+    });
+
+    routeManager._pending_routes.set('child-alias', {
+      connector,
+      attached: { set: jest.fn(), wait: jest.fn() },
+      buffer: [],
+    });
+    routeManager._pending_route_metadata.set('child-alias', {
+      type: 'websocket',
+      durable: true,
+    });
+
+    const validator = {
+      validateKeys: jest.fn(async () => []),
+    } as unknown as AttachmentKeyValidator;
+
+    const stickinessManager: LoadBalancerStickinessManager = {
+      negotiate: jest.fn(
+        () => ({ supported_modes: ['aft'], version: 2 }) as unknown as Stickiness
+      ),
+      getStickyReplicaSegment: jest.fn(() => null),
+    } as unknown as LoadBalancerStickinessManager;
+
+    const handler = new NodeAttachFrameHandler({
+      routingNode,
+      routeManager,
+      attachmentKeyValidator: validator,
+      stickinessManager,
+    });
+
+    const frame = {
+      type: 'node_attach',
+      origin_type: 'downstream',
+      system_id: 'child-alias',
+      instance_id: 'child-instance',
+      assigned_path: '/alias/path',
+      callback_grants: [{ type: 'webhook' }],
+      keys: [{ kid: 'alias-key' }],
+      stickiness: { supported_modes: ['aft'], version: 1 },
+    } as unknown as NodeAttachFrame;
+
+    const envelope = {
+      id: 'env-alias',
+      corrId: 'corr-alias',
+      frame,
+    } as unknown as FameEnvelope;
+
+    const context = {
+      origin_type: 'downstream',
+      from_system_id: 'child-alias',
+      from_connector: connector,
+      expected_response_type: FameResponseType.NONE,
+    } as unknown as FameDeliveryContext;
+
+    await handler.acceptNodeAttach(envelope, context);
+
+    expect(context.originType).toBe(DeliveryOriginType.DOWNSTREAM);
+    expect((context as any).origin_type).toBe(DeliveryOriginType.DOWNSTREAM);
+    expect(context.fromConnector).toBe(connector);
+    expect((context as any).from_connector).toBe(connector);
+    expect(context.fromSystemId).toBe('child-alias');
+    expect((context as any).from_system_id).toBe('child-alias');
+
+    expect(routeManager.downstreamRoutes.get('child-alias')).toBe(connector);
+    const storedRoutes = await routeManager._downstream_route_store.list();
+    expect(storedRoutes['child-alias']).toMatchObject({
+      assignedPath: '/alias/path',
+      connectorConfig: expect.objectContaining({ durable: true }),
+      callbackGrants: [{ type: 'webhook' }],
+    });
+
+    const ackEnvelope = (connector.send as jest.Mock).mock
+      .calls[0][0] as FameEnvelope;
+    const ackFrame = ackEnvelope.frame as any;
+    expect(ackFrame.assignedPath).toBe('/alias/path');
+    expect(ackFrame.assigned_path).toBe('/alias/path');
+    expect(ackFrame.routing_epoch).toBe('epoch-1');
+    expect(ackFrame.stickiness.supportedModes).toEqual(['aft']);
+    expect(ackFrame.stickiness.supported_modes).toEqual(['aft']);
+    expect(ackFrame.stickiness.version).toBe(2);
+    expect(ackEnvelope.corrId).toBe('corr-alias');
   });
 
   it('retains routing epoch when rebind occurs', async () => {

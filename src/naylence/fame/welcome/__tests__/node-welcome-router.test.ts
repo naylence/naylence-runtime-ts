@@ -4,6 +4,7 @@ import { createFameEnvelope, type FameEnvelope } from '@naylence/core';
 import type { NodeHelloFrame, NodeWelcomeFrame } from '@naylence/core';
 import type { WelcomeService } from '../welcome-service.js';
 import { nodeWelcomeRouter } from '../node-welcome-router.js';
+import type { NodeWelcomeRouterOptions } from '../node-welcome-router.js';
 import type { Authorizer } from '../../security/auth/authorizer.js';
 
 function createHelloEnvelope(
@@ -109,6 +110,71 @@ describe('nodeWelcomeRouter', () => {
 
     expect(response.statusCode).toBe(422);
     expect(service.handleHello).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
+  it('accepts snake_case welcome_service option', async () => {
+    const app = fastify();
+
+    const welcomeFrame: NodeWelcomeFrame = {
+      type: 'NodeWelcome',
+      systemId: 'assigned-1',
+      instanceId: 'instance-123',
+      assignedPath: '/fabric/node-1',
+    };
+
+    const service: WelcomeService = {
+      authorizer: null,
+      handleHello: jest.fn(async () => welcomeFrame),
+    };
+
+    await app.register(nodeWelcomeRouter, {
+      welcome_service: service,
+    } as unknown as NodeWelcomeRouterOptions);
+    await app.ready();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/fame/v1/welcome/hello',
+      payload: createHelloEnvelope(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(service.handleHello).toHaveBeenCalled();
+
+    await app.close();
+  });
+
+  it('accepts camelCase routePrefix alias', async () => {
+    const app = fastify();
+
+    const welcomeFrame: NodeWelcomeFrame = {
+      type: 'NodeWelcome',
+      systemId: 'assigned-1',
+      instanceId: 'instance-123',
+      assignedPath: '/fabric/node-1',
+    };
+
+    const service: WelcomeService = {
+      authorizer: null,
+      handleHello: jest.fn(async () => welcomeFrame),
+    };
+
+    await app.register(nodeWelcomeRouter, {
+      welcomeService: service,
+      routePrefix: '/custom/welcome',
+    } as NodeWelcomeRouterOptions);
+    await app.ready();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/custom/welcome/hello',
+      payload: createHelloEnvelope(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(service.handleHello).toHaveBeenCalled();
 
     await app.close();
   });

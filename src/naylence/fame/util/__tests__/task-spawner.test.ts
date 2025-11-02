@@ -221,6 +221,90 @@ describe('TaskSpawner', () => {
     });
   });
 
+  describe('Option Aliases', () => {
+    test('should respect max_concurrent alias', async () => {
+      const aliasSpawner = new TaskSpawner({ max_concurrent: 1 });
+
+      try {
+        aliasSpawner.spawn(async () => delay(50), { name: 'limited-task' });
+
+        expect(() => {
+          aliasSpawner.spawn(async () => delay(50), { name: 'extra-task' });
+        }).toThrow('Task limit reached');
+      } finally {
+        await aliasSpawner.shutdownTasks({
+          gracePeriod: 10,
+          cancelHanging: true,
+          joinTimeout: 10,
+        });
+      }
+    });
+
+    test('should respect default_timeout alias', async () => {
+      const aliasSpawner = new TaskSpawner({ default_timeout: 10 });
+
+      try {
+        const timedTask = aliasSpawner.spawn(async () => delay(100), {
+          name: 'timed-task',
+        });
+
+        await expect(timedTask.promise).rejects.toThrow(TaskTimeoutError);
+      } finally {
+        await aliasSpawner.shutdownTasks({
+          gracePeriod: 10,
+          cancelHanging: true,
+          joinTimeout: 10,
+        });
+      }
+    });
+
+    test('should respect auto_cleanup alias', async () => {
+      const aliasSpawner = new TaskSpawner({ auto_cleanup: false });
+
+      try {
+        const stickyTask = aliasSpawner.spawn(async () => {
+          await delay(10);
+          return 'done';
+        }, { name: 'sticky-task' });
+
+        await expect(stickyTask.promise).resolves.toBe('done');
+        expect(aliasSpawner.taskCount).toBe(1);
+      } finally {
+        await aliasSpawner.shutdownTasks({
+          gracePeriod: 10,
+          cancelHanging: true,
+          joinTimeout: 10,
+        });
+      }
+    });
+
+    test('should accept snake_case spawn options', async () => {
+      const task = spawner.spawn(async () => delay(100), {
+        task_name: 'aliased-task',
+        task_timeout: 10,
+      });
+
+      await expect(task.promise).rejects.toThrow(TaskTimeoutError);
+      expect(task.name).toBe('aliased-task');
+    });
+
+    test('should accept snake_case shutdown options', async () => {
+      const hangingTask = spawner.spawn(async (signal) => delay(500, signal), {
+        name: 'shutdown-alias-task',
+      });
+      const capturedResult = hangingTask.promise.catch((error) => error);
+
+      await spawner.shutdownTasks({
+        grace_period: 10,
+        cancel_hanging: true,
+        join_timeout: 20,
+      });
+
+      await expect(capturedResult).resolves.toBeInstanceOf(TaskCancelledError);
+      expect(spawner.taskCount).toBe(0);
+    });
+  });
+
   describe('Graceful Shutdown', () => {
     test('should wait for tasks to complete during shutdown', async () => {
       const results: string[] = [];

@@ -75,16 +75,16 @@ export function parseConfigString(raw: string): Record<string, unknown> {
   let jsonError: unknown;
 
   try {
-    const parsed = parseJson(raw);
-    configLogger.debug('loaded_fame_config_from_env_var_json');
+  const parsed = parseJson(raw);
+  configLogger.debug('loaded_fame_config_from_env_var_json');
     return parsed;
   } catch (error) {
     jsonError = error;
   }
 
   try {
-    const parsed = parseYamlContent(raw);
-    configLogger.debug('loaded_fame_config_from_env_var_yaml');
+  const parsed = parseYamlContent(raw);
+  configLogger.debug('loaded_fame_config_from_env_var_yaml');
     return parsed;
   } catch (yamlError) {
     configLogger.error('fame_config_env_invalid', {

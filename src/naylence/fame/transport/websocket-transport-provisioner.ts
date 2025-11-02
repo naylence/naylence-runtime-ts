@@ -29,6 +29,7 @@ export interface WebSocketTransportProvisionerConfig
   url: string;
   ttlSec?: number;
   ttl_sec?: number;
+  ttlSEC?: number;
 }
 
 export class WebSocketTransportProvisioner implements TransportProvisioner {
@@ -138,7 +139,17 @@ function normalizeConfig(
     );
   }
 
-  const ttlCandidate = candidate.ttlSec ?? candidate.ttl_sec;
+  const ttlCandidate = (() => {
+    const raw = candidate.ttlSec ?? candidate.ttl_sec ?? candidate.ttlSEC;
+    if (typeof raw === 'number') {
+      return raw;
+    }
+    if (typeof raw === 'string') {
+      const parsed = Number(raw.trim());
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  })();
 
   const options: WebSocketTransportProvisionerOptions = {
     url: urlValue.trim(),

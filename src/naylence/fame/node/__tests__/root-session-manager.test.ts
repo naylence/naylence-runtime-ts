@@ -125,6 +125,44 @@ afterEach(async () => {
 });
 
 describe('RootSessionManager', () => {
+  it('supports snake_case constructor options', () => {
+    const node = createNode();
+    const admissionClient = createAdmissionClient();
+    const onWelcome = jest.fn();
+    const onEpochChange = jest.fn();
+    const onAdmissionFailed = jest.fn();
+
+    const manager = new RootSessionManager({
+      node,
+      admission_client: admissionClient,
+      requested_logicals: ['alpha', 42],
+      on_welcome: onWelcome,
+      on_epoch_change: onEpochChange,
+      on_admission_failed: onAdmissionFailed,
+      enable_continuous_refresh: 'false',
+    } as unknown as RootSessionManagerOptions);
+
+    createdManagers.push(manager);
+
+    const internals = manager as unknown as {
+      node: NodeLike;
+      admissionClient: AdmissionClient;
+      requestedLogicals: string[];
+      onWelcome: typeof onWelcome;
+      onEpochChange?: typeof onEpochChange;
+      onAdmissionFailed?: typeof onAdmissionFailed;
+      enableContinuousRefresh: boolean;
+    };
+
+    expect(internals.node).toBe(node);
+    expect(internals.admissionClient).toBe(admissionClient);
+    expect(internals.requestedLogicals).toEqual(['alpha']);
+    expect(internals.onWelcome).toBe(onWelcome);
+    expect(internals.onEpochChange).toBe(onEpochChange);
+    expect(internals.onAdmissionFailed).toBe(onAdmissionFailed);
+    expect(internals.enableContinuousRefresh).toBe(false);
+  });
+
   describe('createForRootSentinel', () => {
     it('provides default welcome and failure handlers', async () => {
       const manager = RootSessionManager.createForRootSentinel(

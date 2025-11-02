@@ -79,13 +79,239 @@ interface SecurityManagerOverrides {
   cryptoProvider?: CryptoProvider | null;
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function coerceStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function mergeStringArrays(
+  primary: string[],
+  alias: unknown
+): string[] {
+  const base = [...primary];
+  const seen = new Set(base);
+  const aliasValues = coerceStringArray(alias);
+
+  for (const entry of aliasValues) {
+    if (!seen.has(entry)) {
+      seen.add(entry);
+      base.push(entry);
+    }
+  }
+
+  return base;
+}
+
+function mergeOptionalStringArray(
+  primary: string[] | undefined,
+  alias: unknown
+): string[] | undefined {
+  const base = primary ? [...primary] : [];
+  const seen = new Set(base);
+  const aliasValues = coerceStringArray(alias);
+
+  for (const entry of aliasValues) {
+    if (!seen.has(entry)) {
+      seen.add(entry);
+      base.push(entry);
+    }
+  }
+
+  return base.length ? base : undefined;
+}
+
+function mergeEnvContext(
+  primary: Record<string, unknown>,
+  alias: unknown
+): Record<string, unknown> {
+  const aliasRecord = isPlainRecord(alias) ? alias : undefined;
+  if (!aliasRecord) {
+    return { ...primary };
+  }
+
+  return { ...aliasRecord, ...primary };
+}
+
+function mergeUnknownArray(primary: unknown[], alias: unknown): unknown[] {
+  if (primary.length) {
+    if (Array.isArray(alias) && alias.length) {
+      return [...primary, ...alias];
+    }
+    return [...primary];
+  }
+
+  if (Array.isArray(alias)) {
+    return [...alias];
+  }
+
+  return [];
+}
+
+function coerceTransportListenerConfigs(
+  value: unknown
+): TransportListenerConfig[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((candidate): candidate is TransportListenerConfig =>
+      Boolean(
+        candidate &&
+          typeof candidate === 'object' &&
+          typeof (candidate as { type?: unknown }).type === 'string'
+      )
+    )
+    .map((candidate) => ({ ...(candidate as TransportListenerConfig) }));
+}
+
+function pickOption<T>(
+  primary: T | null | undefined,
+  record: Record<string, unknown>,
+  ...aliases: string[]
+): T | null | undefined {
+  if (primary !== undefined && primary !== null) {
+    return primary;
+  }
+
+  for (const alias of aliases) {
+    if (alias in record) {
+      const value = record[alias] as T | null | undefined;
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+
+  return primary ?? null;
+}
+
+function pickString(
+  primary: string | null | undefined,
+  record: Record<string, unknown>,
+  ...aliases: string[]
+): string | null {
+  const candidate = pickOption<string>(primary, record, ...aliases);
+  return typeof candidate === 'string' ? candidate : null;
+}
+
 export async function makeCommonOptions(
-  config: FameNodeConfig
+  config: FameNodeConfig,
+  rawConfig?: Record<string, unknown> | null
 ): Promise<CommonNodeComponents> {
-  const expressionOptions = createExpressionOptions(config.envContext);
+  const configRecord = config as FameNodeConfig & Record<string, unknown>;
+  const aliasRecord =
+    isPlainRecord(rawConfig) && rawConfig !== configRecord
+      ? {
+          ...(rawConfig as Record<string, unknown>),
+          ...configRecord,
+        }
+      : configRecord;
+
+  const requestedLogicals = mergeStringArrays(
+    config.requestedLogicals,
+    aliasRecord.requested_logicals ?? configRecord.requested_logicals
+  );
+
+  const requestedCapabilitiesMerged = mergeOptionalStringArray(
+    config.requestedCapabilities,
+    aliasRecord.requested_capabilities ?? configRecord.requested_capabilities
+  );
+
+  const envContext = mergeEnvContext(
+    config.envContext,
+    aliasRecord.env_context ?? configRecord.env_context
+  );
+
+  const services = mergeUnknownArray(
+    config.services,
+    aliasRecord.service_configs ?? configRecord.service_configs
+  );
+
+  const listeners = config.listeners.length
+    ? [...config.listeners]
+    : coerceTransportListenerConfigs(
+        (aliasRecord.transport_listeners ?? configRecord.transport_listeners) ??
+          aliasRecord.listener_configs ??
+          configRecord.listener_configs
+      );
+
+  const storageConfig = pickOption(
+    config.storage ?? null,
+    aliasRecord,
+    'storage_provider',
+    'storage_config'
+  );
+
+  const admissionConfig = pickOption(
+    config.admission ?? null,
+    aliasRecord,
+    'admission_client'
+  );
+
+  const attachmentKeyValidatorConfig = pickOption(
+    config.attachmentKeyValidator ?? null,
+    aliasRecord,
+    'attachment_key_validator'
+  );
+
+  const keyStoreConfig = pickOption(
+    config.keyStore ?? null,
+    aliasRecord,
+    'key_store'
+  );
+
+  const deliveryConfig = pickOption(
+    config.delivery ?? null,
+    aliasRecord,
+    'delivery_policy'
+  );
+
+  const telemetryConfig = pickOption(
+    config.telemetry ?? null,
+    aliasRecord,
+    'trace_emitter',
+    'telemetry_config'
+  );
+
+  const securityConfig = pickOption(
+    config.security ?? null,
+    aliasRecord,
+    'security_manager',
+    'security_profile'
+  );
+
+  const publicUrl =
+    pickString(config.publicUrl ?? null, aliasRecord, 'public_url') ?? null;
+
+  const directParentUrl =
+    pickString(
+      config.directParentUrl ?? null,
+      aliasRecord,
+      'direct_parent_url'
+    ) ?? null;
+
+  const hasParentFlag =
+    config.hasParent || Boolean(aliasRecord.has_parent ?? false);
+
+  const systemIdOverride = pickString(
+    config.id ?? null,
+    aliasRecord,
+    'system_id',
+    'node_id'
+  );
+
+  const expressionOptions = createExpressionOptions(envContext);
 
   const storageProvider = await resolveStorageProvider(
-    config.storage ?? null,
+    storageConfig ?? null,
     expressionOptions
   );
   const nodeMetaStore = await storageProvider.getKeyValueStore<NodeMetaRecord>(
@@ -95,11 +321,14 @@ export async function makeCommonOptions(
   const nodeMeta = await nodeMetaStore.get('self');
 
   const admissionClient = await resolveAdmissionClient(
-    config.admission ?? null,
+    admissionConfig ?? null,
     expressionOptions
   );
-  const requestedLogicals = [...config.requestedLogicals];
-  const hasParent = determineHasParent(config, admissionClient);
+  const hasParent = determineHasParent(
+    hasParentFlag,
+    directParentUrl,
+    admissionClient
+  );
 
   const replicaStickinessManager = await resolveReplicaStickinessManager(
     hasParent,
@@ -108,17 +337,17 @@ export async function makeCommonOptions(
   );
 
   const attachmentKeyValidator = await resolveAttachmentKeyValidator(
-    config.attachmentKeyValidator ?? null,
+    attachmentKeyValidatorConfig ?? null,
     expressionOptions
   );
   const keyStore = await resolveKeyStore(
-    config.keyStore ?? null,
+    keyStoreConfig ?? null,
     storageProvider,
     expressionOptions
   );
 
   const deliveryPolicy = await resolveDeliveryPolicy(
-    config.delivery ?? null,
+    deliveryConfig ?? null,
     expressionOptions
   );
 
@@ -128,13 +357,13 @@ export async function makeCommonOptions(
   addEventListener(deliveryTracker, eventListeners);
 
   const transportListeners = await resolveTransportListeners(
-    config.listeners,
+    listeners,
     eventListeners,
     expressionOptions
   );
 
   const traceEmitter = await resolveTraceEmitter(
-    config.telemetry ?? null,
+    telemetryConfig ?? null,
     expressionOptions
   );
   if (traceEmitter) {
@@ -150,12 +379,12 @@ export async function makeCommonOptions(
   }
 
   const cryptoProvider = await resolveCryptoProvider(
-    config.security ?? null,
+    securityConfig ?? null,
     expressionOptions
   );
 
   const securityManager = await resolveSecurityManager(
-    config.security ?? null,
+    securityConfig ?? null,
     {
       keyStore,
       keyValidator: attachmentKeyValidator,
@@ -177,7 +406,7 @@ export async function makeCommonOptions(
     );
 
   const systemId =
-    config.id ??
+    systemIdOverride ??
     nodeMeta?.id ??
     (await generateIdAsync({ mode: 'fingerprint' }));
 
@@ -188,18 +417,16 @@ export async function makeCommonOptions(
 
   const attachClient = new DefaultNodeAttachClient(attachClientOptions);
 
-  const requestedCapabilities = config.requestedCapabilities
-    ? [...config.requestedCapabilities]
-    : undefined;
-
   return {
     systemId,
     hasParent,
     requestedLogicals,
-    ...(requestedCapabilities ? { requestedCapabilities } : {}),
-    serviceConfigs: [...config.services],
-    envContext: { ...config.envContext },
-    publicUrl: config.publicUrl ?? null,
+    ...(requestedCapabilitiesMerged && requestedCapabilitiesMerged.length
+      ? { requestedCapabilities: requestedCapabilitiesMerged }
+      : {}),
+    serviceConfigs: [...services],
+    envContext: { ...envContext },
+    publicUrl,
     storageProvider,
     nodeMetaStore,
     bindingStore,
@@ -259,13 +486,14 @@ async function resolveAdmissionClient(
 }
 
 function determineHasParent(
-  config: FameNodeConfig,
+  hasParentFlag: boolean,
+  directParentUrl: string | null,
   admissionClient: AdmissionClient | null
 ): boolean {
-  if (config.hasParent) {
+  if (hasParentFlag) {
     return true;
   }
-  if (config.directParentUrl) {
+  if (directParentUrl) {
     return true;
   }
   return Boolean(admissionClient?.hasUpstream);

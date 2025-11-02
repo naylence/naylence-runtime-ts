@@ -4,14 +4,70 @@ import { TokenProviderFactory } from './token-provider-factory.js';
 
 export interface QueryParamAuthInjectionStrategyOptions {
   type?: 'QueryParamAuth';
+  tokenProvider?:
+    | QueryParamAuthInjectionStrategyConfig['tokenProvider']
+    | null;
+  token_provider?:
+    | QueryParamAuthInjectionStrategyConfig['tokenProvider']
+    | null;
+  paramName?: string;
+  param_name?: string;
+  param?: string;
+}
+
+interface NormalizedQueryParamAuthInjectionStrategyOptions {
   tokenProvider: QueryParamAuthInjectionStrategyConfig['tokenProvider'];
   paramName: string;
 }
 
+function normalizeOptions(
+  options: QueryParamAuthInjectionStrategyOptions | null | undefined
+): NormalizedQueryParamAuthInjectionStrategyOptions {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError(
+      'QueryParamAuthInjectionStrategy options must be an object'
+    );
+  }
+
+  const candidate = options as QueryParamAuthInjectionStrategyOptions &
+    Record<string, unknown>;
+  const type =
+    typeof candidate.type === 'string'
+      ? candidate.type
+      : 'QueryParamAuth';
+  if (type !== 'QueryParamAuth') {
+    throw new Error(
+      `QueryParamAuthInjectionStrategy expects type "QueryParamAuth", got "${type ?? 'undefined'}"`
+    );
+  }
+
+  const tokenProvider =
+    candidate.tokenProvider ?? candidate.token_provider ?? null;
+  if (!tokenProvider) {
+    throw new Error(
+      'QueryParamAuthInjectionStrategy requires a tokenProvider configuration'
+    );
+  }
+
+  const paramCandidate =
+    candidate.paramName ?? candidate.param_name ?? candidate.param;
+  const paramName =
+    typeof paramCandidate === 'string' && paramCandidate.trim().length > 0
+      ? paramCandidate.trim()
+      : 'token';
+
+  return {
+    tokenProvider,
+    paramName,
+  };
+}
+
 export class QueryParamAuthInjectionStrategy implements AuthInjectionStrategy {
-  public constructor(
-    private readonly options: QueryParamAuthInjectionStrategyOptions
-  ) {}
+  private readonly options: NormalizedQueryParamAuthInjectionStrategyOptions;
+
+  public constructor(options: QueryParamAuthInjectionStrategyOptions) {
+    this.options = normalizeOptions(options);
+  }
 
   public async apply(_connector: unknown): Promise<void> {
     // Query parameter strategies modify the URL at connection time only

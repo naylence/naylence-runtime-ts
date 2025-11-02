@@ -56,11 +56,23 @@ type DownstreamLegacyMapLike =
 
 export interface RouteManagerLike {
   downstreamRoutes?: RouteRegistryLike;
+  downstream_routes?: RouteRegistryLike;
+  _downstream_routes?: RouteRegistryLike;
+  peerRoutes?: RouteRegistryLike;
+  _peerRoutes?: RouteRegistryLike;
   _peer_routes?: RouteRegistryLike;
   _downstream_addresses_routes?: AddressRouteMapLike;
+  downstreamAddressesRoutes?: AddressRouteMapLike;
+  downstream_addresses_routes?: AddressRouteMapLike;
   _peer_addresses_routes?: PeerRouteMapLike;
+  peerAddressesRoutes?: PeerRouteMapLike;
+  peer_addresses_routes?: PeerRouteMapLike;
   _downstream_route_store?: DownstreamRouteStoreLike;
+  downstreamRouteStore?: DownstreamRouteStoreLike;
+  downstream_route_store?: DownstreamRouteStoreLike;
   _downstream_addresses_legacy?: DownstreamLegacyMapLike;
+  downstreamAddressesLegacy?: DownstreamLegacyMapLike;
+  downstream_addresses_legacy?: DownstreamLegacyMapLike;
 }
 
 export interface PoolKey {
@@ -70,6 +82,105 @@ export interface PoolKey {
 
 const logger = getLogger('naylence.fame.sentinel.address_bind_frame_handler');
 const RESERVED_ADDRESS_NAMES = new Set(['__sys__', '__rpc__']);
+
+function pickManagerField<T>(
+  manager: RouteManagerLike,
+  keys: string[]
+): T | undefined {
+  const record = manager as Record<string, unknown>;
+  for (const key of keys) {
+    if (key in record) {
+      const value = record[key];
+      if (value !== undefined && value !== null) {
+        return value as T;
+      }
+    }
+  }
+  return undefined;
+}
+
+function resolveDownstreamRoutes(
+  manager: RouteManagerLike
+): RouteRegistryLike | undefined {
+  return pickManagerField<RouteRegistryLike>(manager, [
+    'downstreamRoutes',
+    'downstream_routes',
+    '_downstream_routes',
+  ]);
+}
+
+function resolvePeerRoutes(
+  manager: RouteManagerLike
+): RouteRegistryLike | undefined {
+  return pickManagerField<RouteRegistryLike>(manager, [
+    '_peer_routes',
+    'peerRoutes',
+    '_peerRoutes',
+  ]);
+}
+
+function resolveDownstreamAddressRoutes(
+  manager: RouteManagerLike
+): AddressRouteMapLike | undefined {
+  return pickManagerField<AddressRouteMapLike>(manager, [
+    '_downstream_addresses_routes',
+    'downstreamAddressesRoutes',
+    'downstream_addresses_routes',
+  ]);
+}
+
+function resolvePeerAddressRoutes(
+  manager: RouteManagerLike
+): PeerRouteMapLike | undefined {
+  return pickManagerField<PeerRouteMapLike>(manager, [
+    '_peer_addresses_routes',
+    'peerAddressesRoutes',
+    'peer_addresses_routes',
+  ]);
+}
+
+function resolveDownstreamRouteStore(
+  manager: RouteManagerLike
+): DownstreamRouteStoreLike | undefined {
+  return pickManagerField<DownstreamRouteStoreLike>(manager, [
+    '_downstream_route_store',
+    'downstreamRouteStore',
+    'downstream_route_store',
+  ]);
+}
+
+function resolveDownstreamLegacyRoutes(
+  manager: RouteManagerLike
+): DownstreamLegacyMapLike | undefined {
+  return pickManagerField<DownstreamLegacyMapLike>(manager, [
+    '_downstream_addresses_legacy',
+    'downstreamAddressesLegacy',
+    'downstream_addresses_legacy',
+  ]);
+}
+
+function getContextOriginType(
+  context: FameDeliveryContext | undefined
+): DeliveryOriginType | null {
+  if (!context) {
+    return null;
+  }
+  const typed = context as FameDeliveryContext & {
+    origin_type?: DeliveryOriginType | null;
+  };
+  return typed.originType ?? typed.origin_type ?? null;
+}
+
+function getEncryptionKeyIdFromFrame(frame: AddressBindFrame): string | null {
+  const typed = frame as AddressBindFrame & {
+    encryption_key_id?: string | null;
+  };
+  const candidate = typed.encryptionKeyId ?? typed.encryption_key_id ?? null;
+  if (typeof candidate === 'string' && candidate.length) {
+    return candidate;
+  }
+  return null;
+}
 
 function hasRoute(container: RouteRegistryLike, key: string): boolean {
   if (!container) {
@@ -238,7 +349,9 @@ export class AddressBindFrameHandler {
     envelope: FameEnvelope,
     context: FameDeliveryContext | undefined
   ): Promise<void> {
-    if (!context || !context.originType) {
+    const originType = getContextOriginType(context);
+
+    if (!originType) {
       throw new Error(
         'AddressBind handling requires delivery context with originType'
       );
@@ -256,18 +369,20 @@ export class AddressBindFrameHandler {
       return;
     }
 
+    const downstreamRoutes = resolveDownstreamRoutes(this.routeManager);
     if (
-      context.originType === DeliveryOriginType.DOWNSTREAM &&
-      !hasRoute(this.routeManager.downstreamRoutes, sourceSystemId)
+      originType === DeliveryOriginType.DOWNSTREAM &&
+      !hasRoute(downstreamRoutes, sourceSystemId)
     ) {
       throw new Error(
         `Cannot accept address bind from unknown downstream system ${sourceSystemId}`
       );
     }
 
+    const peerRoutes = resolvePeerRoutes(this.routeManager);
     if (
-      context.originType === DeliveryOriginType.PEER &&
-      !hasRoute(this.routeManager._peer_routes, sourceSystemId)
+      originType === DeliveryOriginType.PEER &&
+      !hasRoute(peerRoutes, sourceSystemId)
     ) {
       throw new Error(
         `Cannot accept address bind from unknown peer system ${sourceSystemId}`
@@ -333,9 +448,9 @@ export class AddressBindFrameHandler {
     } else {
       let physicalPath: string | null = null;
 
-      if (context.originType === DeliveryOriginType.DOWNSTREAM) {
+      if (originType === DeliveryOriginType.DOWNSTREAM) {
         const routeEntry = await getDownstreamRouteEntry(
-          this.routeManager._downstream_route_store,
+          resolveDownstreamRouteStore(this.routeManager),
           sourceSystemId
         );
         physicalPath = extractAssignedPath(routeEntry);
@@ -347,19 +462,20 @@ export class AddressBindFrameHandler {
       if (physicalPath) {
         routeInfo.physicalPath = physicalPath;
       }
-      if (frame.encryptionKeyId) {
-        routeInfo.encryptionKeyId = frame.encryptionKeyId;
+      const encryptionKeyId = getEncryptionKeyIdFromFrame(frame);
+      if (encryptionKeyId) {
+        routeInfo.encryptionKeyId = encryptionKeyId;
       }
 
-      if (context.originType === DeliveryOriginType.DOWNSTREAM) {
+      if (originType === DeliveryOriginType.DOWNSTREAM) {
         setAddressRoute(
-          this.routeManager._downstream_addresses_routes,
+          resolveDownstreamAddressRoutes(this.routeManager),
           addressStr,
           routeInfo
         );
-      } else if (context.originType === DeliveryOriginType.PEER) {
+      } else if (originType === DeliveryOriginType.PEER) {
         setPeerRoute(
-          this.routeManager._peer_addresses_routes,
+          resolvePeerAddressRoutes(this.routeManager),
           addressStr,
           sourceSystemId
         );
@@ -375,7 +491,7 @@ export class AddressBindFrameHandler {
       };
     }
 
-    if (context.originType === DeliveryOriginType.DOWNSTREAM) {
+    if (originType === DeliveryOriginType.DOWNSTREAM && context) {
       const routingNodeId =
         typeof this.routingNode.id === 'string' && this.routingNode.id
           ? this.routingNode.id
@@ -475,6 +591,7 @@ export class AddressBindFrameHandler {
     }
 
     const upstreamConnector = this.upstreamConnector();
+    const originType = getContextOriginType(context);
     const shouldForwardUpstream =
       Boolean(upstreamConnector) && !isReservedAddressName(name);
 
@@ -494,16 +611,16 @@ export class AddressBindFrameHandler {
       }
     } else {
       const routeInfo = getAddressRoute(
-        this.routeManager._downstream_addresses_routes,
+        resolveDownstreamAddressRoutes(this.routeManager),
         addressStr
       );
       if (routeInfo?.segment === sourceSystemId) {
         deleteAddressRoute(
-          this.routeManager._downstream_addresses_routes,
+          resolveDownstreamAddressRoutes(this.routeManager),
           addressStr
         );
         deleteLegacyRoute(
-          this.routeManager._downstream_addresses_legacy,
+          resolveDownstreamLegacyRoutes(this.routeManager),
           addressStr
         );
         if (shouldForwardUpstream) {
@@ -512,7 +629,7 @@ export class AddressBindFrameHandler {
       }
     }
 
-    if (context && context.originType === DeliveryOriginType.DOWNSTREAM) {
+    if (context && originType === DeliveryOriginType.DOWNSTREAM) {
       const routingNodeId =
         typeof this.routingNode.id === 'string' && this.routingNode.id
           ? this.routingNode.id
@@ -558,9 +675,20 @@ export class AddressBindFrameHandler {
   private getSourceSystemId(
     context: FameDeliveryContext | undefined
   ): string | null {
-    if (!context || !context.fromSystemId) {
+    if (!context) {
       return null;
     }
-    return context.fromSystemId;
+
+    const typed = context as FameDeliveryContext & {
+      from_system_id?: string | null;
+    };
+
+    const candidate = typed.fromSystemId ?? typed.from_system_id ?? null;
+
+    if (typeof candidate === 'string' && candidate.length) {
+      return candidate;
+    }
+
+    return null;
   }
 }

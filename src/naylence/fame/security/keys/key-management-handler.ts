@@ -27,6 +27,63 @@ const KEY_REQUEST_TIMEOUT_MS = 5_000;
 const KEY_REQUEST_RETRIES = 3;
 const KEY_GC_INTERVAL_MS = 10_000;
 
+type DeliveryContextAliases = {
+  origin_type?: DeliveryOriginType;
+  from_system_id?: string;
+};
+
+type DeliveryContextWithAliases = FameDeliveryContext & DeliveryContextAliases;
+
+type KeyAnnounceFrameAliases = KeyAnnounceFrame & {
+  physical_path?: string | null;
+};
+
+function normalizeDeliveryContextAliases(
+  context: DeliveryContextWithAliases
+): FameDeliveryContext {
+  const normalized = {
+    ...(context as FameDeliveryContext),
+  } as FameDeliveryContext & DeliveryContextAliases;
+
+  if (
+    normalized.originType === undefined &&
+    context.origin_type !== undefined
+  ) {
+    normalized.originType = context.origin_type;
+  }
+
+  if (
+    normalized.fromSystemId === undefined &&
+    context.from_system_id !== undefined
+  ) {
+    normalized.fromSystemId = context.from_system_id;
+  }
+
+  return normalized as FameDeliveryContext;
+}
+
+function normalizeKeyAnnounceFrame(
+  frame: KeyAnnounceFrameAliases
+): KeyAnnounceFrame {
+  const normalized: KeyAnnounceFrameAliases = {
+    ...(frame as Record<string, unknown>),
+  } as KeyAnnounceFrameAliases;
+
+  if (
+    normalized.physicalPath === undefined &&
+    normalized.physical_path !== undefined
+  ) {
+    const snakePhysicalPath = normalized.physical_path;
+    if (typeof snakePhysicalPath === 'string') {
+      normalized.physicalPath = snakePhysicalPath;
+    } else if (snakePhysicalPath != null) {
+      normalized.physicalPath = String(snakePhysicalPath);
+    }
+  }
+
+  return normalized as KeyAnnounceFrame;
+}
+
 interface PendingEnvelope {
   envelope: FameEnvelope;
   context: FameDeliveryContext;
@@ -149,15 +206,17 @@ export class KeyManagementHandler extends TaskSpawner {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<void> {
-    const frame = envelope.frame as KeyAnnounceFrame | undefined;
+    const rawFrame = envelope.frame as KeyAnnounceFrameAliases | undefined;
 
-    if (!frame || frame.type !== 'KeyAnnounce') {
+    if (!rawFrame || rawFrame.type !== 'KeyAnnounce') {
       logger.warning('unexpected_frame_type_for_key_announce', {
         envp_id: envelope.id,
-        frame_type: frame?.type,
+        frame_type: rawFrame?.type,
       });
       return;
     }
+
+    const frame = normalizeKeyAnnounceFrame(rawFrame);
 
     if (!this.keyManager) {
       logger.debug('skipping_key_announce_no_key_manager', {
@@ -170,13 +229,17 @@ export class KeyManagementHandler extends TaskSpawner {
       throw new Error('KeyAnnounce handling requires delivery context');
     }
 
-    if (!context.originType) {
+    const normalizedContext = normalizeDeliveryContextAliases(
+      context as DeliveryContextWithAliases
+    );
+
+    if (!normalizedContext.originType) {
       throw new Error(
         'Delivery context must include originType for KeyAnnounce'
       );
     }
 
-    const originSystemId = this.getSourceSystemId(context);
+    const originSystemId = this.getSourceSystemId(normalizedContext);
     if (!originSystemId) {
       logger.warning('key_announce_missing_origin_system_id', {
         envelope_id: envelope.id,
@@ -224,7 +287,7 @@ export class KeyManagementHandler extends TaskSpawner {
       keys: validatedKeys,
       physicalPath: frame.physicalPath,
       systemId: originSystemId,
-      origin: context.originType,
+      origin: normalizedContext.originType,
       skipSidValidation: isCorrelationRouted,
     };
 
@@ -252,7 +315,7 @@ export class KeyManagementHandler extends TaskSpawner {
           keys: validatedKeys,
           physicalPath: originalAddress,
           systemId: originSystemId,
-          origin: context.originType,
+          origin: normalizedContext.originType,
           skipSidValidation: true,
         };
 
@@ -283,7 +346,7 @@ export class KeyManagementHandler extends TaskSpawner {
             keys: validatedKeys,
             physicalPath: addressKey,
             systemId: originSystemId,
-            origin: context.originType,
+            origin: normalizedContext.originType,
             skipSidValidation: true,
           };
 
@@ -346,14 +409,23 @@ export class KeyManagementHandler extends TaskSpawner {
       }
 
       const firstContext = pending[0]?.context;
-      if (!firstContext?.originType) {
+      if (!firstContext) {
+        continue;
+      }
+
+      const normalizedContext = normalizeDeliveryContextAliases(
+        firstContext as DeliveryContextWithAliases
+      );
+
+      if (!normalizedContext.originType) {
         continue;
       }
 
       toRetry.push({
         kid,
-        origin: firstContext.originType,
-        fromSystemId: firstContext.fromSystemId ?? 'pending-attachment',
+        origin: normalizedContext.originType,
+        fromSystemId:
+          normalizedContext.fromSystemId ?? 'pending-attachment',
       });
     }
 
@@ -568,8 +640,11 @@ export class KeyManagementHandler extends TaskSpawner {
     envelope: FameEnvelope,
     context: FameDeliveryContext
   ): void {
+    const normalizedContext = normalizeDeliveryContextAliases(
+      context as DeliveryContextWithAliases
+    );
     const queue = this.pendingEnvelopes.get(kid) ?? [];
-    queue.push({ envelope, context });
+    queue.push({ envelope, context: normalizedContext });
     this.pendingEnvelopes.set(kid, queue);
   }
 
@@ -578,8 +653,11 @@ export class KeyManagementHandler extends TaskSpawner {
     envelope: FameEnvelope,
     context: FameDeliveryContext
   ): void {
+    const normalizedContext = normalizeDeliveryContextAliases(
+      context as DeliveryContextWithAliases
+    );
     const queue = this.pendingEncryptionEnvelopes.get(key) ?? [];
-    queue.push({ envelope, context });
+    queue.push({ envelope, context: normalizedContext });
     this.pendingEncryptionEnvelopes.set(key, queue);
   }
 
@@ -898,7 +976,12 @@ export class KeyManagementHandler extends TaskSpawner {
   }
 
   private getSourceSystemId(context: FameDeliveryContext): string | null {
-    return context.fromSystemId ?? null;
+    if (context.fromSystemId) {
+      return context.fromSystemId;
+    }
+
+    const aliased = (context as DeliveryContextWithAliases).from_system_id;
+    return typeof aliased === 'string' ? aliased : null;
   }
 
   private buildKeyRequestEnvelopeOptions(

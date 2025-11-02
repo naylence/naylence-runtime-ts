@@ -25,13 +25,81 @@ type SigningKey = JoseCryptoKey | KeyObject | JWK | Uint8Array;
 
 const DEFAULT_ALGORITHMS = ['EdDSA', 'RS256', 'HS256'] as const;
 
-interface JWTTokenVerifierOptions {
+export interface JWTTokenVerifierOptions {
+  verificationKey?: string | Uint8Array | JoseCryptoKey | KeyObject | JWK;
+  verification_key?: string | Uint8Array | JoseCryptoKey | KeyObject | JWK;
+  issuer?: string;
+  ttlSec?: number;
+  ttl_sec?: number;
+  revokedCapacity?: number;
+  revoked_capacity?: number;
+  requiredScopes?: string[];
+  required_scopes?: string[];
+  algorithms?: string[];
+}
+
+interface NormalizedJWTTokenVerifierOptions {
   verificationKey: string | Uint8Array | JoseCryptoKey | KeyObject | JWK;
   issuer: string;
   ttlSec?: number;
   revokedCapacity?: number;
   requiredScopes?: string[];
   algorithms?: string[];
+}
+
+function normalizeOptions(
+  options: JWTTokenVerifierOptions | null | undefined
+): NormalizedJWTTokenVerifierOptions {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError('JWTTokenVerifier options must be an object');
+  }
+
+  const verificationKey =
+    options.verificationKey ?? options.verification_key ?? undefined;
+  if (!verificationKey) {
+    throw new Error('JWTTokenVerifier requires a verification key');
+  }
+
+  const issuer =
+    typeof options.issuer === 'string' && options.issuer.trim().length > 0
+      ? options.issuer.trim()
+      : undefined;
+  if (!issuer) {
+    throw new Error('JWTTokenVerifier requires an issuer');
+  }
+
+  const ttlCandidate =
+    typeof options.ttlSec === 'number'
+      ? options.ttlSec
+      : typeof options.ttl_sec === 'number'
+        ? options.ttl_sec
+        : undefined;
+
+  const revokedCandidate =
+    typeof options.revokedCapacity === 'number'
+      ? options.revokedCapacity
+      : typeof options.revoked_capacity === 'number'
+        ? options.revoked_capacity
+        : undefined;
+
+  const requiredScopes = Array.isArray(options.requiredScopes)
+    ? options.requiredScopes
+    : Array.isArray(options.required_scopes)
+      ? options.required_scopes
+      : undefined;
+
+  const algorithms = Array.isArray(options.algorithms)
+    ? options.algorithms
+    : undefined;
+
+  return {
+    verificationKey,
+    issuer,
+    ttlSec: ttlCandidate,
+    revokedCapacity: revokedCandidate,
+    requiredScopes,
+    algorithms,
+  };
 }
 
 type RevokedEntry = string | null;
@@ -45,18 +113,15 @@ export class JWTTokenVerifier implements TokenVerifier {
   private readonly revokedTokens: RevokedEntry[];
   private revokedIndex = 0;
   private signingKeyPromise?: Promise<SigningKey>;
+  private readonly options: NormalizedJWTTokenVerifierOptions;
 
-  constructor(private readonly options: JWTTokenVerifierOptions) {
-    if (!options.verificationKey) {
-      throw new Error('JWTTokenVerifier requires a verification key');
-    }
-    if (!options.issuer) {
-      throw new Error('JWTTokenVerifier requires an issuer');
-    }
+  constructor(options: JWTTokenVerifierOptions) {
+    const normalized = normalizeOptions(options);
+    this.options = normalized;
 
-    this.issuer = options.issuer;
-    const requestedTtl = Number.isFinite(options.ttlSec)
-      ? Number(options.ttlSec)
+    this.issuer = normalized.issuer;
+    const requestedTtl = Number.isFinite(normalized.ttlSec)
+      ? Number(normalized.ttlSec)
       : 3600;
     const validatedTtl = validateJwtTokenTtlSec(requestedTtl);
     this.ttlSec =
@@ -68,14 +133,15 @@ export class JWTTokenVerifier implements TokenVerifier {
     }
 
     this.algorithms = (
-      options.algorithms && options.algorithms.length > 0
-        ? options.algorithms
+      normalized.algorithms && normalized.algorithms.length > 0
+        ? normalized.algorithms
         : Array.from(DEFAULT_ALGORITHMS)
     ).map((alg) => alg.toString().trim());
 
     this.requiredScopes =
-      options.requiredScopes?.filter((scope) => scope.trim().length > 0) ?? [];
-    this.revokedCapacity = Math.max(0, options.revokedCapacity ?? 1000);
+      normalized.requiredScopes?.filter((scope) => scope.trim().length > 0) ??
+      [];
+    this.revokedCapacity = Math.max(0, normalized.revokedCapacity ?? 1000);
     this.revokedTokens = new Array<RevokedEntry>(this.revokedCapacity).fill(
       null
     );

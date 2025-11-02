@@ -168,6 +168,8 @@ export class HttpListener extends TransportListener {
 
       instance.get('/health', async () => ({
         status: 'healthy',
+        // Retain snake_case key for legacy clients while preferring camelCase going forward.
+        listenerType: 'HttpListener',
         listener_type: 'HttpListener',
       }));
     };

@@ -11,6 +11,7 @@ import {
 } from '@naylence/core';
 
 import { Sentinel, type SentinelOptions } from '../sentinel.js';
+import type { RoutingPolicy } from '../routing-policy.js';
 import * as routeStore from '../store/route-store.js';
 import type { RouteStore } from '../store/route-store.js';
 import type { UpstreamSessionManager } from '../../node/upstream-session-manager.js';
@@ -22,6 +23,10 @@ import { Peer } from '../peer.js';
 import * as envelopeContext from '../../util/envelope-context.js';
 import * as taskUtils from '../../util/task-utils.js';
 import * as logging from '../../util/logging.js';
+import type { AttachmentKeyValidator } from '../../security/keys/attachment-key-validator.js';
+import type { LoadBalancerStickinessManager } from '../../stickiness/load-balancer-stickiness-manager.js';
+import type { NodeAttachClient } from '../../node/admission/node-attach-client.js';
+import type { OriginConnectorOptions } from '../../node/routing-node-like.js';
 
 jest.mock('../../connector/connector-factory.js', () => ({
   createResource: jest.fn(),
@@ -337,6 +342,94 @@ describe('Sentinel', () => {
     expect(deliverSpy.mock.calls[1][0].frame?.type).toBe('Data');
     expect(deliverSpy.mock.calls[2][0].frame?.type).toBe('Data');
     expect(pendingEntry?.buffer).toHaveLength(0);
+  });
+
+  it('accepts snake_case Sentinel options', () => {
+    const customRouteStore = createRouteStoreStub();
+    const customPolicy: RoutingPolicy = {
+      decide: jest.fn(async () => {
+        throw new Error('not-used');
+      }),
+    } as RoutingPolicy;
+    const attachmentValidator = {} as AttachmentKeyValidator;
+    const stickinessManager = {} as LoadBalancerStickinessManager;
+    const attachClient = {} as NodeAttachClient;
+
+    const sentinel = createSentinel({
+      route_store: customRouteStore,
+      routing_policy: customPolicy,
+      attach_timeout_sec: 1,
+      max_attach_ttl_sec: 10,
+      binding_ack_timeout_ms: 321,
+      attachment_key_validator: attachmentValidator,
+      stickiness_manager: stickinessManager,
+      requested_logicals: ['alpha'],
+      attach_client: attachClient,
+      cleanup_delay_ms: 50,
+      rebind_on_attach: true,
+    } as unknown as SentinelOptions);
+
+    const sentinelAny = sentinel as unknown as Record<string, any>;
+    expect(sentinelAny.routingPolicy).toBe(customPolicy);
+    expect(sentinelAny.attachmentKeyValidator).toBe(attachmentValidator);
+    expect(sentinelAny.stickinessManager).toBe(stickinessManager);
+    expect(sentinelAny.ackTimeoutMs).toBe(321);
+    expect(sentinelAny.maxAttachTtlSec).toBe(10);
+    expect(sentinelAny.requestedLogicals).toEqual(['alpha']);
+    expect(sentinelAny.attachClient).toBe(attachClient);
+    expect(sentinelAny.attachTimeoutMs).toBe(1000);
+    expect(sentinelAny.cleanupDelayMs).toBe(50);
+    expect(sentinelAny.rebindOnAttach).toBe(true);
+
+    const routeManager = sentinelAny.routeManager as RouteManager;
+    expect(routeManager._downstream_route_store).toBe(customRouteStore);
+    expect((routeManager as any).cleanupDelayMs).toBe(50);
+  });
+
+  it('accepts snake_case origin connector options', async () => {
+    const sentinel = createSentinel();
+    const deliverSpy = jest
+      .spyOn(sentinel, 'deliver')
+      .mockResolvedValue(undefined);
+
+    let storedHandler:
+      | ((
+          envelope: FameEnvelope,
+          context?: FameDeliveryContext | null
+        ) => Promise<unknown> | null)
+      | null = null;
+
+    const fakeConnector: FameConnector = {
+      id: 'snake-origin',
+      start: jest.fn(async (handler) => {
+        storedHandler = handler;
+      }),
+      stop: jest.fn(),
+      send: jest.fn().mockResolvedValue(undefined),
+      isClosed: () => false,
+    } as unknown as FameConnector;
+
+    (createResource as jest.Mock).mockResolvedValueOnce(fakeConnector);
+
+  const authorization = { roles: ['alias'] } as any;
+
+    await sentinel.createOriginConnector({
+      origin_type: DeliveryOriginType.DOWNSTREAM,
+      system_id: 'snake-child',
+      connector_config: { type: 'websocket', url: 'ws://alias' } as any,
+      authorization_context: authorization,
+    } as unknown as OriginConnectorOptions);
+
+    const handler = storedHandler!;
+    const routeManager = (sentinel as any).routeManager as RouteManager;
+    const pendingEntry = routeManager._pending_routes.get('snake-child');
+    pendingEntry?.attached.set();
+
+    await handler(createEnvelope(sentinel, 'Data'), null);
+
+    expect(deliverSpy).toHaveBeenCalledTimes(1);
+    const deliveredContext = deliverSpy.mock.calls[0][1];
+    expect(deliveredContext?.security?.authorization).toBe(authorization);
   });
 
   it('forwards transport options to the origin connector factory', async () => {

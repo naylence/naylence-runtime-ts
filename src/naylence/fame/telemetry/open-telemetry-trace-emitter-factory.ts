@@ -19,10 +19,19 @@ import { getLogger } from '../util/logging.js';
 export interface OpenTelemetryTraceEmitterConfig extends TraceEmitterConfig {
   type: 'OpenTelemetryTraceEmitter';
   serviceName?: string;
+  service_name?: string;
   endpoint?: string | null;
+  otlpEndpoint?: string | null;
+  otlp_endpoint?: string | null;
   environment?: string | null;
+  deploymentEnvironment?: string | null;
+  deployment_environment?: string | null;
   sampler?: string | null;
+  samplingStrategy?: string | null;
+  sampling_strategy?: string | null;
   headers?: Record<string, string>;
+  otlpHeaders?: Record<string, string>;
+  otlp_headers?: Record<string, string>;
   auth?: AuthInjectionStrategyConfig | null;
 }
 
@@ -192,31 +201,62 @@ function normalizeConfig(
   }
 
   const candidate = config as Record<string, unknown>;
+  const serviceName =
+    extractString(
+      pickFirst(candidate, ['serviceName', 'service_name'])
+    ) ?? 'naylence-service';
+  const endpoint =
+    extractString(
+      pickFirst(candidate, ['endpoint', 'otlpEndpoint', 'otlp_endpoint'])
+    ) ?? null;
+  const environment =
+    extractString(
+      pickFirst(candidate, [
+        'environment',
+        'deploymentEnvironment',
+        'deployment_environment',
+      ])
+    ) ?? null;
+  const sampler =
+    extractString(
+      pickFirst(candidate, ['sampler', 'samplingStrategy', 'sampling_strategy'])
+    ) ?? null;
+
   const headersFromConfig = extractHeaders(
-    candidate.headers ?? candidate['headers']
+    pickFirst(candidate, ['headers', 'otlpHeaders', 'otlp_headers'])
   );
-  const authConfig = (candidate.auth ?? candidate['auth']) as
-    | AuthInjectionStrategyConfig
-    | null
-    | undefined;
+  const authConfig = pickFirst<AuthInjectionStrategyConfig | null>(candidate, [
+    'auth',
+  ]);
 
   return {
-    serviceName:
-      extractString(candidate.serviceName ?? candidate['service_name']) ??
-      'naylence-service',
-    endpoint:
-      extractString(candidate.endpoint ?? candidate['endpoint']) ?? null,
-    environment:
-      extractString(candidate.environment ?? candidate['environment']) ?? null,
-    sampler: extractString(candidate.sampler ?? candidate['sampler']) ?? null,
+    serviceName,
+    endpoint,
+    environment,
+    sampler,
     headers: headersFromConfig ?? {},
-    auth: authConfig ?? null,
+    auth: (authConfig as AuthInjectionStrategyConfig | null | undefined) ?? null,
   };
 }
 
 function extractString(value: unknown): string | undefined {
   if (typeof value === 'string' && value.trim().length > 0) {
     return value;
+  }
+  return undefined;
+}
+
+function pickFirst<T>(
+  source: Record<string, unknown>,
+  keys: string[]
+): T | undefined {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const value = source[key] as T | undefined;
+      if (value !== undefined) {
+        return value;
+      }
+    }
   }
   return undefined;
 }

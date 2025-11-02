@@ -136,6 +136,57 @@ describe('DefaultCryptoProvider', () => {
     });
   });
 
+  it('accepts snake_case configuration aliases for creation', async () => {
+    const jose = await import('jose');
+    const { publicKey: sigPub, privateKey: sigPriv } =
+      await jose.generateKeyPair('Ed25519', {
+        extractable: true,
+      });
+    const signature_private_pem = await jose.exportPKCS8(sigPriv);
+    const signature_public_pem = await jose.exportSPKI(sigPub);
+
+    const { publicKey: encPub, privateKey: encPriv } =
+      await jose.generateKeyPair('ECDH-ES', {
+        extractable: true,
+        crv: 'X25519',
+      });
+    const encryption_private_pem = await jose.exportPKCS8(encPriv);
+    const encryption_public_pem = await jose.exportSPKI(encPub);
+
+    const provider = await DefaultCryptoProvider.create({
+      signature_private_pem,
+      signature_public_pem,
+      signature_key_id: 'snake-sig',
+      encryption_private_pem,
+      encryption_public_pem,
+      encryption_key_id: 'snake-enc',
+      hmac_secret: '  trimmed-secret  ',
+      ttl_sec: '7200',
+      issuer: 'snake-issuer',
+      audience: 'snake-audience',
+      algorithm: 'ed25519',
+    } as Record<string, unknown>);
+
+    expect(provider.signatureKeyId).toBe('snake-sig');
+    expect(provider.encryptionKeyId).toBe('snake-enc');
+    expect(provider.hmacSecret).toBe('trimmed-secret');
+    expect(provider.ttlSec).toBe(7200);
+    expect(provider.issuer).toBe('snake-issuer');
+    expect(provider.audience).toBe('snake-audience');
+
+    const jwks = provider.getJwks();
+    expect(jwks.keys).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kid: 'snake-sig',
+          use: 'sig',
+          alg: 'EdDSA',
+        }),
+        expect.objectContaining({ kid: 'snake-enc', use: 'enc' }),
+      ])
+    );
+  });
+
   it('manages node context, certificates, and JWKS exposure', async () => {
     const provider = await DefaultCryptoProvider.create();
 
@@ -469,7 +520,7 @@ describe('DefaultCryptoProvider', () => {
     const hadCrypto = 'crypto' in globalWithCrypto;
     const originalCrypto = globalWithCrypto.crypto;
     const { webcrypto } = await import('node:crypto');
-    const fallbackCrypto = { subtle: webcrypto.subtle } as Crypto;
+    const fallbackCrypto = { subtle: webcrypto.subtle } as unknown as Crypto;
 
     try {
       globalWithCrypto.crypto = fallbackCrypto;

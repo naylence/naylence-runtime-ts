@@ -9,6 +9,7 @@ import { QueryParamAuthInjectionStrategy } from '../auth/query-param-auth-inject
 import { WebSocketSubprotocolAuthInjectionStrategyFactory } from '../auth/websocket-subprotocol-auth-injection-strategy-factory.js';
 import { WebSocketSubprotocolAuthInjectionStrategy } from '../auth/websocket-subprotocol-auth-injection-strategy.js';
 import { BearerTokenHeaderAuthInjectionStrategyFactory } from '../auth/bearer-token-header-auth-injection-strategy-factory.js';
+import { BearerTokenHeaderAuthInjectionStrategy } from '../auth/bearer-token-header-auth-injection-strategy.js';
 import {
   TOKEN_PROVIDER_FACTORY_BASE_TYPE,
   TokenProviderFactory,
@@ -170,6 +171,23 @@ describe('auth injection strategies', () => {
     await strategy.cleanup();
   });
 
+  it('supports snake_case options for direct bearer strategy construction', async () => {
+    jest.useFakeTimers({ now: 1735689600000 });
+
+    const strategy = new BearerTokenHeaderAuthInjectionStrategy({
+      token_provider: {
+        type: 'StaticTokenProvider',
+        sequence: [{ value: 'direct', expiresAt: Date.now() + 60_000 }],
+      },
+      header_name: 'X-Direct',
+    });
+
+    const headers = Object.create(null) as Record<string, string>;
+    await strategy.apply(headers);
+    expect(headers['X-Direct']).toBe('Bearer direct');
+    await strategy.cleanup();
+  });
+
   it('restarts refresh loop when apply is called twice', async () => {
     jest.useFakeTimers({ now: 1735689600000 });
 
@@ -323,6 +341,20 @@ describe('auth injection strategies', () => {
     );
   });
 
+  it('supports snake_case options when constructing query param strategy directly', async () => {
+    const strategy = new QueryParamAuthInjectionStrategy({
+      token_provider: {
+        type: 'StaticTokenProvider',
+        sequence: [{ value: 'direct' }],
+      },
+      param_name: 'auth_token',
+    });
+
+    const modified = await strategy.modifyUrl('/ws');
+    expect(modified).toBe('/ws?auth_token=direct');
+    await strategy.cleanup();
+  });
+
   it('returns WebSocket subprotocol tokens when available', async () => {
     const factory = new WebSocketSubprotocolAuthInjectionStrategyFactory();
     const strategy = (await factory.create({
@@ -348,6 +380,20 @@ describe('auth injection strategies', () => {
 
     const empty = await emptyStrategy.getSubprotocols();
     expect(empty).toEqual([]);
+  });
+
+  it('supports snake_case options when constructing WebSocket subprotocol strategy directly', async () => {
+    const strategy = new WebSocketSubprotocolAuthInjectionStrategy({
+      token_provider: {
+        type: 'StaticTokenProvider',
+        sequence: [{ value: 'custom-token' }],
+      },
+      subprotocol_prefix: 'custom',
+    });
+
+    const protocols = await strategy.getSubprotocols();
+    expect(protocols).toEqual(['custom', 'custom-token']);
+    await strategy.cleanup();
   });
 
   it('rejects websocket subprotocol configuration without provider', async () => {

@@ -11,13 +11,41 @@ import { CredentialProviderFactory } from '../../security/credential/credential-
 
 jest.mock('../sqlite-storage-provider.js', () => {
   class FakeSQLiteStorageProvider {
+    public readonly options: {
+      dbDirectory: string;
+      isEncrypted: boolean;
+      masterKeyProvider: unknown;
+      isCached: boolean;
+      autoRecover: boolean;
+    };
+
     constructor(
-      public readonly dbDirectory: string,
-      public readonly isEncrypted: boolean,
-      public readonly masterKeyProvider: unknown,
-      public readonly isCached: boolean,
-      public readonly autoRecover: boolean
-    ) {}
+      optionsOrDirectory:
+        | {
+            dbDirectory: string;
+            isEncrypted: boolean;
+            masterKeyProvider: unknown;
+            isCached: boolean;
+            autoRecover: boolean;
+          }
+        | string,
+      isEncrypted?: boolean,
+      masterKeyProvider?: unknown,
+      isCached?: boolean,
+      autoRecover?: boolean
+    ) {
+      if (typeof optionsOrDirectory === 'string') {
+        this.options = {
+          dbDirectory: optionsOrDirectory,
+          isEncrypted: Boolean(isEncrypted),
+          masterKeyProvider,
+          isCached: Boolean(isCached),
+          autoRecover: Boolean(autoRecover),
+        };
+      } else {
+        this.options = optionsOrDirectory;
+      }
+    }
   }
 
   return { SQLiteStorageProvider: FakeSQLiteStorageProvider };
@@ -131,13 +159,39 @@ describe('SQLiteStorageProviderFactory', () => {
 
     expect(provider).toBeDefined();
     const fakeProvider = provider as unknown as {
-      isCached: boolean;
-      autoRecover: boolean;
-      masterKeyProvider: unknown;
+      options: {
+        isCached: boolean;
+        autoRecover: boolean;
+        masterKeyProvider: unknown;
+      };
     };
 
-    expect(fakeProvider.masterKeyProvider).toBe(credentialProvider);
-    expect(fakeProvider.isCached).toBe(false);
-    expect(fakeProvider.autoRecover).toBe(true);
+    expect(fakeProvider.options.masterKeyProvider).toBe(credentialProvider);
+    expect(fakeProvider.options.isCached).toBe(false);
+    expect(fakeProvider.options.autoRecover).toBe(true);
+  });
+
+  test('accepts snake_case config aliases', async () => {
+    const provider = await providerFactory.create({
+      type: 'SQLiteStorageProvider',
+      db_directory: './snake',
+      is_encrypted: 'false',
+      is_cached: '0',
+      auto_recover: 'yes',
+    } as Record<string, unknown>);
+
+    const fakeProvider = provider as unknown as {
+      options: {
+        dbDirectory: string;
+        isEncrypted: boolean;
+        isCached: boolean;
+        autoRecover: boolean;
+      };
+    };
+
+    expect(fakeProvider.options.dbDirectory).toBe('./snake');
+    expect(fakeProvider.options.isEncrypted).toBe(false);
+    expect(fakeProvider.options.isCached).toBe(false);
+    expect(fakeProvider.options.autoRecover).toBe(true);
   });
 });

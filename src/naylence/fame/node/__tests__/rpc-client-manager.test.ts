@@ -1,4 +1,8 @@
-import { DeliveryOriginType, FameResponseType } from '@naylence/core';
+import {
+  DeliveryOriginType,
+  FameResponseType,
+  type FameAddress,
+} from '@naylence/core';
 import { RPCClientManager } from '../rpc-client-manager.js';
 
 var loggerInstance: {
@@ -343,6 +347,95 @@ describe('RPCClientManager', () => {
       fromSystemId: 'node-1',
       expectedResponseType: FameResponseType.REPLY,
     });
+  });
+
+  it('supports snake_case invoke options', async () => {
+    const manager = createManager();
+    const mocks = getCoreMocks();
+
+  const targetAddr = 'alias@/remote' as unknown as FameAddress;
+    mocks.generateId.mockReturnValueOnce('listener-alias');
+    mocks.generateId.mockReturnValueOnce('req-alias');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'alias-request' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'alias-ok' });
+
+    const promise = manager.invoke({
+      target_addr: targetAddr,
+      method: 'aliasCall',
+      params: { value: 42 },
+      timeout_ms: '1500',
+    });
+
+    await flushAsync();
+
+    const envelopeArgs =
+      defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
+    expect(envelopeArgs.to).toBe(targetAddr);
+    expect(envelopeArgs.capabilities).toBeUndefined();
+    expect(envelopeArgs.replyTo?.toString()).toMatch(/__rpc__.*@\/node/);
+
+    const trackArgs = defaultDeliveryTracker.track.mock.calls[0][1];
+    expect(trackArgs.timeoutMs).toBe(1500);
+
+    await (manager as any).handleReplyEnvelope({
+      id: 'reply-alias',
+      corrId: 'req-alias',
+      frame: { type: 'Data', payload: { result: 'alias-ok' } },
+    });
+
+    await expect(promise).resolves.toBe('alias-ok');
+  });
+
+  it('supports snake_case invokeStream options', async () => {
+    const manager = createManager();
+    const mocks = getCoreMocks();
+
+    const targetAddr = 'stream@/remote' as unknown as FameAddress;
+    mocks.generateId.mockReturnValueOnce('listener-stream-alias');
+    mocks.generateId.mockReturnValueOnce('req-stream-alias');
+    mocks.makeRequest.mockReturnValueOnce({ payload: 'stream-alias' });
+    mocks.parseResponse.mockReturnValueOnce({ result: 'value-1' });
+    mocks.parseResponse.mockReturnValueOnce({ result: null });
+
+    const iterator = (await manager.invokeStream({
+      target_addr: targetAddr,
+      method: 'streamAlias',
+      params: undefined,
+      timeout_ms: 2500,
+    })) as AsyncIterableIterator<unknown>;
+
+    await flushAsync();
+
+    const trackArgs = defaultDeliveryTracker.track.mock.calls[0][1];
+    expect(trackArgs.timeoutMs).toBe(2500);
+    expect(trackArgs.expectedResponseType).toBe(FameResponseType.STREAM);
+
+    await (manager as any).handleReplyEnvelope({
+      id: 'stream-reply-1',
+      corrId: 'req-stream-alias',
+      frame: { type: 'Data', payload: { result: 'value-1' } },
+    });
+    await (manager as any).handleReplyEnvelope({
+      id: 'stream-reply-end',
+      corrId: 'req-stream-alias',
+      frame: { type: 'Data', payload: { result: null } },
+    });
+
+    await expect(iterator.next()).resolves.toEqual({
+      value: 'value-1',
+      done: false,
+    });
+    await expect(iterator.next()).resolves.toEqual({
+      value: undefined,
+      done: true,
+    });
+
+    const envelopeArgs =
+      defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
+    expect(envelopeArgs.to).toBe(targetAddr);
+
+    expect(defaultDeliveryTracker.onStreamItem).toHaveBeenCalled();
+    expect(defaultDeliveryTracker.onStreamEnd).toHaveBeenCalled();
   });
 
   it('continues delivery when delivery tracker tracking fails', async () => {

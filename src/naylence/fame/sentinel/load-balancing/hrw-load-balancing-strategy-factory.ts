@@ -49,26 +49,40 @@ export class HRWLoadBalancingStrategyFactory extends LoadBalancingStrategyFactor
       );
     }
 
-    if (
-      typeof config.stickyAttribute === 'string' ||
-      config.stickyAttribute === null ||
-      config.stickyAttribute === undefined
-    ) {
+    const stickyCandidate = this.resolveStickyAttribute(config);
+
+    if (stickyCandidate === undefined) {
+      return { type: 'HRWLoadBalancingStrategy', stickyAttribute: null };
+    }
+
+    if (stickyCandidate === null || typeof stickyCandidate === 'string') {
       return {
         type: 'HRWLoadBalancingStrategy',
-        stickyAttribute: config.stickyAttribute ?? null,
+        stickyAttribute: stickyCandidate,
       };
     }
 
-    const stickyAttribute = (config as Record<string, unknown>).stickyAttribute;
-    if (stickyAttribute !== undefined && typeof stickyAttribute !== 'string') {
-      throw new Error('stickyAttribute must be a string when provided');
+    throw new Error('stickyAttribute must be a string when provided');
+  }
+
+  private resolveStickyAttribute(
+    config: HRWLoadBalancingStrategyConfig | Record<string, unknown>
+  ): unknown {
+    const candidate = config as Record<string, unknown>;
+    const aliasKeys = [
+      'stickyAttribute',
+      'sticky_attribute',
+      'stickyAttr',
+      'sticky_attr',
+    ];
+
+    for (const key of aliasKeys) {
+      if (Object.prototype.hasOwnProperty.call(candidate, key)) {
+        return candidate[key];
+      }
     }
 
-    return {
-      type: 'HRWLoadBalancingStrategy',
-      stickyAttribute: (stickyAttribute as string | undefined) ?? null,
-    };
+    return undefined;
   }
 }
 

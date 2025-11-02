@@ -308,6 +308,63 @@ describe('CapabilityFrameHandler', () => {
     expect(handler.capRoutes).toEqual({});
   });
 
+  it('accepts snake_case context fields and downstream route aliases', async () => {
+    const routeManager = {
+      downstream_routes: {
+        'segment-snake': {},
+      },
+    } as unknown as RouteManager;
+    const routingNode = createRoutingNode();
+    const handler = new CapabilityFrameHandler({
+      routingNode,
+      routeManager,
+      upstreamConnector: () => ({}) as FameConnector,
+    });
+
+    const address = new FameAddress('svc@/snake');
+    const envelope = createAdvertiseEnvelope({
+      capabilities: ['cap.snake'],
+      address,
+      corrId: 'corr-snake',
+      id: 'env-snake',
+    });
+
+    const context = {
+      origin_type: DeliveryOriginType.DOWNSTREAM,
+      from_system_id: 'segment-snake',
+      stickiness_required: true,
+      sticky_sid: 'sticky-snake',
+      security: { token: 'secure' },
+    } as unknown as FameDeliveryContext;
+
+    await handler.acceptCapabilityAdvertise(envelope, context);
+
+    expect(routingNode.forwardToRoute).toHaveBeenCalledTimes(1);
+    const [segment, ackEnvelope, ackContext] =
+      routingNode.forwardToRoute.mock.calls[0];
+    expect(segment).toBe('segment-snake');
+    expect(ackEnvelope.frame).toEqual(
+      expect.objectContaining({
+        type: 'CapabilityAdvertiseAck',
+        capabilities: ['cap.snake'],
+        refId: 'env-snake',
+      })
+    );
+    expect(ackEnvelope.corrId).toBe('corr-snake');
+    expect(ackContext.stickinessRequired).toBe(true);
+    expect(ackContext.stickySid).toBe('sticky-snake');
+    expect(ackContext.expectedResponseType).toBe(FameResponseType.NONE);
+    expect(routingNode.forwardUpstream).toHaveBeenCalledWith(
+      envelope,
+      expect.any(Object)
+    );
+    expect(handler.capRoutes).toEqual({
+      'cap.snake': {
+        [address.toString()]: 'segment-snake',
+      },
+    });
+  });
+
   it('does not propagate upstream when upstream lookup throws', async () => {
     const { routeManager } = createRouteManager(['segment-a']);
     const routingNode = createRoutingNode();
@@ -384,6 +441,57 @@ describe('CapabilityFrameHandler', () => {
       withdraw,
       expect.any(Object)
     );
+    expect(handler.capRoutes).toEqual({});
+  });
+
+  it('handles snake_case context fields during withdraw', async () => {
+    const { routeManager } = createRouteManager(['segment-a']);
+    const routingNode = createRoutingNode();
+    const handler = new CapabilityFrameHandler({
+      routingNode,
+      routeManager,
+      upstreamConnector: () => ({}) as FameConnector,
+    });
+
+    const address = new FameAddress('svc@/snake-withdraw');
+    const advertise = createAdvertiseEnvelope({
+      capabilities: ['cap.withdraw'],
+      address,
+      id: 'adv-snake',
+    });
+
+    await handler.acceptCapabilityAdvertise(
+      advertise,
+      createContext('segment-a')
+    );
+
+    const withdraw = createWithdrawEnvelope({
+      capabilities: ['cap.withdraw'],
+      address,
+      id: 'wd-snake',
+    });
+
+    const context = {
+      origin_type: DeliveryOriginType.DOWNSTREAM,
+      from_system_id: 'segment-a',
+      stickiness_required: false,
+      sticky_sid: 'legacy',
+    } as unknown as FameDeliveryContext;
+
+    await handler.acceptCapabilityWithdraw(withdraw, context);
+
+    expect(routingNode.forwardToRoute).toHaveBeenCalledTimes(2);
+    const [, withdrawAckEnvelope, withdrawAckContext] =
+      routingNode.forwardToRoute.mock.calls[1];
+    expect(withdrawAckEnvelope.frame).toEqual(
+      expect.objectContaining({
+        type: 'CapabilityWithdrawAck',
+        capabilities: ['cap.withdraw'],
+        refId: 'wd-snake',
+      })
+    );
+    expect(withdrawAckContext.stickinessRequired).toBe(false);
+    expect(withdrawAckContext.stickySid).toBe('legacy');
     expect(handler.capRoutes).toEqual({});
   });
 

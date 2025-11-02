@@ -5,7 +5,11 @@
  * and a simple context stack in browsers.
  */
 
-import { EnvelopeSnapshot } from './logging-types.js';
+import {
+  EnvelopeSnapshot,
+  EnvelopeSnapshotInput,
+  normalizeEnvelopeSnapshot,
+} from './logging-types.js';
 
 // Cross-platform context storage
 class EnvelopeContextManager {
@@ -105,13 +109,10 @@ export function currentTraceId(): string | undefined {
  * Context manager function (similar to Python's envelope_context)
  */
 export function withEnvelopeContext<T>(
-  envelope: { trace_id?: string; id?: string; flow_id?: string },
+  envelope: EnvelopeSnapshotInput,
   fn: () => T
 ): T {
-  const context: EnvelopeSnapshot = {};
-  if (envelope.trace_id !== undefined) context.trace_id = envelope.trace_id;
-  if (envelope.id !== undefined) context.id = envelope.id;
-  if (envelope.flow_id !== undefined) context.flow_id = envelope.flow_id;
+  const context: EnvelopeSnapshot = normalizeEnvelopeSnapshot(envelope);
   return envelopeContextManager.runWithContext(context, fn);
 }
 
@@ -119,13 +120,10 @@ export function withEnvelopeContext<T>(
  * Async context manager function
  */
 export async function withEnvelopeContextAsync<T>(
-  envelope: { trace_id?: string; id?: string; flow_id?: string },
+  envelope: EnvelopeSnapshotInput,
   fn: () => Promise<T>
 ): Promise<T> {
-  const context: EnvelopeSnapshot = {};
-  if (envelope.trace_id !== undefined) context.trace_id = envelope.trace_id;
-  if (envelope.id !== undefined) context.id = envelope.id;
-  if (envelope.flow_id !== undefined) context.flow_id = envelope.flow_id;
+  const context: EnvelopeSnapshot = normalizeEnvelopeSnapshot(envelope);
   return envelopeContextManager.runWithContextAsync(context, fn);
 }
 
@@ -133,9 +131,7 @@ export async function withEnvelopeContextAsync<T>(
  * Class-based context manager (similar to Python's context manager protocol)
  */
 export class EnvelopeContext {
-  constructor(
-    private envelope: { trace_id?: string; id?: string; flow_id?: string }
-  ) {}
+  constructor(private envelope: EnvelopeSnapshotInput) {}
 
   run<T>(fn: () => T): T {
     return withEnvelopeContext(this.envelope, fn);

@@ -141,6 +141,24 @@ describe('InMemoryKeyStore', () => {
     expect(await store.removeKey('B')).toBe(true);
     expect(await store.hasKey('B')).toBe(false);
   });
+
+  it('normalizes camelCase physicalPath metadata when adding keys', async () => {
+    const store = new InMemoryKeyStore();
+    const camelCaseKey = {
+      kid: 'camel',
+      kty: 'OKP',
+      crv: 'X25519',
+      x: 'def',
+      use: 'enc',
+      physicalPath: '/camel/case',
+    } as unknown as KeyRecord;
+
+    await store.addKey(camelCaseKey.kid, camelCaseKey);
+
+    const stored = await store.getKey('camel');
+    expect(stored.physical_path).toBe('/camel/case');
+    expect((stored as Record<string, unknown>).physicalPath).toBeUndefined();
+  });
 });
 
 describe('KeyStore singleton helpers', () => {

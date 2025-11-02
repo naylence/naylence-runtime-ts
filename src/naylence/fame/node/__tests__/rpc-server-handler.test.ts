@@ -194,6 +194,57 @@ describe('RPCServerHandler', () => {
     });
   });
 
+  it('uses reply_address alias when envelope lacks destination', async () => {
+    const { handler, envelopeFactoryMock } = createHandler();
+
+    jest.spyOn(core, 'parseRequest').mockReturnValueOnce({
+      id: 'req-alias',
+      method: 'alias',
+      params: { reply_address: 'alias-destination' },
+    } as any);
+
+    const handlerFn = jest.fn().mockResolvedValue('ok');
+
+    const result = await handler.handleRpcRequest(
+      createDataEnvelope({}, { replyTo: undefined }),
+      undefined,
+      handlerFn,
+      'service'
+    );
+
+    expect(handlerFn).toHaveBeenCalledWith('alias', {
+      reply_address: 'alias-destination',
+    });
+    expect(result?.envelope.to).toBe('alias-destination');
+    expect(envelopeFactoryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'alias-destination', corrId: 'req-alias' })
+    );
+  });
+
+  it('uses replyAddress alias when envelope lacks destination', async () => {
+    const { handler } = createHandler();
+
+    jest.spyOn(core, 'parseRequest').mockReturnValueOnce({
+      id: 'req-camel',
+      method: 'aliasCamel',
+      params: { replyAddress: 'camel-destination' },
+    } as any);
+
+    const handlerFn = jest.fn().mockResolvedValue('ok');
+
+    const result = await handler.handleRpcRequest(
+      createDataEnvelope({}, { replyTo: undefined }),
+      undefined,
+      handlerFn,
+      'service'
+    );
+
+    expect(handlerFn).toHaveBeenCalledWith('aliasCamel', {
+      replyAddress: 'camel-destination',
+    });
+    expect(result?.envelope.to).toBe('camel-destination');
+  });
+
   it('omits trace metadata when request envelope lacks trace id and identifier', async () => {
     const { handler, envelopeFactoryMock, responseContext } = createHandler();
 
@@ -350,5 +401,25 @@ describe('RPCServerHandler', () => {
     const payload = (envelopeFactoryMock.mock.calls[0]?.[0] as any)?.frame
       ?.payload;
     expect(payload?.error).toMatchObject({ code: -32603, message: 'boom' });
+  });
+
+  it('falls back to empty params object when request params are not records', async () => {
+    const { handler } = createHandler();
+    jest.spyOn(core, 'parseRequest').mockReturnValueOnce({
+      id: 'req-empty',
+      method: 'noop',
+      params: null,
+    } as any);
+
+    const handlerFn = jest.fn().mockResolvedValue('ok');
+
+    await handler.handleRpcRequest(
+      createDataEnvelope({}, { replyTo: 'envelope-target' }),
+      undefined,
+      handlerFn,
+      'service'
+    );
+
+    expect(handlerFn).toHaveBeenCalledWith('noop', {});
   });
 });

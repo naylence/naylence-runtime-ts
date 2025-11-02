@@ -97,12 +97,12 @@ export class WebSocketListener
   }
 
   getCallbackGrant(): Record<string, unknown> | null {
-    return {
+    return this.withLegacySnakeCaseKeys({
       type: 'WebSocketListener',
-      base_url: this.baseUrl,
+      baseUrl: this.baseUrl,
       host: this.advertisedHost,
       port: this.advertisedPort,
-    };
+    });
   }
 
   asCallbackGrant(): Record<string, unknown> | null {
@@ -173,6 +173,8 @@ export class WebSocketListener
       instance.get('/health', async () => ({
         status: 'healthy',
         active_connections: 0,
+        // Prefer camelCase moving forward but retain snake_case for legacy consumers.
+        listenerType: 'WebSocketListener',
         listener_type: 'WebSocketListener',
       }));
 

@@ -20,6 +20,57 @@ import type { KeyRecord, KeyStore } from './key-store.js';
 
 const logger = getLogger('naylence.fame.security.keys.default_key_manager');
 
+type AddKeysOptions = Parameters<KeyManager['addKeys']>[0];
+
+type AddKeysOptionsAliases = {
+  physical_path?: string | null;
+  system_id?: string | null;
+  skip_sid_validation?: boolean;
+};
+
+function normalizeAddKeysOptions(
+  options: AddKeysOptions & AddKeysOptionsAliases
+): AddKeysOptions {
+  const physicalPath =
+    options.physicalPath ??
+    (typeof options.physical_path === 'string'
+      ? options.physical_path
+      : options.physical_path != null
+        ? String(options.physical_path)
+        : undefined);
+
+  const systemId =
+    options.systemId ??
+    (typeof options.system_id === 'string'
+      ? options.system_id
+      : options.system_id != null
+        ? String(options.system_id)
+        : undefined);
+
+  const skipSidValidation =
+    options.skipSidValidation ?? options.skip_sid_validation;
+
+  if (physicalPath === undefined || physicalPath === null) {
+    throw new Error('KeyManager.addKeys requires physicalPath');
+  }
+
+  if (systemId === undefined || systemId === null) {
+    throw new Error('KeyManager.addKeys requires systemId');
+  }
+
+  const normalized = {
+    ...options,
+    physicalPath,
+    systemId,
+  } as AddKeysOptions & Partial<AddKeysOptionsAliases>;
+
+  if (skipSidValidation !== undefined) {
+    normalized.skipSidValidation = skipSidValidation;
+  }
+
+  return normalized as AddKeysOptions;
+}
+
 function normalizePhysicalPath(path: string | null | undefined): string {
   if (!path) {
     return '/';
@@ -119,6 +170,10 @@ export class DefaultKeyManager implements KeyManager {
     origin: DeliveryOriginType;
     skipSidValidation?: boolean;
   }): Promise<void> {
+    const normalizedOptions = normalizeAddKeysOptions(
+      options as AddKeysOptions & AddKeysOptionsAliases
+    );
+
     const {
       keys,
       sid,
@@ -126,7 +181,7 @@ export class DefaultKeyManager implements KeyManager {
       systemId,
       origin,
       skipSidValidation = false,
-    } = options;
+    } = normalizedOptions;
 
     const validKeys: Array<Record<string, unknown>> = [];
     let rejectedCount = 0;

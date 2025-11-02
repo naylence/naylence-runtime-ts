@@ -13,6 +13,7 @@ import type { Authorizer } from '../../security/auth/authorizer.js';
 import {
   DefaultWelcomeService,
   type DefaultWelcomeServiceOptions,
+  resolveShowEnvelopesFlag,
 } from '../default-welcome-service.js';
 
 interface MockContext {
@@ -153,6 +154,24 @@ describe('DefaultWelcomeService', () => {
     expect(deltaMs).toBeLessThanOrEqual((ttlSec + 5) * 1000);
   });
 
+  it('accepts snake_case ttl_sec option alias', async () => {
+    const base = createMockContext();
+    const service = new DefaultWelcomeService({
+      placementStrategy: base.placementStrategy,
+      transportProvisioner: base.transportProvisioner,
+      tokenIssuer: base.tokenIssuer,
+      authorizer: base.authorizer,
+      ttl_sec: 240,
+    } as DefaultWelcomeServiceOptions & { ttl_sec: number });
+
+    const welcome = await service.handleHello(createHelloFrame());
+    const expiresAtMs = Date.parse(welcome.expiresAt ?? '');
+    expect(Number.isFinite(expiresAtMs)).toBe(true);
+    const deltaMs = expiresAtMs - Date.now();
+    expect(deltaMs).toBeGreaterThan(0);
+    expect(deltaMs).toBeLessThanOrEqual((240 + 5) * 1000);
+  });
+
   it('throws when logicals are invalid', async () => {
     const context = createMockContext();
     const hello = createHelloFrame({
@@ -197,5 +216,26 @@ describe('DefaultWelcomeService', () => {
     expect(context.tokenIssuer.issue).not.toHaveBeenCalled();
     expect(context.transportProvisioner.provision).not.toHaveBeenCalled();
     expect(welcome.connectionGrants).toHaveLength(0);
+  });
+});
+
+describe('resolveShowEnvelopesFlag', () => {
+  it('returns true for snake_case env flag', () => {
+    expect(
+      resolveShowEnvelopesFlag({ FAME_SHOW_ENVELOPES: 'true' } as NodeJS.ProcessEnv)
+    ).toBe(true);
+  });
+
+  it('accepts camelCase alias for env flag', () => {
+    expect(
+      resolveShowEnvelopesFlag({ fameShowEnvelopes: 'true' } as NodeJS.ProcessEnv)
+    ).toBe(true);
+  });
+
+  it('returns false when flag absent or not true', () => {
+    expect(resolveShowEnvelopesFlag(undefined)).toBe(false);
+    expect(
+      resolveShowEnvelopesFlag({ FAME_SHOW_ENVELOPES: 'false' } as NodeJS.ProcessEnv)
+    ).toBe(false);
   });
 });

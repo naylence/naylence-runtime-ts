@@ -12,13 +12,68 @@ export interface SharedSecretTokenVerifierOptions {
   principal?: string;
 }
 
+type SharedSecretTokenVerifierOptionsInput =
+  | SharedSecretTokenVerifierOptions
+  | CredentialProvider
+  | (SharedSecretTokenVerifierOptions & Record<string, unknown>)
+  | Record<string, unknown>;
+
+function isCredentialProvider(value: unknown): value is CredentialProvider {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as CredentialProvider).get === 'function'
+  );
+}
+
+function normalizeOptions(
+  input: SharedSecretTokenVerifierOptionsInput
+): SharedSecretTokenVerifierOptions {
+  if (isCredentialProvider(input)) {
+    return { credentialProvider: input };
+  }
+
+  const candidate = input as SharedSecretTokenVerifierOptions &
+    Record<string, unknown>;
+
+  const credentialProviderCandidate =
+    candidate.credentialProvider ?? candidate.credential_provider;
+
+  if (!isCredentialProvider(credentialProviderCandidate)) {
+    throw new Error(
+      'SharedSecretTokenVerifier requires a credentialProvider option'
+    );
+  }
+
+  const principalCandidateRaw =
+    candidate.principal ??
+    (typeof candidate.principal_id === 'string'
+      ? candidate.principal_id
+      : typeof candidate.principal_name === 'string'
+        ? candidate.principal_name
+        : undefined);
+  const principalCandidate =
+    typeof principalCandidateRaw === 'string'
+      ? principalCandidateRaw.trim()
+      : undefined;
+
+  return {
+    credentialProvider: credentialProviderCandidate,
+    ...(principalCandidate && principalCandidate.length > 0
+      ? { principal: principalCandidate }
+      : {}),
+  };
+}
+
 export class SharedSecretTokenVerifier implements TokenVerifier {
   private readonly credentialProvider: CredentialProvider;
   private readonly principal: string;
 
-  constructor(options: SharedSecretTokenVerifierOptions) {
-    this.credentialProvider = options.credentialProvider;
-    this.principal = options.principal ?? '*';
+  constructor(options: SharedSecretTokenVerifierOptionsInput) {
+    const normalized = normalizeOptions(options);
+
+    this.credentialProvider = normalized.credentialProvider;
+    this.principal = normalized.principal ?? '*';
   }
 
   public async verify(

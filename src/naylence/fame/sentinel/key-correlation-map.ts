@@ -15,16 +15,52 @@ export interface KeyCorrelationMapOptions {
   maxEntries?: number;
 }
 
+type KeyCorrelationMapOptionsInput =
+  | KeyCorrelationMapOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizeOptions(
+  options?: KeyCorrelationMapOptionsInput
+): KeyCorrelationMapOptions {
+  if (!options || typeof options !== 'object') {
+    return {};
+  }
+
+  const candidate = options as Record<string, unknown>;
+  const normalized: KeyCorrelationMapOptions = {
+    ...(options as KeyCorrelationMapOptions),
+  };
+
+  if ('ttl_sec' in candidate && normalized.ttlSec === undefined) {
+    const ttl = candidate.ttl_sec;
+    if (typeof ttl === 'number') {
+      normalized.ttlSec = ttl;
+    }
+  }
+
+  if ('max_entries' in candidate && normalized.maxEntries === undefined) {
+    const max = candidate.max_entries;
+    if (typeof max === 'number') {
+      normalized.maxEntries = max;
+    }
+  }
+
+  return normalized;
+}
+
 export class KeyCorrelationMap {
   private readonly ttlMs: number;
   private readonly maxEntries: number;
   private readonly data = new Map<string, CorrelationEntry>();
 
-  constructor(options: KeyCorrelationMapOptions = {}) {
-    const ttlSec = options.ttlSec ?? DEFAULT_KEY_CORRELATION_TTL_SEC;
+  constructor(options: KeyCorrelationMapOptionsInput = {}) {
+    const normalized = normalizeOptions(options);
+    const ttlSec = normalized.ttlSec ?? DEFAULT_KEY_CORRELATION_TTL_SEC;
     const validatedTtl = validateKeyCorrelationTtlSec(ttlSec);
     this.ttlMs = (validatedTtl ?? ttlSec) * 1000;
-    this.maxEntries = options.maxEntries ?? 2048;
+    this.maxEntries = normalized.maxEntries ?? 2048;
   }
 
   public add(correlationId: string, route: string): void {

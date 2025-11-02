@@ -82,17 +82,16 @@ function normalizeDefaultDeliveryTrackerConfig(
   const candidate = config as DefaultDeliveryTrackerConfig &
     Record<string, unknown>;
 
-  const futuresGcGraceSecs = extractNumber(candidate, [
-    'futuresGcGraceSecs',
+  const futuresGcGraceSecs = readNumberWithLegacy(candidate, 'futuresGcGraceSecs', [
     'futures_gc_grace_secs',
     'futures_gc_graceSeconds',
   ]);
 
-  const futuresSweepIntervalSecs = extractNumber(candidate, [
+  const futuresSweepIntervalSecs = readNumberWithLegacy(
+    candidate,
     'futuresSweepIntervalSecs',
-    'futures_sweep_interval_secs',
-    'futures_sweepIntervalSecs',
-  ]);
+    ['futures_sweep_interval_secs', 'futures_sweepIntervalSecs']
+  );
 
   return {
     futuresGcGraceSecs,
@@ -100,22 +99,38 @@ function normalizeDefaultDeliveryTrackerConfig(
   };
 }
 
-function extractNumber(
+function readNumberWithLegacy(
   source: Record<string, unknown>,
-  keys: string[]
+  camelKey: string,
+  legacyKeys: string[]
 ): number | undefined {
-  for (const key of keys) {
-    if (key in source) {
-      const value = source[key];
-      if (typeof value === 'number' && Number.isFinite(value)) {
-        return value;
-      }
-      if (typeof value === 'string' && value.trim().length > 0) {
-        const parsed = Number(value);
-        if (!Number.isNaN(parsed)) {
-          return parsed;
-        }
-      }
+  const camelValue = coerceNumber(source[camelKey]);
+  if (camelValue !== undefined) {
+    return camelValue;
+  }
+
+  for (const legacyKey of legacyKeys) {
+    if (!(legacyKey in source)) {
+      continue;
+    }
+    const coerced = coerceNumber(source[legacyKey]);
+    if (coerced !== undefined) {
+      source[camelKey] = coerced;
+      return coerced;
+    }
+  }
+
+  return undefined;
+}
+
+function coerceNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
     }
   }
   return undefined;

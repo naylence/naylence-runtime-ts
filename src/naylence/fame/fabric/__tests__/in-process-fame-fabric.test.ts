@@ -131,10 +131,14 @@ describe('InProcessFameFabric', () => {
       'custom-name',
       expect.any(Function)
     );
-    expect(sinkService.subscribe).toHaveBeenCalledWith({
-      sinkAddress: sinkAddress.toString(),
-      subscriberAddress: subscriberAddress.toString(),
-    });
+    expect(sinkService.subscribe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sinkAddress: sinkAddress.toString(),
+        sink_address: sinkAddress.toString(),
+        subscriberAddress: subscriberAddress.toString(),
+        subscriber_address: subscriberAddress.toString(),
+      })
+    );
 
     expect(capturedHandler).toBeInstanceOf(Function);
 

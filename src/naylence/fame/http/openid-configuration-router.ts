@@ -73,6 +73,93 @@ export interface CreateOpenIDConfigurationRouterOptions {
   algorithm?: string;
 }
 
+interface NormalizedOpenIDConfigurationRouterOptions {
+  prefix?: string;
+  issuer?: string;
+  baseUrl?: string;
+  tokenEndpointPath?: string;
+  jwksEndpointPath?: string;
+  allowedScopes?: string[];
+  algorithm?: string;
+}
+
+function coerceString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function coerceStringArray(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const entries = value
+      .map((entry) => coerceString(entry))
+      .filter((entry): entry is string => entry !== undefined);
+    return entries.length > 0 ? entries : undefined;
+  }
+
+  const text = coerceString(value);
+  if (text) {
+    const entries = text
+      .split(/[\s,]+/)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+    return entries.length > 0 ? entries : undefined;
+  }
+
+  return undefined;
+}
+
+function normalizeOpenIDConfigurationRouterOptions(
+  options: CreateOpenIDConfigurationRouterOptions | undefined
+): NormalizedOpenIDConfigurationRouterOptions {
+  if (!options) {
+    return {};
+  }
+
+  const descriptor = options as CreateOpenIDConfigurationRouterOptions &
+    Record<string, unknown>;
+
+  const prefix =
+    coerceString(descriptor.prefix) ??
+    coerceString((descriptor as any).prefix);
+
+  const issuer =
+    coerceString(descriptor.issuer) ??
+    coerceString((descriptor as any).issuer);
+
+  const baseUrl =
+    coerceString(descriptor.baseUrl) ??
+    coerceString((descriptor as any).base_url);
+
+  const tokenEndpointPath =
+    coerceString(descriptor.tokenEndpointPath) ??
+    coerceString((descriptor as any).token_endpoint_path);
+
+  const jwksEndpointPath =
+    coerceString(descriptor.jwksEndpointPath) ??
+    coerceString((descriptor as any).jwks_endpoint_path);
+
+  const allowedScopes =
+    coerceStringArray(descriptor.allowedScopes) ??
+    coerceStringArray((descriptor as any).allowed_scopes);
+
+  const algorithm =
+    coerceString(descriptor.algorithm) ??
+    coerceString((descriptor as any).algorithm);
+
+  return {
+    prefix,
+    issuer,
+    baseUrl,
+    tokenEndpointPath,
+    jwksEndpointPath,
+    allowedScopes,
+    algorithm,
+  };
+}
+
 /**
  * Parse allowed scopes from environment or config
  */
@@ -124,7 +211,7 @@ export function createOpenIDConfigurationRouter(
     jwksEndpointPath = '/.well-known/jwks.json',
     allowedScopes: configAllowedScopes,
     algorithm: configAlgorithm,
-  } = options;
+  } = normalizeOpenIDConfigurationRouterOptions(options);
 
   // Resolve configuration with environment variable priority
   const defaultIssuer =

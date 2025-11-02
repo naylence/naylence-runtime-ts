@@ -140,4 +140,37 @@ describe('JWTTokenVerifier', () => {
     });
     expect(context.claims.aud).toBe('expected-audience');
   });
+
+  it('supports snake_case constructor options', async () => {
+    const issuer = new JWTTokenIssuer({
+      signingKeyPem: HMAC_SECRET,
+      kid: 'snake-kid',
+      issuer: 'snake-issuer',
+      algorithm: 'HS256',
+      ttlSec: 120,
+    });
+
+    const token = await issuer.issue({
+      scope: 'profile:read profile:write',
+      jti: 'snake-token',
+    });
+
+    const verifier = new JWTTokenVerifier({
+      verification_key: HMAC_SECRET,
+      issuer: 'snake-issuer',
+      ttl_sec: 120,
+      required_scopes: ['profile:read'],
+      revoked_capacity: 5,
+    });
+
+    const context = await verifier.verify(token);
+    expect(context.authenticated).toBe(true);
+    expect(context.grantedScopes).toEqual(
+      expect.arrayContaining(['profile:read'])
+    );
+
+    verifier.revoke('different-token');
+    jest.advanceTimersByTime(121_000);
+    await expect(verifier.verify(token)).rejects.toThrow('Token has expired');
+  });
 });

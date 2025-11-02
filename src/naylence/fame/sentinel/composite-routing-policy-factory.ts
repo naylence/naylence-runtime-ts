@@ -1,5 +1,6 @@
 import { createResource } from '@naylence/factory';
 import { getLogger } from '../util/logging.js';
+import { snakeToCamelCase } from '../util/util.js';
 import { CapabilityAwareRoutingPolicy } from './capability-aware-routing-policy.js';
 import { CompositeRoutingPolicy } from './composite-routing-policy.js';
 import { HybridPathRoutingPolicy } from './hybrid-path-routing-policy.js';
@@ -88,9 +89,11 @@ export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
       return { policies: [] };
     }
 
-    if ('type' in config) {
-      const typeValue = (config as { type?: unknown }).type;
-      if (typeValue !== undefined && typeValue !== 'CompositeRoutingPolicy') {
+    const typeValue =
+      'type' in config ? (config as { type?: unknown }).type : undefined;
+    if (typeValue !== undefined) {
+      const normalizedType = normalizePolicyTypeValue(typeValue);
+      if (normalizedType && normalizedType !== 'CompositeRoutingPolicy') {
         throw new Error(
           `CompositeRoutingPolicyFactory only supports CompositeRoutingPolicy config, got type ${String(
             typeValue
@@ -99,10 +102,12 @@ export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
       }
     }
 
-    const maybePolicies =
-      'policies' in config
-        ? (config as { policies?: unknown }).policies
-        : undefined;
+    const record = config as Record<string, unknown>;
+    const maybePolicies = getFirstDefined(record, [
+      'policies',
+      'policyConfigs',
+      'policy_configs',
+    ]);
     if (maybePolicies == null) {
       return { policies: [] };
     }
@@ -132,7 +137,13 @@ export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
       throw new Error('Each policy entry must be an object when provided');
     }
 
-    return entry;
+    const normalized = { ...(entry as Record<string, unknown>) };
+    const normalizedType = normalizePolicyTypeValue(normalized.type);
+    if (normalizedType) {
+      normalized.type = normalizedType;
+    }
+
+    return normalized as RoutingPolicyConfig | Record<string, unknown>;
   }
 
   private createFallbackPolicies(
@@ -150,6 +161,36 @@ export class CompositeRoutingPolicyFactory extends RoutingPolicyFactory {
       new HybridPathRoutingPolicy(hybridOptions),
     ];
   }
+}
+
+function normalizePolicyTypeValue(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const sanitized = trimmed.replace(/[-\s]+/g, '_');
+  const camel = snakeToCamelCase(sanitized);
+  if (!camel) {
+    return undefined;
+  }
+  return camel.charAt(0).toUpperCase() + camel.slice(1);
+}
+
+function getFirstDefined(
+  record: Record<string, unknown>,
+  keys: string[]
+): unknown {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      return record[key];
+    }
+  }
+  return undefined;
 }
 
 export default CompositeRoutingPolicyFactory;

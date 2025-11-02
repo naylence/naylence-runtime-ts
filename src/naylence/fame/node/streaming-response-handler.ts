@@ -23,8 +23,100 @@ type AsyncIteratorCandidate<T> = Partial<AsyncIterator<T>> & {
   __anext__?: () => Promise<IteratorResult<T>>;
 };
 
+interface StreamingResponseHandlerOptions {
+  deliverWrapper: () => DeliverFn;
+  envelopeFactory: EnvelopeFactory;
+  responseContextManager: ResponseContextManager;
+}
+
+type StreamingResponseHandlerOptionsInput =
+  Partial<StreamingResponseHandlerOptions> & {
+    deliver_wrapper?: () => DeliverFn;
+    envelope_factory?: EnvelopeFactory;
+    response_context_manager?: ResponseContextManager;
+  };
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  if (Object.prototype.toString.call(value) !== '[object Object]') {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === null || proto === Object.prototype;
+}
+
+function pickOption<T>(
+  record: Record<string, unknown>,
+  primary: string,
+  ...aliases: string[]
+): T | undefined {
+  if (Object.prototype.hasOwnProperty.call(record, primary)) {
+    const value = record[primary] as T;
+    if (value !== undefined) {
+      return value;
+    }
+  }
+
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(record, alias)) {
+      const value = record[alias] as T;
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeOptions(
+  options: StreamingResponseHandlerOptionsInput
+): StreamingResponseHandlerOptions {
+  if (!isPlainRecord(options)) {
+    throw new Error('StreamingResponseHandler options must be an object');
+  }
+
+  const record = options as Record<string, unknown>;
+
+  const deliverWrapper = pickOption<() => DeliverFn>(
+    record,
+    'deliverWrapper',
+    'deliver_wrapper'
+  );
+  const envelopeFactory = pickOption<EnvelopeFactory>(
+    record,
+    'envelopeFactory',
+    'envelope_factory'
+  );
+  const responseContextManager = pickOption<ResponseContextManager>(
+    record,
+    'responseContextManager',
+    'response_context_manager'
+  );
+
+  if (typeof deliverWrapper !== 'function') {
+    throw new Error('StreamingResponseHandler requires a deliverWrapper option');
+  }
+  if (!envelopeFactory) {
+    throw new Error('StreamingResponseHandler requires an envelopeFactory option');
+  }
+  if (!responseContextManager) {
+    throw new Error(
+      'StreamingResponseHandler requires a responseContextManager option'
+    );
+  }
+
+  return {
+    deliverWrapper,
+    envelopeFactory,
+    responseContextManager,
+  };
 }
 
 interface ErrorPayload {
@@ -78,11 +170,36 @@ function toAsyncIterable<T>(value: AsyncMaybeIterable<T>): AsyncIterable<T> {
 }
 
 export class StreamingResponseHandler {
+  private readonly deliverWrapperFactory: () => DeliverFn;
+  private readonly envelopeFactory: EnvelopeFactory;
+  private readonly responseContextManager: ResponseContextManager;
+
   constructor(
-    private readonly deliverWrapper: () => DeliverFn,
-    private readonly envelopeFactory: EnvelopeFactory,
-    private readonly responseContextManager: ResponseContextManager
-  ) {}
+    deliverWrapper: (() => DeliverFn) | StreamingResponseHandlerOptionsInput,
+    envelopeFactory?: EnvelopeFactory,
+    responseContextManager?: ResponseContextManager
+  ) {
+    if (typeof deliverWrapper === 'function') {
+      if (!envelopeFactory || !responseContextManager) {
+        throw new Error(
+          'StreamingResponseHandler requires envelopeFactory and responseContextManager when using positional arguments'
+        );
+      }
+      this.deliverWrapperFactory = deliverWrapper;
+      this.envelopeFactory = envelopeFactory;
+      this.responseContextManager = responseContextManager;
+      return;
+    }
+
+    const normalized = normalizeOptions(deliverWrapper);
+    this.deliverWrapperFactory = normalized.deliverWrapper;
+    this.envelopeFactory = normalized.envelopeFactory;
+    this.responseContextManager = normalized.responseContextManager;
+  }
+
+  public deliverWrapper(): DeliverFn {
+    return this.deliverWrapperFactory();
+  }
 
   isStreamingResult<T = unknown>(
     result: unknown
@@ -139,7 +256,7 @@ export class StreamingResponseHandler {
         responseContext
       );
 
-      await this.deliverWrapper()(response.envelope, responseContext);
+      await this.deliver(response.envelope, responseContext);
     }
   }
 
@@ -233,6 +350,13 @@ export class StreamingResponseHandler {
       is_terminal: payload === null || payload === undefined,
     });
 
-    await this.deliverWrapper()(responseEnvelope, responseContext);
+    await this.deliver(responseEnvelope, responseContext);
+  }
+
+  private async deliver(
+    envelope: FameEnvelope,
+    context?: FameDeliveryContext
+  ): Promise<void> {
+    await this.deliverWrapperFactory()(envelope, context);
   }
 }

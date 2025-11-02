@@ -204,9 +204,28 @@ export class InMemoryKeyStore extends KeyStore {
   }
 
   private cloneKey(kid: string, jwk: KeyRecord): KeyRecord {
-    return {
+    const clone = {
       ...(jwk as Record<string, unknown>),
       kid,
-    } as KeyRecord;
+    } as KeyRecord & { physicalPath?: unknown };
+
+    if (
+      (clone as Record<string, unknown>).physical_path === undefined &&
+      clone.physicalPath !== undefined
+    ) {
+      const physicalPath = clone.physicalPath;
+      (clone as Record<string, unknown>).physical_path =
+        typeof physicalPath === 'string'
+          ? physicalPath
+          : physicalPath != null
+            ? String(physicalPath)
+            : undefined;
+    }
+
+    if ('physicalPath' in clone) {
+      delete (clone as Record<string, unknown>).physicalPath;
+    }
+
+    return clone as KeyRecord;
   }
 }

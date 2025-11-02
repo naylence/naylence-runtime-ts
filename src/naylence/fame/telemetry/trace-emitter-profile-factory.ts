@@ -90,14 +90,53 @@ function normalizeTraceEmitterProfileConfig(
 
   const candidate = config as TraceEmitterProfileConfig &
     Record<string, unknown>;
-  const profileValue =
-    candidate.profile ?? candidate['profile_name'] ?? candidate['profileName'];
+  const profileValue = resolveProfileName(candidate);
+  const canonicalProfile = canonicalizeProfileName(profileValue);
+  candidate.profile = canonicalProfile;
 
-  if (typeof profileValue === 'string' && profileValue.trim().length > 0) {
-    return { profile: profileValue.trim().toLowerCase() };
+  return { profile: canonicalProfile };
+}
+
+function resolveProfileName(candidate: Record<string, unknown>): string {
+  const direct = coerceProfileString(candidate.profile);
+  if (direct) {
+    return direct;
   }
 
-  return { profile: PROFILE_NAME_NOOP };
+  const legacyKeys = ['profile_name', 'profileName'] as const;
+  for (const legacyKey of legacyKeys) {
+    const legacyValue = coerceProfileString(candidate[legacyKey]);
+    if (legacyValue) {
+      return legacyValue;
+    }
+  }
+
+  return PROFILE_NAME_NOOP;
+}
+
+function coerceProfileString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+const PROFILE_ALIASES: Record<string, string> = {
+  noop: PROFILE_NAME_NOOP,
+  'no-op': PROFILE_NAME_NOOP,
+  'no_op': PROFILE_NAME_NOOP,
+  'open-telemetry': PROFILE_NAME_OPEN_TELEMETRY,
+  'open_telemetry': PROFILE_NAME_OPEN_TELEMETRY,
+  opentelemetry: PROFILE_NAME_OPEN_TELEMETRY,
+};
+
+function canonicalizeProfileName(value: string): string {
+  const normalized = value
+    .replace(/[\s_]+/g, '-')
+    .toLowerCase();
+  return PROFILE_ALIASES[normalized] ?? normalized;
 }
 
 function resolveProfileConfig(profileName: string): TraceEmitterConfig {

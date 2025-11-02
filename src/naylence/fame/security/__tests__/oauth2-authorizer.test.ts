@@ -178,6 +178,45 @@ describe('OAuth2Authorizer', () => {
     expect(reverseContext.claims.sub).toBe(`reverse-auth-${node.id}`);
   });
 
+  it('accepts snake_case configuration aliases', async () => {
+    const token = await issuer.issue({
+      sub: 'user-5',
+      scope: 'profile:read',
+      aud: NODE_PHYSICAL_PATH,
+    });
+
+    const now = Date.now();
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+
+    const authorizer = new OAuth2Authorizer({
+      token_verifier: verifier,
+      token_issuer: issuer,
+      required_scopes: ['fame:connect'],
+      require_scope: false,
+      reverse_auth_ttl_sec: 42,
+    } as any);
+
+    const node = createNodeStub();
+    await authorizer.onNodeStarted(node);
+
+    const context = await authorizer.authenticate(`Bearer ${token}`);
+    expect(context).toBeDefined();
+    expect(context?.authenticated).toBe(true);
+
+    const config = await authorizer.createReverseAuthorizationConfig(node);
+    expect(config).toBeDefined();
+    const tokenProvider = (config?.tokenProvider ?? {}) as {
+      expiresAt?: Date;
+    };
+    expect(tokenProvider.expiresAt).toBeInstanceOf(Date);
+    const expiresAt = tokenProvider.expiresAt as Date;
+    expect(Math.round(expiresAt.getTime() / 1000)).toBe(
+      Math.round((now + 42_000) / 1000)
+    );
+
+    nowSpy.mockRestore();
+  });
+
   it('creates node authorization context during attach validation', async () => {
     const token = await issuer.issue({
       sub: 'user-4',

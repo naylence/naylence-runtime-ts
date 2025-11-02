@@ -151,6 +151,28 @@ function ensureSubset(
 
 export interface DefaultAuthorizerOptions {
   tokenVerifier?: TokenVerifier;
+  token_verifier?: TokenVerifier;
+}
+
+interface NormalizedDefaultAuthorizerOptions {
+  tokenVerifier?: TokenVerifier;
+}
+
+function normalizeOptions(
+  options: DefaultAuthorizerOptions | null | undefined
+): NormalizedDefaultAuthorizerOptions {
+  if (options === undefined || options === null) {
+    return {};
+  }
+
+  if (typeof options !== 'object') {
+    throw new TypeError('DefaultAuthorizer options must be an object');
+  }
+
+  const candidate = options as DefaultAuthorizerOptions;
+  return {
+    tokenVerifier: candidate.tokenVerifier ?? candidate.token_verifier,
+  };
 }
 
 export class DefaultAuthorizer
@@ -162,8 +184,9 @@ export class DefaultAuthorizer
   private node?: NodeLike;
 
   constructor(options: DefaultAuthorizerOptions = {}) {
-    if (options.tokenVerifier) {
-      this.tokenVerifierImpl = options.tokenVerifier;
+    const normalized = normalizeOptions(options);
+    if (normalized.tokenVerifier) {
+      this.tokenVerifierImpl = normalized.tokenVerifier;
     }
   }
 

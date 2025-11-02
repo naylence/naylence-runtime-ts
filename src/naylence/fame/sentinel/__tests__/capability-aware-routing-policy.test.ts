@@ -1,6 +1,9 @@
 import { createFameEnvelope, FameAddress } from '@naylence/core';
 
-import { CapabilityAwareRoutingPolicy } from '../capability-aware-routing-policy.js';
+import {
+  CapabilityAwareRoutingPolicy,
+  type CapabilityAwareRoutingPolicyOptions,
+} from '../capability-aware-routing-policy.js';
 import type { LoadBalancingStrategy } from '../load-balancing/load-balancing-strategy.js';
 import {
   RouterState,
@@ -291,5 +294,32 @@ describe('CapabilityAwareRoutingPolicy', () => {
 
     const action = await policy.decide(envelope, state, null);
     expect(action).toBeInstanceOf(Drop);
+  });
+
+  it('accepts snake_case constructor options', async () => {
+    const chosenSegment = 'child-99';
+    const stubStrategy: LoadBalancingStrategy = {
+      choose: jest.fn(() => chosenSegment),
+    };
+    const resolver = jest.fn(async () => new FameAddress('svc@/child-99'));
+
+    const policy = new CapabilityAwareRoutingPolicy({
+      load_balancing_strategy: stubStrategy,
+      resolve_address_by_capability: resolver,
+    } as unknown as CapabilityAwareRoutingPolicyOptions);
+
+    const state = new RouterState({
+      ...baseStateOptions(),
+      local: new Set(['svc@/child-99']),
+    });
+
+    const envelope = createFameEnvelope({
+      frame: { type: 'Data', payload: { job: 'alias' } },
+      capabilities: ['analytics'],
+    });
+
+    const action = await policy.decide(envelope, state, null);
+    expect(resolver).toHaveBeenCalledWith(['analytics']);
+    expect(action).toBeInstanceOf(DeliverLocal);
   });
 });

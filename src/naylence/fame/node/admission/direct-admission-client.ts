@@ -17,8 +17,10 @@ const logger = getLogger(
 );
 
 export interface DirectAdmissionClientOptions {
-  readonly connectionGrants: Array<Record<string, unknown>>;
+  readonly connectionGrants?: Array<Record<string, unknown>>;
+  readonly connection_grants?: Array<Record<string, unknown>>;
   readonly ttlSec?: number | null;
+  readonly ttl_sec?: number | null;
 }
 
 export class DirectAdmissionClient implements AdmissionClient {
@@ -28,20 +30,24 @@ export class DirectAdmissionClient implements AdmissionClient {
   private readonly ttlSec: number | null | undefined;
 
   constructor(options: DirectAdmissionClientOptions) {
+    const connectionGrantsSource =
+      options.connectionGrants ?? options.connection_grants;
+
     if (
-      !Array.isArray(options.connectionGrants) ||
-      options.connectionGrants.length === 0
+      !Array.isArray(connectionGrantsSource) ||
+      connectionGrantsSource.length === 0
     ) {
       throw new Error(
         'DirectAdmissionClient requires at least one connection grant'
       );
     }
 
-    this.connectionGrants = options.connectionGrants.map((grant) =>
+    this.connectionGrants = connectionGrantsSource.map((grant) =>
       cloneGrant(grant)
     );
 
-    const ttlCandidate = options.ttlSec ?? TTL_NEVER_EXPIRES;
+    const ttlCandidate =
+      options.ttlSec ?? options.ttl_sec ?? TTL_NEVER_EXPIRES;
     if (ttlCandidate != null && ttlCandidate !== TTL_NEVER_EXPIRES) {
       const validated = validateTtlSec(ttlCandidate, {
         min: 60,

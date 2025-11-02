@@ -150,6 +150,22 @@ describe('NodeHeartbeatFrameHandler', () => {
     );
   });
 
+  it('accepts routing_node alias in constructor options', async () => {
+    const routingNode = createRoutingNode();
+    const handler = new NodeHeartbeatFrameHandler({
+      routing_node: routingNode as any,
+    } as unknown as Record<string, unknown>);
+
+    const connector = createConnector();
+    const context = createContext(connector);
+
+    await expect(
+      handler.acceptNodeHeartbeat(createHeartbeatEnvelope(), context)
+    ).resolves.toBeUndefined();
+
+    expect(routingNode.envelopeFactory.createEnvelope).toHaveBeenCalledTimes(1);
+  });
+
   it('omits optional ack fields when metadata is absent', async () => {
     const routingNode = createRoutingNode({ routingEpoch: null });
     const handler = new NodeHeartbeatFrameHandler({

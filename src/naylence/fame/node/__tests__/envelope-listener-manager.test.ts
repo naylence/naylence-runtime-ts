@@ -514,8 +514,24 @@ describe('EnvelopeListenerManager', () => {
       'svc',
       expect.any(Object),
       expect.any(Function),
-      expect.objectContaining({ stopped: false }),
+      expect.objectContaining({ stopped: false, stop_state: false }),
       DEFAULT_POLLING_TIMEOUT_MS
+    );
+  });
+
+  it('passes snake_case poll timeout option through to channel polling manager', async () => {
+    const { manager, channelPollingMock } = setupManager();
+
+    await manager.listen('svc', jest.fn().mockResolvedValue(null), {
+      poll_timeout_ms: 2500,
+    });
+
+    expect(channelPollingMock).toHaveBeenCalledWith(
+      'svc',
+      expect.any(Object),
+      expect.any(Function),
+      expect.objectContaining({ stopped: false, stop_state: false }),
+      2500
     );
   });
 
@@ -810,6 +826,26 @@ describe('EnvelopeListenerManager', () => {
     });
   });
 
+  it('invokes RPC client using snake_case invocation options', async () => {
+    const { manager, rpcClientManagerSpies } = setupManager();
+    const handler = jest.fn().mockResolvedValue(null);
+    const address = await manager.listen('svc-snake', handler);
+
+    await manager.invoke({
+      target_addr: address,
+      method: 'snake',
+      params: {},
+      timeout_ms: 1350,
+    });
+
+    expect(rpcClientManagerSpies.invoke).toHaveBeenLastCalledWith({
+      targetAddr: address,
+      method: 'snake',
+      params: {},
+      timeoutMs: 1350,
+    });
+  });
+
   it('invokes RPC stream client with default timeout when none provided', async () => {
     const { manager, rpcClientManagerSpies } = setupManager();
     const handler = jest.fn().mockResolvedValue(null);
@@ -826,6 +862,26 @@ describe('EnvelopeListenerManager', () => {
       method: 'stream',
       params: {},
       timeoutMs: DEFAULT_INVOKE_TIMEOUT_MILLIS,
+    });
+  });
+
+  it('invokes RPC stream client using snake_case invocation options', async () => {
+    const { manager, rpcClientManagerSpies } = setupManager();
+    const handler = jest.fn().mockResolvedValue(null);
+    const address = await manager.listen('svc-stream-snake', handler);
+
+    await manager.invokeStream({
+      target_addr: address,
+      method: 'snakeStream',
+      params: {},
+      timeout_ms: 1420,
+    });
+
+    expect(rpcClientManagerSpies.invokeStream).toHaveBeenLastCalledWith({
+      targetAddr: address,
+      method: 'snakeStream',
+      params: {},
+      timeoutMs: 1420,
     });
   });
 

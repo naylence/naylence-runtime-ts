@@ -26,6 +26,110 @@ type SecureFrame = SecureOpenFrame | SecureAcceptFrame | SecureCloseFrame;
 
 type SecureFrameType = SecureFrame['type'];
 
+interface SecureChannelFrameHandlerOptions {
+  secureChannelManager: SecureChannelManager | null;
+  envelopeFactory: EnvelopeFactory;
+  sendCallback: SendCallback;
+  envelopeSecurityHandler?: EnvelopeSecurityHandler | null;
+}
+
+type SecureChannelFrameHandlerOptionsInput = Partial<
+  SecureChannelFrameHandlerOptions
+> & {
+  secureChannelManager?: SecureChannelManager | null;
+  envelopeFactory?: EnvelopeFactory;
+  sendCallback?: SendCallback;
+  envelopeSecurityHandler?: EnvelopeSecurityHandler | null;
+  secure_channel_manager?: SecureChannelManager | null;
+  envelope_factory?: EnvelopeFactory;
+  send_callback?: SendCallback;
+  envelope_security_handler?: EnvelopeSecurityHandler | null;
+};
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  if (Object.prototype.toString.call(value) !== '[object Object]') {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === null || proto === Object.prototype;
+}
+
+function pickOption<T>(
+  record: Record<string, unknown>,
+  primary: string,
+  ...aliases: string[]
+): T | undefined {
+  if (Object.prototype.hasOwnProperty.call(record, primary)) {
+    const value = record[primary] as T | undefined;
+    if (value !== undefined) {
+      return value;
+    }
+  }
+
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(record, alias)) {
+      const value = record[alias] as T | undefined;
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeOptions(
+  options: SecureChannelFrameHandlerOptionsInput
+): SecureChannelFrameHandlerOptions {
+  if (!isPlainRecord(options)) {
+    throw new Error('SecureChannelFrameHandler options must be an object');
+  }
+
+  const record = options as Record<string, unknown>;
+
+  const secureChannelManager = pickOption<SecureChannelManager | null>(
+    record,
+    'secureChannelManager',
+    'secure_channel_manager'
+  ) ?? null;
+
+  const envelopeFactory = pickOption<EnvelopeFactory>(
+    record,
+    'envelopeFactory',
+    'envelope_factory'
+  );
+
+  const sendCallback = pickOption<SendCallback>(
+    record,
+    'sendCallback',
+    'send_callback'
+  );
+
+  const envelopeSecurityHandler = pickOption<EnvelopeSecurityHandler | null>(
+    record,
+    'envelopeSecurityHandler',
+    'envelope_security_handler'
+  );
+
+  if (!envelopeFactory) {
+    throw new Error('SecureChannelFrameHandler requires an envelopeFactory');
+  }
+
+  if (typeof sendCallback !== 'function') {
+    throw new Error('SecureChannelFrameHandler requires a sendCallback');
+  }
+
+  return {
+    secureChannelManager,
+    envelopeFactory,
+    sendCallback,
+    envelopeSecurityHandler: envelopeSecurityHandler ?? null,
+  };
+}
+
 function assertSecureChannelManager(
   manager: SecureChannelManager | null | undefined
 ): asserts manager is SecureChannelManager {
@@ -57,14 +161,11 @@ function extractDestinationFromChannelId(channelId: string): string | null {
 }
 
 export class SecureChannelFrameHandler {
-  constructor(
-    private readonly options: {
-      secureChannelManager: SecureChannelManager | null;
-      envelopeFactory: EnvelopeFactory;
-      sendCallback: SendCallback;
-      envelopeSecurityHandler?: EnvelopeSecurityHandler | null;
-    }
-  ) {}
+  private readonly options: SecureChannelFrameHandlerOptions;
+
+  constructor(options: SecureChannelFrameHandlerOptionsInput) {
+    this.options = normalizeOptions(options);
+  }
 
   private get secureChannelManager(): SecureChannelManager | null {
     return this.options.secureChannelManager;

@@ -10,7 +10,9 @@ const logger = getLogger('naylence.fame.node.admission.noop_admission_client');
 
 export interface NoopAdmissionClientOptions {
   readonly systemId?: string;
+  readonly system_id?: string;
   readonly autoAcceptLogicals?: boolean;
+  readonly auto_accept_logicals?: boolean;
 }
 
 export class NoopAdmissionClient implements AdmissionClient {
@@ -20,8 +22,10 @@ export class NoopAdmissionClient implements AdmissionClient {
   private readonly autoAcceptLogicals: boolean;
 
   constructor(options: NoopAdmissionClientOptions = {}) {
-    this.defaultSystemId = options.systemId ?? 'noop-system';
-    this.autoAcceptLogicals = options.autoAcceptLogicals ?? true;
+    this.defaultSystemId =
+      options.systemId ?? options.system_id ?? 'noop-system';
+    this.autoAcceptLogicals =
+      options.autoAcceptLogicals ?? options.auto_accept_logicals ?? true;
   }
 
   public async hello(

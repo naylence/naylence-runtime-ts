@@ -30,7 +30,7 @@ const DEFAULT_TTL_SEC = 3600;
 
 const showEnvelopes =
   typeof process !== 'undefined' &&
-  process.env?.[ENV_VAR_SHOW_ENVELOPES] === 'true';
+  resolveShowEnvelopesFlag(process.env);
 
 function nowUtc(): Date {
   return new Date();
@@ -76,6 +76,7 @@ export interface DefaultWelcomeServiceOptions {
   tokenIssuer: TokenIssuer;
   authorizer?: Authorizer | null;
   ttlSec?: number;
+  ttl_sec?: number | null;
 }
 
 export class DefaultWelcomeService implements WelcomeService {
@@ -91,10 +92,7 @@ export class DefaultWelcomeService implements WelcomeService {
     this.transportProvisioner = options.transportProvisioner;
     this.tokenIssuer = options.tokenIssuer;
     this.authorizer = options.authorizer ?? null;
-    this.ttlSec =
-      typeof options.ttlSec === 'number' && Number.isFinite(options.ttlSec)
-        ? Math.max(0, options.ttlSec)
-        : DEFAULT_TTL_SEC;
+    this.ttlSec = resolveTtlSeconds(options);
   }
 
   public async handleHello(
@@ -288,4 +286,71 @@ export class DefaultWelcomeService implements WelcomeService {
 
     return welcomeFrame;
   }
+}
+
+function toCamelAlias(snakeKey: string): string {
+  return snakeKey
+    .toLowerCase()
+    .replace(/_([a-z])/g, (_match, char: string) => char.toUpperCase());
+}
+
+function readEnvValue(
+  env: NodeJS.ProcessEnv | undefined,
+  snakeKey: string
+): string | undefined {
+  if (!env) {
+    return undefined;
+  }
+
+  if (env[snakeKey] !== undefined) {
+    return env[snakeKey];
+  }
+
+  const lowerKey = snakeKey.toLowerCase();
+  if (env[lowerKey] !== undefined) {
+    return env[lowerKey];
+  }
+
+  const camelKey = toCamelAlias(snakeKey);
+  if (env[camelKey] !== undefined) {
+    return env[camelKey];
+  }
+
+  const pascalKey =
+    camelKey.length > 0
+      ? camelKey[0].toUpperCase() + camelKey.slice(1)
+      : camelKey;
+  if (pascalKey && env[pascalKey] !== undefined) {
+    return env[pascalKey];
+  }
+
+  return undefined;
+}
+
+export function resolveShowEnvelopesFlag(
+  env: NodeJS.ProcessEnv | undefined
+): boolean {
+  const candidate = readEnvValue(env, ENV_VAR_SHOW_ENVELOPES);
+  if (typeof candidate !== 'string') {
+    return false;
+  }
+
+  return candidate.trim().toLowerCase() === 'true';
+}
+
+function resolveTtlSeconds(
+  options: Pick<DefaultWelcomeServiceOptions, 'ttlSec' | 'ttl_sec'>
+): number {
+  const candidate =
+    typeof options.ttlSec === 'number'
+      ? options.ttlSec
+      : typeof options.ttl_sec === 'number'
+        ? options.ttl_sec
+        : undefined;
+
+  if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+    return Math.max(0, candidate);
+  }
+
+  return DEFAULT_TTL_SEC;
 }

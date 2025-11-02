@@ -21,9 +21,21 @@ export interface DefaultWelcomeServiceConfig extends WelcomeServiceConfig {
   type: 'DefaultWelcomeService';
   placement?: NodePlacementConfig | Record<string, unknown> | null;
   transport?: TransportProvisionerConfig | Record<string, unknown> | null;
+  placementConfig?: NodePlacementConfig | Record<string, unknown> | null;
+  placement_config?: NodePlacementConfig | Record<string, unknown> | null;
+  transportProvisioner?:
+    | TransportProvisionerConfig
+    | Record<string, unknown>
+    | null;
+  transport_provisioner?:
+    | TransportProvisionerConfig
+    | Record<string, unknown>
+    | null;
   tokenIssuer?: TokenIssuerConfig | Record<string, unknown> | null;
   token_issuer?: TokenIssuerConfig | Record<string, unknown> | null;
   authorizer?: AuthorizerConfig | Record<string, unknown> | null;
+  authorizerConfig?: AuthorizerConfig | Record<string, unknown> | null;
+  authorizer_config?: AuthorizerConfig | Record<string, unknown> | null;
   ttlSec?: number | null;
   ttl_sec?: number | null;
 }
@@ -110,27 +122,32 @@ function normalizeConfig(
 
   const normalized: NormalizedDefaultWelcomeServiceConfig = {};
 
-  if (source.placement !== undefined) {
-    normalized.placementConfig = source.placement ?? null;
+  const placementResult = resolveConfigEntry<
+    NodePlacementConfig | Record<string, unknown> | null
+  >(source, ['placement', 'placementConfig', 'placement_config']);
+  if (placementResult.found && placementResult.value !== undefined) {
+    normalized.placementConfig = placementResult.value ?? null;
   }
 
-  if (source.transport !== undefined) {
-    normalized.transportConfig = source.transport ?? null;
+  const transportResult = resolveConfigEntry<
+    TransportProvisionerConfig | Record<string, unknown> | null
+  >(source, ['transport', 'transportProvisioner', 'transport_provisioner']);
+  if (transportResult.found && transportResult.value !== undefined) {
+    normalized.transportConfig = transportResult.value ?? null;
   }
 
-  const tokenIssuerConfig =
-    source.tokenIssuer !== undefined
-      ? source.tokenIssuer
-      : source.token_issuer !== undefined
-        ? source.token_issuer
-        : undefined;
-
-  if (tokenIssuerConfig !== undefined) {
-    normalized.tokenIssuerConfig = tokenIssuerConfig ?? null;
+  const tokenResult = resolveConfigEntry<
+    TokenIssuerConfig | Record<string, unknown> | null
+  >(source, ['tokenIssuer', 'token_issuer']);
+  if (tokenResult.found && tokenResult.value !== undefined) {
+    normalized.tokenIssuerConfig = tokenResult.value ?? null;
   }
 
-  if (source.authorizer !== undefined) {
-    normalized.authorizerConfig = source.authorizer ?? null;
+  const authorizerResult = resolveConfigEntry<
+    AuthorizerConfig | Record<string, unknown> | null
+  >(source, ['authorizer', 'authorizerConfig', 'authorizer_config']);
+  if (authorizerResult.found && authorizerResult.value !== undefined) {
+    normalized.authorizerConfig = authorizerResult.value ?? null;
   }
 
   if (ttlCandidate !== undefined && Number.isFinite(ttlCandidate)) {
@@ -138,6 +155,22 @@ function normalizeConfig(
   }
 
   return normalized;
+}
+
+function resolveConfigEntry<T>(
+  source: Record<string, unknown>,
+  keys: string[]
+): { found: boolean; value: T | null | undefined } {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      return {
+        found: true,
+        value: source[key] as T | null | undefined,
+      };
+    }
+  }
+
+  return { found: false, value: undefined };
 }
 
 export default DefaultWelcomeServiceFactory;

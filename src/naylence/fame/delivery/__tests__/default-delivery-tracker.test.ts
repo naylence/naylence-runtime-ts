@@ -348,7 +348,10 @@ describe('DefaultDeliveryTracker', () => {
       const items = await tracker.listInboxDlq();
       expect(items).toHaveLength(1);
       expect(items[0].meta['dlq']).toBe(true);
+      expect(items[0].meta.dlqReason).toBe('boom');
       expect(items[0].meta['dlq_reason']).toBe('boom');
+  expect(typeof items[0].meta.deadLetteredAtMs).toBe('number');
+  expect(typeof items[0].meta['dead_lettered_at_ms']).toBe('number');
 
       const purged = await tracker.purgeInboxDlq();
       expect(purged).toBe(1);
@@ -455,7 +458,8 @@ describe('DefaultDeliveryTracker', () => {
 
       const tracked = await tracker.getTrackedEnvelope(envelope.id);
       expect(tracked?.status).toBe(EnvelopeStatus.NACKED);
-      expect(tracked?.meta['nack_reason']).toBeUndefined();
+  expect(tracked?.meta.nackReason).toBeUndefined();
+  expect(tracked?.meta['nack_reason']).toBeUndefined();
     } finally {
       await disposeTracker(tracker);
       await node.stop();
@@ -756,7 +760,7 @@ describe('DefaultDeliveryTracker', () => {
       const ackPromise = recoveredTracker.awaitAck(envelope.id, 5);
       jest.advanceTimersByTime(10);
       await expect(ackPromise).rejects.toThrow(
-        'Timeout waiting for response_type'
+        'Timeout waiting for responseType'
       );
 
       await disposeTracker(recoveredTracker);
@@ -812,7 +816,7 @@ describe('DefaultDeliveryTracker', () => {
 
       jest.advanceTimersByTime(10);
       await expect(ackPromise).rejects.toThrow(
-        'Timeout waiting for response_type'
+        'Timeout waiting for responseType'
       );
     } finally {
       await disposeTracker(tracker);
@@ -839,7 +843,7 @@ describe('DefaultDeliveryTracker', () => {
 
       jest.advanceTimersByTime(10);
       await expect(ackPromise).rejects.toThrow(
-        'Timeout waiting for response_type'
+        'Timeout waiting for responseType'
       );
     } finally {
       await disposeTracker(tracker);
@@ -1076,6 +1080,12 @@ describe('DefaultDeliveryTracker', () => {
       });
       await tracker.onNack(validNack);
 
+      const trackedAfterNack = await tracker.getTrackedEnvelope(envelope.id);
+      expect(trackedAfterNack?.meta.nackReason).toBe('fail');
+      expect(trackedAfterNack?.meta['nack_reason']).toBe('fail');
+      expect(trackedAfterNack?.meta.nackCode).toBe('FAILURE');
+      expect(trackedAfterNack?.meta['nack_code']).toBe('FAILURE');
+
       await expect(ackPromise).resolves.toBe(
         "Message delivery failed with code 'FAILURE': fail"
       );
@@ -1138,7 +1148,10 @@ describe('DefaultDeliveryTracker', () => {
       await tracker.addToInboxDlq(inbound, 'failure');
       const stored = await tracker.getFromInboxDlq(inbound.originalEnvelope.id);
       expect(stored?.meta['dlq']).toBe(true);
-      expect(stored?.meta['dlq_reason']).toBe('failure');
+  expect(stored?.meta.dlqReason).toBe('failure');
+  expect(stored?.meta['dlq_reason']).toBe('failure');
+  expect(typeof stored?.meta.deadLetteredAtMs).toBe('number');
+  expect(typeof stored?.meta['dead_lettered_at_ms']).toBe('number');
 
       const purged = await tracker.purgeInboxDlq();
       expect(purged).toBe(1);
@@ -1247,6 +1260,7 @@ describe('DefaultDeliveryTracker', () => {
         false
       );
       const afterRetry = await inbox.get(tracked.originalEnvelope.id);
+      expect(afterRetry?.meta.lastFailureReason).toBe('boom');
       expect(afterRetry?.meta['last_failure_reason']).toBe('boom');
       expect(afterRetry?.status).toBe(EnvelopeStatus.RECEIVED);
 
@@ -1300,6 +1314,7 @@ describe('DefaultDeliveryTracker', () => {
       );
       expect(dlqEntry?.status).toBe(EnvelopeStatus.FAILED_TO_HANDLE);
       expect(dlqEntry?.meta['dlq']).toBe(true);
+      expect(dlqEntry?.meta.dlqReason).toBeUndefined();
       expect(dlqEntry?.meta['dlq_reason']).toBeUndefined();
     } finally {
       await disposeTracker(tracker);
@@ -1505,6 +1520,7 @@ describe('DefaultDeliveryTracker', () => {
         false
       );
       const stored = await inbox.get(tracked.originalEnvelope.id);
+      expect(stored?.meta.lastFailureReason).toBeUndefined();
       expect(stored?.meta['last_failure_reason']).toBeUndefined();
     } finally {
       await disposeTracker(tracker);

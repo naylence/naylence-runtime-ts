@@ -71,7 +71,7 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
       );
     }
 
-    const rawStrategies = (config as Record<string, unknown>).strategies;
+    const rawStrategies = this.extractStrategies(config);
     if (!Array.isArray(rawStrategies) || rawStrategies.length === 0) {
       throw new Error(
         'CompositeLoadBalancingStrategy requires at least one nested strategy'
@@ -82,6 +82,26 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
       type: this.type,
       strategies: rawStrategies as LoadBalancingStrategyConfig[],
     };
+  }
+
+  private extractStrategies(
+    config:
+      | CompositeLoadBalancingStrategyConfig
+      | Record<string, unknown>
+  ): unknown {
+    const typedCandidate = config as { strategies?: unknown };
+    if (Array.isArray(typedCandidate.strategies)) {
+      return typedCandidate.strategies;
+    }
+
+    const recordCandidate = config as Record<string, unknown>;
+    for (const key of ['strategies', 'strategy_configs', 'strategyConfigs'] as const) {
+      if (Object.prototype.hasOwnProperty.call(recordCandidate, key)) {
+        return recordCandidate[key];
+      }
+    }
+
+    return undefined;
   }
 }
 

@@ -68,6 +68,53 @@ function createEnvelope<
 }
 
 describe('SecureChannelFrameHandler', () => {
+  it('accepts snake_case constructor options', async () => {
+    const manager = createManagerMock();
+    const acceptFrame: SecureAcceptFrame = {
+      type: 'SecureAccept',
+      cid: 'auto-alias-123',
+      ok: false,
+      ephPub: VALID_KEY,
+      alg: 'CHACHA20P1305',
+    };
+    manager.handleOpenFrame.mockResolvedValue(acceptFrame);
+
+    const envelopeFactory = createEnvelopeFactoryMock();
+    const responseEnvelope = { id: 'resp-alias', frame: acceptFrame } as FameEnvelope;
+    envelopeFactory.createEnvelope.mockReturnValue(responseEnvelope);
+
+    const sendCallback = createSendCallbackMock();
+
+    const securityHandler: Pick<
+      EnvelopeSecurityHandler,
+      'handleChannelHandshakeComplete'
+    > = {
+      handleChannelHandshakeComplete: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const handler = new SecureChannelFrameHandler({
+      secure_channel_manager: manager,
+      envelope_factory: envelopeFactory,
+      send_callback: sendCallback,
+      envelope_security_handler: securityHandler as EnvelopeSecurityHandler,
+    });
+
+    const openEnvelope = createEnvelope<SecureOpenFrame>({
+      type: 'SecureOpen',
+      cid: 'auto-alias-123',
+      ephPub: VALID_KEY,
+      alg: 'CHACHA20P1305',
+      opts: 0,
+    });
+
+    await handler.handleSecureOpen(openEnvelope);
+
+    expect(sendCallback).toHaveBeenCalledWith(responseEnvelope, null);
+    expect(
+      securityHandler.handleChannelHandshakeComplete
+    ).not.toHaveBeenCalled();
+  });
+
   it('throws when secure channel manager is missing on secure open', async () => {
     const handler = new SecureChannelFrameHandler({
       secureChannelManager: null,

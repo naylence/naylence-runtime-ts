@@ -22,9 +22,9 @@ export class NodeFactory extends NodeLikeFactory<FameNodeConfig> {
   public async create(
     config?: FameNodeConfig | Record<string, unknown> | null
   ): Promise<FameNode> {
-    const normalized = normalizeFameNodeConfig(config ?? null);
+  const normalized = normalizeFameNodeConfig(config ?? null);
 
-    const components = await makeCommonOptions(normalized);
+  const components = await makeCommonOptions(normalized, config ?? null);
 
     const eventListeners: NodeEventListener[] = [...components.eventListeners];
     const serviceConfigs = components.serviceConfigs.filter(

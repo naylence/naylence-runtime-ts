@@ -306,4 +306,27 @@ describe('DefaultSecurityManagerFactory', () => {
       spy.mockRestore();
     }
   });
+
+  it('accepts snake_case policy instances in configuration', async () => {
+    const factory = new DefaultSecurityManagerFactory();
+    const policy = new StubSecurityPolicy();
+    const keyManager = new StubKeyManager();
+    const signer = new StubEnvelopeSigner();
+    const verifier = new StubEnvelopeVerifier();
+    const encryptionManager = new StubEncryptionManager();
+    const secureChannelManager = new StubSecureChannelManager();
+
+    const manager = await factory.create({
+      security_policy: policy,
+      key_manager: keyManager,
+      envelope_signer: signer,
+      envelope_verifier: verifier,
+      encryption_manager: encryptionManager,
+      secure_channel_manager: secureChannelManager,
+    });
+
+    expect(manager.policy).toBe(policy);
+    expect(manager.keyManager).toBe(keyManager);
+    expect(manager.encryption).toBe(encryptionManager);
+  });
 });

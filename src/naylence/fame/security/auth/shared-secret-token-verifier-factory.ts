@@ -49,18 +49,43 @@ function normalizeConfig(
 ): NormalizedSharedSecretVerifierConfig {
   const candidate = (config ?? {}) as SharedSecretTokenVerifierConfig &
     Record<string, unknown>;
-  const secretSource: SecretSourceType =
-    candidate.secret ?? 'env://SHARED_SECRET';
+  const record = candidate as Record<string, unknown>;
+
+  let secretSource = candidate.secret as SecretSourceType | undefined;
+  if (secretSource === undefined && record.secret_provider !== undefined) {
+    secretSource = record.secret_provider as SecretSourceType;
+  }
+  if (secretSource === undefined && record.secret_source !== undefined) {
+    secretSource = record.secret_source as SecretSourceType;
+  }
+  if (
+    secretSource === undefined &&
+    record.secret_provider_config !== undefined
+  ) {
+    secretSource = record.secret_provider_config as SecretSourceType;
+  }
+
+  if (secretSource === undefined) {
+    secretSource = 'env://SHARED_SECRET';
+  }
 
   const normalized: NormalizedSharedSecretVerifierConfig = {
     secretConfig: normalizeSecretSource(secretSource),
   };
 
+  const principalCandidateRaw =
+    candidate.principal ??
+    (typeof record.principal_id === 'string'
+      ? record.principal_id
+      : typeof record.principal_name === 'string'
+        ? record.principal_name
+        : undefined);
+
   if (
-    typeof candidate.principal === 'string' &&
-    candidate.principal.length > 0
+    typeof principalCandidateRaw === 'string' &&
+    principalCandidateRaw.trim().length > 0
   ) {
-    normalized.principal = candidate.principal;
+    normalized.principal = principalCandidateRaw.trim();
   }
 
   return normalized;

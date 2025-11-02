@@ -149,6 +149,36 @@ describe('StaticTokenProvider', () => {
         })
     ).toThrow('expiresAt must be a number, string, Date, or null/undefined');
   });
+
+  it('accepts direct string constructor input', async () => {
+    const provider = new StaticTokenProvider('direct-token');
+    const token = await provider.getToken();
+    expect(token.value).toBe('direct-token');
+  });
+
+  it('accepts snake_case constructor options', async () => {
+    const provider = new StaticTokenProvider({
+      token_value: 'alias-token',
+      expires_at: '2026-01-01T00:00:00Z',
+    } as Record<string, unknown>);
+
+    const token = await provider.getToken();
+    expect(token.value).toBe('alias-token');
+    expect(token.expiresAt).toBe(Date.parse('2026-01-01T00:00:00Z'));
+  });
+
+  it('creates provider via factory using snake_case fields', async () => {
+    const factory = new StaticTokenProviderFactory();
+    const provider = await factory.create({
+      type: 'StaticTokenProvider',
+      token_value: 'factory-alias-token',
+      expires_at: '2027-05-06T07:08:09Z',
+    } as Record<string, unknown>);
+
+    const token = await provider.getToken();
+    expect(token.value).toBe('factory-alias-token');
+    expect(token.expiresAt).toBe(Date.parse('2027-05-06T07:08:09Z'));
+  });
 });
 
 describe('NoneTokenProvider', () => {
@@ -188,6 +218,29 @@ describe('SharedSecretTokenProvider', () => {
 
     const token = await provider.getToken();
     expect(token.value).toBe('static-secret');
+  });
+
+  it('accepts snake_case constructor options', async () => {
+    const provider = new SharedSecretTokenProvider({
+      credential_provider: new StubCredentialProvider('snake-secret'),
+    } as Record<string, unknown>);
+
+    const token = await provider.getToken();
+    expect(token.value).toBe('snake-secret');
+  });
+
+  it('creates provider via factory using snake_case secret alias', async () => {
+    const factory = new SharedSecretTokenProviderFactory();
+    const provider = await factory.create({
+      type: 'SharedSecretTokenProvider',
+      secret_provider: {
+        type: 'StaticCredentialProvider',
+        credential_value: 'alias-secret',
+      },
+    } as Record<string, unknown>);
+
+    const token = await provider.getToken();
+    expect(token.value).toBe('alias-secret');
   });
 });
 
@@ -282,6 +335,20 @@ describe('SharedSecretTokenVerifier', () => {
     expect(context.authorized).toBe(true);
     expect(context.claims?.aud).toBe('audience');
     expect(context.principal).toBe('principal-123');
+  });
+
+  it('accepts snake_case options and normalizes principal overrides', async () => {
+    const verifier = new SharedSecretTokenVerifier({
+      credential_provider: new StubCredentialProvider('snake-secret'),
+      principal: ' custom-principal ',
+    } as Record<string, unknown>);
+
+    const context = await verifier.verify('snake-secret', {
+      expectedAudience: 'aud-snake',
+    });
+
+    expect(context.principal).toBe('custom-principal');
+    expect(context.claims?.aud).toBe('aud-snake');
   });
 
   it('throws for invalid token', async () => {

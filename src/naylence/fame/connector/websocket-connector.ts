@@ -100,11 +100,24 @@ export class WebSocketConnector extends BaseAsyncConnector {
     websocket: WebSocketLike,
     config: WebSocketConnectorConfig = { type: 'websocket' }
   ) {
+    const normalizedConfig: WebSocketConnectorConfig = { ...config };
+
     // Ensure the connector type is always set for factory compatibility
-    if (!config.type) {
-      config.type = 'websocket';
+    if (!normalizedConfig.type) {
+      normalizedConfig.type = 'websocket';
     }
-    super(config);
+
+    const legacyAuthContext =
+      (config as { authorization_context?: AuthorizationContext })
+        .authorization_context;
+    if (
+      legacyAuthContext !== undefined &&
+      normalizedConfig.authorizationContext === undefined
+    ) {
+      normalizedConfig.authorizationContext = legacyAuthContext;
+    }
+
+    super(normalizedConfig);
 
     this._websocket = websocket;
 

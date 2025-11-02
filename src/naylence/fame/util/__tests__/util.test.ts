@@ -1,4 +1,4 @@
-import { jsonDumps } from '../util.js';
+import { jsonDumps, withLegacySnakeCaseKeys } from '../util.js';
 
 describe('jsonDumps', () => {
   it('serializes circular references safely', () => {
@@ -16,5 +16,31 @@ describe('jsonDumps', () => {
     const serialized = jsonDumps(payload);
 
     expect(serialized).toContain('"value": "42"');
+  });
+});
+
+describe('withLegacySnakeCaseKeys', () => {
+  it('adds snake_case aliases for camelCase keys', () => {
+    const result = withLegacySnakeCaseKeys({ maxConcurrent: 3 });
+
+    expect(result.maxConcurrent).toBe(3);
+    expect(result.max_concurrent).toBe(3);
+  });
+
+  it('adds camelCase aliases for snake_case keys', () => {
+    const result = withLegacySnakeCaseKeys({ max_concurrent: 5 });
+
+    expect(result.max_concurrent).toBe(5);
+    expect(result.maxConcurrent).toBe(5);
+  });
+
+  it('respects existing aliases without overriding values', () => {
+    const result = withLegacySnakeCaseKeys({
+      maxConcurrent: 7,
+      max_concurrent: 9,
+    });
+
+    expect(result.maxConcurrent).toBe(7);
+    expect(result.max_concurrent).toBe(9);
   });
 });

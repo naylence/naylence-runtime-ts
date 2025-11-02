@@ -2,6 +2,8 @@ import fsPromises from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
+import type { CredentialProvider } from '../../security/credential/credential-provider.js';
+
 type SqliteModule = typeof import('../sqlite-storage-provider.js');
 
 type LoggerMock = {
@@ -234,6 +236,131 @@ describe('SQLite storage provider', () => {
   afterEach(() => {
     jest.clearAllMocks();
     jest.restoreAllMocks();
+  });
+
+  it('accepts snake_case options when constructed directly', async () => {
+    const tempDir = await fsPromises.mkdtemp(
+      path.join(os.tmpdir(), 'sqlite-provider-alias-')
+    );
+    const { module } = await setupModule({});
+    const { SQLiteStorageProvider } = module;
+
+    class AliasModel {
+      public constructor(public value: string) {}
+    }
+
+    try {
+      const provider = new SQLiteStorageProvider({
+        db_directory: tempDir,
+        is_encrypted: 'false',
+        master_key_provider: null,
+        is_cached: 'true',
+        auto_recover: '0',
+      } as unknown as Record<string, unknown>);
+
+      const internalProvider = provider as unknown as {
+        autoRecover: boolean;
+        dbDirectory: string;
+        getUnderlyingKeyValueStore: (
+          model: new (...args: any[]) => unknown,
+          namespace: string
+        ) => Promise<unknown>;
+      };
+
+      const store = (await internalProvider.getUnderlyingKeyValueStore(
+        AliasModel,
+        'alias.ns'
+      )) as {
+        autoRecover: boolean;
+      };
+
+      expect(internalProvider.autoRecover).toBe(false);
+      expect(internalProvider.dbDirectory).toBe(tempDir);
+      expect(store.autoRecover).toBe(false);
+    } finally {
+      await fsPromises.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('coerces camelCase option aliases for booleans', async () => {
+    const tempDir = await fsPromises.mkdtemp(
+      path.join(os.tmpdir(), 'sqlite-provider-camel-')
+    );
+    const { module } = await setupModule({});
+    const { SQLiteStorageProvider } = module;
+
+    class CamelModel {
+      public constructor(public value: string) {}
+    }
+
+    try {
+      const provider = new SQLiteStorageProvider({
+        dbDirectory: tempDir,
+        isEncrypted: 'false',
+        masterKeyProvider: null,
+        isCached: '1',
+        autoRecover: true,
+      } as unknown as Record<string, unknown>);
+
+      const internalProvider = provider as unknown as {
+        autoRecover: boolean;
+        getUnderlyingKeyValueStore: (
+          model: new (...args: any[]) => unknown,
+          namespace: string
+        ) => Promise<unknown>;
+      };
+
+      const store = (await internalProvider.getUnderlyingKeyValueStore(
+        CamelModel,
+        'camel.ns'
+      )) as {
+        autoRecover: boolean;
+      };
+
+      expect(internalProvider.autoRecover).toBe(true);
+      expect(store.autoRecover).toBe(true);
+    } finally {
+      await fsPromises.rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts snake_case encryption aliases when enabling encryption', async () => {
+    const tempDir = await fsPromises.mkdtemp(
+      path.join(os.tmpdir(), 'sqlite-provider-encrypted-')
+    );
+  const { module } = await setupModule({});
+  const { SQLiteStorageProvider } = module;
+
+    class EncryptedModel {
+      public constructor(public value: string) {}
+    }
+
+    const masterKeyProvider: CredentialProvider = {
+      get: jest.fn(async () => 'secret-passphrase!!!!'),
+    };
+
+    try {
+      const provider = new SQLiteStorageProvider({
+        db_directory: tempDir,
+        is_encrypted: 'true',
+        master_key: masterKeyProvider,
+        enable_caching: 'yes',
+        auto_recover: 'false',
+      } as unknown as Record<string, unknown>);
+
+      const store = await provider.getKeyValueStore<EncryptedModel>(
+        EncryptedModel,
+        'encrypted.ns'
+      );
+
+      await store.set('key', new EncryptedModel('value'));
+      expect(masterKeyProvider.get).toHaveBeenCalled();
+
+      const retrieved = await store.get('key');
+      expect(retrieved).toEqual(expect.objectContaining({ value: 'value' }));
+    } finally {
+      await fsPromises.rm(tempDir, { recursive: true, force: true });
+    }
   });
 
   it('throws helpful errors when better-sqlite3 is unavailable and caches failure', async () => {

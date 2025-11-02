@@ -18,7 +18,7 @@ import {
 import type { NodeLike } from '../node/node-like.js';
 import { NodeLikeFactory } from '../node/node-like-factory.js';
 import { getLogger } from '../util/logging.js';
-import { decodeFameDataPayload } from '../util/util.js';
+import { decodeFameDataPayload, withLegacySnakeCaseKeys } from '../util/util.js';
 import { resolveRuntimeVersion } from '../util/runtime-version.js';
 import type { ServiceManager } from '../service/service-manager.js';
 import { SinkService, isSinkService } from '../service/sink-service.js';
@@ -202,11 +202,10 @@ export class InProcessFameFabric extends FameFabric {
     service: FameService,
     serviceName?: string | null
   ): Promise<FameAddress> {
-    const resolvedName =
-      serviceName ?? (service as { name?: string }).name ?? null;
+    const resolvedName = resolveServiceName(service, serviceName);
     if (!resolvedName) {
       throw new Error(
-        "service_name parameter not set and service doesn't define 'name' property"
+        "serviceName parameter not set and service doesn't define a name property"
       );
     }
     return this.serviceManager.registerService(resolvedName, service);
@@ -264,8 +263,35 @@ export class InProcessFameFabric extends FameFabric {
     );
 
     await this.sinkService.subscribe({
-      sinkAddress: sinkAddress.toString(),
-      subscriberAddress: subscriberAddress.toString(),
+      ...withLegacySnakeCaseKeys({
+        sinkAddress: sinkAddress.toString(),
+        subscriberAddress: subscriberAddress.toString(),
+      }),
     });
   }
+}
+
+function resolveServiceName(
+  service: FameService,
+  override?: string | null
+): string | null {
+  const normalizedOverride = normalizeServiceName(override);
+  if (normalizedOverride) {
+    return normalizedOverride;
+  }
+
+  const candidate =
+    normalizeServiceName((service as Record<string, unknown>).serviceName) ??
+    normalizeServiceName((service as Record<string, unknown>).service_name) ??
+    normalizeServiceName((service as Record<string, unknown>).name);
+
+  return candidate ?? null;
+}
+
+function normalizeServiceName(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }

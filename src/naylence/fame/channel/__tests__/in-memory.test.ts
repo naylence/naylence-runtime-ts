@@ -9,6 +9,8 @@ import {
   InMemoryReadWriteChannel,
   InMemoryBinding,
   InMemoryFanoutBroker,
+  type InMemoryChannelConfig,
+  type InMemoryFanoutBrokerConfig,
 } from '../in-memory/index.js';
 import { TaskTimeoutError } from '../../util/task-types.js';
 
@@ -105,8 +107,8 @@ describe('InMemoryReadWriteChannel', () => {
   });
 
   describe('Queue Size Limits', () => {
-    it('should respect maxsize configuration', async () => {
-      const limitedChannel = new InMemoryReadWriteChannel({ maxsize: 2 });
+    it('should respect maxSize configuration', async () => {
+      const limitedChannel = new InMemoryReadWriteChannel({ maxSize: 2 });
 
       // Fill up the queue
       await limitedChannel.send('msg1');
@@ -120,8 +122,22 @@ describe('InMemoryReadWriteChannel', () => {
       await limitedChannel.close();
     });
 
-    it('should allow unlimited queue when maxsize is 0', async () => {
-      const unlimitedChannel = new InMemoryReadWriteChannel({ maxsize: 0 });
+    it('should support legacy maxsize configuration', async () => {
+      const legacyChannel = new InMemoryReadWriteChannel({
+        maxsize: 1,
+      } as InMemoryChannelConfig & { maxsize: number });
+
+      await legacyChannel.send('msg1');
+
+      await expect(legacyChannel.send('msg2')).rejects.toThrow(
+        'Channel queue is full'
+      );
+
+      await legacyChannel.close();
+    });
+
+    it('should allow unlimited queue when maxSize is 0', async () => {
+      const unlimitedChannel = new InMemoryReadWriteChannel({ maxSize: 0 });
 
       // Send many messages
       for (let i = 0; i < 100; i++) {
@@ -235,7 +251,7 @@ describe('InMemoryBinding', () => {
     });
 
     it('should create binding with custom channel', () => {
-      const customChannel = new InMemoryReadWriteChannel({ maxsize: 10 });
+      const customChannel = new InMemoryReadWriteChannel({ maxSize: 10 });
       const customBinding = InMemoryBinding.withChannel(
         testAddress,
         customChannel
@@ -423,14 +439,28 @@ describe('InMemoryFanoutBroker', () => {
   });
 
   describe('Configuration', () => {
-    it('should use custom poll timeout', () => {
+    it('should use custom poll timeout', async () => {
       const customBroker = new InMemoryFanoutBroker(sinkChannel, {
         pollTimeoutMs: 500,
       });
 
       expect(customBroker.isRunning).toBe(false);
+      expect(customBroker.pollTimeoutMs).toBe(500);
 
-      customBroker.stop(); // Cleanup
+      await customBroker.stop();
+    });
+
+    it('should support legacy poll_timeout_ms configuration', async () => {
+      const legacyBroker = new InMemoryFanoutBroker(
+        sinkChannel,
+        {
+          poll_timeout_ms: 250,
+        } as InMemoryFanoutBrokerConfig & { poll_timeout_ms: number }
+      );
+
+      expect(legacyBroker.pollTimeoutMs).toBe(250);
+
+      await legacyBroker.stop();
     });
   });
 });

@@ -2,20 +2,38 @@ import { parseAddressComponents } from '@naylence/core';
 
 const POOL_WILDCARD_PREFIX = '*.';
 
+function readEnvValue(aliases: string[]): string | undefined {
+  const processRef = (globalThis as any)?.process;
+  const env = processRef?.env as
+    | Record<string, string | undefined>
+    | undefined;
+  if (!env) {
+    return undefined;
+  }
+
+  for (const alias of aliases) {
+    const value = env[alias];
+    if (typeof value === 'string') {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 const DNS_HOSTNAME_PATTERN =
   /^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.?)+$/;
 const DNS_LABEL_PATTERN = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 
-function getEnv(name: string): string | undefined {
-  if (typeof process === 'undefined') {
-    return undefined;
-  }
-
-  return process.env?.[name];
-}
-
 export function getFameRoot(): string {
-  return getEnv('FAME_ROOT') ?? 'fame.fabric';
+  return (
+    readEnvValue([
+      'FAME_ROOT',
+      'fame_root',
+      'fameRoot',
+      'FameRoot',
+    ]) ?? 'fame.fabric'
+  );
 }
 
 export function isPoolLogical(logical: string | null | undefined): boolean {
@@ -300,8 +318,12 @@ export function matchesPoolAddress(
     return false;
   } catch (error) {
     if (
-      typeof process !== 'undefined' &&
-      process.env?.NODE_ENV !== 'production'
+      readEnvValue([
+        'NODE_ENV',
+        'node_env',
+        'nodeEnv',
+        'NodeEnv',
+      ]) !== 'production'
     ) {
       // eslint-disable-next-line no-console
       console.debug('matchesPoolAddress failed', error);

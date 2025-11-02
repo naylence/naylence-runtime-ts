@@ -86,6 +86,23 @@ describe('StaticNodePlacementStrategy', () => {
       },
     });
   });
+
+  it('accepts snake_case constructor options', async () => {
+    const strategy = new StaticNodePlacementStrategy({
+      target_system_id: 'parent-node',
+      target_physical_path: '/parent/path',
+    });
+
+    const decision = await strategy.place(
+      createHelloFrame({ systemId: 'child-node' })
+    );
+
+    expectDecision(decision, {
+      targetSystemId: 'parent-node',
+      targetPhysicalPath: '/parent/path',
+      assignedPath: '/parent/path/child-node',
+    });
+  });
 });
 
 describe('StaticNodePlacementStrategyFactory', () => {

@@ -32,6 +32,24 @@ export interface TrackedEnvelopeInit {
   serviceName?: string | null;
 }
 
+const LEGACY_STATUS_MAP: Record<string, EnvelopeStatus> = {
+  pending: EnvelopeStatus.PENDING,
+  acked: EnvelopeStatus.ACKED,
+  nacked: EnvelopeStatus.NACKED,
+  responded: EnvelopeStatus.RESPONDED,
+  streaming: EnvelopeStatus.STREAMING,
+  timed_out: EnvelopeStatus.TIMED_OUT,
+  failed: EnvelopeStatus.FAILED,
+  received: EnvelopeStatus.RECEIVED,
+  handled: EnvelopeStatus.HANDLED,
+  failed_to_handle: EnvelopeStatus.FAILED_TO_HANDLE,
+};
+
+const LEGACY_MAILBOX_MAP: Record<string, MailboxType> = {
+  inbox: MailboxType.INBOX,
+  outbox: MailboxType.OUTBOX,
+};
+
 export class TrackedEnvelope {
   public timeoutAtMs: number;
   public overallTimeoutAtMs: number;
@@ -51,10 +69,10 @@ export class TrackedEnvelope {
     this.expectedResponseType = init.expectedResponseType;
     this.createdAtMs = init.createdAtMs;
     this.attempt = init.attempt ?? 0;
-    this.status = init.status ?? EnvelopeStatus.PENDING;
+    this.status = normalizeStatus(init.status);
     this.meta = { ...(init.meta ?? {}) };
     this.insertedAtMs = init.insertedAtMs ?? Date.now();
-    this.mailboxType = init.mailboxType ?? null;
+    this.mailboxType = normalizeMailbox(init.mailboxType);
     this.originalEnvelope = init.originalEnvelope;
     this.serviceName = init.serviceName ?? null;
   }
@@ -92,4 +110,26 @@ export class TrackedEnvelope {
       serviceName: overrides.serviceName ?? this.serviceName,
     });
   }
+}
+
+function normalizeStatus(status?: EnvelopeStatus): EnvelopeStatus {
+  if (!status) {
+    return EnvelopeStatus.PENDING;
+  }
+  if (typeof status === 'string' && LEGACY_STATUS_MAP[status]) {
+    return LEGACY_STATUS_MAP[status];
+  }
+  return status;
+}
+
+function normalizeMailbox(
+  mailbox: MailboxType | null | undefined
+): MailboxType | null {
+  if (!mailbox) {
+    return mailbox ?? null;
+  }
+  if (typeof mailbox === 'string' && LEGACY_MAILBOX_MAP[mailbox]) {
+    return LEGACY_MAILBOX_MAP[mailbox];
+  }
+  return mailbox;
 }

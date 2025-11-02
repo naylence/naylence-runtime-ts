@@ -66,6 +66,70 @@ interface RouteManagerOptions {
   retainAddressBindingsOnDisconnect?: boolean;
 }
 
+type RouteManagerOptionsInput = RouteManagerOptions & {
+  route_store?: RouteStore;
+  get_id?: RouteManagerOptions['getId'];
+  cleanup_delay_ms?: RouteManagerOptions['cleanupDelayMs'];
+  retain_address_bindings_on_disconnect?: boolean;
+};
+
+type NormalizedRouteManagerOptions = RouteManagerOptions & Required<
+    Pick<RouteManagerOptions, 'deliver'>
+  > &
+  Partial<
+    Pick<
+      RouteManagerOptions,
+      'routeStore' | 'getId' | 'cleanupDelayMs' | 'retainAddressBindingsOnDisconnect'
+    >
+  >;
+
+type RouteRemovalOptionsInput = RouteRemovalOptions & {
+  delay_ms?: RouteRemovalOptions['delayMs'];
+  capture_stack?: RouteRemovalOptions['captureStack'];
+  retain_addresses?: RouteRemovalOptions['retainAddresses'];
+};
+
+type NormalizedRouteRemovalOptions = RouteRemovalOptions | undefined;
+
+function normalizeRouteManagerOptions(
+  options: RouteManagerOptionsInput
+): NormalizedRouteManagerOptions {
+  const {
+    route_store,
+    get_id,
+    cleanup_delay_ms,
+    retain_address_bindings_on_disconnect,
+    ...rest
+  } = options;
+
+  return {
+    ...rest,
+    routeStore: rest.routeStore ?? route_store,
+    getId: rest.getId ?? get_id,
+    cleanupDelayMs: rest.cleanupDelayMs ?? cleanup_delay_ms,
+    retainAddressBindingsOnDisconnect:
+      rest.retainAddressBindingsOnDisconnect ??
+      retain_address_bindings_on_disconnect,
+  };
+}
+
+function normalizeRouteRemovalOptions(
+  options?: RouteRemovalOptionsInput
+): NormalizedRouteRemovalOptions {
+  if (!options) {
+    return undefined;
+  }
+
+  const { delay_ms, capture_stack, retain_addresses, ...rest } = options;
+
+  return {
+    ...rest,
+    delayMs: rest.delayMs ?? delay_ms,
+    captureStack: rest.captureStack ?? capture_stack,
+    retainAddresses: rest.retainAddresses ?? retain_addresses,
+  };
+}
+
 export class RouteManager extends TaskSpawner {
   public readonly downstreamRoutes = new Map<string, FameConnector>();
   public readonly _downstream_addresses_routes = new Map<
@@ -100,16 +164,20 @@ export class RouteManager extends TaskSpawner {
 
   constructor(options: RouteManagerOptions) {
     super();
-    this.deliver = options.deliver;
-    this._downstream_route_store = options.routeStore ?? getDefaultRouteStore();
-    this._peer_route_store = options.routeStore ?? getDefaultRouteStore();
-    this.getId = options.getId ?? (() => '');
-    const configuredDelay = options.cleanupDelayMs;
+    const normalizedOptions = normalizeRouteManagerOptions(options);
+
+    this.deliver = normalizedOptions.deliver;
+    this._downstream_route_store =
+      normalizedOptions.routeStore ?? getDefaultRouteStore();
+    this._peer_route_store =
+      normalizedOptions.routeStore ?? getDefaultRouteStore();
+    this.getId = normalizedOptions.getId ?? (() => '');
+    const configuredDelay = normalizedOptions.cleanupDelayMs;
     this.cleanupDelayMs = Number.isFinite(configuredDelay ?? NaN)
       ? Math.max(0, Number(configuredDelay))
       : DEFAULT_CONNECTOR_CLEANUP_DELAY_MS;
     this.retainAddressBindingsOnDisconnect =
-      options.retainAddressBindingsOnDisconnect ?? true;
+      normalizedOptions.retainAddressBindingsOnDisconnect ?? true;
   }
 
   public get routesLock(): AsyncLock {
@@ -183,14 +251,13 @@ export class RouteManager extends TaskSpawner {
     segment: string,
     options?: RouteRemovalOptions
   ): Promise<void> {
+    const normalizedOptions = normalizeRouteRemovalOptions(options);
     await this.removeDownstreamRoute(segment, {
-      reason: options?.reason ?? 'unregisterDownstreamRoute',
-      stop: options?.stop,
-      delayMs: options?.delayMs,
-      meta: options?.meta,
-      captureStack: options?.captureStack,
+      ...normalizedOptions,
+      reason: normalizedOptions?.reason ?? 'unregisterDownstreamRoute',
       retainAddresses:
-        options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect,
+        normalizedOptions?.retainAddresses ??
+        this.retainAddressBindingsOnDisconnect,
     });
   }
 
@@ -209,14 +276,13 @@ export class RouteManager extends TaskSpawner {
     segment: string,
     options?: RouteRemovalOptions
   ): Promise<void> {
+    const normalizedOptions = normalizeRouteRemovalOptions(options);
     await this.removePeerRoute(segment, {
-      reason: options?.reason ?? 'unregisterPeerRoute',
-      stop: options?.stop,
-      delayMs: options?.delayMs,
-      meta: options?.meta,
-      captureStack: options?.captureStack,
+      ...normalizedOptions,
+      reason: normalizedOptions?.reason ?? 'unregisterPeerRoute',
       retainAddresses:
-        options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect,
+        normalizedOptions?.retainAddresses ??
+        this.retainAddressBindingsOnDisconnect,
     });
   }
 
@@ -338,14 +404,16 @@ export class RouteManager extends TaskSpawner {
     segment: string,
     options?: RouteRemovalOptions
   ): Promise<void> {
+    const normalizedOptions = normalizeRouteRemovalOptions(options);
     const retainAddresses =
-      options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect;
+      normalizedOptions?.retainAddresses ??
+      this.retainAddressBindingsOnDisconnect;
     await this.removeRoute(
       segment,
       this.downstreamRoutes,
       this._downstream_route_store,
       {
-        ...options,
+        ...normalizedOptions,
         retainAddresses,
       }
     );
@@ -355,10 +423,12 @@ export class RouteManager extends TaskSpawner {
     segment: string,
     options?: RouteRemovalOptions
   ): Promise<void> {
+    const normalizedOptions = normalizeRouteRemovalOptions(options);
     const retainAddresses =
-      options?.retainAddresses ?? this.retainAddressBindingsOnDisconnect;
+      normalizedOptions?.retainAddresses ??
+      this.retainAddressBindingsOnDisconnect;
     await this.removeRoute(segment, this._peer_routes, this._peer_route_store, {
-      ...options,
+      ...normalizedOptions,
       retainAddresses,
     });
   }
@@ -369,11 +439,12 @@ export class RouteManager extends TaskSpawner {
     store: RouteStore,
     options?: RouteRemovalOptions
   ): Promise<void> {
-    const stop = options?.stop ?? true;
-    const delayMs = options?.delayMs ?? this.cleanupDelayMs;
-    const reason = options?.reason ?? 'unspecified';
-    const captureStack = options?.captureStack !== false;
-    const retainAddresses = options?.retainAddresses ?? false;
+    const normalizedOptions = normalizeRouteRemovalOptions(options);
+    const stop = normalizedOptions?.stop ?? true;
+    const delayMs = normalizedOptions?.delayMs ?? this.cleanupDelayMs;
+    const reason = normalizedOptions?.reason ?? 'unspecified';
+    const captureStack = normalizedOptions?.captureStack !== false;
+    const retainAddresses = normalizedOptions?.retainAddresses ?? false;
 
     let connector: FameConnector | undefined;
     let existed = false;
@@ -431,7 +502,7 @@ export class RouteManager extends TaskSpawner {
       orphaned_downstream_addresses: orphanedDownstream,
       orphaned_legacy_addresses: orphanedLegacy,
       orphaned_peer_addresses: orphanedPeerAddresses,
-      meta: options?.meta,
+      meta: normalizedOptions?.meta,
       caller_stack: captureStack ? captureCallerStack() : undefined,
       retained_addresses: retainAddresses,
     } as const;

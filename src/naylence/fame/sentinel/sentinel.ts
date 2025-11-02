@@ -120,6 +120,7 @@ export interface SentinelOptions extends FameNodeOptions {
   attachClient?: NodeAttachClient | null;
   cleanupDelayMs?: number;
   rebindOnAttach?: boolean;
+  [key: string]: unknown;
 }
 
 export interface SentinelServeOptions {
@@ -131,6 +132,77 @@ export interface SentinelServeOptions {
   signals?: NodeJS.Signals[];
   signal?: AbortSignal;
   [key: string]: unknown;
+}
+
+type SentinelInitOptions = SentinelOptions | (SentinelOptions & Record<string, unknown>) | Record<string, unknown>;
+
+function normalizeSentinelOptions(
+  rawOptions: SentinelInitOptions | null | undefined
+): SentinelOptions {
+  const normalized: Record<string, unknown> = {
+    ...((rawOptions ?? {}) as Record<string, unknown>),
+  };
+
+  const assignAlias = (targetKey: string, aliasKeys: readonly string[]) => {
+    if (normalized[targetKey] === undefined) {
+      for (const alias of aliasKeys) {
+        if (alias in normalized) {
+          normalized[targetKey] = normalized[alias];
+          break;
+        }
+      }
+    }
+
+    for (const alias of aliasKeys) {
+      if (alias in normalized) {
+        delete normalized[alias];
+      }
+    }
+  };
+
+  assignAlias('routeStore', ['route_store']);
+  assignAlias('routingPolicy', ['routing_policy']);
+  assignAlias('attachTimeoutSec', ['attach_timeout_sec']);
+  assignAlias('maxAttachTtlSec', ['max_attach_ttl_sec']);
+  assignAlias('bindingAckTimeoutMs', ['binding_ack_timeout_ms']);
+  assignAlias('attachmentKeyValidator', ['attachment_key_validator']);
+  assignAlias('stickinessManager', ['stickiness_manager']);
+  assignAlias('requestedLogicals', ['requested_logicals']);
+  assignAlias('attachClient', ['attach_client']);
+  assignAlias('cleanupDelayMs', ['cleanup_delay_ms']);
+  assignAlias('rebindOnAttach', ['rebind_on_attach']);
+
+  return normalized as SentinelOptions;
+}
+
+function normalizeOriginConnectorOptions(
+  rawOptions: OriginConnectorOptions & Record<string, unknown>
+): OriginConnectorOptions {
+  const normalized: Record<string, unknown> = { ...rawOptions };
+
+  const assignAlias = (targetKey: string, aliasKeys: readonly string[]) => {
+    if (normalized[targetKey] === undefined) {
+      for (const alias of aliasKeys) {
+        if (alias in normalized) {
+          normalized[targetKey] = normalized[alias];
+          break;
+        }
+      }
+    }
+
+    for (const alias of aliasKeys) {
+      if (alias in normalized) {
+        delete normalized[alias];
+      }
+    }
+  };
+
+  assignAlias('originType', ['origin_type']);
+  assignAlias('systemId', ['system_id']);
+  assignAlias('connectorConfig', ['connector_config']);
+  assignAlias('authorization', ['authorization_context']);
+
+  return normalized as OriginConnectorOptions;
 }
 
 export class Sentinel extends FameNode implements RoutingNodeLike {
@@ -165,12 +237,15 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
   private isPreparedToStop = false;
 
-  constructor(options: SentinelOptions = {}) {
-    super(options);
+  constructor(options: SentinelInitOptions = {}) {
+    const normalizedOptions = normalizeSentinelOptions(options);
+    super(normalizedOptions);
+
+    const opts = normalizedOptions;
 
     let routeStore: RouteStore;
-    if (options.routeStore) {
-      routeStore = options.routeStore;
+    if (opts.routeStore) {
+      routeStore = opts.routeStore;
     } else {
       try {
         routeStore = createPersistentRouteStore(this.storageProvider);
@@ -181,18 +256,18 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         routeStore = getDefaultRouteStore();
       }
     }
-    const cleanupDelayMs = Number.isFinite(options.cleanupDelayMs ?? NaN)
-      ? Math.max(0, Number(options.cleanupDelayMs))
+    const cleanupDelayMs = Number.isFinite(opts.cleanupDelayMs ?? NaN)
+      ? Math.max(0, Number(opts.cleanupDelayMs))
       : DEFAULT_CONNECTOR_CLEANUP_DELAY_MS;
     this.cleanupDelayMs = cleanupDelayMs;
     const attachTimeoutSec =
-      options.attachTimeoutSec ?? DEFAULT_ATTACH_TIMEOUT_SEC;
+      opts.attachTimeoutSec ?? DEFAULT_ATTACH_TIMEOUT_SEC;
     this.attachTimeoutMs =
       typeof attachTimeoutSec === 'number' && Number.isFinite(attachTimeoutSec)
         ? Math.max(0, attachTimeoutSec * 1000)
         : null;
 
-    const rebindOnAttach = options.rebindOnAttach ?? false;
+    const rebindOnAttach = opts.rebindOnAttach ?? false;
 
     this.routeManager = new RouteManager({
       deliver: (
@@ -209,20 +284,20 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
       this.routeManager;
 
     this.routingPolicy =
-      options.routingPolicy ??
+      opts.routingPolicy ??
       new CompositeRoutingPolicy([
         new CapabilityAwareRoutingPolicy(),
         new HybridPathRoutingPolicy(),
       ]);
 
-    this.attachmentKeyValidator = options.attachmentKeyValidator ?? null;
-    this.stickinessManager = options.stickinessManager ?? null;
-    this.peers = options.peers ?? [];
+    this.attachmentKeyValidator = opts.attachmentKeyValidator ?? null;
+    this.stickinessManager = opts.stickinessManager ?? null;
+    this.peers = opts.peers ?? [];
     this.ackTimeoutMs =
-      options.bindingAckTimeoutMs ?? DEFAULT_BINDING_ACK_TIMEOUT_MS;
-    this.maxAttachTtlSec = options.maxAttachTtlSec ?? null;
-    this.requestedLogicals = options.requestedLogicals ?? [];
-    this.attachClient = options.attachClient ?? null;
+      opts.bindingAckTimeoutMs ?? DEFAULT_BINDING_ACK_TIMEOUT_MS;
+    this.maxAttachTtlSec = opts.maxAttachTtlSec ?? null;
+    this.requestedLogicals = opts.requestedLogicals ?? [];
+    this.attachClient = opts.attachClient ?? null;
 
     this.nodeAttachFrameHandler = new NodeAttachFrameHandler({
       routingNode: this,
@@ -684,13 +759,16 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
   async createOriginConnector(
     options: OriginConnectorOptions
   ): Promise<FameConnector> {
+    const normalizedOptions = normalizeOriginConnectorOptions(
+      options as OriginConnectorOptions & Record<string, unknown>
+    );
     const {
       connectorConfig,
       originType,
       systemId,
       authorization: authorizationOption,
       ...factoryArgs
-    } = options;
+    } = normalizedOptions;
 
     const connector = await createResource<FameConnector>(
       connectorConfig as ConnectorConfig,
@@ -804,7 +882,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
           } catch (error) {
             if (!combined.signal.aborted) {
               logger.debug('attach_timeout_delay_failed', {
-                system_id: options.systemId,
+                system_id: systemId,
                 error: error instanceof Error ? error.message : String(error),
               });
             }
@@ -816,14 +894,10 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
 
           let removed = false;
           await this.routeManager.routesLock.runExclusive(async () => {
-            const current = this.routeManager._pending_routes.get(
-              options.systemId
-            );
+            const current = this.routeManager._pending_routes.get(systemId);
             if (current === pendingEntry) {
-              this.routeManager._pending_routes.delete(options.systemId);
-              this.routeManager._pending_route_metadata.delete(
-                options.systemId
-              );
+              this.routeManager._pending_routes.delete(systemId);
+              this.routeManager._pending_route_metadata.delete(systemId);
               removed = true;
             }
           });
@@ -836,17 +910,17 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
             await connector.stop();
           } catch (error) {
             logger.debug('attach_timeout_stop_failed', {
-              system_id: options.systemId,
+              system_id: systemId,
               error: error instanceof Error ? error.message : String(error),
             });
           }
 
           logger.warning('attach_timeout_expired', {
-            system_id: options.systemId,
+            system_id: systemId,
             timeout_ms: timeoutMs,
           });
         },
-        { name: `attach-timeout-${options.systemId}` }
+        { name: `attach-timeout-${systemId}` }
       );
     }
 

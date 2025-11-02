@@ -26,6 +26,46 @@ export type ResolveAddressByCapability = (
   capabilities: string[]
 ) => Promise<FameAddress | null>;
 
+interface RouterStateOptions {
+  nodeId: string;
+  local: Iterable<FameAddress | string>;
+  downstreamAddressRoutes:
+    | Map<FameAddress | string, string>
+    | Record<string, string>;
+  peerAddressRoutes?:
+    | Map<FameAddress | string, string>
+    | Record<string, string>;
+  childSegments: Iterable<string>;
+  peerSegments: Iterable<string>;
+  hasParent: boolean;
+  physicalSegments: string[];
+  pools: Map<PoolKey, Set<string>> | Record<string, Set<string>>;
+  capabilities?: RouterCapabilitiesMap;
+  resolveAddressByCapability?: ResolveAddressByCapability;
+  envelopeFactory?: EnvelopeFactory;
+}
+
+interface RouterStateSnakeCaseOptions {
+  node_id: string;
+  local: Iterable<FameAddress | string>;
+  downstream_address_routes:
+    | Map<FameAddress | string, string>
+    | Record<string, string>;
+  peer_address_routes?:
+    | Map<FameAddress | string, string>
+    | Record<string, string>;
+  child_segments: Iterable<string>;
+  peer_segments: Iterable<string>;
+  has_parent: boolean;
+  physical_segments: string[];
+  pools: Map<PoolKey, Set<string>> | Record<string, Set<string>>;
+  capabilities?: RouterCapabilitiesMap;
+  resolve_address_by_capability?: ResolveAddressByCapability;
+  envelope_factory?: EnvelopeFactory;
+}
+
+type RouterStateInit = RouterStateOptions | RouterStateSnakeCaseOptions;
+
 export interface RoutingAction {
   execute(
     envelope: FameEnvelope,
@@ -194,43 +234,27 @@ export class RouterState {
   public readonly resolveAddressByCapability: ResolveAddressByCapability | null;
   public readonly envelopeFactory: EnvelopeFactory | null;
 
-  constructor(options: {
-    nodeId: string;
-    local: Iterable<FameAddress | string>;
-    downstreamAddressRoutes:
-      | Map<FameAddress | string, string>
-      | Record<string, string>;
-    peerAddressRoutes?:
-      | Map<FameAddress | string, string>
-      | Record<string, string>;
-    childSegments: Iterable<string>;
-    peerSegments: Iterable<string>;
-    hasParent: boolean;
-    physicalSegments: string[];
-    pools: Map<PoolKey, Set<string>> | Record<string, Set<string>>;
-    capabilities?: RouterCapabilitiesMap;
-    resolveAddressByCapability?: ResolveAddressByCapability;
-    envelopeFactory?: EnvelopeFactory;
-  }) {
-    this.nodeId = options.nodeId;
+  constructor(options: RouterStateInit) {
+    const normalized = normalizeRouterStateOptions(options);
+    this.nodeId = normalized.nodeId;
     this.local = new Set(
-      Array.from(options.local, (address) => normalizeAddressKey(address))
+      Array.from(normalized.local, (address) => normalizeAddressKey(address))
     );
     this.downstreamAddressRoutes = toReadOnlyMap(
-      options.downstreamAddressRoutes
+      normalized.downstreamAddressRoutes
     );
     this.peerAddressRoutes = toReadOnlyMap(
-      options.peerAddressRoutes ?? new Map<FameAddress | string, string>()
+      normalized.peerAddressRoutes ?? new Map<FameAddress | string, string>()
     );
-    this.childSegments = new Set(options.childSegments);
-    this.peerSegments = new Set(options.peerSegments);
-    this.hasParent = options.hasParent;
-    this.physicalSegments = [...options.physicalSegments];
-    this.pools = toPoolMap(options.pools);
-    this.capabilities = options.capabilities ?? {};
+    this.childSegments = new Set(normalized.childSegments);
+    this.peerSegments = new Set(normalized.peerSegments);
+    this.hasParent = normalized.hasParent;
+    this.physicalSegments = [...normalized.physicalSegments];
+    this.pools = toPoolMap(normalized.pools);
+    this.capabilities = normalized.capabilities ?? {};
     this.resolveAddressByCapability =
-      options.resolveAddressByCapability ?? null;
-    this.envelopeFactory = options.envelopeFactory ?? null;
+      normalized.resolveAddressByCapability ?? null;
+    this.envelopeFactory = normalized.envelopeFactory ?? null;
   }
 
   public nextHop(fullPath: string): string | null {
@@ -397,6 +421,29 @@ function isDeliveryAck(
 
 function isDataFrame(frame: FameEnvelope['frame']): frame is DataFrame {
   return frame?.type === 'Data';
+}
+
+function normalizeRouterStateOptions(
+  options: RouterStateInit
+): RouterStateOptions {
+  if ('nodeId' in options) {
+    return options;
+  }
+
+  return {
+    nodeId: options.node_id,
+    local: options.local,
+    downstreamAddressRoutes: options.downstream_address_routes,
+    peerAddressRoutes: options.peer_address_routes,
+    childSegments: options.child_segments,
+    peerSegments: options.peer_segments,
+    hasParent: options.has_parent,
+    physicalSegments: options.physical_segments,
+    pools: options.pools,
+    capabilities: options.capabilities,
+    resolveAddressByCapability: options.resolve_address_by_capability,
+    envelopeFactory: options.envelope_factory,
+  } satisfies RouterStateOptions;
 }
 
 function isSecureOpenFrame(

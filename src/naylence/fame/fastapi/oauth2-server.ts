@@ -151,7 +151,7 @@ async function createApp(): Promise<FastifyInstance> {
 
       const payload = {
         iss: issuer,
-        sub: client_id,
+  sub: client_id,
         aud: audience,
         iat: now,
         exp: now + expiresIn,

@@ -50,8 +50,25 @@ function normalizeConfig(
 
   const candidate = config as SharedSecretTokenProviderConfig &
     Record<string, unknown>;
-  const secretSource: SecretSourceType =
-    candidate.secret ?? 'env://SHARED_SECRET';
+  const record = candidate as Record<string, unknown>;
+
+  let secretSource = candidate.secret as SecretSourceType | undefined;
+  if (secretSource === undefined && record.secret_provider !== undefined) {
+    secretSource = record.secret_provider as SecretSourceType;
+  }
+  if (secretSource === undefined && record.secret_source !== undefined) {
+    secretSource = record.secret_source as SecretSourceType;
+  }
+  if (
+    secretSource === undefined &&
+    record.secret_provider_config !== undefined
+  ) {
+    secretSource = record.secret_provider_config as SecretSourceType;
+  }
+
+  if (secretSource === undefined) {
+    secretSource = 'env://SHARED_SECRET';
+  }
 
   return {
     secretConfig: normalizeSecretSource(secretSource),

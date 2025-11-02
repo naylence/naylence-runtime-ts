@@ -22,6 +22,9 @@ const DEFAULT_PREFIX = `/fame/v${PROTO_MAJOR}/welcome` as const;
 export interface NodeWelcomeRouterOptions {
   welcomeService: WelcomeService;
   prefix?: string;
+  welcome_service?: WelcomeService;
+  routePrefix?: string;
+  route_prefix?: string;
 }
 
 type HelloRequest = FastifyRequest<{ Body: unknown }>;
@@ -36,8 +39,10 @@ class HelloValidationError extends Error {
 export const nodeWelcomeRouter: FastifyPluginAsync<
   NodeWelcomeRouterOptions
 > = async (fastify: FastifyInstance, options: NodeWelcomeRouterOptions) => {
-  const prefix = options.prefix ?? DEFAULT_PREFIX;
-  const welcomeService = options.welcomeService;
+  const { prefix: providedPrefix, welcomeService } = normalizeRouterOptions(
+    options
+  );
+  const prefix = providedPrefix ?? DEFAULT_PREFIX;
 
   if (!welcomeService) {
     throw new Error('Node welcome router requires a welcome service instance');
@@ -125,3 +130,20 @@ export const nodeWelcomeRouter: FastifyPluginAsync<
 };
 
 export const nodeWelcomeRouterPlugin = nodeWelcomeRouter;
+
+function normalizeRouterOptions(
+  options: NodeWelcomeRouterOptions
+): { welcomeService: WelcomeService | undefined; prefix?: string } {
+  const record = options as NodeWelcomeRouterOptions & Record<string, unknown>;
+
+  const welcomeService =
+    options.welcomeService ??
+    (record.welcome_service as WelcomeService | undefined);
+
+  const prefix =
+    options.prefix ??
+    (record.routePrefix as string | undefined) ??
+    (record.route_prefix as string | undefined);
+
+  return { welcomeService, prefix };
+}

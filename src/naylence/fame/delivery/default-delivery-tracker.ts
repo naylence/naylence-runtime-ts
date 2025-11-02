@@ -123,6 +123,85 @@ function createEnvelopeFuture(
   };
 }
 
+function setMetaWithLegacy(
+  meta: Record<string, unknown>,
+  modernKey: string,
+  legacyKey: string,
+  value: unknown
+): void {
+  meta[modernKey] = value;
+  meta[legacyKey] = value;
+}
+
+function deleteMetaWithLegacy(
+  meta: Record<string, unknown>,
+  modernKey: string,
+  legacyKey: string
+): void {
+  delete meta[modernKey];
+  delete meta[legacyKey];
+}
+
+function normalizeTrackerOptions(
+  options: DefaultDeliveryTrackerOptions
+): DefaultDeliveryTrackerOptions {
+  const futuresGcGraceSecs = readNumberOption(options, 'futuresGcGraceSecs', [
+    'futures_gc_grace_secs',
+    'futures_gc_graceSeconds',
+  ]);
+  const futuresSweepIntervalSecs = readNumberOption(
+    options,
+    'futuresSweepIntervalSecs',
+    ['futures_sweep_interval_secs', 'futures_sweepIntervalSecs']
+  );
+
+  return {
+    ...(futuresGcGraceSecs !== undefined
+      ? { futuresGcGraceSecs }
+      : undefined),
+    ...(futuresSweepIntervalSecs !== undefined
+      ? { futuresSweepIntervalSecs }
+      : undefined),
+  };
+}
+
+function readNumberOption(
+  source: Record<string, unknown>,
+  camelKey: string,
+  legacyKeys: string[]
+): number | undefined {
+  const camelValue = coerceNumericOption(source[camelKey]);
+  if (camelValue !== undefined) {
+    return camelValue;
+  }
+
+  for (const legacyKey of legacyKeys) {
+    if (!(legacyKey in source)) {
+      continue;
+    }
+    const value = coerceNumericOption(source[legacyKey]);
+    if (value !== undefined) {
+      source[camelKey] = value;
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function coerceNumericOption(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
 export interface DeliveryTrackerEventHandler {
   onEnvelopeTimeout?(envelope: TrackedEnvelope): Promise<void> | void;
   onEnvelopeAcked?(envelope: TrackedEnvelope): Promise<void> | void;
@@ -142,6 +221,12 @@ export interface TrackOptions {
   retryPolicy?: RetryPolicy | null;
   retryHandler?: RetryEventHandler | null;
   meta?: Record<string, unknown> | null;
+}
+
+interface DefaultDeliveryTrackerOptions {
+  futuresGcGraceSecs?: number;
+  futuresSweepIntervalSecs?: number;
+  [key: string]: unknown;
 }
 
 export class DefaultDeliveryTracker
@@ -180,21 +265,19 @@ export class DefaultDeliveryTracker
 
   constructor(
     storageProvider: StorageProvider,
-    options: {
-      futuresGcGraceSecs?: number;
-      futuresSweepIntervalSecs?: number;
-    } = {}
+    options: DefaultDeliveryTrackerOptions = {}
   ) {
     super();
     this.storageProvider = storageProvider;
     this.priority = 1000;
+    const normalizedOptions = normalizeTrackerOptions(options);
     this.futGcGraceSecs = Math.max(
       0,
-      Math.trunc(options.futuresGcGraceSecs ?? 120)
+      Math.trunc(normalizedOptions.futuresGcGraceSecs ?? 120)
     );
     this.futSweepIntervalSecs = Math.max(
       1,
-      Math.trunc(options.futuresSweepIntervalSecs ?? 30)
+      Math.trunc(normalizedOptions.futuresSweepIntervalSecs ?? 30)
     );
   }
 
@@ -568,10 +651,30 @@ export class DefaultDeliveryTracker
 
     if (error) {
       const attempt = envelope.attempt;
-      envelope.meta[`failure_attempt_${attempt}_reason`] = error.message;
-      envelope.meta[`failure_attempt_${attempt}_type`] = error.name;
-      envelope.meta['last_failure_reason'] = error.message;
-      envelope.meta['last_failure_type'] = error.name;
+      setMetaWithLegacy(
+        envelope.meta,
+        `failureAttempt${attempt}Reason`,
+        `failure_attempt_${attempt}_reason`,
+        error.message
+      );
+      setMetaWithLegacy(
+        envelope.meta,
+        `failureAttempt${attempt}Type`,
+        `failure_attempt_${attempt}_type`,
+        error.name
+      );
+      setMetaWithLegacy(
+        envelope.meta,
+        'lastFailureReason',
+        'last_failure_reason',
+        error.message
+      );
+      setMetaWithLegacy(
+        envelope.meta,
+        'lastFailureType',
+        'last_failure_type',
+        error.name
+      );
     }
 
     if (isFinalFailure) {
@@ -715,11 +818,16 @@ export class DefaultDeliveryTracker
     const ackFrame = envelope.frame;
 
     tracked.status = EnvelopeStatus.NACKED;
-    tracked.meta['nack_code'] = ackFrame.code;
+    setMetaWithLegacy(tracked.meta, 'nackCode', 'nack_code', ackFrame.code);
     if (ackFrame.reason) {
-      tracked.meta['nack_reason'] = ackFrame.reason;
+      setMetaWithLegacy(
+        tracked.meta,
+        'nackReason',
+        'nack_reason',
+        ackFrame.reason
+      );
     } else {
-      delete tracked.meta['nack_reason'];
+      deleteMetaWithLegacy(tracked.meta, 'nackReason', 'nack_reason');
     }
     await outbox.set(tracked.originalEnvelope.id, tracked);
 
@@ -947,9 +1055,22 @@ export class DefaultDeliveryTracker
 
     trackedEnvelope.meta['dlq'] = true;
     if (reason) {
-      trackedEnvelope.meta['dlq_reason'] = reason;
+      setMetaWithLegacy(
+        trackedEnvelope.meta,
+        'dlqReason',
+        'dlq_reason',
+        reason
+      );
+    } else {
+      deleteMetaWithLegacy(trackedEnvelope.meta, 'dlqReason', 'dlq_reason');
     }
-    trackedEnvelope.meta['dead_lettered_at_ms'] = Date.now();
+    const deadLetteredAt = Date.now();
+    setMetaWithLegacy(
+      trackedEnvelope.meta,
+      'deadLetteredAtMs',
+      'dead_lettered_at_ms',
+      deadLetteredAt
+    );
     await dlq.set(trackedEnvelope.originalEnvelope.id, trackedEnvelope);
     logger.warning('envelope_moved_to_dlq', {
       envp_id: trackedEnvelope.originalEnvelope.id,
@@ -1463,7 +1584,7 @@ export class DefaultDeliveryTracker
         error: error instanceof Error ? error.message : String(error),
       });
       throw new Error(
-        `Timeout waiting for response_type(${responseType}) for envelope ${envelopeId}`
+        `Timeout waiting for responseType(${responseType}) for envelope ${envelopeId}`
       );
     }
   }

@@ -63,9 +63,9 @@ describe('Cross-platform Logging', () => {
   test('should inject envelope context into logs', () => {
     const logger = getLogger('test.envelope');
     const envelope = {
-      trace_id: 'trace-123',
+      traceId: 'trace-123',
       id: 'env-456',
-      flow_id: 'flow-789',
+      flowId: 'flow-789',
     };
 
     expect(() => {
@@ -83,9 +83,9 @@ describe('Cross-platform Logging', () => {
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     const logger = getLogger('test.structlog');
     const envelope = {
-      trace_id: 'trace-123',
+      traceId: 'trace-123',
       id: 'env-456',
-      flow_id: 'flow-789',
+      flowId: 'flow-789',
     };
 
     try {
@@ -111,6 +111,7 @@ describe('Cross-platform Logging', () => {
       logger.info('message with args', 'arg1', 'arg2', 123);
     }).not.toThrow();
   });
+
 });
 
 describe('enableLogging', () => {

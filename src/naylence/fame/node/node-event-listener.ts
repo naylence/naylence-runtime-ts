@@ -400,6 +400,7 @@ export interface NodeEventListener {
    * their services (monitoring, security, routing, etc.).
    */
   onNodeStopped?(node: NodeLike): Promise<void>;
+
 }
 
 /**

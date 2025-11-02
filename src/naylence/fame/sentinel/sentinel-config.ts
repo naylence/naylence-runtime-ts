@@ -57,35 +57,123 @@ export function normalizeSentinelConfig(
   input?: Partial<SentinelConfig> | Record<string, unknown> | null
 ): NormalizedSentinelConfig {
   const source = SentinelExtrasSchema.parse(input ?? {});
+  const extrasRecord = isPlainRecord(input)
+    ? {
+        ...(input as Record<string, unknown>),
+        ...(source as Record<string, unknown>),
+      }
+    : (source as Record<string, unknown>);
 
   const base = normalizeFameNodeConfig({ ...(input ?? {}), type: 'Node' });
 
-  const peers = normalizePeerConfigs(source.peers);
+  const peersSource =
+    source.peers ?? extrasRecord.peer_configs ?? extrasRecord.peers;
+  const peers = normalizePeerConfigs(peersSource);
+
+  const routingPolicyConfig = pickConfigEntry<
+    RoutingPolicyConfig | Record<string, unknown>
+  >(source.routingPolicy, extrasRecord, 'routing_policy');
+
+  const loadBalancingConfig = pickConfigEntry<
+    LoadBalancingStrategyConfig | Record<string, unknown>
+  >(source.loadBalancing, extrasRecord, 'load_balancing');
+
+  const stickinessConfig = pickConfigEntry<
+    LoadBalancerStickinessManagerConfig | Record<string, unknown>
+  >(source.stickiness, extrasRecord, 'stickiness_manager');
+
+  const routeStoreConfig = pickConfigEntry<
+    RouteStoreConfig | Record<string, unknown>
+  >(source.routeStore, extrasRecord, 'route_store');
+
+  const maxAttachTtlSec = pickNumberOption(
+    source.maxAttachTtlSec,
+    extrasRecord,
+    'max_attach_ttl_sec'
+  );
+
+  const bindingAckTimeoutMs = pickNumberOption(
+    source.bindingAckTimeoutMs,
+    extrasRecord,
+    'binding_ack_timeout_ms'
+  );
+
+  const attachTimeoutSec = pickNumberOption(
+    source.attachTimeoutSec,
+    extrasRecord,
+    'attach_timeout_sec'
+  );
 
   return {
     ...base,
     type: 'Sentinel',
-    routingPolicy: (source.routingPolicy ?? null) as
-      | RoutingPolicyConfig
-      | Record<string, unknown>
-      | null,
-    loadBalancing: (source.loadBalancing ?? null) as
-      | LoadBalancingStrategyConfig
-      | Record<string, unknown>
-      | null,
-    stickiness: (source.stickiness ?? null) as
-      | LoadBalancerStickinessManagerConfig
-      | Record<string, unknown>
-      | null,
+    routingPolicy: routingPolicyConfig,
+    loadBalancing: loadBalancingConfig,
+    stickiness: stickinessConfig,
     peers,
-    maxAttachTtlSec: source.maxAttachTtlSec ?? null,
-    bindingAckTimeoutMs: source.bindingAckTimeoutMs ?? null,
-    attachTimeoutSec: source.attachTimeoutSec ?? null,
-    routeStore: (source.routeStore ?? null) as
-      | RouteStoreConfig
-      | Record<string, unknown>
-      | null,
+    maxAttachTtlSec,
+    bindingAckTimeoutMs,
+    attachTimeoutSec,
+    routeStore: routeStoreConfig,
   } satisfies NormalizedSentinelConfig;
 }
 
 export type { AdmissionConfig }; // re-export for convenience
+
+function pickConfigEntry<T>(
+  primary: unknown,
+  record: Record<string, unknown>,
+  ...aliases: string[]
+): T | null {
+  if (primary !== undefined && primary !== null) {
+    return primary as T;
+  }
+
+  for (const alias of aliases) {
+    if (alias in record) {
+      const candidate = record[alias];
+      if (candidate === null) {
+        return null;
+      }
+      if (candidate !== undefined) {
+        return candidate as T;
+      }
+    }
+  }
+
+  return null;
+}
+
+function pickNumberOption(
+  primary: unknown,
+  record: Record<string, unknown>,
+  ...aliases: string[]
+): number | null {
+  if (typeof primary === 'number' && Number.isFinite(primary)) {
+    return primary;
+  }
+  if (primary === null) {
+    return null;
+  }
+
+  for (const alias of aliases) {
+    if (!(alias in record)) {
+      continue;
+    }
+
+    const candidate = record[alias];
+    if (candidate === null) {
+      return null;
+    }
+
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}

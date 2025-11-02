@@ -119,28 +119,30 @@ describe('Sentinel downstream node integration', () => {
     let child: FameNode | null = null;
 
     try {
-      parent = await sentinelFactory.create({
+      const parentConfig = {
         type: 'Sentinel',
         id: 'parent-sentinel',
-        security: createSecurityConfig(),
-        admission: {
+        security_manager: createSecurityConfig(),
+        admission_client: {
           type: 'NoopAdmissionClient',
           autoAcceptLogicals: true,
         },
-        delivery: {
+        delivery_policy: {
           type: 'AtLeastOnceDeliveryPolicy',
         },
-        routingPolicy: {
+        routing_policy: {
           type: 'CompositeRoutingPolicy',
         },
-        listeners: [
+        listener_configs: [
           {
             type: 'WebSocketListener',
             host: SOCKET_HOST,
             port: 0,
           },
         ],
-      });
+      } satisfies Record<string, unknown>;
+
+      parent = await sentinelFactory.create(parentConfig);
 
       await parent.start();
 
@@ -157,16 +159,16 @@ describe('Sentinel downstream node integration', () => {
         : baseUrl!.replace('http://', 'ws://');
       const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
 
-      child = await nodeFactory.create({
+      const childConfig = {
         type: 'Node',
         id: 'child-node',
-        hasParent: true,
-        requestedLogicals: ['svc'],
-        security: createSecurityConfig(),
-        delivery: {
+        has_parent: true,
+        requested_logicals: ['svc'],
+        security_manager: createSecurityConfig(),
+        delivery_policy: {
           type: 'AtLeastOnceDeliveryPolicy',
         },
-        admission: {
+        admission_client: {
           type: 'DirectAdmissionClient',
           connectionGrants: [
             {
@@ -177,7 +179,9 @@ describe('Sentinel downstream node integration', () => {
           ],
           ttlSec: 60,
         },
-      });
+      } satisfies Record<string, unknown>;
+
+      child = await nodeFactory.create(childConfig);
 
       await child.start();
 

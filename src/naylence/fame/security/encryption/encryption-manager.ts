@@ -5,6 +5,7 @@ export const FIXED_PREFIX_LEN = 44; // 32-byte ephemeral public key + 12-byte no
 export interface EncryptionOptions {
   readonly recipPub?: Uint8Array;
   readonly recip_pub?: Uint8Array;
+  readonly recipient_public_key?: Uint8Array;
   readonly recipientPublicKey?: Uint8Array;
   readonly privKey?: Uint8Array;
   readonly priv_key?: Uint8Array;
@@ -14,9 +15,12 @@ export interface EncryptionOptions {
   readonly nonce?: Uint8Array;
   readonly recipKid?: string;
   readonly recip_kid?: string;
+  readonly recipient_key_id?: string;
   readonly recipientKeyId?: string;
   readonly requestAddress?: FameAddress;
+  readonly request_address?: FameAddress;
   readonly encryptionType?: 'standard' | 'channel' | string;
+  readonly encryption_type?: 'standard' | 'channel' | string;
   readonly destination?: FameAddress;
   readonly [key: string]: unknown;
 }

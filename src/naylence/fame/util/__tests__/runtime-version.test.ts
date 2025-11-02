@@ -50,6 +50,15 @@ describe('resolveRuntimeVersion', () => {
     expect(version).toBe('1.2.3');
   });
 
+  it('accepts camelCase runtime version override aliases', async () => {
+    const runtime = await loadRuntimeModule();
+    delete process.env.NAYLENCE_RUNTIME_VERSION;
+    process.env.naylenceRuntimeVersion = '4.5.6';
+
+    const version = await runtime.resolveRuntimeVersion();
+    expect(version).toBe('4.5.6');
+  });
+
   it('uses npm package metadata when running via npm', async () => {
     const runtime = await loadRuntimeModule();
     delete process.env.NAYLENCE_RUNTIME_VERSION;
@@ -58,6 +67,18 @@ describe('resolveRuntimeVersion', () => {
 
     const version = await runtime.resolveRuntimeVersion();
     expect(version).toBe('9.9.9');
+  });
+
+  it('accepts camelCase npm metadata aliases', async () => {
+    const runtime = await loadRuntimeModule();
+    delete process.env.NAYLENCE_RUNTIME_VERSION;
+    delete process.env.npm_package_name;
+    delete process.env.npm_package_version;
+    process.env.npmPackageName = '@naylence/runtime';
+    process.env.npmPackageVersion = '8.8.8';
+
+    const version = await runtime.resolveRuntimeVersion();
+    expect(version).toBe('8.8.8');
   });
 
   it('falls back to the local package.json when no environment metadata is available', async () => {

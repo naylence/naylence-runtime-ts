@@ -30,6 +30,7 @@ interface RouteManagerLike {
     | Record<string, AddressRouteInfo>;
   _peer_routes?: Map<string, unknown> | Record<string, unknown>;
   _peer_addresses_routes?: Map<string, string> | Record<string, string>;
+  [key: string]: unknown;
 }
 
 type AcceptKeyAnnounceParent = (
@@ -81,6 +82,78 @@ function toStringMap(
 
 function toRecordKeys(source: Iterable<KeyRecord>): KeyRecord[] {
   return Array.from(source);
+}
+
+function getRouteManagerField<T>(
+  routeManager: RouteManagerLike | null | undefined,
+  keys: string[]
+): T | undefined {
+  if (!routeManager) {
+    return undefined;
+  }
+
+  const record = routeManager as Record<string, unknown>;
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      const value = record[key];
+      if (value !== undefined && value !== null) {
+        return value as T;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function resolveOriginType(raw: unknown): DeliveryOriginType | null {
+  if (raw == null) {
+    return null;
+  }
+
+  const deliveryValues = Object.values(DeliveryOriginType) as DeliveryOriginType[];
+
+  if (deliveryValues.includes(raw as DeliveryOriginType)) {
+    return raw as DeliveryOriginType;
+  }
+
+  if (typeof raw === 'string') {
+    const exact = deliveryValues.find((value) => value === raw);
+    if (exact) {
+      return exact;
+    }
+
+    const lowerMatch = deliveryValues.find(
+      (value) => value.toLowerCase() === raw.toLowerCase()
+    );
+    if (lowerMatch) {
+      return lowerMatch;
+    }
+
+    const enumMatch = Object.entries(DeliveryOriginType).find(
+      ([key]) => key.toLowerCase() === raw.toLowerCase()
+    );
+    if (enumMatch) {
+      return enumMatch[1] as DeliveryOriginType;
+    }
+
+    return raw as DeliveryOriginType;
+  }
+
+  return null;
+}
+
+function updateStickinessAliases(
+  context: FameDeliveryContext,
+  stickySid: string | null | undefined
+): void {
+  (context as any).stickiness_required = true;
+  if (stickySid == null) {
+    context.stickySid = undefined;
+    (context as any).sticky_sid = undefined;
+  } else {
+    context.stickySid = stickySid;
+    (context as any).sticky_sid = stickySid;
+  }
 }
 
 export class KeyFrameHandler {
@@ -157,11 +230,10 @@ export class KeyFrameHandler {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<void> {
-    if (!context || !context.originType) {
-      throw new Error(
-        'KeyAnnounce handling requires delivery context with originType'
-      );
-    }
+    const normalizedContext = this.normalizeContext(
+      context,
+      'KeyAnnounce handling requires delivery context with originType'
+    );
 
     const frame = envelope.frame as KeyAnnounceFrame | undefined;
     if (!frame || frame.type !== 'KeyAnnounce') {
@@ -205,31 +277,35 @@ export class KeyFrameHandler {
         await this.routingNode.forwardToRoute(
           targetRoute,
           routedEnvelope,
-          context
+          normalizedContext
         );
         return;
       }
     }
 
-    if (!this.isKnownOrigin(context.originType, context.fromSystemId ?? null)) {
-      const origin = context.fromSystemId ?? 'unknown';
+    if (
+      !this.isKnownOrigin(
+        normalizedContext.originType,
+        normalizedContext.fromSystemId ?? null
+      )
+    ) {
+      const origin = normalizedContext.fromSystemId ?? 'unknown';
       throw new Error(
-        `Cannot accept key announce from unknown ${context.originType?.toLowerCase() ?? 'origin'} system ${origin}`
+        `Cannot accept key announce from unknown ${normalizedContext.originType?.toLowerCase() ?? 'origin'} system ${origin}`
       );
     }
 
-    await this.acceptKeyAnnounceParent(envelope, context);
+    await this.acceptKeyAnnounceParent(envelope, normalizedContext);
   }
 
   public async acceptKeyRequest(
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<boolean> {
-    if (!context || !context.originType) {
-      throw new Error(
-        'KeyRequest handling requires delivery context with originType'
-      );
-    }
+    const normalizedContext = this.normalizeContext(
+      context,
+      'KeyRequest handling requires delivery context with originType'
+    );
 
     if (!this.keyManager) {
       throw new Error('KeyManager must be set for KeyRequest handling');
@@ -240,7 +316,7 @@ export class KeyFrameHandler {
       throw new Error('KeyFrameHandler only handles KeyRequest frames');
     }
 
-    const originSegment = this.getSourceSystemId(context);
+    const originSegment = this.getSourceSystemId(normalizedContext);
     if (!originSegment) {
       throw new Error('Missing origin system id for KeyRequest');
     }
@@ -259,7 +335,7 @@ export class KeyFrameHandler {
         address: frame.address,
         fromSegment: originSegment,
         physicalPath: frame.physicalPath ?? null,
-        context,
+        context: normalizedContext,
         ...(envelope.corrId ? { corrId: envelope.corrId } : {}),
         originalEnvelope: envelope,
       });
@@ -270,7 +346,7 @@ export class KeyFrameHandler {
       await this.handleKeyRequestById({
         frame,
         envelope,
-        context,
+        context: normalizedContext,
         originSegment,
       });
       return true;
@@ -298,8 +374,7 @@ export class KeyFrameHandler {
         );
         const encryptionKeys = keys.filter((key) => key.use === 'enc');
         if (encryptionKeys.length > 0) {
-          context.stickinessRequired = true;
-          context.stickySid = envelope.sid ?? undefined;
+          this.markStickiness(context, envelope.sid ?? undefined);
         }
       } catch (error) {
         logger.trace('key_lookup_for_physical_path_failed', {
@@ -377,8 +452,10 @@ export class KeyFrameHandler {
           const kid =
             typeof selected.kid === 'string' ? selected.kid : undefined;
           if (kid) {
-            context.stickinessRequired = true;
-            context.stickySid = originalEnvelope?.sid ?? fromSegment;
+            this.markStickiness(
+              context,
+              originalEnvelope?.sid ?? fromSegment
+            );
 
             await this.sendKeyRequest({
               kid,
@@ -401,8 +478,7 @@ export class KeyFrameHandler {
 
     if (routeInfo?.encryptionKeyId) {
       try {
-        context.stickinessRequired = true;
-        context.stickySid = originalEnvelope?.sid ?? fromSegment;
+        this.markStickiness(context, originalEnvelope?.sid ?? fromSegment);
         await this.sendKeyRequest({
           kid: routeInfo.encryptionKeyId,
           fromSegment,
@@ -430,8 +506,10 @@ export class KeyFrameHandler {
         if (encryptionKeys.length > 0) {
           const kid = encryptionKeys[0]?.kid;
           if (kid && typeof kid === 'string') {
-            context.stickinessRequired = true;
-            context.stickySid = originalEnvelope?.sid ?? fromSegment;
+            this.markStickiness(
+              context,
+              originalEnvelope?.sid ?? fromSegment
+            );
             await this.sendKeyRequest({
               kid,
               fromSegment,
@@ -462,8 +540,10 @@ export class KeyFrameHandler {
         if (encryptionKeys.length > 0) {
           const kid = encryptionKeys[0]?.kid;
           if (kid && typeof kid === 'string') {
-            context.stickinessRequired = true;
-            context.stickySid = originalEnvelope?.sid ?? fromSegment;
+            this.markStickiness(
+              context,
+              originalEnvelope?.sid ?? fromSegment
+            );
             await this.sendKeyRequest({
               kid,
               fromSegment,
@@ -491,18 +571,75 @@ export class KeyFrameHandler {
     return false;
   }
 
+  private normalizeContext(
+    context: FameDeliveryContext | undefined,
+    errorMessage: string
+  ): FameDeliveryContext & { originType: DeliveryOriginType } {
+    if (!context) {
+      throw new Error(errorMessage);
+    }
+
+    const rawOrigin =
+      (context as any).originType ?? (context as any).origin_type ?? null;
+    const originType = resolveOriginType(rawOrigin);
+    if (!originType) {
+      throw new Error(errorMessage);
+    }
+
+    context.originType = originType;
+    (context as any).origin_type = originType;
+
+    const fromSystemId =
+      (context as any).fromSystemId ??
+      (context as any).from_system_id ??
+      undefined;
+    if (fromSystemId !== undefined) {
+      context.fromSystemId = fromSystemId ?? undefined;
+      (context as any).from_system_id = fromSystemId ?? undefined;
+    }
+
+    const expectedResponse =
+      (context as any).expectedResponseType ??
+      (context as any).expected_response_type ??
+      undefined;
+    if (expectedResponse !== undefined) {
+      context.expectedResponseType = expectedResponse;
+      (context as any).expected_response_type = expectedResponse;
+    }
+
+    return context as FameDeliveryContext & { originType: DeliveryOriginType };
+  }
+
+  private markStickiness(
+    context: FameDeliveryContext,
+    stickySid: string | null | undefined
+  ): void {
+    context.stickinessRequired = true;
+    updateStickinessAliases(context, stickySid ?? undefined);
+  }
+
   private getAddressRouteInfo(
     address: FameAddress | string
   ): AddressRouteInfo | null {
     const key = String(address);
     const downstream = toRouteMap(
-      this.routeManager?._downstream_addresses_routes
+      getRouteManagerField<
+        Map<string, AddressRouteInfo> | Record<string, AddressRouteInfo>
+      >(this.routeManager, [
+        '_downstream_addresses_routes',
+        'downstream_addresses_routes',
+      ])
     );
     if (downstream.has(key)) {
       return downstream.get(key) ?? null;
     }
 
-    const peerRoutes = toStringMap(this.routeManager?._peer_addresses_routes);
+    const peerRoutes = toStringMap(
+      getRouteManagerField<Map<string, string> | Record<string, string>>(
+        this.routeManager,
+        ['_peer_addresses_routes', 'peer_addresses_routes']
+      )
+    );
     if (peerRoutes.has(key)) {
       const segment = peerRoutes.get(key);
       if (segment) {
@@ -567,11 +704,17 @@ export class KeyFrameHandler {
     }
 
     if (origin === DeliveryOriginType.DOWNSTREAM) {
-      return this.hasRoute(this.routeManager?.downstreamRoutes, systemId);
+      const container = getRouteManagerField<
+        Map<string, unknown> | Record<string, unknown>
+      >(this.routeManager, ['downstreamRoutes', 'downstream_routes']);
+      return this.hasRoute(container, systemId);
     }
 
     if (origin === DeliveryOriginType.PEER) {
-      return this.hasRoute(this.routeManager?._peer_routes, systemId);
+      const container = getRouteManagerField<
+        Map<string, unknown> | Record<string, unknown>
+      >(this.routeManager, ['_peer_routes', 'peer_routes']);
+      return this.hasRoute(container, systemId);
     }
 
     return true;
@@ -594,6 +737,12 @@ export class KeyFrameHandler {
   }
 
   private getSourceSystemId(context: FameDeliveryContext): string | null {
-    return context.fromSystemId ?? null;
+    const fromSystemId =
+      context.fromSystemId ?? (context as any).from_system_id ?? null;
+    if (fromSystemId != null) {
+      context.fromSystemId = fromSystemId;
+      (context as any).from_system_id = fromSystemId;
+    }
+    return fromSystemId ?? null;
   }
 }

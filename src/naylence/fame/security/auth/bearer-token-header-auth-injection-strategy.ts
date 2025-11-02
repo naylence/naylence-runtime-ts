@@ -6,21 +6,76 @@ import type { BearerTokenHeaderAuthInjectionStrategyConfig } from './bearer-toke
 
 export interface BearerTokenHeaderAuthInjectionOptions {
   type?: 'BearerTokenHeaderAuth';
+  tokenProvider?:
+    | BearerTokenHeaderAuthInjectionStrategyConfig['tokenProvider']
+    | null;
+  token_provider?:
+    | BearerTokenHeaderAuthInjectionStrategyConfig['tokenProvider']
+    | null;
+  headerName?: string;
+  header_name?: string;
+  param?: string;
+}
+
+interface NormalizedBearerTokenHeaderAuthInjectionOptions {
   tokenProvider: BearerTokenHeaderAuthInjectionStrategyConfig['tokenProvider'];
   headerName: string;
+}
+
+function normalizeOptions(
+  options: BearerTokenHeaderAuthInjectionOptions | null | undefined
+): NormalizedBearerTokenHeaderAuthInjectionOptions {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError(
+      'BearerTokenHeaderAuthInjectionStrategy options must be an object'
+    );
+  }
+
+  const candidate = options as BearerTokenHeaderAuthInjectionOptions &
+    Record<string, unknown>;
+  const type =
+    typeof candidate.type === 'string'
+      ? candidate.type
+      : 'BearerTokenHeaderAuth';
+  if (type !== 'BearerTokenHeaderAuth') {
+    throw new Error(
+      `BearerTokenHeaderAuthInjectionStrategy expects type "BearerTokenHeaderAuth", got "${type ?? 'undefined'}"`
+    );
+  }
+
+  const tokenProvider =
+    candidate.tokenProvider ?? candidate.token_provider ?? null;
+  if (!tokenProvider) {
+    throw new Error(
+      'BearerTokenHeaderAuthInjectionStrategy requires a tokenProvider configuration'
+    );
+  }
+
+  const headerCandidate =
+    candidate.headerName ?? candidate.header_name ?? candidate.param;
+  const headerName =
+    typeof headerCandidate === 'string' && headerCandidate.trim().length > 0
+      ? headerCandidate.trim()
+      : 'Authorization';
+
+  return {
+    tokenProvider,
+    headerName,
+  };
 }
 
 export class BearerTokenHeaderAuthInjectionStrategy
   implements AuthInjectionStrategy
 {
+  private readonly options: NormalizedBearerTokenHeaderAuthInjectionOptions;
   private refreshLoop: Promise<void> | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private timerResolver: (() => void) | null = null;
   private stopped = false;
 
-  public constructor(
-    private readonly options: BearerTokenHeaderAuthInjectionOptions
-  ) {}
+  public constructor(options: BearerTokenHeaderAuthInjectionOptions) {
+    this.options = normalizeOptions(options);
+  }
 
   public async apply(connector: unknown): Promise<void> {
     const provider = await TokenProviderFactory.createTokenProvider(

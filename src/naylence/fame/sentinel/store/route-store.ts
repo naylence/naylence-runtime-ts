@@ -38,7 +38,10 @@ let defaultRouteStore: RouteStore | null = null;
 
 export function getDefaultRouteStore(): RouteStore {
   if (!defaultRouteStore) {
-    defaultRouteStore = new InMemoryKeyValueStore<RouteEntry>();
+    const lazyStore = new LazyKeyValueStore<RouteEntryRecord>(() =>
+      Promise.resolve(new InMemoryKeyValueStore<RouteEntryRecord>())
+    );
+    defaultRouteStore = new RouteStoreAdapter(lazyStore);
   }
   return defaultRouteStore;
 }
@@ -60,14 +63,8 @@ export class RouteEntryRecord implements RouteEntry {
   public callback_grants?: Array<Record<string, unknown>> | null;
   [key: string]: unknown;
 
-  constructor(init?: RouteEntry) {
-    if (init) {
-      Object.assign(this, init);
-    }
-  }
-
   static from(entry: RouteEntry): RouteEntryRecord {
-    return new RouteEntryRecord(entry);
+    return normalizeRouteEntryForStorage(entry);
   }
 
   toRouteEntry(): RouteEntry {
@@ -247,4 +244,154 @@ function pickRecordArray(
   }
 
   return records.length ? records : null;
+}
+
+function normalizeRouteEntryForStorage(entry: RouteEntry): RouteEntryRecord {
+  const record = new RouteEntryRecord();
+  Object.assign(record, entry);
+
+  assignPairedField(
+    record,
+    'systemId',
+    'system_id',
+    resolveStringField(entry.systemId, entry.system_id)
+  );
+
+  assignPairedField(
+    record,
+    'assignedPath',
+    'assigned_path',
+    resolveStringField(entry.assignedPath, entry.assigned_path, true)
+  );
+
+  assignPairedField(
+    record,
+    'instanceId',
+    'instance_id',
+    resolveStringField(entry.instanceId, entry.instance_id, true)
+  );
+
+  assignPairedField(
+    record,
+    'connectorConfig',
+    'connector_config',
+    resolveConnectorConfig(entry.connectorConfig, entry.connector_config)
+  );
+
+  assignPairedField(
+    record,
+    'attachExpiresAt',
+    'attach_expires_at',
+    resolveAttachExpiresAt(entry.attachExpiresAt, entry.attach_expires_at)
+  );
+
+  assignPairedField(
+    record,
+    'metadata',
+    'metadata',
+    resolveRecordField(entry.metadata)
+  );
+
+  assignPairedField(
+    record,
+    'callbackGrants',
+    'callback_grants',
+    resolveRecordArray(entry.callbackGrants, entry.callback_grants)
+  );
+
+  if ('durable' in entry) {
+    record.durable = entry.durable === true;
+  }
+
+  return record;
+}
+
+function assignPairedField(
+  record: RouteEntryRecord,
+  camelKey: keyof RouteEntryRecord,
+  snakeKey: keyof RouteEntryRecord,
+  value: unknown
+): void {
+  const target = record as Record<string, unknown>;
+  if (value === undefined) {
+    delete target[camelKey as string];
+    delete target[snakeKey as string];
+    return;
+  }
+  target[camelKey as string] = value;
+  target[snakeKey as string] = value;
+}
+
+function resolveStringField(
+  primary: unknown,
+  secondary: unknown,
+  allowNull = false
+): string | null | undefined {
+  if (primary !== undefined) {
+    if (primary === null) {
+      return allowNull ? null : undefined;
+    }
+    return typeof primary === 'string' ? primary : undefined;
+  }
+  if (secondary !== undefined) {
+    if (secondary === null) {
+      return allowNull ? null : undefined;
+    }
+    return typeof secondary === 'string' ? secondary : undefined;
+  }
+  return undefined;
+}
+
+function resolveConnectorConfig(
+  primary: unknown,
+  secondary: unknown
+): ConnectorConfig | null | undefined {
+  const candidate = primary !== undefined ? primary : secondary;
+  if (candidate === undefined) {
+    return undefined;
+  }
+  if (candidate === null) {
+    return null;
+  }
+  return pickConnectorConfig(candidate) ?? undefined;
+}
+
+function resolveAttachExpiresAt(
+  primary: unknown,
+  secondary: unknown
+): Date | null | undefined {
+  const candidate = primary !== undefined ? primary : secondary;
+  if (candidate === undefined) {
+    return undefined;
+  }
+  if (candidate === null) {
+    return null;
+  }
+  return pickDate(candidate);
+}
+
+function resolveRecordField(
+  value: unknown
+): Record<string, unknown> | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  return pickRecord(value) ?? undefined;
+}
+
+function resolveRecordArray(
+  primary: unknown,
+  secondary: unknown
+): Array<Record<string, unknown>> | null | undefined {
+  const candidate = primary !== undefined ? primary : secondary;
+  if (candidate === undefined) {
+    return undefined;
+  }
+  if (candidate === null) {
+    return null;
+  }
+  return pickRecordArray(candidate) ?? undefined;
 }

@@ -82,6 +82,7 @@ interface RegisteredListener {
 interface ListenOptions {
   capabilities?: string[] | null;
   pollTimeoutMs?: number | null;
+  poll_timeout_ms?: number | null;
 }
 
 type RecoveryCache = Map<string, TrackedEnvelope[]>;
@@ -260,8 +261,11 @@ export class EnvelopeListenerManager extends TaskSpawner {
     handler?: FameEnvelopeHandler | null,
     options: ListenOptions = {}
   ): Promise<FameAddress> {
-    const { capabilities = null, pollTimeoutMs = DEFAULT_POLLING_TIMEOUT_MS } =
-      options;
+    const capabilitiesOption = options.capabilities ?? null;
+    const pollTimeoutMs =
+      options.pollTimeoutMs ??
+      options.poll_timeout_ms ??
+      DEFAULT_POLLING_TIMEOUT_MS;
 
     logger.debug('listen_start', {
       recipient: serviceName,
@@ -278,10 +282,13 @@ export class EnvelopeListenerManager extends TaskSpawner {
       });
     }
 
-    const stopState = { stopped: false };
+    const stopState: { stopped: boolean; stop_state: boolean } = {
+      stopped: false,
+      stop_state: false,
+    };
     const binding = await this.bindingManager.bind(
       serviceName,
-      capabilities ?? undefined
+      capabilitiesOption ?? undefined
     );
     const channel = binding.channel;
 
@@ -366,6 +373,7 @@ export class EnvelopeListenerManager extends TaskSpawner {
 
     const listener = new EnvelopeListener(async () => {
       stopState.stopped = true;
+      stopState.stop_state = true;
       try {
         await channel.send(null);
       } catch (error) {
@@ -429,19 +437,24 @@ export class EnvelopeListenerManager extends TaskSpawner {
 
   async invoke(options: {
     targetAddr?: FameAddress;
+    target_addr?: FameAddress;
     capabilities?: string[];
     method: string;
     params: Record<string, unknown>;
     timeoutMs?: number;
+    timeout_ms?: number;
   }): Promise<unknown> {
+    const timeoutMs =
+      options.timeoutMs ?? options.timeout_ms ?? DEFAULT_INVOKE_TIMEOUT_MILLIS;
     const invokeOptions: Parameters<RPCClientManager['invoke']>[0] = {
       method: options.method,
       params: options.params,
-      timeoutMs: options.timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS,
+      timeoutMs,
     };
 
-    if (options.targetAddr) {
-      invokeOptions.targetAddr = options.targetAddr;
+    const targetAddr = options.targetAddr ?? options.target_addr;
+    if (targetAddr) {
+      invokeOptions.targetAddr = targetAddr;
     }
 
     if (options.capabilities) {
@@ -453,19 +466,24 @@ export class EnvelopeListenerManager extends TaskSpawner {
 
   async invokeStream(options: {
     targetAddr?: FameAddress;
+    target_addr?: FameAddress;
     capabilities?: string[];
     method: string;
     params: Record<string, unknown>;
     timeoutMs?: number;
+    timeout_ms?: number;
   }): Promise<AsyncIterable<unknown>> {
+    const timeoutMs =
+      options.timeoutMs ?? options.timeout_ms ?? DEFAULT_INVOKE_TIMEOUT_MILLIS;
     const streamOptions: Parameters<RPCClientManager['invokeStream']>[0] = {
       method: options.method,
       params: options.params,
-      timeoutMs: options.timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS,
+      timeoutMs,
     };
 
-    if (options.targetAddr) {
-      streamOptions.targetAddr = options.targetAddr;
+    const targetAddr = options.targetAddr ?? options.target_addr;
+    if (targetAddr) {
+      streamOptions.targetAddr = targetAddr;
     }
 
     if (options.capabilities) {

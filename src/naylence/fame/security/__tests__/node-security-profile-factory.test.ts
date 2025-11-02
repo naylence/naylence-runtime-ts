@@ -171,6 +171,49 @@ describe('NodeSecurityProfileFactory', () => {
     expect(options?.factoryArgs).toEqual([overrides]);
   });
 
+  it('accepts snake_case profile property', async () => {
+    const createSpy = jest
+      .spyOn(FactoryRegistry, 'createResource')
+      .mockImplementation(async (_baseType, config) => {
+        return { kind: 'stub', config } as unknown as SecurityManager;
+      });
+
+    const factory = new NodeSecurityProfileFactory();
+    await factory.create({ profile_name: PROFILE_NAME_STRICT_OVERLAY } as any);
+
+    const capturedConfig = createSpy.mock.calls[0]?.[1] as
+      | DefaultSecurityManagerConfig
+      | undefined;
+    const policy = capturedConfig?.security_policy as
+      | Record<string, unknown>
+      | undefined;
+    const signing = policy?.signing as Record<string, unknown> | undefined;
+    expect(signing?.signing_material).toBe('x509-chain');
+
+    createSpy.mockRestore();
+  });
+
+  it('accepts camelCase profile property', async () => {
+    const createSpy = jest
+      .spyOn(FactoryRegistry, 'createResource')
+      .mockImplementation(async (_baseType, config) => {
+        return { kind: 'stub', config } as unknown as SecurityManager;
+      });
+
+    const factory = new NodeSecurityProfileFactory();
+    await factory.create({ profileName: PROFILE_NAME_OPEN } as any);
+
+    const capturedConfig = createSpy.mock.calls[0]?.[1] as
+      | DefaultSecurityManagerConfig
+      | undefined;
+    const authorizer = capturedConfig?.authorizer as
+      | Record<string, unknown>
+      | undefined;
+    expect(authorizer?.type).toBe('NoopAuthorizer');
+
+    createSpy.mockRestore();
+  });
+
   it('throws when an unknown profile is requested', async () => {
     const factory = new NodeSecurityProfileFactory();
     await expect(factory.create({ profile: 'nonexistent' })).rejects.toThrow(

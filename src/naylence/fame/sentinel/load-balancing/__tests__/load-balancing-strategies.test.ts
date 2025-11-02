@@ -2,6 +2,8 @@ import type { FameEnvelope } from '@naylence/core';
 
 import { CompositeLoadBalancingStrategy } from '../composite-load-balancing-strategy.js';
 import { CompositeLoadBalancingStrategyFactory } from '../composite-load-balancing-strategy-factory.js';
+import { HRWLoadBalancingStrategy } from '../hrw-load-balancing-strategy.js';
+import { HRWLoadBalancingStrategyFactory } from '../hrw-load-balancing-strategy-factory.js';
 import { RandomLoadBalancingStrategy } from '../random-load-balancing-strategy.js';
 import { RandomLoadBalancingStrategyFactory } from '../random-load-balancing-strategy-factory.js';
 import { RoundRobinLoadBalancingStrategy } from '../round-robin-load-balancing-strategy.js';
@@ -226,6 +228,23 @@ describe('Load balancing strategy factories', () => {
     expect(strategy).toBeInstanceOf(CompositeLoadBalancingStrategy);
   });
 
+  it('CompositeLoadBalancingStrategyFactory accepts snake_case strategies alias', async () => {
+    const factory = new CompositeLoadBalancingStrategyFactory();
+
+    const strategy = await factory.create(
+      {
+        type: 'CompositeLoadBalancingStrategy',
+        strategy_configs: [
+          { type: 'RoundRobinLoadBalancingStrategy' },
+          { type: 'RandomLoadBalancingStrategy' },
+        ],
+      } as unknown as Record<string, unknown>,
+      { stickinessManager }
+    );
+
+    expect(strategy).toBeInstanceOf(CompositeLoadBalancingStrategy);
+  });
+
   it('LoadBalancingProfileFactory creates strategies for built-in profiles', async () => {
     const factory = new LoadBalancingProfileFactory();
 
@@ -260,9 +279,61 @@ describe('Load balancing strategy factories', () => {
     expect(devStrategy).toBeInstanceOf(RoundRobinLoadBalancingStrategy);
   });
 
+  it('LoadBalancingProfileFactory accepts profile_name alias', async () => {
+    const factory = new LoadBalancingProfileFactory();
+
+    const strategy = await factory.create({
+      type: 'LoadBalancingProfile',
+      profile_name: PROFILE_NAME_RANDOM,
+    } as unknown as Record<string, unknown>);
+
+    expect(strategy).toBeInstanceOf(RandomLoadBalancingStrategy);
+  });
+
   it('LoadBalancingStrategyFactory.createLoadBalancingStrategy defaults to HRW strategy', async () => {
     const strategy =
       await LoadBalancingStrategyFactory.createLoadBalancingStrategy();
     expect(strategy.constructor.name).toBe('HRWLoadBalancingStrategy');
+  });
+
+  it('HRWLoadBalancingStrategyFactory accepts snake_case sticky attribute', async () => {
+    const factory = new HRWLoadBalancingStrategyFactory();
+    const baseline = new HRWLoadBalancingStrategy({
+      stickyAttribute: 'session_id',
+    });
+    const segments = ['alpha', 'beta', 'gamma', 'delta'];
+    const stickyAttribute = 'session_id';
+    const stickyValue = 'session-123';
+
+    const envelopeWithSticky = createEnvelope({
+      id: '',
+      session_id: stickyValue,
+    } as unknown as Partial<FameEnvelope>);
+
+    const envelopeWithoutSticky = createEnvelope({
+      id: '',
+    });
+
+    const baselineWithSticky = baseline.choose(
+      null,
+      segments,
+      envelopeWithSticky
+    );
+    const baselineWithoutSticky = baseline.choose(
+      null,
+      segments,
+      envelopeWithoutSticky
+    );
+
+    expect(baselineWithSticky).not.toBe(baselineWithoutSticky);
+
+    const strategy = await factory.create({
+      type: 'HRWLoadBalancingStrategy',
+      sticky_attribute: stickyAttribute,
+    } as unknown as Record<string, unknown>);
+
+    expect(strategy.choose(null, segments, envelopeWithSticky)).toBe(
+      baselineWithSticky
+    );
   });
 });

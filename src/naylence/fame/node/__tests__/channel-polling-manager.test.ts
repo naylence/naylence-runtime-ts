@@ -227,6 +227,42 @@ describe('ChannelPollingManager', () => {
     expect(deliverFn).toHaveBeenCalledWith(responseEnvelope, providedContext);
   });
 
+  it('respects stop_state flag when draining channel', async () => {
+    const {
+      deliverWrapper,
+      responseContextManager,
+      streamingResponseHandler,
+    } = createDeps();
+
+    const manager = new ChannelPollingManager(
+      deliverWrapper,
+      responseContextManager,
+      streamingResponseHandler
+    );
+
+    const stopState = { stop_state: false } as { stop_state: boolean };
+
+    const requestEnvelope = { id: 'req-stop' } as FameEnvelope;
+    extractEnvelopeAndContextMock.mockReturnValue([requestEnvelope, undefined]);
+    isFameMessageResponseMock.mockReturnValue(false);
+
+    const handler = jest.fn(async () => {
+      stopState.stop_state = true;
+      return undefined;
+    });
+
+    const channel = createChannel(
+      async () => ({ envelope: 'payload' }),
+      async () => undefined
+    );
+
+    await manager.startPollingLoop('service-stop', channel, handler, stopState as any);
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const receiveMock = (channel as unknown as { receive: jest.Mock }).receive;
+    expect(receiveMock).toHaveBeenCalledTimes(2);
+  });
+
   it('delegates streaming responses to the streaming handler', async () => {
     const {
       deliverFn,

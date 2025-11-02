@@ -82,4 +82,88 @@ describe('OAuth2AuthorizerFactory', () => {
 
     expect(issuerSpy).not.toHaveBeenCalled();
   });
+
+  it('accepts snake_case configuration fields', async () => {
+    const factory = new OAuth2AuthorizerFactory();
+
+    const verify = jest.fn().mockResolvedValue({
+      authenticated: true,
+      authorized: true,
+      principal: 'user',
+      claims: {},
+      grantedScopes: [],
+      restrictions: {},
+    });
+    const mockVerifier: TokenVerifier = { verify };
+    const verifierSpy = jest
+      .spyOn(TokenVerifierFactory, 'createTokenVerifier')
+      .mockResolvedValue(mockVerifier);
+
+    const issue = jest.fn().mockResolvedValue('reverse-token');
+    const mockIssuer = {
+      issue,
+      issuer: 'https://issuer.example',
+    } as any;
+    const issuerSpy = jest
+      .spyOn(TokenIssuerFactory, 'createTokenIssuer')
+      .mockResolvedValue(mockIssuer);
+
+    const now = Date.now();
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+
+    const config = {
+      type: 'OAuth2Authorizer',
+      issuer: 'https://issuer.example',
+      aud: '/nodes/node-2',
+      required_scopes: [' scope:a '],
+      require_scope: false,
+      default_ttl_sec: 123,
+      max_ttl_sec: 456,
+      reverse_auth_ttl_sec: 42,
+      token_verifier_config: {
+        type: 'JWTTokenVerifier',
+        issuer: 'https://issuer.example',
+        hmac_secret: HMAC_SECRET,
+        algorithms: ['HS256'],
+      },
+      token_issuer_config: {
+        type: 'JWTTokenIssuer',
+        issuer: 'https://issuer.example',
+        algorithm: 'HS256',
+        hmac_secret: HMAC_SECRET,
+        kid: 'oauth2-kid',
+      },
+    } as const;
+
+    const authorizer = (await factory.create(config)) as OAuth2Authorizer;
+
+    expect(verifierSpy).toHaveBeenCalledWith(config.token_verifier_config);
+    expect(issuerSpy).toHaveBeenCalledWith(config.token_issuer_config);
+    expect(authorizer).toBeInstanceOf(OAuth2Authorizer);
+
+    const node = {
+      id: 'node-2',
+      physicalPath: '/nodes/physical-path',
+    } as any;
+
+    await authorizer.onNodeStarted(node);
+    await authorizer.authenticate('Bearer forward-token');
+
+    expect(verify).toHaveBeenCalledWith('forward-token', {
+      expectedAudience: '/nodes/node-2',
+    });
+
+    const reverseConfig = await authorizer.createReverseAuthorizationConfig(
+      node
+    );
+    expect(reverseConfig).toBeDefined();
+    expect(issue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        exp: Math.floor((now + 42_000) / 1000),
+        aud: '/nodes/node-2',
+      })
+    );
+
+    nowSpy.mockRestore();
+  });
 });

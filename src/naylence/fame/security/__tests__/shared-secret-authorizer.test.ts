@@ -51,6 +51,18 @@ describe('SharedSecretAuthorizer', () => {
     expect(result?.principal).toBe('shared_secret_user');
   });
 
+  it('accepts snake_case constructor options and custom principal', async () => {
+    const authorizer = new SharedSecretAuthorizer({
+      credential_provider: new StubCredentialProvider('snake-secret'),
+      principal: 'custom-shared-principal',
+    } as Record<string, unknown>);
+
+    const result = await authorizer.authenticate('snake-secret');
+
+    expect(result).toBeDefined();
+    expect(result?.principal).toBe('custom-shared-principal');
+  });
+
   it('decodes Uint8Array credentials', async () => {
     const provider = new StubCredentialProvider('binary-secret');
     const authorizer = new SharedSecretAuthorizer(provider);

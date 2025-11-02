@@ -21,12 +21,12 @@ describe('AtLeastOnceDeliveryPolicyFactory', () => {
   it('normalizes retry policies from record configs', async () => {
     const policy = await factory.create({
       type: 'AtLeastOnceDeliveryPolicy',
-      sender_retry_policy: {
+      senderRetryPolicy: {
         maxRetries: 3,
-        base_delay_ms: '150',
-        max_delay_ms: '   ',
-        jitter_ms: 'abc',
-        backoff_factor: '2.5',
+        baseDelayMs: '150',
+        maxDelayMs: '   ',
+        jitterMs: 'abc',
+        backoffFactor: '2.5',
       },
       receiverRetryPolicy: null,
     } as Record<string, unknown>);
@@ -41,7 +41,7 @@ describe('AtLeastOnceDeliveryPolicyFactory', () => {
     expect(policy.receiverRetryPolicy).toBeUndefined();
   });
 
-  it('supports alternate property names and reuses existing retry policies', async () => {
+  it('supports legacy snake_case options and reuses existing retry policies', async () => {
     const existing = new RetryPolicy({
       maxRetries: 6,
       baseDelayMs: 25,
@@ -52,10 +52,9 @@ describe('AtLeastOnceDeliveryPolicyFactory', () => {
 
     const policy = await factory.create({
       type: 'AtLeastOnceDeliveryPolicy',
-      sender_retry_policy: undefined,
-      sender_retryPolicy: {
+      sender_retry_policy: {
         max_retries: '4',
-        baseDelayMs: 80,
+        base_delay_ms: 80,
         max_delay_ms: '2500',
         jitter_ms: '17',
         backoff_factor: '1.5',

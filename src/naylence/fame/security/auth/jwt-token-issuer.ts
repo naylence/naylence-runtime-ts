@@ -41,12 +41,85 @@ function isPkcs8Algorithm(algorithm: string): boolean {
 type SigningKey = JoseCryptoKey | KeyObject | JWK | Uint8Array;
 
 export interface JWTTokenIssuerOptions {
+  signingKeyPem?: string;
+  signing_key_pem?: string;
+  kid?: string;
+  issuer?: string;
+  algorithm?: string;
+  ttlSec?: number;
+  ttl_sec?: number;
+  audience?: string;
+}
+
+interface NormalizedJWTTokenIssuerOptions {
   signingKeyPem: string;
   kid: string;
   issuer: string;
-  algorithm?: string;
-  ttlSec?: number;
+  algorithm: string;
+  ttlSec: number;
   audience?: string;
+}
+
+function normalizeOptions(
+  options: JWTTokenIssuerOptions | null | undefined
+): NormalizedJWTTokenIssuerOptions {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError('JWTTokenIssuer options must be an object');
+  }
+
+  const signingKeyPem =
+    typeof options.signingKeyPem === 'string' && options.signingKeyPem.trim()
+      ? options.signingKeyPem.trim()
+      : typeof options.signing_key_pem === 'string' &&
+          options.signing_key_pem.trim().length > 0
+        ? options.signing_key_pem.trim()
+        : undefined;
+  if (!signingKeyPem) {
+    throw new Error('JWTTokenIssuer requires signingKeyPem');
+  }
+
+  const kid =
+    typeof options.kid === 'string' && options.kid.trim().length > 0
+      ? options.kid.trim()
+      : undefined;
+  if (!kid) {
+    throw new Error('JWTTokenIssuer requires kid');
+  }
+
+  const issuer =
+    typeof options.issuer === 'string' && options.issuer.trim().length > 0
+      ? options.issuer.trim()
+      : undefined;
+  if (!issuer) {
+    throw new Error('JWTTokenIssuer requires issuer');
+  }
+
+  const algorithm =
+    typeof options.algorithm === 'string' && options.algorithm.trim().length > 0
+      ? options.algorithm.trim()
+      : 'EdDSA';
+
+  const ttlCandidate =
+    typeof options.ttlSec === 'number'
+      ? options.ttlSec
+      : typeof options.ttl_sec === 'number'
+        ? options.ttl_sec
+        : undefined;
+  const ttlSec = Number.isFinite(ttlCandidate) ? Number(ttlCandidate) : 3600;
+
+  const audience =
+    typeof options.audience === 'string' && options.audience.trim().length > 0
+      ? options.audience.trim()
+      : undefined;
+
+  return {
+    signingKeyPem,
+    kid,
+    issuer,
+    algorithm,
+    ttlSec,
+    audience,
+  };
 }
 
 export class JWTTokenIssuer implements TokenIssuer {
@@ -57,26 +130,21 @@ export class JWTTokenIssuer implements TokenIssuer {
   private readonly audience: string | undefined;
   private signingKey?: Promise<SigningKey>;
 
-  constructor({
-    signingKeyPem,
-    kid,
-    issuer,
-    algorithm = 'EdDSA',
-    ttlSec = 3600,
-    audience,
-  }: JWTTokenIssuerOptions) {
-    this.signingKeyPem = signingKeyPem;
-    this.kid = kid;
-    this.issuerId = issuer;
-    this.algorithm = algorithm;
-    this.ttlSec = ttlSec;
-    this.audience = audience;
+  constructor(options: JWTTokenIssuerOptions) {
+    const normalized = normalizeOptions(options);
+
+    this.signingKeyPem = normalized.signingKeyPem;
+    this.kid = normalized.kid;
+    this.issuerId = normalized.issuer;
+    this.algorithm = normalized.algorithm;
+    this.ttlSec = normalized.ttlSec;
+    this.audience = normalized.audience;
 
     logger.debug('created_jwt_token_issuer', {
-      issuer,
-      kid,
-      audience: audience ?? null,
-      algorithm,
+      issuer: normalized.issuer,
+      kid: normalized.kid,
+      audience: normalized.audience ?? null,
+      algorithm: normalized.algorithm,
     });
   }
 

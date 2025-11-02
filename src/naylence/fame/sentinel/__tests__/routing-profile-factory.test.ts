@@ -1,5 +1,6 @@
 import type { RoutingPolicy } from '../routing-policy.js';
 import {
+  PROFILE_NAME_BASIC,
   PROFILE_NAME_DEVELOPMENT,
   PROFILE_NAME_PRODUCTION,
   RoutingProfileFactory,
@@ -72,6 +73,42 @@ describe('RoutingProfileFactory', () => {
     expect(routingConfig).toEqual(
       expect.objectContaining({
         type: 'CompositeRoutingPolicy',
+      })
+    );
+  });
+
+  it('supports profile_name alias when selecting a profile', async () => {
+    const policy = {} as RoutingPolicy;
+    createResourceMock.mockResolvedValueOnce(policy);
+
+    await factory.create({ profile_name: PROFILE_NAME_PRODUCTION });
+
+    const [, routingConfig] = createResourceMock.mock.calls[0];
+    expect(routingConfig).toEqual(
+      expect.objectContaining({
+        type: 'CompositeRoutingPolicy',
+        policies: expect.arrayContaining([
+          expect.objectContaining({ type: 'CapabilityAwareRoutingPolicy' }),
+        ]),
+      })
+    );
+  });
+
+  it('supports profileName alias when selecting a profile', async () => {
+    const policy = {} as RoutingPolicy;
+    createResourceMock.mockResolvedValueOnce(policy);
+
+    await factory.create({ profileName: PROFILE_NAME_BASIC });
+
+    const [, routingConfig] = createResourceMock.mock.calls[0];
+    expect(routingConfig).toEqual(
+      expect.objectContaining({
+        type: 'CompositeRoutingPolicy',
+        policies: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'HybridPathRoutingPolicy',
+          }),
+        ]),
       })
     );
   });

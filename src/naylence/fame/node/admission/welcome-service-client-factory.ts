@@ -83,8 +83,11 @@ function normalizeConfig(
     );
   }
 
-  const transports = Array.isArray(source.supportedTransports)
-    ? source.supportedTransports.filter(
+  const transportsSource =
+    source.supportedTransports ?? source.supported_transports;
+
+  const transports = Array.isArray(transportsSource)
+    ? transportsSource.filter(
         (value) => typeof value === 'string' && value.trim().length > 0
       )
     : [];
@@ -94,7 +97,10 @@ function normalizeConfig(
     );
   }
 
-  const authConfig = source.auth ?? null;
+  const authConfig =
+    (source.auth ?? source.auth_strategy ?? null) as
+      | AuthInjectionStrategyConfig
+      | null;
 
   const isRoot =
     typeof source.isRoot === 'boolean'
@@ -103,7 +109,9 @@ function normalizeConfig(
         ? source.is_root
         : false;
 
-  const fetchImpl = source.fetchImpl as FetchLike | undefined;
+  const fetchImpl = (source.fetchImpl ?? source.fetch_impl) as
+    | FetchLike
+    | undefined;
 
   return {
     url: urlCandidate,

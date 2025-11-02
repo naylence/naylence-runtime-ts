@@ -81,6 +81,21 @@ describe('routes helper utilities', () => {
     });
   });
 
+  it('normalizes camelCase token payload aliases to snake_case keys', () => {
+    const payload = coerceTokenPayload({
+      grantType: 'client_credentials',
+      clientId: 'alias-id',
+      clientSecret: 'alias-secret',
+      audience: 'kept-as-is',
+    });
+    expect(payload).toEqual({
+      grant_type: 'client_credentials',
+      client_id: 'alias-id',
+      client_secret: 'alias-secret',
+      audience: 'kept-as-is',
+    });
+  });
+
   it('parses basic credentials from authorization header', () => {
     const header = `Basic ${Buffer.from('id:secret').toString('base64')}`;
     expect(parseBasicCredentials(header)).toEqual({

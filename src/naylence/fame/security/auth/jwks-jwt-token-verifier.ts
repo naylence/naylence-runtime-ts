@@ -13,11 +13,65 @@ const logger = getLogger('naylence.fame.security.auth.jwks_jwt_token_verifier');
 
 const DEFAULT_ALGORITHMS = ['RS256', 'ES256', 'EdDSA'] as const;
 
-interface JWKSJWTTokenVerifierOptions {
+export interface JWKSJWTTokenVerifierOptions {
+  issuer?: string;
+  jwksUrl?: string;
+  jwks_url?: string;
+  cacheTtlSec?: number;
+  cache_ttl_sec?: number;
+  algorithms?: string[];
+}
+
+interface NormalizedJWKSJWTTokenVerifierOptions {
   issuer: string;
   jwksUrl: string;
   cacheTtlSec?: number;
   algorithms?: string[];
+}
+
+function normalizeOptions(
+  options: JWKSJWTTokenVerifierOptions | null | undefined
+): NormalizedJWKSJWTTokenVerifierOptions {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError('JWKSJWTTokenVerifier options must be an object');
+  }
+
+  const issuer =
+    typeof options.issuer === 'string' && options.issuer.trim().length > 0
+      ? options.issuer.trim()
+      : undefined;
+  if (!issuer) {
+    throw new Error('JWKSJWTTokenVerifier requires an issuer');
+  }
+
+  const jwksCandidate =
+    typeof options.jwksUrl === 'string' && options.jwksUrl.trim().length > 0
+      ? options.jwksUrl.trim()
+      : typeof options.jwks_url === 'string' &&
+          options.jwks_url.trim().length > 0
+        ? options.jwks_url.trim()
+        : undefined;
+  if (!jwksCandidate) {
+    throw new Error('JWKSJWTTokenVerifier requires a JWKS URL');
+  }
+
+  const cacheTtlSec =
+    typeof options.cacheTtlSec === 'number'
+      ? options.cacheTtlSec
+      : typeof options.cache_ttl_sec === 'number'
+        ? options.cache_ttl_sec
+        : undefined;
+
+  const algorithms = Array.isArray(options.algorithms)
+    ? options.algorithms
+    : undefined;
+
+  return {
+    issuer,
+    jwksUrl: jwksCandidate,
+    cacheTtlSec,
+    algorithms,
+  };
 }
 
 export class JWKSJWTTokenVerifier implements TokenVerifier {
@@ -28,27 +82,22 @@ export class JWKSJWTTokenVerifier implements TokenVerifier {
   private remoteJwkSet?: ReturnType<JoseModule['createRemoteJWKSet']>;
 
   constructor(options: JWKSJWTTokenVerifierOptions) {
-    if (!options.issuer) {
-      throw new Error('JWKSJWTTokenVerifier requires an issuer');
-    }
-    if (!options.jwksUrl) {
-      throw new Error('JWKSJWTTokenVerifier requires a JWKS URL');
-    }
+    const normalized = normalizeOptions(options);
 
     try {
-      this.jwksUrl = new URL(options.jwksUrl);
+      this.jwksUrl = new URL(normalized.jwksUrl);
     } catch (error) {
-      throw new Error(`Invalid JWKS URL: ${options.jwksUrl}`);
+      throw new Error(`Invalid JWKS URL: ${normalized.jwksUrl}`);
     }
 
-    this.issuer = options.issuer;
+    this.issuer = normalized.issuer;
     this.cacheTtlMs = Math.max(
       1_000,
-      (options.cacheTtlSec ?? DEFAULT_JWKS_CACHE_TTL_SEC) * 1_000
+      (normalized.cacheTtlSec ?? DEFAULT_JWKS_CACHE_TTL_SEC) * 1_000
     );
     this.algorithms = (
-      options.algorithms && options.algorithms.length > 0
-        ? options.algorithms
+      normalized.algorithms && normalized.algorithms.length > 0
+        ? normalized.algorithms
         : Array.from(DEFAULT_ALGORITHMS)
     ).map((alg) => alg.toString().trim());
 

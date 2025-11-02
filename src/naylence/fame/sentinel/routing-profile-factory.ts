@@ -115,10 +115,7 @@ export class RoutingProfileFactory extends RoutingPolicyFactory {
       }
     }
 
-    const profileValue =
-      'profile' in config
-        ? (config as { profile?: unknown }).profile
-        : undefined;
+    const profileValue = this.resolveProfileValue(config);
 
     if (profileValue === undefined || profileValue === null) {
       return { profile: PROFILE_NAME_DEVELOPMENT };
@@ -131,10 +128,27 @@ export class RoutingProfileFactory extends RoutingPolicyFactory {
     return { profile: profileValue };
   }
 
+  private resolveProfileValue(
+    config: RoutingProfileConfig | Record<string, unknown>
+  ): unknown {
+    if ('profile' in config) {
+      return (config as { profile?: unknown }).profile;
+    }
+
+    const candidate = config as Record<string, unknown>;
+    for (const key of ['profile_name', 'profileName'] as const) {
+      if (Object.prototype.hasOwnProperty.call(candidate, key)) {
+        return candidate[key];
+      }
+    }
+
+    return undefined;
+  }
+
   private getProfileConfig(profile: string): RoutingPolicyConfig {
     const routingConfig = PROFILE_MAP[profile];
     if (!routingConfig) {
-      throw new Error(`Unknown routing profile: ${profile}`);
+      throw new Error('Unknown routing profile');
     }
 
     return routingConfig;

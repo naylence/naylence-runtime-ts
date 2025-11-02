@@ -47,6 +47,69 @@ type KeyFrameRouteManager = KeyFrameHandlerOptions['routeManager'];
 type KeyFrameBindingManager = KeyFrameHandlerOptions['bindingManager'];
 type HandleKeyRequestOptions = Parameters<KeyManager['handleKeyRequest']>[0];
 
+type DeliveryContextAliases = {
+  origin_type?: DeliveryOriginType;
+  from_system_id?: FameDeliveryContext['fromSystemId'];
+  expected_response_type?: FameDeliveryContext['expectedResponseType'];
+  stickiness_required?: boolean;
+  sticky_sid?: string;
+  corr_id?: string;
+  trace_id?: string;
+};
+
+type DeliveryContextWithAliases = FameDeliveryContext &
+  DeliveryContextAliases & {
+    corrId?: string;
+    traceId?: string;
+    stickinessRequired?: boolean;
+    stickySid?: string;
+  };
+
+function normalizeContextAliases(
+  context: DeliveryContextWithAliases
+): DeliveryContextWithAliases {
+  const normalized = context;
+
+  if (normalized.originType === undefined && context.origin_type !== undefined) {
+    normalized.originType = context.origin_type;
+  }
+
+  if (
+    normalized.fromSystemId === undefined &&
+    context.from_system_id !== undefined
+  ) {
+    normalized.fromSystemId = context.from_system_id;
+  }
+
+  if (
+    normalized.expectedResponseType === undefined &&
+    context.expected_response_type !== undefined
+  ) {
+    normalized.expectedResponseType = context.expected_response_type;
+  }
+
+  if (
+    normalized.stickinessRequired === undefined &&
+    context.stickiness_required !== undefined
+  ) {
+    normalized.stickinessRequired = context.stickiness_required;
+  }
+
+  if (normalized.stickySid === undefined && context.sticky_sid !== undefined) {
+    normalized.stickySid = context.sticky_sid;
+  }
+
+  if (normalized.corrId === undefined && context.corr_id !== undefined) {
+    normalized.corrId = context.corr_id;
+  }
+
+  if (normalized.traceId === undefined && context.trace_id !== undefined) {
+    normalized.traceId = context.trace_id;
+  }
+
+  return normalized;
+}
+
 type NodeAttachValidatingAuthorizer = Authorizer & {
   validateNodeAttachRequest?: (
     node: NodeLike,
@@ -113,26 +176,38 @@ function createLocalContext(
   node: NodeLike,
   source?: FameDeliveryContext
 ): FameDeliveryContext {
+  const normalizedSource = source
+    ? normalizeContextAliases(source as DeliveryContextWithAliases)
+    : undefined;
+
   const context: FameDeliveryContext = {
     originType: DeliveryOriginType.LOCAL,
     fromSystemId: node.id,
     expectedResponseType: FameResponseType.NONE,
   };
 
-  if (source?.meta) {
-    context.meta = { ...source.meta };
+  if (normalizedSource?.meta) {
+    context.meta = { ...normalizedSource.meta };
   }
 
-  if (source?.security) {
-    context.security = source.security;
+  if (normalizedSource?.security) {
+    context.security = normalizedSource.security;
   }
 
-  if (source?.stickinessRequired !== undefined) {
-    context.stickinessRequired = source.stickinessRequired;
+  if (normalizedSource?.stickinessRequired !== undefined) {
+    context.stickinessRequired = normalizedSource.stickinessRequired;
   }
 
-  if (source?.stickySid !== undefined) {
-    context.stickySid = source.stickySid;
+  if (normalizedSource?.stickySid !== undefined) {
+    context.stickySid = normalizedSource.stickySid;
+  }
+
+  if (normalizedSource?.corrId !== undefined) {
+    (context as DeliveryContextWithAliases).corrId = normalizedSource.corrId;
+  }
+
+  if (normalizedSource?.traceId !== undefined) {
+    (context as DeliveryContextWithAliases).traceId = normalizedSource.traceId;
   }
 
   return context;
@@ -146,7 +221,9 @@ function normalizeDeliveryContext(
     return createLocalContext(node);
   }
 
-  const normalized: FameDeliveryContext = { ...context };
+  const normalized = normalizeContextAliases(
+    context as DeliveryContextWithAliases
+  );
   normalized.originType ??= DeliveryOriginType.LOCAL;
   normalized.fromSystemId ??= node.id;
   normalized.expectedResponseType ??= FameResponseType.NONE;
@@ -605,6 +682,9 @@ export class DefaultSecurityManager implements SecurityManager {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
+    if (context) {
+      context = normalizeContextAliases(context as DeliveryContextWithAliases);
+    }
     const localContext = normalizeDeliveryContext(node, context);
     const securityContext = ensureSecurityContext(localContext);
     const wasEncrypted = Boolean(envelope.sec?.enc);
@@ -843,6 +923,9 @@ export class DefaultSecurityManager implements SecurityManager {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null> {
+    if (context) {
+      context = normalizeContextAliases(context as DeliveryContextWithAliases);
+    }
     if (
       context &&
       context.originType !== DeliveryOriginType.LOCAL &&
@@ -1009,6 +1092,10 @@ export class DefaultSecurityManager implements SecurityManager {
   ): Promise<FameEnvelope | null> {
     logger.debug('on_forward_upstream_start', { envp_id: envelope.id });
 
+    if (context) {
+      context = normalizeContextAliases(context as DeliveryContextWithAliases);
+    }
+
     if (
       context?.originType === DeliveryOriginType.LOCAL &&
       this._envelopeSecurityHandler
@@ -1044,6 +1131,10 @@ export class DefaultSecurityManager implements SecurityManager {
       next_segment: nextSegment,
     });
 
+    if (context) {
+      context = normalizeContextAliases(context as DeliveryContextWithAliases);
+    }
+
     if (
       context &&
       this._policy &&
@@ -1051,7 +1142,8 @@ export class DefaultSecurityManager implements SecurityManager {
       !envelope.sec?.sig
     ) {
       if (this._envelopeSecurityHandler) {
-        const localContext = createLocalContext(node, context);
+  const localContext = createLocalContext(node, context);
+  ensureSecurityContext(localContext);
         ensureSecurityContext(localContext);
 
         const handled =
@@ -1114,6 +1206,10 @@ export class DefaultSecurityManager implements SecurityManager {
       peer_segment: peerSegment,
     });
 
+    if (context) {
+      context = normalizeContextAliases(context as DeliveryContextWithAliases);
+    }
+
     if (
       context &&
       this._policy &&
@@ -1121,17 +1217,8 @@ export class DefaultSecurityManager implements SecurityManager {
       !envelope.sec?.sig
     ) {
       if (this._envelopeSecurityHandler) {
-        const localContext: FameDeliveryContext = {
-          originType: DeliveryOriginType.LOCAL,
-          fromSystemId: node.id,
-          expectedResponseType: FameResponseType.NONE,
-        };
-        if (context.meta) {
-          localContext.meta = { ...context.meta };
-        }
-        if (context.security) {
-          localContext.security = context.security;
-        }
+  const localContext = createLocalContext(node, context);
+  ensureSecurityContext(localContext);
 
         const handled =
           await this._envelopeSecurityHandler.handleOutboundSecurity(
@@ -1194,6 +1281,10 @@ export class DefaultSecurityManager implements SecurityManager {
       exclude_peers: excludePeers,
     });
 
+    if (context) {
+      context = normalizeContextAliases(context as DeliveryContextWithAliases);
+    }
+
     if (
       context &&
       this._policy &&
@@ -1201,17 +1292,7 @@ export class DefaultSecurityManager implements SecurityManager {
       !envelope.sec?.sig
     ) {
       if (this._envelopeSecurityHandler) {
-        const localContext: FameDeliveryContext = {
-          originType: DeliveryOriginType.LOCAL,
-          fromSystemId: node.id,
-          expectedResponseType: FameResponseType.NONE,
-        };
-        if (context.meta) {
-          localContext.meta = { ...context.meta };
-        }
-        if (context.security) {
-          localContext.security = context.security;
-        }
+        const localContext = createLocalContext(node, context);
 
         const handled =
           await this._envelopeSecurityHandler.handleOutboundSecurity(

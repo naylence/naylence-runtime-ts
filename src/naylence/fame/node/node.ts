@@ -145,6 +145,102 @@ export interface FameNodeOptions {
   cryptoProvider?: CryptoProvider | null;
 }
 
+type FameNodeOptionsInput = FameNodeOptions & Record<string, unknown>;
+
+function resolveOption<T>(
+  options: FameNodeOptionsInput,
+  primary: keyof FameNodeOptions,
+  ...aliases: string[]
+): T | undefined {
+  const primaryValue = options[primary];
+  if (primaryValue !== undefined) {
+    return primaryValue as T;
+  }
+
+  for (const alias of aliases) {
+    if (alias in options) {
+      const aliasValue = options[alias];
+      if (aliasValue !== undefined) {
+        return aliasValue as T;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function resolveBooleanOption(
+  options: FameNodeOptionsInput,
+  primary: keyof FameNodeOptions,
+  ...aliases: string[]
+): boolean | undefined {
+  const value = resolveOption<unknown>(options, primary, ...aliases);
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  return undefined;
+}
+
+function resolveStringOption(
+  options: FameNodeOptionsInput,
+  primary: keyof FameNodeOptions,
+  ...aliases: string[]
+): string | null | undefined {
+  const value = resolveOption<unknown>(options, primary, ...aliases);
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null || typeof value === 'string') {
+    return value as string | null;
+  }
+  return undefined;
+}
+
+function resolveNumberOption(
+  options: FameNodeOptionsInput,
+  primary: keyof FameNodeOptions,
+  ...aliases: string[]
+): number | null | undefined {
+  const value = resolveOption<unknown>(options, primary, ...aliases);
+  if (value === undefined || value === null) {
+    return value as number | null | undefined;
+  }
+  if (typeof value === 'number') {
+    return value;
+  }
+  return undefined;
+}
+
+function resolveArrayOption<T>(
+  options: FameNodeOptionsInput,
+  primary: keyof FameNodeOptions,
+  ...aliases: string[]
+): T[] | undefined {
+  const value = resolveOption<unknown>(options, primary, ...aliases);
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+  return undefined;
+}
+
+function resolveStringArrayOption(
+  options: FameNodeOptionsInput,
+  primary: keyof FameNodeOptions,
+  ...aliases: string[]
+): string[] | undefined {
+  const value = resolveArrayOption<string>(options, primary, ...aliases);
+  if (!value) {
+    return undefined;
+  }
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
 function sortListeners(listeners: NodeEventListener[]): NodeEventListener[] {
   return [...listeners].sort((a, b) => a.priority - b.priority);
 }
@@ -183,47 +279,142 @@ export class FameNode extends TaskSpawner implements NodeLike {
   private _welcomeExpiresAt: string | null;
   private _attachExpiresAt: Date | null;
 
-  constructor(options: FameNodeOptions = {}) {
+  constructor(options: FameNodeOptionsInput = {}) {
     super();
-    this._id = options.systemId ?? generateId();
-    this._physicalPath = options.physicalPath ?? `/${this._id}`;
-    this._hasParent = options.hasParent ?? false;
-    this._storageProvider =
-      options.storageProvider ?? new InMemoryStorageProvider();
-    this._acceptedLogicals = new Set(options.acceptedLogicals ?? []);
-    this._deliveryPolicy = options.deliveryPolicy ?? null;
-    this._admissionClient = options.admissionClient ?? null;
-    this._attachClient = options.attachClient ?? null;
-    this._requestedLogicals = [...(options.requestedLogicals ?? [])];
-    this._securityManager = options.securityManager ?? null;
-    this._publicUrl = options.publicUrl ?? null;
-    const fallbackCryptoProvider: CryptoProvider = {};
-    this._cryptoProvider = options.cryptoProvider ?? fallbackCryptoProvider;
 
+    const systemIdOption = resolveStringOption(
+      options,
+      'systemId',
+      'system_id'
+    );
+    this._id = systemIdOption ?? generateId();
+
+    const physicalPathOption = resolveStringOption(
+      options,
+      'physicalPath',
+      'physical_path'
+    );
+    this._physicalPath = physicalPathOption ?? `/${this._id}`;
+
+    const hasParentOption = resolveBooleanOption(
+      options,
+      'hasParent',
+      'has_parent'
+    );
+    this._hasParent = hasParentOption ?? false;
+
+    const storageProviderOption = resolveOption<StorageProvider | null>(
+      options,
+      'storageProvider',
+      'storage_provider'
+    );
+    this._storageProvider =
+      storageProviderOption ?? new InMemoryStorageProvider();
+
+    const acceptedLogicalsOption =
+      resolveStringArrayOption(
+        options,
+        'acceptedLogicals',
+        'accepted_logicals'
+      ) ?? [];
+    this._acceptedLogicals = new Set(acceptedLogicalsOption);
+
+    const deliveryPolicyOption = resolveOption<DeliveryPolicy | null>(
+      options,
+      'deliveryPolicy',
+      'delivery_policy'
+    );
+    this._deliveryPolicy = deliveryPolicyOption ?? null;
+
+    const admissionClientOption = resolveOption<AdmissionClient | null>(
+      options,
+      'admissionClient',
+      'admission_client'
+    );
+    this._admissionClient = admissionClientOption ?? null;
+
+    const attachClientOption = resolveOption<NodeAttachClient | null>(
+      options,
+      'attachClient',
+      'attach_client'
+    );
+    this._attachClient = attachClientOption ?? null;
+
+    const requestedLogicalsOption =
+      resolveStringArrayOption(
+        options,
+        'requestedLogicals',
+        'requested_logicals'
+      ) ?? [];
+    this._requestedLogicals = [...requestedLogicalsOption];
+
+    const securityManagerOption = resolveOption<SecurityManager | null>(
+      options,
+      'securityManager',
+      'security_manager'
+    );
+    this._securityManager = securityManagerOption ?? null;
+
+    const publicUrlOption = resolveStringOption(
+      options,
+      'publicUrl',
+      'public_url'
+    );
+    this._publicUrl = publicUrlOption ?? null;
+
+    const cryptoProviderOption = resolveOption<CryptoProvider | null>(
+      options,
+      'cryptoProvider',
+      'crypto_provider'
+    );
+    const fallbackCryptoProvider: CryptoProvider = {};
+    this._cryptoProvider = cryptoProviderOption ?? fallbackCryptoProvider;
+
+    const envelopeFactoryOption = resolveOption<EnvelopeFactory | null>(
+      options,
+      'envelopeFactory',
+      'envelope_factory'
+    );
     const envelopeFactory =
-      options.envelopeFactory ?? new NodeEnvelopeFactory(() => this.sid ?? '');
+      envelopeFactoryOption ?? new NodeEnvelopeFactory(() => this.sid ?? '');
     this._envelopeFactory = envelopeFactory;
 
+    const deliveryTrackerOption = resolveOption<DefaultDeliveryTracker | null>(
+      options,
+      'deliveryTracker',
+      'delivery_tracker'
+    );
     const tracker =
-      options.deliveryTracker ??
+      deliveryTrackerOption ??
       new DefaultDeliveryTracker(this._storageProvider);
     this._deliveryTracker = tracker;
 
-    this._nodeMetaStorePromise = options.nodeMetaStore
-      ? Promise.resolve(options.nodeMetaStore)
+    const nodeMetaStoreOption = resolveOption<
+      KeyValueStore<NodeMetaRecord> | null
+    >(options, 'nodeMetaStore', 'node_meta_store');
+    this._nodeMetaStorePromise = nodeMetaStoreOption
+      ? Promise.resolve(nodeMetaStoreOption)
       : this._storageProvider.getKeyValueStore(
           NodeMetaRecord,
           NODE_META_NAMESPACE
         );
 
-    const transportListeners = options.transportListeners
-      ? [...options.transportListeners]
-      : [];
+    const transportListenersResolved =
+      resolveArrayOption<TransportListener>(
+        options,
+        'transportListeners',
+        'transport_listeners'
+      ) ?? [];
+    const transportListeners = [...transportListenersResolved];
     this._transportListeners = transportListeners;
 
-    const listeners: NodeEventListener[] = options.eventListeners
-      ? [...options.eventListeners]
-      : [];
+    const listenersResolved =
+      resolveArrayOption<NodeEventListener>(
+        options,
+        'eventListeners',
+        'event_listeners'
+      ) ?? [];
+    const listeners: NodeEventListener[] = [...listenersResolved];
 
     if (this._securityManager && !listeners.includes(this._securityManager)) {
       listeners.push(this._securityManager);
@@ -241,6 +432,10 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
     this._eventListeners = sortListeners(listeners);
 
+    const bindingStoreOption = resolveOption<
+      KeyValueStore<BindingStoreEntry> | null
+    >(options, 'bindingStore', 'binding_store');
+
     const bindingManagerOptions: BindingManagerOptions = {
       hasUpstream: this._hasParent,
       getId: () => this._id,
@@ -254,11 +449,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
       deliveryTracker: this._deliveryTracker,
       getEncryptionKeyId: () =>
         this._securityManager?.getEncryptionKeyId() ?? null,
+      ...(bindingStoreOption ? { bindingStore: bindingStoreOption } : {}),
     };
-
-    if (options.bindingStore) {
-      bindingManagerOptions.bindingStore = options.bindingStore;
-    }
 
     this._bindingManager = new BindingManager(bindingManagerOptions);
     (
@@ -272,51 +464,80 @@ export class FameNode extends TaskSpawner implements NodeLike {
       deliveryTracker: this._deliveryTracker,
     });
 
-    const serviceManager = options.serviceManager
-      ? options.serviceManager
-      : new DefaultServiceManager({
-          invoke: (
-            targetAddr: FameAddress,
-            method: string,
-            params: Record<string, unknown>,
-            timeoutMs?: number | null
-          ) =>
-            this.invoke(
-              targetAddr,
-              method,
-              params,
-              timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS
-            ),
-          serve: (
-            serviceName: string,
-            handler: FameEnvelopeHandler,
-            serveOptions?: Parameters<EnvelopeListenerManager['listen']>[2]
-          ) =>
-            this._envelopeListenerManager.listen(
-              serviceName,
-              handler,
-              serveOptions ?? {}
-            ),
-          serveRpc: (
-            serviceName: string,
-            handler: FameRPCHandler,
-            serveOptions?: Parameters<EnvelopeListenerManager['listenRpc']>[2]
-          ) =>
-            this._envelopeListenerManager.listenRpc(
-              serviceName,
-              handler,
-              serveOptions ?? {}
-            ),
-          capabilityMap: options.serviceCapabilityMap ?? undefined,
-          pollTimeoutMs: options.servicePollTimeoutMs ?? null,
-          defaultServiceConfigs: options.defaultServiceConfigs ?? [],
-        });
+    const serviceManagerOption = resolveOption<ServiceManager | null>(
+      options,
+      'serviceManager',
+      'service_manager'
+    );
+
+    const defaultServiceConfigs =
+      resolveArrayOption<Record<string, unknown>>(
+        options,
+        'defaultServiceConfigs',
+        'default_service_configs',
+        'service_configs'
+      ) ?? [];
+
+    const serviceCapabilityMapOption = resolveOption<
+      Map<string, FameAddress> | Record<string, FameAddress> | null
+    >(options, 'serviceCapabilityMap', 'service_capability_map');
+
+    const servicePollTimeoutOption = resolveNumberOption(
+      options,
+      'servicePollTimeoutMs',
+      'service_poll_timeout_ms'
+    );
+
+    const serviceManager =
+      serviceManagerOption ??
+      new DefaultServiceManager({
+        invoke: (
+          targetAddr: FameAddress,
+          method: string,
+          params: Record<string, unknown>,
+          timeoutMs?: number | null
+        ) =>
+          this.invoke(
+            targetAddr,
+            method,
+            params,
+            timeoutMs ?? DEFAULT_INVOKE_TIMEOUT_MILLIS
+          ),
+        serve: (
+          serviceName: string,
+          handler: FameEnvelopeHandler,
+          serveOptions?: Parameters<EnvelopeListenerManager['listen']>[2]
+        ) =>
+          this._envelopeListenerManager.listen(
+            serviceName,
+            handler,
+            serveOptions ?? {}
+          ),
+        serveRpc: (
+          serviceName: string,
+          handler: FameRPCHandler,
+          serveOptions?: Parameters<EnvelopeListenerManager['listenRpc']>[2]
+        ) =>
+          this._envelopeListenerManager.listenRpc(
+            serviceName,
+            handler,
+            serveOptions ?? {}
+          ),
+        capabilityMap: serviceCapabilityMapOption ?? undefined,
+        pollTimeoutMs: servicePollTimeoutOption ?? null,
+        defaultServiceConfigs,
+      });
 
     this._serviceManager = serviceManager;
 
     this._defaultBindingPath = this._physicalPath;
+
+    const physicalPathProvided =
+      options.physicalPath !== undefined ||
+      options['physical_path'] !== undefined;
+
     this._sid =
-      this._hasParent && options.physicalPath === undefined
+      this._hasParent && !physicalPathProvided
         ? null
         : this.computeSid(this._physicalPath);
     this._handshakeCompleted = !this._hasParent;

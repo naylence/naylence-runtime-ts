@@ -451,6 +451,50 @@ describe('emitDeliveryNack', () => {
   });
 });
 
+describe('RouterState constructor', () => {
+  it('accepts snake_case aliases for options', () => {
+    const resolver = jest.fn(async () => null);
+    const envelopeFactory = {
+      createEnvelope: jest.fn((config) => ({ id: 'alias', ...config })),
+    } as unknown as EnvelopeFactory;
+
+    const state = new RouterState({
+      node_id: 'node-snake',
+      local: ['svc@/node-snake/local'],
+      downstream_address_routes: {
+        'svc@/node-snake/local': 'segment-local',
+      },
+      peer_address_routes: {
+        'svc@/node-snake/peer': 'segment-peer',
+      },
+      child_segments: ['child-seg'],
+      peer_segments: ['peer-seg'],
+      has_parent: true,
+      physical_segments: ['node-snake'],
+      pools: { 'pool::pattern': new Set(['segment-entry']) },
+      capabilities: {
+        capability: { 'svc@/node-snake/local': 'segment-local' },
+      },
+      resolve_address_by_capability: resolver,
+      envelope_factory: envelopeFactory,
+    } as any);
+
+    expect(state.nodeId).toBe('node-snake');
+    expect(state.downstreamAddressRoutes.get('svc@/node-snake/local')).toBe(
+      'segment-local'
+    );
+    expect(state.peerAddressRoutes.get('svc@/node-snake/peer')).toBe(
+      'segment-peer'
+    );
+    expect(Array.from(state.childSegments)).toContain('child-seg');
+    expect(Array.from(state.peerSegments)).toContain('peer-seg');
+    expect(state.resolveAddressByCapability).toBe(resolver);
+    expect(state.envelopeFactory).toBe(envelopeFactory);
+    const [key] = Array.from(state.pools.keys());
+    expect(key).toEqual(['pool', 'pattern']);
+  });
+});
+
 describe('router utility functions', () => {
   it('normalizes route sources from maps and records', () => {
     const addressObj: FameAddress = {

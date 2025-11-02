@@ -8,12 +8,14 @@ import { FlowFlags } from '@naylence/core';
 describe('FlowController', () => {
   describe('constructor', () => {
     it('should reject zero window', () => {
-      expect(() => new FlowController(0)).toThrow('initial_window must be > 0');
+      expect(() => new FlowController(0)).toThrow(
+        /initial(?:_window|Window) must be > 0/
+      );
     });
 
     it('should reject negative window', () => {
       expect(() => new FlowController(-5)).toThrow(
-        'initial_window must be > 0'
+        /initial(?:_window|Window) must be > 0/
       );
     });
 

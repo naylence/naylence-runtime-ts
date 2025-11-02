@@ -33,24 +33,16 @@ export class SimpleLoadBalancerStickinessManager
       return null;
     }
 
-    const version = stickiness.version ?? 1;
+    const version =
+      SimpleLoadBalancerStickinessManager.normalizeVersion(stickiness);
 
     if (!this.config) {
       logger.debug('stickiness_negotiation_disabled_by_config');
       return { enabled: false, version };
     }
 
-    const childModes = new Set<string>();
-    if (
-      Array.isArray(stickiness.supportedModes) &&
-      stickiness.supportedModes.length > 0
-    ) {
-      for (const mode of stickiness.supportedModes) {
-        childModes.add(mode);
-      }
-    } else if (stickiness.mode) {
-      childModes.add(stickiness.mode);
-    }
+    const childModes =
+      SimpleLoadBalancerStickinessManager.collectSupportedModes(stickiness);
 
     if (childModes.has('attr')) {
       const policy: Stickiness = { enabled: true, mode: 'attr', version };
@@ -93,6 +85,78 @@ export class SimpleLoadBalancerStickinessManager
       hasSid: Boolean(envelope.sid),
     });
     return null;
+  }
+
+  private static normalizeVersion(stickiness: Stickiness): number {
+    const record = stickiness as Record<string, unknown>;
+    const rawVersion =
+      (stickiness as { version?: unknown }).version ?? record['version'];
+
+    if (typeof rawVersion === 'number' && Number.isFinite(rawVersion)) {
+      const normalized = Math.floor(rawVersion);
+      return normalized > 0 ? normalized : 1;
+    }
+
+    if (typeof rawVersion === 'string') {
+      const parsed = Number.parseInt(rawVersion, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+
+    return 1;
+  }
+
+  private static collectSupportedModes(stickiness: Stickiness): Set<string> {
+    const modes = new Set<string>();
+    const record = stickiness as Record<string, unknown>;
+
+    const candidateLists: unknown[] = [
+      stickiness.supportedModes,
+      record['supported_modes'],
+    ];
+
+    for (const candidate of candidateLists) {
+      if (Array.isArray(candidate)) {
+        for (const mode of candidate) {
+          const normalized =
+            SimpleLoadBalancerStickinessManager.normalizeMode(mode);
+          if (normalized) {
+            modes.add(normalized);
+          }
+        }
+      } else {
+        const normalized =
+          SimpleLoadBalancerStickinessManager.normalizeMode(candidate);
+        if (normalized) {
+          modes.add(normalized);
+        }
+      }
+    }
+
+    const singleCandidates = [stickiness.mode, record['mode']];
+    for (const candidate of singleCandidates) {
+      const normalized =
+        SimpleLoadBalancerStickinessManager.normalizeMode(candidate);
+      if (normalized) {
+        modes.add(normalized);
+      }
+    }
+
+    return modes;
+  }
+
+  private static normalizeMode(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    return trimmed.toLowerCase();
   }
 
   private static computeDeterministicIndex(

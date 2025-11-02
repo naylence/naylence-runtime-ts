@@ -84,6 +84,54 @@ export interface InMemorySinkServiceOptions {
   name?: string;
 }
 
+type InMemorySinkServiceOptionsInput =
+  | InMemorySinkServiceOptions
+  | (Record<string, unknown> & {
+      bindingManager?: SinkBindingManager;
+      binding_manager?: SinkBindingManager;
+      deliver?: DeliverFunction;
+      deliver_fn?: DeliverFunction;
+      brokerConfig?: InMemoryFanoutBrokerConfig;
+      broker_config?: InMemoryFanoutBrokerConfig;
+      name?: string;
+      serviceName?: string;
+      service_name?: string;
+    });
+
+function normalizeInMemorySinkServiceOptions(
+  input: InMemorySinkServiceOptionsInput
+): InMemorySinkServiceOptions {
+  const source = (input ?? {}) as Record<string, unknown>;
+
+  const bindingManager = (
+    source.bindingManager ?? source.binding_manager
+  ) as SinkBindingManager | undefined;
+
+  if (!bindingManager) {
+    throw new Error('bindingManager is required to create InMemorySinkService');
+  }
+
+  const deliver = (
+    source.deliver ?? source.deliver_fn
+  ) as DeliverFunction | undefined;
+
+  const brokerConfig = (
+    source.brokerConfig ?? source.broker_config
+  ) as InMemoryFanoutBrokerConfig | undefined;
+
+  const nameValue = (
+    source.name ?? source.serviceName ?? source.service_name
+  ) as string | undefined;
+  const name = typeof nameValue === 'string' ? nameValue : undefined;
+
+  return {
+    bindingManager,
+    ...(deliver !== undefined ? { deliver } : {}),
+    ...(brokerConfig !== undefined ? { brokerConfig } : {}),
+    ...(name !== undefined ? { name } : {}),
+  } satisfies InMemorySinkServiceOptions;
+}
+
 export class InMemorySinkService extends SinkService {
   readonly name: string;
 
@@ -94,8 +142,10 @@ export class InMemorySinkService extends SinkService {
   private readonly fanouts = new Map<string, InMemoryFanoutBroker>();
   private readonly subscriptionIndex = new WeakMap<Subscription, string>();
 
-  constructor(options: InMemorySinkServiceOptions) {
+  constructor(optionsInput: InMemorySinkServiceOptionsInput) {
     super();
+    const options = normalizeInMemorySinkServiceOptions(optionsInput);
+
     this.bindingManager = options.bindingManager;
     this.deliver =
       options.deliver ??
@@ -244,26 +294,10 @@ export class InMemorySinkService extends SinkService {
 export class InMemorySinkServiceFactory
   implements FameServiceFactory<InMemorySinkService>
 {
+  public create(config: InMemorySinkServiceOptionsInput): InMemorySinkService;
   create(
-    config: Partial<InMemorySinkServiceOptions> & {
-      bindingManager: SinkBindingManager;
-    }
+    config: InMemorySinkServiceOptionsInput
   ): InMemorySinkService {
-    if (!config.bindingManager) {
-      throw new Error(
-        'bindingManager is required to create InMemorySinkService'
-      );
-    }
-
-    const options: InMemorySinkServiceOptions = {
-      bindingManager: config.bindingManager,
-      ...(config.deliver !== undefined ? { deliver: config.deliver } : {}),
-      ...(config.brokerConfig !== undefined
-        ? { brokerConfig: config.brokerConfig }
-        : {}),
-      ...(config.name !== undefined ? { name: config.name } : {}),
-    };
-
-    return new InMemorySinkService(options);
+    return new InMemorySinkService(config);
   }
 }

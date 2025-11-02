@@ -70,6 +70,140 @@ interface PendingStreamRequest extends PendingRequestBase {
 
 type PendingRequest = PendingSingleRequest | PendingStreamRequest;
 
+type InvokeOptions = {
+  targetAddr?: FameAddress;
+  capabilities?: string[];
+  method: string;
+  params: Record<string, unknown>;
+  timeoutMs?: number;
+};
+
+type InvokeOptionsInput = {
+  targetAddr?: FameAddress | null;
+  capabilities?: unknown;
+  method: string;
+  params?: Record<string, unknown> | null;
+  timeoutMs?: number | null;
+  target_addr?: FameAddress | null;
+  timeout_ms?: number | string | null;
+};
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  if (Object.prototype.toString.call(value) !== '[object Object]') {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === null || proto === Object.prototype;
+}
+
+function pickOption<T>(
+  primary: T | null | undefined,
+  record: Record<string, unknown>,
+  ...aliases: string[]
+): T | undefined {
+  if (primary !== undefined && primary !== null) {
+    return primary;
+  }
+
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(record, alias)) {
+      const candidate = record[alias] as T | null | undefined;
+      if (candidate !== undefined && candidate !== null) {
+        return candidate;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function coerceStringArray(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const filtered = value.filter((entry): entry is string => typeof entry === 'string');
+  return filtered.length > 0 ? [...filtered] : [];
+}
+
+function normalizeTimeout(value: unknown): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return undefined;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function coerceParams(value: unknown): Record<string, unknown> {
+  if (isPlainRecord(value)) {
+    return { ...value };
+  }
+  return {};
+}
+
+function normalizeInvokeOptions(options: InvokeOptionsInput): InvokeOptions {
+  if (!isPlainRecord(options)) {
+    throw new Error('RPC invoke options must be a plain object');
+  }
+
+  const record = options as Record<string, unknown>;
+  const methodValue = record['method'];
+  if (typeof methodValue !== 'string' || methodValue.trim().length === 0) {
+    throw new Error('RPC invoke options must include a method name');
+  }
+
+  const targetAddr = pickOption<FameAddress | null | undefined>(
+    record['targetAddr'] as FameAddress | null | undefined,
+    record,
+    'target_addr'
+  );
+
+  const capabilitiesValue = pickOption<unknown>(
+    record['capabilities'],
+    record,
+    'accepted_capabilities'
+  );
+  const capabilities = coerceStringArray(capabilitiesValue);
+
+  const paramsValue = pickOption<Record<string, unknown> | null | undefined>(
+    record['params'] as Record<string, unknown> | null | undefined,
+    record,
+    'params'
+  );
+  const params = coerceParams(paramsValue);
+
+  const timeoutValue = pickOption<number | string | null | undefined>(
+    record['timeoutMs'] as number | string | null | undefined,
+    record,
+    'timeout_ms'
+  );
+  const timeoutMs = normalizeTimeout(timeoutValue);
+
+  return {
+    targetAddr: targetAddr ?? undefined,
+    capabilities,
+    method: methodValue,
+    params,
+    timeoutMs,
+  };
+}
+
 export class RPCClientManager {
   private readonly pending = new Map<string, PendingRequest>();
   private readonly pendingByEnvelopeId = new Map<string, string>();
@@ -110,14 +244,9 @@ export class RPCClientManager {
     tracker.addEventHandler(this.trackerEventHandler);
   }
 
-  async invoke(options: {
-    targetAddr?: FameAddress;
-    capabilities?: string[];
-    method: string;
-    params: Record<string, unknown>;
-    timeoutMs?: number;
-  }): Promise<unknown> {
-    const { targetAddr, capabilities, method, params, timeoutMs } = options;
+  async invoke(optionsInput: InvokeOptionsInput): Promise<unknown> {
+    const { targetAddr, capabilities, method, params, timeoutMs } =
+      normalizeInvokeOptions(optionsInput);
 
     if (!targetAddr && !capabilities) {
       throw new Error('Either target address or capabilities must be provided');
@@ -177,14 +306,11 @@ export class RPCClientManager {
     return responsePromise;
   }
 
-  async invokeStream(options: {
-    targetAddr?: FameAddress;
-    capabilities?: string[];
-    method: string;
-    params: Record<string, unknown>;
-    timeoutMs?: number;
-  }): Promise<AsyncIterable<unknown>> {
-    const { targetAddr, capabilities, method, params, timeoutMs } = options;
+  async invokeStream(
+    optionsInput: InvokeOptionsInput
+  ): Promise<AsyncIterable<unknown>> {
+    const { targetAddr, capabilities, method, params, timeoutMs } =
+      normalizeInvokeOptions(optionsInput);
 
     if (!targetAddr && !capabilities) {
       throw new Error('Either target address or capabilities must be provided');

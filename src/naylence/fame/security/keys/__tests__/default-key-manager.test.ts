@@ -151,6 +151,29 @@ describe('DefaultKeyManager', () => {
     expect(mocks.addKeys).toHaveBeenCalledWith(expect.any(Array), '/systems/a');
   });
 
+  it('normalizes snake_case alias fields when adding keys', async () => {
+    const { store, mocks } = createMockKeyStore();
+    const { node } = createMockNode();
+    const manager = new DefaultKeyManager({ keyStore: store });
+    await manager.onNodeStarted(node);
+
+    await expect(
+      manager.addKeys({
+        keys: [createValidSigningKey('kid-alias')],
+        physical_path: '/parent/node/child',
+        system_id: 'child',
+        origin: DeliveryOriginType.DOWNSTREAM,
+        sid: 'invalid-sid',
+        skip_sid_validation: true,
+      } as unknown as Parameters<DefaultKeyManager['addKeys']>[0])
+    ).resolves.toBeUndefined();
+
+    expect(mocks.addKeys).toHaveBeenCalledWith(
+      expect.any(Array),
+      '/parent/node/child'
+    );
+  });
+
   it('throws when announcing without envelope factory', async () => {
     const { store, mocks } = createMockKeyStore();
     const helper = createMockNode();

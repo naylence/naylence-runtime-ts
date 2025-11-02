@@ -77,6 +77,33 @@ describe('JWTTokenIssuer', () => {
     expect(payload.scope).toBe('read:all');
   });
 
+  it('supports snake_case constructor options', async () => {
+    const issuer = new JWTTokenIssuer({
+      signing_key_pem: HS_SECRET,
+      kid: 'snake-kid',
+      issuer: 'snake-issuer',
+      algorithm: 'HS256',
+      ttl_sec: 180,
+      audience: 'snake-audience',
+    });
+
+    const token = await issuer.issue({ sub: 'snake-user' });
+
+    const jose = await import('jose');
+    const verificationKey = new TextEncoder().encode(HS_SECRET);
+    const expectedIssuedAt = Math.floor(Date.now() / 1000);
+
+    const { payload } = await jose.jwtVerify(token, verificationKey, {
+      issuer: 'snake-issuer',
+      audience: 'snake-audience',
+      algorithms: ['HS256'],
+    });
+
+    expect(payload.iss).toBe('snake-issuer');
+    expect(payload.sub).toBe('snake-user');
+    expect(payload.exp).toBe(expectedIssuedAt + 180);
+  });
+
   it('rejects unsupported signing algorithms', async () => {
     const issuer = new JWTTokenIssuer({
       ...BASE_OPTIONS,

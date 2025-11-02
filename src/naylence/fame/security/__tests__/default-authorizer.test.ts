@@ -139,6 +139,22 @@ describe('DefaultAuthorizer', () => {
     expect(context?.authMethod).toBe('jwt_fame_claims');
   });
 
+  it('supports snake_case constructor options', async () => {
+    const node = createNodeStub();
+    const verifier = new StubTokenVerifier(async () =>
+      createAuthorizationContext({ authenticated: true, authorized: true })
+    );
+
+    const authorizer = new DefaultAuthorizer({
+      token_verifier: verifier,
+    });
+
+    await authorizer.onNodeStarted(node);
+    const context = await authorizer.authenticate('Bearer token');
+
+    expect(context?.authenticated).toBe(true);
+  });
+
   it('returns undefined when token verification fails', async () => {
     const node = createNodeStub();
     const verifier = new StubTokenVerifier(async () => {

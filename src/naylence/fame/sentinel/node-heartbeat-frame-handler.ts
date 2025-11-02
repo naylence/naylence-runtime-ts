@@ -15,11 +15,58 @@ type RoutingNodeWithEpoch = RoutingNodeLike & {
   readonly routingEpoch?: string | null | undefined;
 };
 
+interface NodeHeartbeatFrameHandlerOptions {
+  routingNode: RoutingNodeLike;
+}
+
+type NodeHeartbeatFrameHandlerOptionsInput =
+  | NodeHeartbeatFrameHandlerOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizeOptions(
+  options: NodeHeartbeatFrameHandlerOptionsInput
+): NodeHeartbeatFrameHandlerOptions {
+  if (!options || typeof options !== 'object') {
+    throw new Error('NodeHeartbeatFrameHandler requires a routingNode option');
+  }
+
+  const direct = options as NodeHeartbeatFrameHandlerOptions;
+  if (
+    Object.prototype.hasOwnProperty.call(direct, 'routingNode') &&
+    direct.routingNode !== undefined &&
+    direct.routingNode !== null
+  ) {
+    if (typeof direct.routingNode !== 'object') {
+      throw new Error('routingNode must be an object');
+    }
+
+    return { routingNode: direct.routingNode };
+  }
+
+  const candidate = options as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(candidate, 'routing_node')) {
+    const routingNode = candidate['routing_node'];
+    if (routingNode === undefined || routingNode === null) {
+      throw new Error('routingNode must be provided');
+    }
+    if (typeof routingNode !== 'object') {
+      throw new Error('routingNode must be an object');
+    }
+
+    return { routingNode: routingNode as RoutingNodeLike };
+  }
+
+  throw new Error('routingNode must be provided');
+}
+
 export class NodeHeartbeatFrameHandler {
   private readonly routingNode: RoutingNodeWithEpoch;
 
-  constructor(options: { routingNode: RoutingNodeLike }) {
-    this.routingNode = options.routingNode as RoutingNodeWithEpoch;
+  constructor(options: NodeHeartbeatFrameHandlerOptionsInput) {
+    const normalized = normalizeOptions(options);
+    this.routingNode = normalized.routingNode as RoutingNodeWithEpoch;
   }
 
   public async acceptNodeHeartbeat(

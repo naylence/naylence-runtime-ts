@@ -94,6 +94,50 @@ describe('IndexedDBStorageProviderFactory', () => {
     credentialSpy.mockRestore();
   });
 
+  it('accepts camelCase string configuration values and coerces them correctly', async () => {
+    const {
+      safeImportMock,
+      IndexedDBStorageProviderFactory,
+      CredentialProviderFactory,
+    } = await loadFactoryModules();
+
+    const MockProvider = jest.fn(() => ({ stop: jest.fn() }));
+    safeImportMock.mockResolvedValue({
+      IndexedDBStorageProvider: MockProvider,
+    });
+
+    const credentialSpy = jest.spyOn(
+      CredentialProviderFactory,
+      'createCredentialProvider'
+    );
+
+    const factory = new IndexedDBStorageProviderFactory();
+
+    await factory.create({
+      type: 'IndexedDBStorageProvider',
+      dbName: 'CamelDb',
+      namespacePrefix: 'CamelNs',
+      version: '3',
+      enableCaching: 'no',
+      isEncrypted: 'yes',
+      mode: 'DX',
+    });
+
+    const options = getProviderOptions(MockProvider, 0);
+    expect(options).toMatchObject({
+      mode: 'dx',
+      dbName: 'CamelDb',
+      namespacePrefix: 'CamelNs',
+      version: 3,
+      enableCaching: false,
+      isEncrypted: true,
+    });
+
+    expect(credentialSpy).not.toHaveBeenCalled();
+
+    credentialSpy.mockRestore();
+  });
+
   it('defaults caching and encryption based on the selected mode', async () => {
     const {
       safeImportMock,

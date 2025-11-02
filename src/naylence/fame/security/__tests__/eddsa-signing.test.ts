@@ -3,12 +3,20 @@ import {
   createFameEnvelope,
   type DataFrame,
   type FameEnvelope,
+  SigningMaterial,
 } from '@naylence/core';
 import { secureDigest, urlsafeBase64Encode } from '../../util/util.js';
 import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
 import type { KeyProvider } from '../keys/key-provider.js';
-import { EdDSAEnvelopeSigner } from '../signing/eddsa-envelope-signer.js';
-import { EdDSAEnvelopeVerifier } from '../signing/eddsa-envelope-verifier.js';
+import {
+  EdDSAEnvelopeSigner,
+  type EdDSAEnvelopeSignerOptions,
+} from '../signing/eddsa-envelope-signer.js';
+import {
+  EdDSAEnvelopeVerifier,
+  type EdDSAEnvelopeVerifierOptions,
+} from '../signing/eddsa-envelope-verifier.js';
+import { SigningConfig } from '../signing/signing-config.js';
 
 function hexToBytes(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) {
@@ -141,5 +149,61 @@ describe('EdDSA envelope signing', () => {
     await expect(
       verifier.verifyEnvelope(forwarded, { checkPayload: false })
     ).resolves.toBe(true);
+  });
+
+  test('accepts snake_case signer options and signing config', () => {
+    const signer = new EdDSAEnvelopeSigner({
+      crypto_provider: cryptoProvider,
+      signing_config: {
+        signing_material: 'x509-chain',
+        validate_cert_name_constraints: false,
+      },
+      private_key_pem: PRIVATE_KEY_BASE64,
+      key_id: 'alias-kid',
+    } as unknown as EdDSAEnvelopeSignerOptions);
+
+    const internals = signer as unknown as {
+      signingConfig: SigningConfig;
+      explicitPrivateKey?: string;
+      explicitKeyId?: string;
+    };
+
+    expect(internals.signingConfig.signingMaterial).toBe(
+      SigningMaterial.X509_CHAIN
+    );
+    expect(internals.signingConfig.validateCertNameConstraints).toBe(false);
+    expect(internals.explicitPrivateKey).toBe(PRIVATE_KEY_BASE64);
+    expect(internals.explicitKeyId).toBe('alias-kid');
+
+    const envelope = signer.signEnvelope(createSampleEnvelope({ alias: true }), {
+      physicalPath: PHYSICAL_PATH,
+    });
+    expect(envelope.sec?.sig?.kid).toBe('alias-kid');
+  });
+
+  test('accepts snake_case verifier signing config', async () => {
+    const signer = new EdDSAEnvelopeSigner({
+      cryptoProvider,
+    });
+    const verifier = new EdDSAEnvelopeVerifier(
+      keyProvider,
+      {
+        signing_config: {
+          require_cert_sid_match: true,
+        },
+      } as unknown as EdDSAEnvelopeVerifierOptions
+    );
+
+    const internals = verifier as unknown as { signingConfig: SigningConfig };
+    expect(internals.signingConfig.requireCertSidMatch).toBe(true);
+
+    const envelope = signer.signEnvelope(
+      createSampleEnvelope({ status: 'alias' }),
+      {
+        physicalPath: PHYSICAL_PATH,
+      }
+    );
+
+    await expect(verifier.verifyEnvelope(envelope)).resolves.toBe(true);
   });
 });

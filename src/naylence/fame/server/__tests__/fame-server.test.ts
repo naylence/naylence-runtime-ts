@@ -87,6 +87,59 @@ describe('Fastify fame server routes', () => {
     }
   });
 
+  it('normalizes snake_case config and fastify options', () => {
+    const snakeCaseOptions = {
+      config: {
+        base_path: ' /snake/ ',
+        request_timeout_ms: '15000',
+        keep_alive_timeout_ms: 2_500,
+        enable_introspection: true,
+        default_audience: ' snake-aud ',
+        routes: {
+          open_id_configuration: '/custom/openid',
+          token: ' oauth/token ',
+        },
+        clients: [
+          {
+            client_id: 'snake-client',
+            client_secret: 'secret',
+            scopes: [' read ', 'write '],
+          },
+        ],
+      },
+      fastify_options: {
+        disable_request_logging: false,
+        trust_proxy: true,
+        body_limit: 2_048,
+        router_options: {
+          case_sensitive: true,
+          max_param_length: 64,
+        },
+      },
+    } as any;
+
+    server = createFameFastifyServer(snakeCaseOptions);
+
+    expect(server.config.basePath).toBe('/snake');
+    expect(server.config.requestTimeoutMs).toBe(15_000);
+    expect(server.config.keepAliveTimeoutMs).toBe(2_500);
+    expect(server.config.enableIntrospection).toBe(true);
+    expect(server.config.defaultAudience).toBe('snake-aud');
+    expect(server.config.routes.openIdConfiguration).toBe('/custom/openid');
+    expect(server.config.routes.token).toBe('/oauth/token');
+    expect(server.config.clients[0]).toEqual(
+      expect.objectContaining({ id: 'snake-client', secret: 'secret' })
+    );
+    expect(server.config.clients[0]?.scopes).toEqual(['read', 'write']);
+
+    const initialConfig = server.app.initialConfig as any;
+    expect(initialConfig.disableRequestLogging).toBe(false);
+    expect(initialConfig.bodyLimit).toBe(2_048);
+    const routerOptions = initialConfig.router ?? initialConfig.routerOptions ?? {};
+    expect(routerOptions.caseSensitive ?? initialConfig.caseSensitive).toBe(true);
+    expect(routerOptions.maxParamLength ?? initialConfig.maxParamLength).toBe(64);
+  });
+
   it('serves health endpoint with uptime data', async () => {
     const configWithNoClientScopes = {
       ...TEST_BASE_CONFIG,

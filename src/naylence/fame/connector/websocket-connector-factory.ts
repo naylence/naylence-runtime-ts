@@ -48,7 +48,15 @@ export interface WebSocketConnectorFactoryConfig extends ConnectorConfig {
 export interface CreateWebSocketConnectorOptions {
   websocket?: WebSocketLike;
   systemId?: string;
+  /** @deprecated Use systemId */
+  system_id?: string;
   clientFactory?: (
+    url: string,
+    subprotocols?: string[],
+    headers?: Record<string, string>
+  ) => Promise<WebSocketLike>;
+  /** @deprecated Use clientFactory */
+  client_factory?: (
     url: string,
     subprotocols?: string[],
     headers?: Record<string, string>
@@ -148,11 +156,12 @@ export class WebSocketConnectorFactory extends ConnectorFactory<
       );
     }
 
+    const normalizedConfig = this._normalizeConfig(config);
     const grantCandidate: WebSocketConnectionGrantLike = {
       type: WEBSOCKET_CONNECTION_GRANT_TYPE,
       purpose: 'connection',
-      url: config.url,
-      auth: config.auth,
+      url: normalizedConfig.url,
+      auth: normalizedConfig.auth,
     };
 
     return normalizeWebSocketConnectionGrant(grantCandidate);
@@ -205,15 +214,22 @@ export class WebSocketConnectorFactory extends ConnectorFactory<
       const subprotocols = await this._maybeGetSubprotocols(authStrategy);
       let url = await this._maybeModifyUrl(authStrategy, baseUrl);
 
-      if (options.systemId) {
-        url = this._appendSystemId(url, options.systemId);
+      const legacySystemId =
+        typeof options.system_id === 'string' && options.system_id.length > 0
+          ? options.system_id
+          : undefined;
+      const systemId = options.systemId ?? legacySystemId;
+
+      if (systemId) {
+        url = this._appendSystemId(url, systemId);
       }
 
       if (authStrategy) {
         await authStrategy.apply(headers);
       }
 
-      const clientFactory = options.clientFactory ?? this._clientFactory;
+      const clientFactory =
+        options.clientFactory ?? options.client_factory ?? this._clientFactory;
       try {
         const headerArgs =
           Object.keys(headers).length > 0 ? headers : undefined;
@@ -282,15 +298,65 @@ export class WebSocketConnectorFactory extends ConnectorFactory<
       type: 'WebSocketConnector',
     };
 
-    if (typeof config.url === 'string' && config.url.length > 0) {
-      normalized.url = config.url;
+    const record = config as Record<string, unknown>;
+
+    const urlCandidate =
+      record['url'] ??
+      record['websocket_url'] ??
+      record['websocketUrl'] ??
+      record['ws_url'] ??
+      record['wsUrl'];
+    if (typeof urlCandidate === 'string') {
+      const trimmedUrl = urlCandidate.trim();
+      if (trimmedUrl.length > 0) {
+        normalized.url = trimmedUrl;
+      }
     }
 
-    if (config.auth !== undefined) {
-      normalized.auth = config.auth;
+    const authCandidate =
+      record['auth'] ??
+      record['auth_config'] ??
+      record['authentication'] ??
+      record['authConfig'];
+    if (authCandidate !== undefined) {
+      normalized.auth = authCandidate as WebSocketConnectionGrantAuth;
+    }
+
+    if ('durable' in record && record['durable'] !== undefined) {
+      normalized.durable = this._coerceDurable(record['durable']);
+    } else if ('durable_mode' in record && record['durable_mode'] !== undefined) {
+      normalized.durable = this._coerceDurable(record['durable_mode']);
+    } else if ('durableMode' in record && record['durableMode'] !== undefined) {
+      normalized.durable = this._coerceDurable(record['durableMode']);
     }
 
     return normalized;
+  }
+
+  private _coerceDurable(candidate: unknown): boolean {
+    if (typeof candidate === 'boolean') {
+      return candidate;
+    }
+
+    if (typeof candidate === 'number') {
+      return candidate !== 0;
+    }
+
+    if (typeof candidate === 'string') {
+      const normalized = candidate.trim().toLowerCase();
+      if (!normalized) {
+        return false;
+      }
+      if (['false', '0', 'no', 'off'].includes(normalized)) {
+        return false;
+      }
+      if (['true', '1', 'yes', 'on'].includes(normalized)) {
+        return true;
+      }
+      return true;
+    }
+
+    return Boolean(candidate);
   }
 
   private _normalizeAuthConfig(

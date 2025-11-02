@@ -156,13 +156,13 @@ export class SQLiteStorageProviderFactory extends StorageProviderFactory<SQLiteS
       );
     }
 
-    return new SQLiteStorageProvider(
-      normalized.dbDirectory,
-      normalized.isEncrypted,
+    return new SQLiteStorageProvider({
+      dbDirectory: normalized.dbDirectory,
+      isEncrypted: normalized.isEncrypted,
       masterKeyProvider,
-      normalized.isCached,
-      normalized.autoRecover
-    );
+      isCached: normalized.isCached,
+      autoRecover: normalized.autoRecover,
+    });
   }
 }
 

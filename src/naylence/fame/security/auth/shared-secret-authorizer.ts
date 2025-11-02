@@ -13,6 +13,64 @@ import {
 import type { Authorizer } from './authorizer.js';
 import type { NodeLike } from '../../node/node-like.js';
 
+export interface SharedSecretAuthorizerOptions {
+  credentialProvider: CredentialProvider;
+  principal?: string;
+}
+
+type SharedSecretAuthorizerOptionsInput =
+  | SharedSecretAuthorizerOptions
+  | CredentialProvider
+  | (SharedSecretAuthorizerOptions & Record<string, unknown>)
+  | Record<string, unknown>;
+
+function isCredentialProvider(value: unknown): value is CredentialProvider {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as CredentialProvider).get === 'function'
+  );
+}
+
+function normalizeOptions(
+  input: SharedSecretAuthorizerOptionsInput
+): SharedSecretAuthorizerOptions {
+  if (isCredentialProvider(input)) {
+    return { credentialProvider: input };
+  }
+
+  const candidate = input as SharedSecretAuthorizerOptions &
+    Record<string, unknown>;
+
+  const credentialProviderCandidate =
+    candidate.credentialProvider ?? candidate.credential_provider;
+
+  if (!isCredentialProvider(credentialProviderCandidate)) {
+    throw new Error(
+      'SharedSecretAuthorizer requires a credentialProvider option'
+    );
+  }
+
+  const principalCandidateRaw =
+    candidate.principal ??
+    (typeof candidate.principal_id === 'string'
+      ? candidate.principal_id
+      : typeof candidate.principal_name === 'string'
+        ? candidate.principal_name
+        : undefined);
+  const principalCandidate =
+    typeof principalCandidateRaw === 'string'
+      ? principalCandidateRaw.trim()
+      : undefined;
+
+  return {
+    credentialProvider: credentialProviderCandidate,
+    ...(principalCandidate && principalCandidate.length > 0
+      ? { principal: principalCandidate }
+      : {}),
+  };
+}
+
 function decodeCredentials(credentials: Uint8Array): string {
   if (typeof TextDecoder !== 'undefined') {
     return new TextDecoder().decode(credentials);
@@ -56,9 +114,13 @@ function isAuthorizationContext(value: unknown): value is AuthorizationContext {
 
 export class SharedSecretAuthorizer implements Authorizer {
   private readonly credentialProvider: CredentialProvider;
+  private readonly principal: string;
 
-  constructor(credentialProvider: CredentialProvider) {
-    this.credentialProvider = credentialProvider;
+  constructor(options: SharedSecretAuthorizerOptionsInput) {
+    const normalized = normalizeOptions(options);
+
+    this.credentialProvider = normalized.credentialProvider;
+    this.principal = normalized.principal ?? 'shared_secret_user';
   }
 
   public async authenticate(
@@ -82,7 +144,7 @@ export class SharedSecretAuthorizer implements Authorizer {
 
     return createAuthorizationContext({
       authenticated: true,
-      principal: 'shared_secret_user',
+      principal: this.principal,
       authMethod: 'shared_secret',
     });
   }

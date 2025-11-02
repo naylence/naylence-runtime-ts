@@ -38,10 +38,43 @@ describe('NodeEnvelopeFactory', () => {
     expect(envelope.rtype).toBe(FameResponseType.ACK);
   });
 
+  it('accepts legacy snake_case aliases', () => {
+    const factory = new NodeEnvelopeFactory(() => '  sid-alias  ');
+    const timestampIso = '2024-02-02T12:34:56.789Z';
+
+    const envelope = factory.createEnvelope({
+      frame,
+      envelope_id: '  env-snake  ',
+      trace_id: '  trace-snake  ',
+      recipient: '  alias@test/path  ',
+      accepted_capabilities: ['  cap.alias  ', ' '],
+      reply_to: '  reply@test/path  ',
+      flow_id: '  flow-snake  ',
+      window_id: '7',
+      flow_flags: FlowFlags.RESET,
+      ts: timestampIso,
+      corr_id: '  corr-snake  ',
+  response_type: FameResponseType.REPLY,
+    } as unknown as Parameters<NodeEnvelopeFactory['createEnvelope']>[0]);
+
+    expect(envelope.sid).toBe('sid-alias');
+    expect(envelope.id).toBe('env-snake');
+    expect(envelope.traceId).toBe('trace-snake');
+    expect(String(envelope.to)).toBe('alias@test/path');
+    expect(envelope.capabilities).toEqual(['cap.alias']);
+    expect(String(envelope.replyTo)).toBe('reply@test/path');
+    expect(envelope.flowId).toBe('flow-snake');
+    expect(envelope.seqId).toBe(7);
+    expect(envelope.flowFlags).toBe(FlowFlags.RESET);
+    expect(envelope.ts.toISOString()).toBe(timestampIso);
+    expect(envelope.corrId).toBe('corr-snake');
+  expect(envelope.rtype).toBe(FameResponseType.REPLY);
+  });
+
   it('defaults trace id from envelope context when omitted', () => {
     const factory = new NodeEnvelopeFactory(() => 'sid');
     const result = withEnvelopeContext(
-      { trace_id: 'context-trace', id: 'context-id' },
+      { traceId: 'context-trace', id: 'context-id' },
       () =>
         factory.createEnvelope({
           frame,

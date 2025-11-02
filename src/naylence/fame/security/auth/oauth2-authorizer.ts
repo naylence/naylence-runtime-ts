@@ -38,6 +38,84 @@ export interface OAuth2AuthorizerOptions {
   reverseAuthTtlSec?: number;
 }
 
+type SnakeCaseOAuth2AuthorizerOptions = Partial<
+  Record<
+    | 'token_verifier'
+    | 'token_issuer'
+    | 'aud'
+    | 'audience'
+    | 'required_scopes'
+    | 'require_scope'
+    | 'default_ttl_sec'
+    | 'max_ttl_sec'
+    | 'reverse_auth_ttl_sec',
+    unknown
+  >
+>;
+
+function normalizeOptions(
+  raw: OAuth2AuthorizerOptions | Record<string, unknown>
+): OAuth2AuthorizerOptions {
+  const camel = raw as OAuth2AuthorizerOptions;
+  const snake = raw as SnakeCaseOAuth2AuthorizerOptions;
+
+  const tokenVerifier =
+    camel.tokenVerifier ??
+    (snake.token_verifier as TokenVerifier | undefined);
+
+  if (!tokenVerifier) {
+    throw new Error('OAuth2Authorizer requires a tokenVerifier');
+  }
+
+  const tokenIssuer =
+    camel.tokenIssuer ?? (snake.token_issuer as TokenIssuer | undefined);
+  const requiredScopes =
+    camel.requiredScopes ??
+    (Array.isArray(snake.required_scopes)
+      ? (snake.required_scopes as string[])
+      : undefined);
+  const requireScope =
+    camel.requireScope ??
+    (typeof snake.require_scope === 'boolean'
+      ? snake.require_scope
+      : undefined);
+
+  const reverseAuthTtlSec =
+    camel.reverseAuthTtlSec ??
+    (typeof snake.reverse_auth_ttl_sec === 'number'
+      ? snake.reverse_auth_ttl_sec
+      : undefined);
+
+  const defaultTtlSec =
+    camel.defaultTtlSec ??
+    (typeof snake.default_ttl_sec === 'number'
+      ? snake.default_ttl_sec
+      : undefined);
+
+  const maxTtlSec =
+    camel.maxTtlSec ??
+    (typeof snake.max_ttl_sec === 'number' ? snake.max_ttl_sec : undefined);
+
+  const audience =
+    camel.audience ??
+    (typeof snake.audience === 'string'
+      ? snake.audience
+      : typeof snake.aud === 'string'
+      ? snake.aud
+      : undefined);
+
+  return {
+    tokenVerifier,
+    tokenIssuer,
+    audience,
+    requiredScopes,
+    requireScope,
+    defaultTtlSec,
+    maxTtlSec,
+    reverseAuthTtlSec,
+  };
+}
+
 export class OAuth2Authorizer
   implements Authorizer, TokenVerifierProvider, NodeEventListener
 {
@@ -51,7 +129,9 @@ export class OAuth2Authorizer
   private readonly reverseAuthTtlSec: number;
   private node?: NodeLike;
 
-  constructor(options: OAuth2AuthorizerOptions) {
+  constructor(rawOptions: OAuth2AuthorizerOptions | Record<string, unknown>) {
+    const options = normalizeOptions(rawOptions);
+
     this.tokenVerifierImpl = options.tokenVerifier;
     this.tokenIssuer = options.tokenIssuer ?? undefined;
     this.audience = options.audience ?? undefined;

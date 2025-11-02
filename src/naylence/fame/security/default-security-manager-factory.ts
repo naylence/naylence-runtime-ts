@@ -67,6 +67,54 @@ export interface DefaultSecurityManagerConfig extends SecurityManagerConfig {
   [key: string]: unknown;
 }
 
+type DefaultSecurityManagerConfigInput =
+  | DefaultSecurityManagerConfig
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizeDefaultSecurityManagerConfig(
+  config?: DefaultSecurityManagerConfigInput
+): Record<string, unknown> | null {
+  if (!config) {
+    return null;
+  }
+
+  const normalized: Record<string, unknown> = {
+    ...(config as Record<string, unknown>),
+  };
+
+  const ensureAlias = (primary: string, alias: string): void => {
+    const primaryValue = normalized[primary];
+    const aliasValue = normalized[alias];
+
+    if (primaryValue === undefined && aliasValue !== undefined) {
+      normalized[primary] = aliasValue;
+      return;
+    }
+
+    if (aliasValue === undefined && primaryValue !== undefined) {
+      normalized[alias] = primaryValue;
+    }
+  };
+
+  ensureAlias('policy', 'security_policy');
+  ensureAlias('envelopeSigner', 'envelope_signer');
+  ensureAlias('envelopeVerifier', 'envelope_verifier');
+  ensureAlias('encryption', 'encryption_manager');
+  ensureAlias('authorizer', 'authorizer_config');
+  ensureAlias('certificateManager', 'certificate_manager');
+  ensureAlias('secureChannelManager', 'secure_channel_manager');
+  ensureAlias('keyStore', 'key_store');
+  ensureAlias('keyManager', 'key_manager');
+  ensureAlias('keyManagerConfig', 'key_manager_config');
+  ensureAlias('keyValidator', 'key_validator');
+  ensureAlias('eventListeners', 'event_listeners');
+  ensureAlias('cryptoProvider', 'crypto_provider');
+
+  return normalized;
+}
+
 interface ResolvedComponents {
   policy: SecurityPolicy | null;
   envelopeSigner: EnvelopeSigner | null;
@@ -101,7 +149,11 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
     overrides?: SecurityManagerComponentOverrides | null,
     createOptions: CreateResourceOptions | null = null
   ): Promise<SecurityManager> {
-    const mergedConfig = this.mergeConfigWithOverrides(config, overrides);
+    const normalizedConfig = normalizeDefaultSecurityManagerConfig(config);
+    const mergedConfig = this.mergeConfigWithOverrides(
+      normalizedConfig,
+      overrides
+    );
     const resolved = this.resolveComponents(mergedConfig, overrides);
 
     return await DefaultSecurityManagerFactory.buildSecurityManager({
@@ -380,7 +432,7 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
     keyProvider: KeyManager | KeyStore | null,
     createOptions: CreateResourceOptions | null
   ): Promise<SecurityPolicy | null> {
-    const policyConfig = config.security_policy ?? null;
+    const policyConfig = config.securityPolicy ?? config.security_policy;
     const factoryArgs = keyProvider ? [keyProvider] : [];
     const options = DefaultSecurityManagerFactory.mergeCreateOptions(
       factoryArgs,

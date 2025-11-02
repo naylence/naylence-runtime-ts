@@ -23,7 +23,6 @@ describe('JWKSJWTTokenVerifier', () => {
     expect(
       () =>
         new JWKSJWTTokenVerifier({
-          // @ts-expect-error intentionally omitting issuer
           issuer: undefined,
           jwksUrl: 'https://example.com/keys',
         })
@@ -35,7 +34,6 @@ describe('JWKSJWTTokenVerifier', () => {
       () =>
         new JWKSJWTTokenVerifier({
           issuer: 'issuer-1',
-          // @ts-expect-error intentionally omitting JWKS URL
           jwksUrl: undefined,
         })
     ).toThrow('JWKSJWTTokenVerifier requires a JWKS URL');
@@ -197,6 +195,37 @@ describe('JWKSJWTTokenVerifier', () => {
       message: 'Invalid subject',
       cause: error,
     });
+  });
+
+  it('supports snake_case constructor options', async () => {
+    const remoteSet = jest.fn();
+    createRemoteJWKSetMock.mockReturnValue(remoteSet);
+    jwtVerifyMock.mockResolvedValue({
+      payload: { sub: 'snake-user' },
+      protectedHeader: {},
+    });
+
+    const verifier = new JWKSJWTTokenVerifier({
+      issuer: 'issuer-12',
+      jwks_url: 'https://example.com/jwks-snake',
+      cache_ttl_sec: 2,
+      algorithms: [' RS512 '],
+    });
+
+    await verifier.verify('snake-token');
+
+    expect(createRemoteJWKSetMock).toHaveBeenCalledWith(
+      new URL('https://example.com/jwks-snake'),
+      expect.objectContaining({
+        cacheMaxAge: 2_000,
+        cooldownDuration: 1_000,
+      })
+    );
+    expect(jwtVerifyMock).toHaveBeenCalledWith(
+      'snake-token',
+      remoteSet,
+      expect.objectContaining({ algorithms: ['RS512'] })
+    );
   });
 
   it('maps invalid token errors', async () => {

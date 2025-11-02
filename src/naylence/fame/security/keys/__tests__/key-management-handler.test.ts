@@ -316,6 +316,49 @@ describe('KeyManagementHandler.acceptKeyAnnounce', () => {
     );
   });
 
+  it('normalizes snake_case frame and context fields', async () => {
+    const key = {
+      kid: 'enc-alias',
+      use: 'enc',
+      kty: 'OKP',
+      crv: 'X25519',
+      x: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+    } as Record<string, unknown>;
+
+    const keyManager = {
+      addKeys: jest.fn(async () => undefined),
+      hasKey: jest.fn(async () => false),
+    } as unknown as KeyManager;
+
+    const { handler } = createHandler({ keyManager });
+
+    const envelope = {
+      id: 'snake-env',
+      version: '1.0',
+      ts: new Date(),
+      frame: {
+        type: 'KeyAnnounce',
+        keys: [key],
+        physical_path: '/snake/origin',
+        created: new Date().toISOString(),
+      } as unknown as FameEnvelope['frame'],
+    } as FameEnvelope;
+
+    await handler.acceptKeyAnnounce(envelope, {
+      origin_type: DeliveryOriginType.UPSTREAM,
+      from_system_id: 'origin-alias',
+    } as unknown as FameDeliveryContext);
+
+    expect(keyManager.addKeys).toHaveBeenCalledTimes(1);
+    expect(keyManager.addKeys).toHaveBeenCalledWith(
+      expect.objectContaining({
+        physicalPath: '/snake/origin',
+        systemId: 'origin-alias',
+        origin: DeliveryOriginType.UPSTREAM,
+      })
+    );
+  });
+
   it('returns early when every announced key fails validation', async () => {
     const keyValidator = {
       validateKey: jest.fn(async () => {

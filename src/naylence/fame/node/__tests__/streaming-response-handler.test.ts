@@ -59,6 +59,31 @@ describe('StreamingResponseHandler', () => {
     jest.clearAllMocks();
   });
 
+  it('accepts snake_case constructor options', async () => {
+    const aliasHandler = new StreamingResponseHandler({
+      deliver_wrapper: deliverWrapper,
+      envelope_factory: envelopeFactory,
+      response_context_manager: responseContextManager,
+    });
+
+    const iterator = {
+      next: async () => ({ value: undefined, done: true }),
+    };
+
+    await aliasHandler.handleStreamingResponse(
+      iterator,
+      {
+        id: 'req-alias',
+        frame: { type: 'Data', payload: null },
+      } as unknown as FameEnvelope,
+      undefined,
+      'reply-alias',
+      'req-alias'
+    );
+
+    expect(deliverWrapper).toHaveBeenCalled();
+  });
+
   describe('isStreamingResult', () => {
     it('returns false for non-object inputs', () => {
       expect(handler.isStreamingResult(42)).toBe(false);

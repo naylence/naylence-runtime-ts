@@ -28,6 +28,45 @@ type EncryptionTarget = string;
 
 type MessageType = 'response' | 'protocol-response';
 
+const ENCRYPTION_OPTION_ALIAS_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['recipKid', 'recip_kid'],
+  ['recipientKeyId', 'recipient_key_id'],
+  ['recipPub', 'recip_pub'],
+  ['recipientPublicKey', 'recipient_public_key'],
+  ['privKey', 'priv_key'],
+  ['privateKey', 'private_key'],
+  ['channelKey', 'channel_key'],
+  ['requestAddress', 'request_address'],
+  ['encryptionType', 'encryption_type'],
+];
+
+function normalizeEncryptionOptions(options: EncryptionOptions): EncryptionOptions;
+function normalizeEncryptionOptions(
+  options?: EncryptionOptions
+): EncryptionOptions | undefined {
+  if (!options) {
+    return undefined;
+  }
+
+  const normalized: Record<string, unknown> = { ...options };
+
+  for (const [camelKey, snakeKey] of ENCRYPTION_OPTION_ALIAS_PAIRS) {
+    const camelValue = normalized[camelKey];
+    const snakeValue = normalized[snakeKey];
+
+    if (camelValue !== undefined && snakeValue === undefined) {
+      normalized[snakeKey] = camelValue;
+      continue;
+    }
+
+    if (snakeValue !== undefined && camelValue === undefined) {
+      normalized[camelKey] = snakeValue;
+    }
+  }
+
+  return normalized as EncryptionOptions;
+}
+
 function isDataFrame(frame: FameEnvelope['frame']): frame is DataFrame {
   return frame.type === 'Data';
 }
@@ -409,11 +448,14 @@ export class EnvelopeSecurityHandler {
     }
 
     try {
-      const options = await this.securityPolicy.getEncryptionOptions(
+      const rawOptions = await this.securityPolicy.getEncryptionOptions(
         envelope,
         context,
         this.node
       );
+      const options = rawOptions
+        ? normalizeEncryptionOptions(rawOptions)
+        : undefined;
 
       if (options) {
         if (options.encryptionType === 'channel') {
@@ -423,9 +465,9 @@ export class EnvelopeSecurityHandler {
           return await this.handleToBeEncryptedEnvelopeWithOptions(
             envelope,
             context,
-            {
+            normalizeEncryptionOptions({
               requestAddress: envelope.to,
-            }
+            })
           );
         }
 
@@ -446,9 +488,9 @@ export class EnvelopeSecurityHandler {
       return await this.handleToBeEncryptedEnvelopeWithOptions(
         envelope,
         context,
-        {
+        normalizeEncryptionOptions({
           requestAddress: envelope.to,
-        }
+        })
       );
     } catch (error) {
       logger.debug('sealed_key_lookup_failed_requesting', {
@@ -459,9 +501,9 @@ export class EnvelopeSecurityHandler {
       return await this.handleToBeEncryptedEnvelopeWithOptions(
         envelope,
         context,
-        {
+        normalizeEncryptionOptions({
           requestAddress: envelope.to,
-        }
+        })
       );
     }
   }
@@ -480,10 +522,10 @@ export class EnvelopeSecurityHandler {
     return await this.handleToBeEncryptedEnvelopeWithOptions(
       envelope,
       context,
-      {
+      normalizeEncryptionOptions({
         encryptionType: 'channel',
         destination: envelope.to,
-      }
+      })
     );
   }
 
@@ -510,11 +552,14 @@ export class EnvelopeSecurityHandler {
       return true;
     }
 
-    const options = await this.securityPolicy.getEncryptionOptions(
+    const rawOptions = await this.securityPolicy.getEncryptionOptions(
       envelope,
       context,
       this.node
     );
+    const options = rawOptions
+      ? normalizeEncryptionOptions(rawOptions)
+      : undefined;
     if (!options) {
       logger.warning('no_encryption_options_provided', {
         envp_id: envelope.id,
@@ -549,7 +594,8 @@ export class EnvelopeSecurityHandler {
       return true;
     }
 
-    return await this.performEncryption(envelope, context, encryptionOptions);
+    const normalizedOptions = normalizeEncryptionOptions(encryptionOptions);
+    return await this.performEncryption(envelope, context, normalizedOptions);
   }
 
   private async performEncryption(
@@ -560,6 +606,8 @@ export class EnvelopeSecurityHandler {
     if (!this.encryptionManager) {
       return true;
     }
+
+    const normalizedOptions = normalizeEncryptionOptions(encryptionOptions);
 
     // Skip encryption if envelope is already encrypted
     // This prevents re-queuing when replayed envelopes go through security again
@@ -574,7 +622,7 @@ export class EnvelopeSecurityHandler {
     try {
       const result = await this.encryptionManager.encryptEnvelope(
         envelope,
-        encryptionOptions
+        normalizedOptions
       );
 
       if (result.status === EncryptionStatus.QUEUED) {
@@ -584,7 +632,7 @@ export class EnvelopeSecurityHandler {
         await this.handleEncryptionQueueing(
           envelope,
           context,
-          encryptionOptions
+          normalizedOptions
         );
         return false;
       }
@@ -628,16 +676,25 @@ export class EnvelopeSecurityHandler {
       );
     }
 
+    if (!this.encryptionManager) {
+      return;
+    }
+
     if (!this.keyManagementHandler) {
       return;
     }
 
     const fromSystemId = context.fromSystemId ?? 'unknown';
+    const normalizedOptions = normalizeEncryptionOptions(options);
 
-    if (options.recipKid || options.recip_kid || options.recipientKeyId) {
-      const kid = (options.recipKid ??
-        options.recip_kid ??
-        options.recipientKeyId) as EncryptionTarget;
+    if (
+      normalizedOptions.recipKid ||
+      normalizedOptions.recip_kid ||
+      normalizedOptions.recipientKeyId
+    ) {
+      const kid = (normalizedOptions.recipKid ??
+        normalizedOptions.recip_kid ??
+        normalizedOptions.recipientKeyId) as EncryptionTarget;
       // Queue envelope for replay when key arrives
       this.keyManagementHandler.queuePendingEncryptionEnvelope(
         kid,
@@ -652,8 +709,8 @@ export class EnvelopeSecurityHandler {
       return;
     }
 
-    if (options.requestAddress) {
-      const addressKey = String(options.requestAddress);
+    if (normalizedOptions.requestAddress) {
+      const addressKey = String(normalizedOptions.requestAddress);
       // Queue envelope for replay when key arrives
       this.keyManagementHandler.queuePendingEncryptionEnvelope(
         addressKey,
@@ -662,18 +719,18 @@ export class EnvelopeSecurityHandler {
       );
       // Trigger correlated KeyRequest for key arrival notification
       await this.keyManagementHandler.maybeRequestEncryptionKeyByAddress(
-        options.requestAddress,
+        normalizedOptions.requestAddress,
         context.originType,
         fromSystemId
       );
       return;
     }
 
-    if (options.encryptionType === 'channel') {
+    if (normalizedOptions.encryptionType === 'channel') {
       logger.debug('channel_encryption_queueing_handled_internally', {
         envp_id: envelope.id,
-        destination: options.destination
-          ? String(options.destination)
+        destination: normalizedOptions.destination
+          ? String(normalizedOptions.destination)
           : undefined,
       });
       return;
@@ -681,7 +738,7 @@ export class EnvelopeSecurityHandler {
 
     logger.warning('unknown_encryption_queueing_options', {
       envp_id: envelope.id,
-      options,
+      options: normalizedOptions,
     });
   }
 

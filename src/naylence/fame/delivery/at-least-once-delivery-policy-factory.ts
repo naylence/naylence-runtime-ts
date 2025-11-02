@@ -33,6 +33,14 @@ interface NormalizedAtLeastOnceConfig {
   readonly receiverRetryPolicy?: RetryPolicy | undefined;
 }
 
+const LEGACY_POLICY_KEYS: Record<
+  'senderRetryPolicy' | 'receiverRetryPolicy',
+  string[]
+> = {
+  senderRetryPolicy: ['sender_retry_policy', 'sender_retryPolicy'],
+  receiverRetryPolicy: ['receiver_retry_policy', 'receiver_retryPolicy'],
+};
+
 export class AtLeastOnceDeliveryPolicyFactory extends DeliveryPolicyFactory<AtLeastOnceDeliveryPolicyConfig> {
   public readonly type = 'AtLeastOnceDeliveryPolicy';
   public override readonly isDefault = true;
@@ -68,19 +76,38 @@ function normalizeAtLeastOnceConfig(
 
   const candidate = config as AtLeastOnceDeliveryPolicyConfig &
     Record<string, unknown>;
-  const senderPolicyInput =
-    (candidate.senderRetryPolicy as RetryPolicyInput) ??
-    (candidate.sender_retry_policy as RetryPolicyInput) ??
-    (candidate.sender_retryPolicy as RetryPolicyInput);
-  const receiverPolicyInput =
-    (candidate.receiverRetryPolicy as RetryPolicyInput) ??
-    (candidate.receiver_retry_policy as RetryPolicyInput) ??
-    (candidate.receiver_retryPolicy as RetryPolicyInput);
+  const senderPolicyInput = getRetryPolicyInput(candidate, 'senderRetryPolicy');
+  const receiverPolicyInput = getRetryPolicyInput(
+    candidate,
+    'receiverRetryPolicy'
+  );
 
   return {
     senderRetryPolicy: resolveRetryPolicy(senderPolicyInput),
     receiverRetryPolicy: resolveRetryPolicy(receiverPolicyInput),
   };
+}
+
+function getRetryPolicyInput(
+  candidate: Record<string, unknown>,
+  key: keyof typeof LEGACY_POLICY_KEYS
+): RetryPolicyInput {
+  const camelKey = key as string;
+  const primary = candidate[camelKey] as RetryPolicyInput;
+  if (primary !== undefined) {
+    return primary;
+  }
+
+  const legacyKeys = LEGACY_POLICY_KEYS[key] ?? [];
+  for (const legacyKey of legacyKeys) {
+    const value = candidate[legacyKey];
+    if (value !== undefined) {
+      candidate[camelKey] = value;
+      return value as RetryPolicyInput;
+    }
+  }
+
+  return undefined;
 }
 
 function resolveRetryPolicy(input: RetryPolicyInput): RetryPolicy | undefined {

@@ -8,7 +8,8 @@ import type {
 import { SigningMaterial } from '@naylence/core';
 import { secureDigest, urlsafeBase64Encode } from '../../util/util.js';
 import type { CryptoProvider } from '../crypto/providers/crypto-provider.js';
-import { SigningConfig } from './signing-config.js';
+import { resolveAlias } from '../policy/policy-alias-normalizer.js';
+import { SigningConfig, type SigningConfigOptions } from './signing-config.js';
 import {
   frameDigest,
   immutableHeaders,
@@ -35,21 +36,86 @@ export interface EdDSAEnvelopeSignerOptions {
   keyId?: string;
 }
 
+type EdDSAEnvelopeSignerOptionsInput =
+  | EdDSAEnvelopeSignerOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+interface NormalizedSignerOptions {
+  cryptoProvider?: CryptoProvider | null;
+  signingConfig?: SigningConfig | SigningConfigOptions | null;
+  privateKeyPem?: string;
+  keyId?: string;
+}
+
+function normalizeSignerOptions(
+  options?: EdDSAEnvelopeSignerOptionsInput
+): NormalizedSignerOptions {
+  if (!options || typeof options !== 'object') {
+    return {};
+  }
+
+  const candidate = options as Record<string, unknown>;
+  const result: NormalizedSignerOptions = {
+    ...(options as EdDSAEnvelopeSignerOptions),
+  };
+
+  const cryptoProvider = resolveAlias<CryptoProvider | null | undefined>(
+    candidate,
+    ['cryptoProvider', 'crypto_provider']
+  );
+  if (cryptoProvider !== undefined) {
+    result.cryptoProvider = cryptoProvider ?? null;
+  }
+
+  const signingConfig = resolveAlias<
+    SigningConfig | SigningConfigOptions | null | undefined
+  >(candidate, ['signingConfig', 'signing_config']);
+  if (signingConfig !== undefined) {
+    result.signingConfig = signingConfig;
+  }
+
+  const privateKeyPem = resolveAlias<string | undefined>(candidate, [
+    'privateKeyPem',
+    'private_key_pem',
+  ]);
+  if (privateKeyPem !== undefined) {
+    result.privateKeyPem = privateKeyPem;
+  }
+
+  const keyId = resolveAlias<string | undefined>(candidate, ['keyId', 'key_id']);
+  if (keyId !== undefined) {
+    result.keyId = keyId;
+  }
+
+  return result;
+}
+
 export class EdDSAEnvelopeSigner {
   private readonly crypto: CryptoProvider;
   private readonly signingConfig: SigningConfig;
   private readonly explicitPrivateKey: string | undefined;
   private readonly explicitKeyId: string | undefined;
 
-  public constructor(options: EdDSAEnvelopeSignerOptions = {}) {
-    const provider = options.cryptoProvider ?? null;
+  public constructor(options: EdDSAEnvelopeSignerOptionsInput = {}) {
+    const normalized = normalizeSignerOptions(options);
+
+    const provider = normalized.cryptoProvider ?? null;
     if (!provider) {
       throw new Error('No crypto provider is configured for signing');
     }
     this.crypto = provider;
-    this.signingConfig = options.signingConfig ?? new SigningConfig();
-    this.explicitPrivateKey = options.privateKeyPem;
-    this.explicitKeyId = options.keyId;
+    const signingConfigOption = normalized.signingConfig;
+    if (signingConfigOption instanceof SigningConfig) {
+      this.signingConfig = signingConfigOption;
+    } else if (signingConfigOption) {
+      this.signingConfig = new SigningConfig(signingConfigOption);
+    } else {
+      this.signingConfig = new SigningConfig();
+    }
+    this.explicitPrivateKey = normalized.privateKeyPem;
+    this.explicitKeyId = normalized.keyId;
   }
 
   public signEnvelope(

@@ -30,6 +30,11 @@ import {
   type EncryptionConfig,
   type SigningConfig,
 } from './security-policy.js';
+import {
+  normalizeEncryptionCase,
+  normalizeSigningCase,
+  resolveAlias,
+} from './policy-alias-normalizer.js';
 
 const logger = getLogger(
   'naylence.fame.security.policy.default_security_policy'
@@ -49,6 +54,73 @@ export interface DefaultSecurityPolicyOptions {
   encryption?: EncryptionConfiguration | EncryptionConfig | null;
   signing?: SigningConfiguration | SigningConfig | null;
   keyProvider?: KeyProvider | null;
+}
+
+type DefaultSecurityPolicyOptionsInput =
+  | DefaultSecurityPolicyOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizePolicyOptions(
+  options?: DefaultSecurityPolicyOptionsInput
+): {
+  customSigningPolicy?: DefaultSecurityPolicyOptions['customSigningPolicy'];
+  customEncryptionPolicy?: DefaultSecurityPolicyOptions['customEncryptionPolicy'];
+  signing?: SigningConfiguration | SigningConfig | null;
+  encryption?: EncryptionConfiguration | EncryptionConfig | null;
+  keyProvider?: KeyProvider | null;
+} {
+  if (!options || typeof options !== 'object') {
+    return {};
+  }
+
+  const candidate = options as Record<string, unknown>;
+  const normalized: {
+    customSigningPolicy?: DefaultSecurityPolicyOptions['customSigningPolicy'];
+    customEncryptionPolicy?: DefaultSecurityPolicyOptions['customEncryptionPolicy'];
+    signing?: SigningConfiguration | SigningConfig | null;
+    encryption?: EncryptionConfiguration | EncryptionConfig | null;
+    keyProvider?: KeyProvider | null;
+  } = {};
+
+  const customSigningPolicy = resolveAlias<
+    DefaultSecurityPolicyOptions['customSigningPolicy']
+  >(candidate, ['customSigningPolicy', 'custom_signing_policy']);
+  if (customSigningPolicy !== undefined) {
+    normalized.customSigningPolicy = customSigningPolicy;
+  }
+
+  const customEncryptionPolicy = resolveAlias<
+    DefaultSecurityPolicyOptions['customEncryptionPolicy']
+  >(candidate, ['customEncryptionPolicy', 'custom_encryption_policy']);
+  if (customEncryptionPolicy !== undefined) {
+    normalized.customEncryptionPolicy = customEncryptionPolicy;
+  }
+
+  const signing = resolveAlias<
+    SigningConfiguration | SigningConfig | null | undefined
+  >(candidate, ['signing', 'signing_config', 'signingConfig']);
+  if (signing !== undefined) {
+    normalized.signing = normalizeSigningCase(signing);
+  }
+
+  const encryption = resolveAlias<
+    EncryptionConfiguration | EncryptionConfig | null | undefined
+  >(candidate, ['encryption', 'encryption_config', 'encryptionConfig']);
+  if (encryption !== undefined) {
+    normalized.encryption = normalizeEncryptionCase(encryption);
+  }
+
+  const keyProvider = resolveAlias<KeyProvider | null | undefined>(candidate, [
+    'keyProvider',
+    'key_provider',
+  ]);
+  if (keyProvider !== undefined) {
+    normalized.keyProvider = keyProvider;
+  }
+
+  return normalized;
 }
 
 function asStringAddress(
@@ -85,21 +157,41 @@ export class DefaultSecurityPolicy implements SecurityPolicy {
   private readonly keyProvider: KeyProvider | null;
 
   constructor(options: DefaultSecurityPolicyOptions = {}) {
-    this.customSigningPolicy = options.customSigningPolicy ?? undefined;
-    this.customEncryptionPolicy = options.customEncryptionPolicy ?? undefined;
+    const normalized = normalizePolicyOptions(options);
+    const signingOption =
+      normalized.signing !== undefined ? normalized.signing : options.signing;
+    const encryptionOption =
+      normalized.encryption !== undefined
+        ? normalized.encryption
+        : options.encryption;
+    const customSigning =
+      normalized.customSigningPolicy !== undefined
+        ? normalized.customSigningPolicy
+        : options.customSigningPolicy;
+    const customEncryption =
+      normalized.customEncryptionPolicy !== undefined
+        ? normalized.customEncryptionPolicy
+        : options.customEncryptionPolicy;
+    const keyProviderOption =
+      normalized.keyProvider !== undefined
+        ? normalized.keyProvider
+        : options.keyProvider;
+
+    this.customSigningPolicy = customSigning ?? undefined;
+    this.customEncryptionPolicy = customEncryption ?? undefined;
     this.encryption =
-      options.encryption instanceof EncryptionConfiguration
-        ? options.encryption
-        : options.encryption
-          ? new EncryptionConfiguration(options.encryption)
+      encryptionOption instanceof EncryptionConfiguration
+        ? encryptionOption
+        : encryptionOption
+          ? new EncryptionConfiguration(encryptionOption)
           : EncryptionConfiguration.forDevelopment();
     this.signing =
-      options.signing instanceof SigningConfiguration
-        ? options.signing
-        : options.signing
-          ? new SigningConfiguration(options.signing)
+      signingOption instanceof SigningConfiguration
+        ? signingOption
+        : signingOption
+          ? new SigningConfiguration(signingOption)
           : SigningConfiguration.forDevelopment();
-    this.keyProvider = options.keyProvider ?? null;
+    this.keyProvider = keyProviderOption ?? null;
   }
 
   public async shouldSignEnvelope(

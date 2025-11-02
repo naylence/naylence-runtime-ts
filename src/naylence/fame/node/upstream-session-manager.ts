@@ -61,6 +61,185 @@ interface UpstreamSessionManagerOptions {
   admissionClient?: AdmissionClient | null;
 }
 
+type UpstreamSessionManagerOptionsInput = UpstreamSessionManagerOptions & {
+  node?: NodeLike;
+  attach_client?: NodeAttachClient;
+  requested_logicals?: unknown;
+  outbound_origin_type?: DeliveryOriginType | string;
+  inbound_origin_type?: DeliveryOriginType | string;
+  inbound_handler?: FameEnvelopeHandler;
+  on_welcome?: WelcomeCallback;
+  on_attach?: AttachCallback;
+  on_epoch_change?: EpochCallback;
+  admission_client?: AdmissionClient | null;
+};
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  if (Object.prototype.toString.call(value) !== '[object Object]') {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === null || proto === Object.prototype;
+}
+
+function pickOption<T>(
+  record: Record<string, unknown>,
+  ...keys: string[]
+): T | undefined {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      const value = record[key] as T;
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
+function coerceStringArray(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const filtered = value.filter((entry): entry is string => typeof entry === 'string');
+  return [...filtered];
+}
+
+function resolveOriginType(
+  value: unknown,
+  label: string
+): DeliveryOriginType {
+  if (value === undefined || value === null) {
+    throw new Error(`UpstreamSessionManager requires a ${label} option`);
+  }
+  if (typeof value === 'string') {
+    return value as DeliveryOriginType;
+  }
+  return value as DeliveryOriginType;
+}
+
+function ensureCallback<T extends (...args: any[]) => any>(
+  value: unknown,
+  label: string
+): T {
+  if (typeof value !== 'function') {
+    throw new Error(`UpstreamSessionManager requires a ${label} callback`);
+  }
+  return value as T;
+}
+
+function normalizeOptions(
+  options: UpstreamSessionManagerOptionsInput
+): UpstreamSessionManagerOptions {
+  if (!isPlainRecord(options)) {
+    throw new Error('UpstreamSessionManager options must be an object');
+  }
+
+  const record = options as Record<string, unknown>;
+
+  const node = pickOption<NodeLike>(record, 'node');
+  if (!node) {
+    throw new Error('UpstreamSessionManager requires a node option');
+  }
+
+  const attachClient = pickOption<NodeAttachClient>(
+    record,
+    'attachClient',
+    'attach_client'
+  );
+  if (!attachClient) {
+    throw new Error('UpstreamSessionManager requires an attachClient option');
+  }
+
+  const requestedLogicalsValue = pickOption<unknown>(
+    record,
+    'requestedLogicals',
+    'requested_logicals'
+  );
+  const requestedLogicals = coerceStringArray(requestedLogicalsValue) ?? [];
+
+  const outboundOriginType = resolveOriginType(
+    pickOption<DeliveryOriginType | string>(
+      record,
+      'outboundOriginType',
+      'outbound_origin_type'
+    ),
+    'outboundOriginType'
+  );
+
+  const inboundOriginType = resolveOriginType(
+    pickOption<DeliveryOriginType | string>(
+      record,
+      'inboundOriginType',
+      'inbound_origin_type'
+    ),
+    'inboundOriginType'
+  );
+
+  const inboundHandler = pickOption<FameEnvelopeHandler>(
+    record,
+    'inboundHandler',
+    'inbound_handler'
+  );
+  const validatedInboundHandler = ensureCallback<FameEnvelopeHandler>(
+    inboundHandler,
+    'inboundHandler'
+  );
+
+  const onWelcome = pickOption<WelcomeCallback>(
+    record,
+    'onWelcome',
+    'on_welcome'
+  );
+  const validatedOnWelcome = ensureCallback<WelcomeCallback>(
+    onWelcome,
+    'onWelcome'
+  );
+
+  const onAttach = pickOption<AttachCallback>(
+    record,
+    'onAttach',
+    'on_attach'
+  );
+  const validatedOnAttach = ensureCallback<AttachCallback>(
+    onAttach,
+    'onAttach'
+  );
+
+  const onEpochChangeValue = pickOption<EpochCallback>(
+    record,
+    'onEpochChange',
+    'on_epoch_change'
+  );
+  const onEpochChange =
+    typeof onEpochChangeValue === 'function' ? onEpochChangeValue : undefined;
+
+  const admissionClient = pickOption<AdmissionClient | null>(
+    record,
+    'admissionClient',
+    'admission_client'
+  );
+
+  return {
+    node,
+    attachClient,
+    requestedLogicals,
+    outboundOriginType,
+    inboundOriginType,
+    inboundHandler: validatedInboundHandler,
+    onWelcome: validatedOnWelcome,
+    onAttach: validatedOnAttach,
+    onEpochChange,
+    admissionClient: admissionClient ?? undefined,
+  };
+}
+
 export class UpstreamSessionManager
   extends TaskSpawner
   implements SessionManager
@@ -98,11 +277,12 @@ export class UpstreamSessionManager
   private hadSuccessfulAttach = false;
   private connectEpoch = 0;
 
-  constructor(options: UpstreamSessionManagerOptions) {
+  constructor(optionsInput: UpstreamSessionManagerOptionsInput) {
     super();
+    const options = normalizeOptions(optionsInput);
     this.node = options.node;
     this.attachClient = options.attachClient;
-    this.requestedLogicals = options.requestedLogicals;
+    this.requestedLogicals = [...options.requestedLogicals];
     this.outboundOriginType = options.outboundOriginType;
     this.inboundOriginType = options.inboundOriginType;
     this.onWelcome = options.onWelcome;

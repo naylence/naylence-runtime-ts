@@ -3,7 +3,8 @@ import type { DataFrame, FameEnvelope } from '@naylence/core';
 import { SigningMaterial } from '@naylence/core';
 import { secureDigest } from '../../util/util.js';
 import type { KeyProvider } from '../keys/key-provider.js';
-import { SigningConfig } from './signing-config.js';
+import { resolveAlias } from '../policy/policy-alias-normalizer.js';
+import { SigningConfig, type SigningConfigOptions } from './signing-config.js';
 import {
   canonicalJson,
   decodeBase64Url,
@@ -65,16 +66,49 @@ export interface EdDSAEnvelopeVerifierOptions {
   signingConfig?: SigningConfig | null;
 }
 
+type EdDSAEnvelopeVerifierOptionsInput =
+  | EdDSAEnvelopeVerifierOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizeVerifierOptions(
+  options?: EdDSAEnvelopeVerifierOptionsInput
+): SigningConfig | SigningConfigOptions | null | undefined {
+  if (!options || typeof options !== 'object') {
+    return undefined;
+  }
+
+  const candidate = options as Record<string, unknown>;
+  const signingConfig = resolveAlias<
+    SigningConfig | SigningConfigOptions | null | undefined
+  >(candidate, ['signingConfig', 'signing_config']);
+
+  if (signingConfig !== undefined) {
+    return signingConfig;
+  }
+
+  return (options as EdDSAEnvelopeVerifierOptions).signingConfig;
+}
+
 export class EdDSAEnvelopeVerifier {
   private readonly keyProvider: KeyProvider;
   private readonly signingConfig: SigningConfig;
 
   public constructor(
     keyProvider: KeyProvider,
-    options: EdDSAEnvelopeVerifierOptions = {}
+    options: EdDSAEnvelopeVerifierOptionsInput = {}
   ) {
     this.keyProvider = keyProvider;
-    this.signingConfig = options.signingConfig ?? new SigningConfig();
+    const signingConfigOption = normalizeVerifierOptions(options);
+
+    if (signingConfigOption instanceof SigningConfig) {
+      this.signingConfig = signingConfigOption;
+    } else if (signingConfigOption) {
+      this.signingConfig = new SigningConfig(signingConfigOption);
+    } else {
+      this.signingConfig = new SigningConfig();
+    }
   }
 
   public async verifyEnvelope(

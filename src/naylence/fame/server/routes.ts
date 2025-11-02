@@ -44,6 +44,12 @@ export interface FameServerRouteDependencies {
   resolveCryptoProvider: () => CryptoProvider | null;
 }
 
+const TOKEN_PAYLOAD_KEY_ALIASES: Record<string, keyof OAuthTokenPayload> = {
+  grantType: 'grant_type',
+  clientId: 'client_id',
+  clientSecret: 'client_secret',
+};
+
 export async function registerDefaultFameServerRoutes(
   server: FameFastifyServer,
   dependencies: FameServerRouteDependencies
@@ -229,7 +235,8 @@ export function coerceTokenPayload(body: unknown): OAuthTokenPayload {
   const payload: OAuthTokenPayload = {};
   for (const [key, value] of Object.entries(body)) {
     if (typeof value === 'string') {
-      payload[key] = value;
+      const normalizedKey = TOKEN_PAYLOAD_KEY_ALIASES[key] ?? key;
+      payload[normalizedKey] = value;
     }
   }
   return payload;

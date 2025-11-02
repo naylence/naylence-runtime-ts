@@ -268,6 +268,32 @@ export function camelToSnakeCase(name: string): string {
 }
 
 /**
+ * Create a shallow copy of an object's top-level properties and add
+ * snake_case aliases for any camelCase keys while also adding camelCase
+ * aliases for snake_case keys when missing. Existing keys always win.
+ */
+export function withLegacySnakeCaseKeys<T extends Record<string, unknown>>(
+  descriptor: T
+): T & Record<string, unknown> {
+  const augmented: Record<string, unknown> = { ...descriptor };
+
+  for (const [key, value] of Object.entries(descriptor)) {
+    const snakeCaseKey = key.includes('_') ? key : camelToSnakeCase(key);
+    const camelCaseKey = key.includes('_') ? snakeToCamelCase(key) : key;
+
+    if (snakeCaseKey !== key && !(snakeCaseKey in augmented)) {
+      augmented[snakeCaseKey] = value;
+    }
+
+    if (camelCaseKey !== key && !(camelCaseKey in augmented)) {
+      augmented[camelCaseKey] = value;
+    }
+  }
+
+  return augmented as T & Record<string, unknown>;
+}
+
+/**
  * Convert snake_case string to CamelCase.
  */
 export function snakeToCamelCase(name: string): string {

@@ -29,6 +29,8 @@ const DOWNSTREAM_ORIGINS = new Set<DeliveryOriginType>([
   DeliveryOriginType.PEER,
 ]);
 
+type NodeAttachFrameLike = NodeAttachFrame & Record<string, unknown>;
+
 type RoutingNodeWithExtras = RoutingNodeLike & {
   readonly routingEpoch?: string | null | undefined;
   readonly securityManager?: { getShareableKeys(): unknown } | null;
@@ -47,6 +49,94 @@ export interface NodeAttachFrameHandlerOptions {
   attachmentKeyValidator?: AttachmentKeyValidator | null;
   stickinessManager?: LoadBalancerStickinessManager | null;
   maxTtlSec?: number | null;
+}
+
+function resolveOriginType(raw: unknown): DeliveryOriginType | null {
+  if (raw == null) {
+    return null;
+  }
+
+  const values = Object.values(DeliveryOriginType) as DeliveryOriginType[];
+  if (values.includes(raw as DeliveryOriginType)) {
+    return raw as DeliveryOriginType;
+  }
+
+  if (typeof raw === 'string') {
+    const lower = raw.toLowerCase();
+    const directMatch = values.find(
+      (entry) => entry.toLowerCase() === lower
+    );
+    if (directMatch) {
+      return directMatch;
+    }
+
+    const enumMatch = Object.entries(DeliveryOriginType).find(
+      ([key]) => key.toLowerCase() === lower
+    );
+    if (enumMatch) {
+      return enumMatch[1] as DeliveryOriginType;
+    }
+  }
+
+  return null;
+}
+
+function normalizeStickinessAliases(
+  stickiness: Stickiness | Record<string, unknown> | null | undefined
+): Stickiness | null | undefined {
+  if (!stickiness) {
+    return stickiness ?? null;
+  }
+
+  const record = stickiness as Record<string, unknown>;
+  const clone: Record<string, unknown> = { ...record };
+
+  if (record.supportedModes === undefined && record['supported_modes']) {
+    clone.supportedModes = record['supported_modes'];
+  }
+  if (record['supported_modes'] === undefined && record.supportedModes) {
+    clone['supported_modes'] = record.supportedModes;
+  }
+  if (record.preferredMode === undefined && record['preferred_mode']) {
+    clone.preferredMode = record['preferred_mode'];
+  }
+  if (record['preferred_mode'] === undefined && record.preferredMode) {
+    clone['preferred_mode'] = record.preferredMode;
+  }
+  if (record.maxAge === undefined && record['max_age']) {
+    clone.maxAge = record['max_age'];
+  }
+  if (record['max_age'] === undefined && record.maxAge) {
+    clone['max_age'] = record.maxAge;
+  }
+
+  return clone as Stickiness;
+}
+
+function mirrorAckFrameAliases(frame: NodeAttachAckFrame): void {
+  const mutable = frame as NodeAttachAckFrame & Record<string, unknown>;
+  mutable.ref_id = frame.refId;
+  mutable.target_system_id = frame.targetSystemId;
+  mutable.target_physical_path = frame.targetPhysicalPath;
+  if (frame.routingEpoch !== undefined) {
+    mutable.routing_epoch = frame.routingEpoch;
+  }
+  if (frame.assignedPath !== undefined) {
+    mutable.assigned_path = frame.assignedPath;
+  }
+  if (frame.expiresAt !== undefined) {
+    mutable.expires_at = frame.expiresAt;
+  }
+  if (frame.reason !== undefined) {
+    mutable.reason = frame.reason;
+  }
+  if (frame.stickiness !== undefined) {
+    const normalized = normalizeStickinessAliases(frame.stickiness);
+    if (normalized) {
+      frame.stickiness = normalized;
+      mutable.stickiness = normalized;
+    }
+  }
 }
 
 export class NodeAttachFrameHandler extends TaskSpawner {
@@ -71,12 +161,10 @@ export class NodeAttachFrameHandler extends TaskSpawner {
   ): Promise<void> {
     logger.debug('handling_node_attach_request');
 
-    if (!context) {
-      throw new Error('missing FameDeliveryContext');
-    }
+    const normalizedContext = this.normalizeContext(context);
 
-    const frame = envelope.frame as NodeAttachFrame | undefined;
-    if (!frame || frame.type !== 'NodeAttach') {
+    const frame = this.normalizeNodeAttachFrame(envelope.frame);
+    if (frame.type !== 'NodeAttach') {
       throw new Error(
         `Invalid envelope frame. Expected: NodeAttachFrame, actual: ${frame?.type ?? 'unknown'}`
       );
@@ -103,7 +191,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
 
     const { connector, attached, buffer } = pendingRoute;
     pendingRoute.cancelAttachTimeout?.();
-    if (connector !== context.fromConnector) {
+      if (connector !== normalizedContext.fromConnector) {
       throw new Error('Connector in context does not match pending connector');
     }
 
@@ -111,7 +199,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       frame,
       envelope,
       connector,
-      context,
+        normalizedContext,
       attachedSystemId
     );
 
@@ -130,7 +218,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       fromSystemId: attachedSystemId,
       originType: frame.originType,
       expectedResponseType: FameResponseType.NONE,
-      security: context.security,
+      security: normalizedContext.security,
     };
 
     for (const pendingEnvelope of buffer) {
@@ -296,7 +384,12 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       env_id: ackEnvelope.id ?? 'unknown',
     });
 
-    await this.sendAndNotify(connector, ackEnvelope, attachedSystemId, context);
+    await this.sendAndNotify(
+      connector,
+      ackEnvelope,
+      attachedSystemId,
+      normalizedContext
+    );
 
     if (connectorConfig.durable) {
       const routeStore =
@@ -529,7 +622,14 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       envelopeOptions.traceId = options.traceId;
     }
 
-    return this.routingNode.envelopeFactory.createEnvelope(envelopeOptions);
+    const envelope =
+      this.routingNode.envelopeFactory.createEnvelope(envelopeOptions);
+
+    if (envelope.frame && envelope.frame.type === 'NodeAttachAck') {
+      mirrorAckFrameAliases(envelope.frame as NodeAttachAckFrame);
+    }
+
+    return envelope;
   }
 
   private async closeConnectionAfterDelay(
@@ -596,5 +696,114 @@ export class NodeAttachFrameHandler extends TaskSpawner {
         .catch(() => undefined);
       throw err;
     }
+  }
+
+  private normalizeContext(
+    context: FameDeliveryContext | null | undefined
+  ): FameDeliveryContext {
+    if (!context) {
+      throw new Error('missing FameDeliveryContext');
+    }
+
+    const mutable = context as FameDeliveryContext & Record<string, unknown>;
+
+    const originCandidate =
+      mutable.originType ?? mutable.origin_type ?? null;
+    const resolvedOrigin = resolveOriginType(originCandidate);
+    if (resolvedOrigin) {
+      mutable.originType = resolvedOrigin;
+      mutable.origin_type = resolvedOrigin;
+    } else if (originCandidate !== null && originCandidate !== undefined) {
+      mutable.originType = originCandidate as DeliveryOriginType;
+      mutable.origin_type = originCandidate as DeliveryOriginType;
+    }
+
+    const fromConnector =
+      mutable.fromConnector ?? mutable.from_connector ?? undefined;
+    if (fromConnector !== undefined) {
+      mutable.fromConnector = fromConnector as FameConnector;
+      mutable.from_connector = fromConnector as FameConnector;
+    }
+
+    const fromSystemId =
+      mutable.fromSystemId ?? mutable.from_system_id ?? undefined;
+    if (fromSystemId !== undefined) {
+      mutable.fromSystemId = fromSystemId as string;
+      mutable.from_system_id = fromSystemId as string;
+    }
+
+    const expectedResponse =
+      mutable.expectedResponseType ?? mutable.expected_response_type ?? undefined;
+    if (expectedResponse !== undefined) {
+      mutable.expectedResponseType = expectedResponse;
+      mutable.expected_response_type = expectedResponse;
+    }
+
+    return mutable;
+  }
+
+  private normalizeNodeAttachFrame(
+    rawFrame: FameEnvelope['frame'] | undefined
+  ): NodeAttachFrame {
+    const frame = rawFrame as NodeAttachFrameLike | undefined;
+    if (!frame) {
+      throw new Error('Invalid envelope frame. Expected: NodeAttachFrame, actual: unknown');
+    }
+
+    const rawType = (frame as Record<string, unknown>).type;
+    if (typeof rawType === 'string' && rawType !== 'NodeAttach') {
+      const lower = rawType.toLowerCase();
+      if (lower === 'nodeattach' || lower === 'node_attach') {
+        frame.type = 'NodeAttach';
+        (frame as Record<string, unknown>).type = 'NodeAttach';
+      }
+    }
+
+    const originCandidate = frame.originType ?? frame.origin_type ?? null;
+    const resolvedOrigin = resolveOriginType(originCandidate);
+    if (resolvedOrigin) {
+      frame.originType = resolvedOrigin;
+      frame.origin_type = resolvedOrigin;
+    } else if (originCandidate !== null && originCandidate !== undefined) {
+      frame.originType = originCandidate as DeliveryOriginType;
+      frame.origin_type = originCandidate as DeliveryOriginType;
+    }
+
+    const systemId = frame.systemId ?? frame.system_id;
+    if (!systemId || typeof systemId !== 'string') {
+      throw new Error('NodeAttach frame missing systemId');
+    }
+    frame.systemId = systemId;
+    frame.system_id = systemId;
+
+    const instanceId = frame.instanceId ?? frame.instance_id ?? null;
+    if (instanceId !== null && instanceId !== undefined) {
+      frame.instanceId = instanceId as string;
+      frame.instance_id = instanceId as string;
+    }
+
+    const assignedPath = frame.assignedPath ?? frame.assigned_path ?? null;
+    if (assignedPath !== null && assignedPath !== undefined) {
+      frame.assignedPath = assignedPath as string;
+      frame.assigned_path = assignedPath as string;
+    }
+
+    const callbackGrants =
+      frame.callbackGrants ?? frame.callback_grants ?? null;
+    if (callbackGrants !== null && callbackGrants !== undefined) {
+      frame.callbackGrants = callbackGrants as typeof frame.callbackGrants;
+      frame.callback_grants = callbackGrants as typeof frame.callbackGrants;
+    }
+
+    const rawStickiness = (frame as Record<string, unknown>).stickiness;
+    const stickiness = normalizeStickinessAliases(
+      rawStickiness as Stickiness | Record<string, unknown> | null | undefined
+    );
+    if (rawStickiness !== undefined) {
+      frame.stickiness = stickiness ?? undefined;
+      (frame as Record<string, unknown>).stickiness = stickiness ?? undefined;
+    }
+
+    return frame as NodeAttachFrame;
   }
 }

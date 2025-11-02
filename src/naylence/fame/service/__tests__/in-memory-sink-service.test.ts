@@ -193,6 +193,42 @@ describe('InMemorySinkService', () => {
     expect(bindingManager.bind).toHaveBeenCalledWith('sink-generated-1');
   });
 
+  it('accepts snake_case aliases when constructed directly', async () => {
+    const binding = createBinding('sink-alias');
+    const bindingManager = createBindingManager(binding);
+    const deliver = jest.fn(async () => undefined);
+    const brokerConfig = { maxQueueLength: 10 };
+
+    const service = new InMemorySinkService({
+      binding_manager: bindingManager,
+      deliver_fn: deliver,
+      broker_config: brokerConfig,
+      service_name: 'alias-service',
+    } as unknown as Record<string, unknown>);
+
+    expect(service.name).toBe('alias-service');
+
+    await service.createSink({ name: 'sink-alias' } as CreateSinkParams);
+    await service.subscribe({
+      sinkAddress: 'sink-alias',
+      subscriberAddress: 'subscriber',
+    });
+
+    const instances = fanoutModule.__getInstances();
+    expect(instances[0].config).toBe(brokerConfig);
+
+    const channel = instances[0].addSubscriber.mock.calls[0][0] as {
+      send(message: unknown): Promise<void>;
+    };
+
+    await channel.send({ envelope: { id: 'env', to: 'dest' } });
+
+    expect(deliver).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'env', to: 'subscriber' }),
+      undefined
+    );
+  });
+
   it('throws when binding manager does not return binding', async () => {
     const bindingManager: SinkBindingManager = {
       bind: jest.fn(async () => null as any),
@@ -202,6 +238,27 @@ describe('InMemorySinkService', () => {
     await expect(
       service.createSink({ name: 'x' } as CreateSinkParams)
     ).rejects.toThrow('Binding manager did not return a binding');
+  });
+
+  it('factory accepts snake_case configuration', async () => {
+    const binding = createBinding('sink-factory');
+    const bindingManager = createBindingManager(binding);
+    const factory = new InMemorySinkServiceFactory();
+
+    const service = factory.create({
+      binding_manager: bindingManager,
+      service_name: 'factory-service',
+      broker_config: { concurrency: 2 },
+    } as unknown as Record<string, unknown>);
+
+    expect(service).toBeInstanceOf(InMemorySinkService);
+    expect(service.name).toBe('factory-service');
+
+    await service.createSink({ name: 'sink-factory' } as CreateSinkParams);
+    expect(bindingManager.bind).toHaveBeenCalledWith('sink-factory');
+
+    const instances = fanoutModule.__getInstances();
+    expect(instances[0].config).toEqual({ concurrency: 2 });
   });
 
   it('requires sink and subscriber addresses when subscribing', async () => {

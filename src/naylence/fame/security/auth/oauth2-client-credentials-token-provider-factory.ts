@@ -91,8 +91,13 @@ function normalizeConfig(
     scopes,
   };
 
-  if (typeof candidate.audience === 'string' && candidate.audience.length > 0) {
-    normalized.audience = candidate.audience;
+  const audienceCandidate =
+    candidate.audience ?? (candidate as Record<string, unknown>).aud;
+  if (
+    typeof audienceCandidate === 'string' &&
+    audienceCandidate.trim().length > 0
+  ) {
+    normalized.audience = audienceCandidate.trim();
   }
 
   return normalized;

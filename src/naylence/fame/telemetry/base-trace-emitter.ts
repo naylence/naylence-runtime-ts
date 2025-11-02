@@ -69,6 +69,25 @@ function filterAttributes(
   return filtered;
 }
 
+function extractContextValue(
+  context: FameDeliveryContext | undefined,
+  keys: string[]
+): unknown {
+  if (!context) {
+    return undefined;
+  }
+  const source = context as Record<string, unknown>;
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const value = source[key];
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
 export abstract class BaseTraceEmitter
   extends BaseNodeEventListener
   implements TraceEmitter
@@ -232,12 +251,22 @@ export abstract class BaseTraceEmitter
       attributes['node.id'] = node.id;
       attributes['node.sid'] = node.sid ?? null;
 
-      if (context?.fromSystemId) {
-        attributes['from.node_id'] = context.fromSystemId;
+      const fromNodeId = extractContextValue(context, [
+        'fromSystemId',
+        'from_system_id',
+        'fromNodeId',
+        'from_node_id',
+      ]);
+      if (fromNodeId !== undefined && fromNodeId !== null) {
+        attributes['from.node_id'] = String(fromNodeId);
       }
 
-      if (context?.originType) {
-        attributes['from.origin_type'] = context.originType;
+      const originType = extractContextValue(context, [
+        'originType',
+        'origin_type',
+      ]);
+      if (originType !== undefined && originType !== null) {
+        attributes['from.origin_type'] = String(originType);
       }
 
       const scope = this.startSpan('env.received', {

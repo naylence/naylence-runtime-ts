@@ -17,8 +17,35 @@ function buildAssignedPath(parentPath: string, childId: string): string {
 }
 
 export interface StaticNodePlacementStrategyOptions {
-  targetSystemId: string;
-  targetPhysicalPath: string;
+  targetSystemId?: string;
+  targetPhysicalPath?: string;
+  target_system_id?: string;
+  target_physical_path?: string;
+}
+
+function normalizeOptions(
+  options: StaticNodePlacementStrategyOptions | null | undefined
+): { targetSystemId: string; targetPhysicalPath: string } {
+  if (!options || typeof options !== 'object') {
+    throw new TypeError('StaticNodePlacementStrategy options must be an object');
+  }
+
+  const targetSystemId =
+    options.targetSystemId ?? options.target_system_id ?? null;
+  const targetPhysicalPath =
+    options.targetPhysicalPath ?? options.target_physical_path ?? null;
+
+  if (!targetSystemId) {
+    throw new Error('StaticNodePlacementStrategy requires targetSystemId');
+  }
+  if (!targetPhysicalPath) {
+    throw new Error('StaticNodePlacementStrategy requires targetPhysicalPath');
+  }
+
+  return {
+    targetSystemId,
+    targetPhysicalPath,
+  };
 }
 
 export class StaticNodePlacementStrategy implements NodePlacementStrategy {
@@ -26,8 +53,10 @@ export class StaticNodePlacementStrategy implements NodePlacementStrategy {
   private readonly targetPhysicalPath: string;
 
   public constructor(options: StaticNodePlacementStrategyOptions) {
-    this.targetSystemId = options.targetSystemId;
-    this.targetPhysicalPath = options.targetPhysicalPath;
+    const normalized = normalizeOptions(options);
+
+    this.targetSystemId = normalized.targetSystemId;
+    this.targetPhysicalPath = normalized.targetPhysicalPath;
   }
 
   public async place(helloFrame: NodeHelloFrame): Promise<PlacementDecision> {

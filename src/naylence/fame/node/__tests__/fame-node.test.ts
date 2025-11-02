@@ -119,6 +119,45 @@ describe('FameNode', () => {
     await node.stop();
   });
 
+  it('supports snake_case constructor options', () => {
+    const transportListener = new TestTransportListener({
+      type: 'transport',
+      url: 'ws://example.test',
+    });
+
+    const customListener: NodeEventListener = {
+      priority: 42,
+      async onNodeStarted() {
+        // no-op for verification
+      },
+    };
+
+    const serviceManager = new StubServiceManager();
+
+    const node = new FameNode({
+      system_id: 'snake-node',
+      physical_path: '/snake-node',
+      has_parent: true,
+      accepted_logicals: ['alpha'],
+      requested_logicals: ['beta'],
+      public_url: 'https://example.test',
+      event_listeners: [customListener],
+      transport_listeners: [transportListener],
+      service_manager: serviceManager,
+    });
+
+    expect(node.id).toBe('snake-node');
+    expect(node.physicalPath).toBe('/snake-node');
+    expect(node.hasParent).toBe(true);
+    expect(node.publicUrl).toBe('https://example.test');
+    expect(Array.from(node.acceptedLogicals)).toEqual(['alpha']);
+    expect((node as any)._requestedLogicals).toEqual(['beta']);
+    expect(node.eventListeners).toEqual(
+      expect.arrayContaining([customListener, transportListener])
+    );
+    expect(node.serviceManager).toBe(serviceManager);
+  });
+
   it('persists node metadata on startup', async () => {
     const storageProvider = new InMemoryStorageProvider();
     const node = new FameNode({

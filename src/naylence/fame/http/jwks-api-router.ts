@@ -39,6 +39,76 @@ export interface CreateJwksRouterOptions {
   keyTypes?: string[];
 }
 
+interface NormalizedJwksRouterOptions {
+  getJwksJson?: () => { keys: Array<Record<string, unknown>> };
+  cryptoProvider?: CryptoProvider;
+  prefix?: string;
+  keyTypes?: string[];
+}
+
+function coerceString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function coerceStringArray(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((entry) => coerceString(entry))
+      .filter((entry): entry is string => entry !== undefined);
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  const text = coerceString(value);
+  if (text) {
+    return text
+      .split(/[\s,]+/)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  return undefined;
+}
+
+function normalizeCreateJwksRouterOptions(
+  options: CreateJwksRouterOptions | undefined
+): NormalizedJwksRouterOptions {
+  if (!options) {
+    return {};
+  }
+
+  const descriptor = options as CreateJwksRouterOptions &
+    Record<string, unknown>;
+
+  const prefix =
+    coerceString(descriptor.prefix) ?? coerceString(descriptor.prefix as any);
+  const keyTypes =
+    coerceStringArray(descriptor.keyTypes) ??
+    coerceStringArray((descriptor as any).key_types);
+
+  const getJwksJson =
+    descriptor.getJwksJson ??
+    (typeof (descriptor as any).get_jwks_json === 'function'
+      ? ((descriptor as any).get_jwks_json as () => {
+          keys: Array<Record<string, unknown>>;
+        })
+      : undefined);
+
+  const cryptoProvider =
+    descriptor.cryptoProvider ??
+    ((descriptor as any).crypto_provider as CryptoProvider | undefined);
+
+  return {
+    getJwksJson,
+    cryptoProvider,
+    prefix,
+    keyTypes: keyTypes ?? undefined,
+  };
+}
+
 /**
  * Get allowed key types from environment variable or parameter
  */
@@ -103,7 +173,7 @@ export function createJwksRouter(
     cryptoProvider,
     prefix = DEFAULT_PREFIX,
     keyTypes,
-  } = options;
+  } = normalizeCreateJwksRouterOptions(options);
 
   // Get JWKS data
   let jwks: { keys: Array<Record<string, unknown>> };

@@ -5,7 +5,7 @@ import {
   type FameEnvelope,
 } from '@naylence/core';
 
-import { RouteManager } from '../route-manager.js';
+import { RouteManager, type RouteRemovalOptions } from '../route-manager.js';
 import type { RouteEntry } from '../store/route-store.js';
 import type { RouteStore } from '../store/route-store.js';
 import type { AddressRouteInfo } from '../key-frame-handler.js';
@@ -263,6 +263,89 @@ describe('RouteManager', () => {
     expect(manager._downstream_addresses_legacy.size).toBe(0);
     expect(manager._peer_addresses_routes.size).toBe(0);
     expect(manager._pools.get('pool')?.size).toBe(0);
+
+    await manager.shutdownTasks({ cancelHanging: true });
+  });
+
+  it('honors snake_case constructor option aliases', async () => {
+    const store = createRouteStore();
+    const manager = new RouteManager({
+      deliver: jest.fn(),
+      route_store: store,
+      get_id: () => 'snake-id',
+      cleanup_delay_ms: 150,
+      retain_address_bindings_on_disconnect: false,
+    } as unknown as ConstructorParameters<typeof RouteManager>[0]);
+
+    const managerInternals = manager as unknown as {
+      _downstream_route_store: RouteStore;
+      _peer_route_store: RouteStore;
+      cleanupDelayMs: number;
+      retainAddressBindingsOnDisconnect: boolean;
+      getId: () => string;
+    };
+
+    expect(managerInternals._downstream_route_store).toBe(store);
+    expect(managerInternals._peer_route_store).toBe(store);
+    expect(managerInternals.cleanupDelayMs).toBe(150);
+    expect(managerInternals.retainAddressBindingsOnDisconnect).toBe(false);
+    expect(managerInternals.getId()).toBe('snake-id');
+
+    await manager.shutdownTasks({ cancelHanging: true });
+  });
+
+  it('normalizes snake_case removal options when unregistering downstream routes', async () => {
+    const store = createRouteStore();
+    const manager = new RouteManager({
+      deliver: jest.fn(),
+      routeStore: store,
+      retainAddressBindingsOnDisconnect: false,
+    });
+    const connector = createConnectorStub();
+    await manager.registerDownstreamRoute('child', connector);
+
+    manager._downstream_addresses_routes.set('svc@/child', {
+      segment: 'child',
+    } as AddressRouteInfo);
+    manager._downstream_addresses_legacy.set('svc@/child', {
+      segment: 'child',
+    } as AddressRouteInfo);
+    manager._peer_addresses_routes.set('svc@/child', 'child');
+    manager._pools.set('pool', new Set(['child']));
+
+    await manager.unregisterDownstreamRoute('child', {
+      stop: false,
+      delay_ms: 0,
+      capture_stack: false,
+      retain_addresses: true,
+      meta: { source: 'test' },
+      reason: 'snake_case_removal',
+    } as RouteRemovalOptions & {
+      delay_ms: number;
+      capture_stack: boolean;
+      retain_addresses: boolean;
+    });
+
+    expect(manager._downstream_addresses_routes.get('svc@/child')).toEqual({
+      segment: 'child',
+    });
+    expect(manager._downstream_addresses_legacy.get('svc@/child')).toEqual({
+      segment: 'child',
+    });
+    expect(manager._peer_addresses_routes.get('svc@/child')).toBe('child');
+    expect(manager._pools.get('pool')?.has('child')).toBe(true);
+    expect(connector.stop as jest.Mock).not.toHaveBeenCalled();
+
+    const removalCall = loggerMock.debug.mock.calls.find(
+      ([event]) => event === 'removed_route'
+    );
+    expect(removalCall?.[1]).toMatchObject({
+      delay_ms: 0,
+      retained_addresses: true,
+      caller_stack: undefined,
+      meta: { source: 'test' },
+      reason: 'snake_case_removal',
+    });
 
     await manager.shutdownTasks({ cancelHanging: true });
   });

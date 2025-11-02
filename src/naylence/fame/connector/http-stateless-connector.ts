@@ -123,7 +123,21 @@ export class HttpStatelessConnector extends BaseAsyncConnector {
     super(config);
 
     this.url = config.url;
-    const queueSize = config.maxQueue ?? 1024;
+
+    const legacyMaxQueue = (config as { max_queue?: unknown }).max_queue;
+    const preferredQueueValue =
+      config.maxQueue ?? (legacyMaxQueue !== undefined ? legacyMaxQueue : undefined);
+    const parsedQueueValue =
+      typeof preferredQueueValue === 'number'
+        ? preferredQueueValue
+        : preferredQueueValue !== undefined
+          ? Number(preferredQueueValue)
+          : undefined;
+    const queueSize =
+      parsedQueueValue !== undefined && Number.isFinite(parsedQueueValue) && parsedQueueValue > 0
+        ? parsedQueueValue
+        : 1024;
+
     this.receiveQueue = new BoundedAsyncQueue<QueueItem>(queueSize);
 
     const candidateFetch =

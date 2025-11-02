@@ -73,6 +73,130 @@ export interface DefaultCryptoProviderOptions {
   ttlSec?: number | null;
 }
 
+type DefaultCryptoProviderCreateInput =
+  | DefaultCryptoProviderOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizeDefaultCryptoProviderOptions(
+  options?: DefaultCryptoProviderCreateInput
+): DefaultCryptoProviderOptions {
+  if (!options) {
+    return {};
+  }
+
+  const source = options as Record<string, unknown>;
+  const normalized: DefaultCryptoProviderOptions = {};
+
+  const readNullableString = (
+    ...keys: string[]
+  ): string | null | undefined => {
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) {
+        continue;
+      }
+
+      const value = source[key];
+      if (value === undefined) {
+        return undefined;
+      }
+      if (value === null) {
+        return null;
+      }
+      if (typeof value === 'string') {
+        return value;
+      }
+      return String(value);
+    }
+    return undefined;
+  };
+
+  const readNullableNumber = (
+    ...keys: string[]
+  ): number | null | undefined => {
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) {
+        continue;
+      }
+
+      const value = source[key];
+      if (value === undefined) {
+        return undefined;
+      }
+      if (value === null) {
+        return null;
+      }
+      if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : undefined;
+      }
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return undefined;
+        }
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      }
+    }
+    return undefined;
+  };
+
+  const assignStringOption = <
+    Key extends keyof DefaultCryptoProviderOptions,
+  >(
+    targetKey: Key,
+    ...keys: string[]
+  ): void => {
+    const value = readNullableString(...keys);
+    if (value !== undefined) {
+      normalized[targetKey] = value as DefaultCryptoProviderOptions[Key];
+    }
+  };
+
+  assignStringOption(
+    'signaturePrivatePem',
+    'signaturePrivatePem',
+    'signature_private_pem'
+  );
+  assignStringOption(
+    'signaturePublicPem',
+    'signaturePublicPem',
+    'signature_public_pem'
+  );
+  assignStringOption(
+    'signatureKeyId',
+    'signatureKeyId',
+    'signature_key_id'
+  );
+  assignStringOption(
+    'encryptionPrivatePem',
+    'encryptionPrivatePem',
+    'encryption_private_pem'
+  );
+  assignStringOption(
+    'encryptionPublicPem',
+    'encryptionPublicPem',
+    'encryption_public_pem'
+  );
+  assignStringOption(
+    'encryptionKeyId',
+    'encryptionKeyId',
+    'encryption_key_id'
+  );
+  assignStringOption('hmacSecret', 'hmacSecret', 'hmac_secret');
+  assignStringOption('issuer', 'issuer', 'iss');
+  assignStringOption('audience', 'audience', 'aud');
+  assignStringOption('algorithm', 'algorithm', 'alg');
+
+  const ttlSec = readNullableNumber('ttlSec', 'ttl_sec');
+  if (ttlSec !== undefined) {
+    normalized.ttlSec = ttlSec;
+  }
+
+  return normalized;
+}
+
 interface ProviderArtifacts {
   signing: {
     privatePem: string;
@@ -95,9 +219,10 @@ interface ProviderArtifacts {
 
 export class DefaultCryptoProvider implements CryptoProvider {
   public static async create(
-    options: DefaultCryptoProviderOptions = {}
+    options: DefaultCryptoProviderCreateInput = {}
   ): Promise<DefaultCryptoProvider> {
-    const artifacts = await buildProviderArtifacts(options);
+    const normalized = normalizeDefaultCryptoProviderOptions(options);
+    const artifacts = await buildProviderArtifacts(normalized);
     return new DefaultCryptoProvider(artifacts);
   }
 

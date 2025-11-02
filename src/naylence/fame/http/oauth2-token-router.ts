@@ -81,6 +81,102 @@ export interface CreateOAuth2TokenRouterOptions {
   algorithm?: string;
 }
 
+interface NormalizedOAuth2TokenRouterOptions {
+  cryptoProvider?: CryptoProvider;
+  prefix?: string;
+  issuer?: string;
+  audience?: string;
+  tokenTtlSec?: number;
+  allowedScopes?: string[];
+  algorithm?: string;
+}
+
+function coerceString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function coerceNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function coerceStringArray(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const entries = value
+      .map((entry) => coerceString(entry))
+      .filter((entry): entry is string => entry !== undefined);
+    return entries.length > 0 ? entries : undefined;
+  }
+
+  const text = coerceString(value);
+  if (text) {
+    const entries = text
+      .split(/[\s,]+/)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+    return entries.length > 0 ? entries : undefined;
+  }
+
+  return undefined;
+}
+
+function normalizeCreateOAuth2TokenRouterOptions(
+  options: CreateOAuth2TokenRouterOptions
+): NormalizedOAuth2TokenRouterOptions {
+  const descriptor = options as CreateOAuth2TokenRouterOptions &
+    Record<string, unknown>;
+
+  const cryptoProvider =
+    descriptor.cryptoProvider ??
+    ((descriptor as any).crypto_provider as CryptoProvider | undefined);
+
+  const prefix =
+    coerceString(descriptor.prefix) ??
+    coerceString((descriptor as any).prefix);
+
+  const issuer =
+    coerceString(descriptor.issuer) ??
+    coerceString((descriptor as any).issuer);
+
+  const audience =
+    coerceString(descriptor.audience) ??
+    coerceString((descriptor as any).audience);
+
+  const allowedScopes =
+    coerceStringArray(descriptor.allowedScopes) ??
+    coerceStringArray((descriptor as any).allowed_scopes);
+
+  const algorithm =
+    coerceString(descriptor.algorithm) ??
+    coerceString((descriptor as any).algorithm);
+
+  const tokenTtlSec =
+    coerceNumber(descriptor.tokenTtlSec) ??
+    coerceNumber((descriptor as any).token_ttl_sec);
+
+  return {
+    cryptoProvider,
+    prefix,
+    issuer,
+    audience,
+    allowedScopes,
+    algorithm,
+    tokenTtlSec,
+  };
+}
+
 interface ClientCredentials {
   clientId: string;
   clientSecret: string;
@@ -213,10 +309,14 @@ export function createOAuth2TokenRouter(
     prefix = DEFAULT_PREFIX,
     issuer,
     audience,
-    tokenTtlSec = 3600,
+    tokenTtlSec,
     allowedScopes: configAllowedScopes,
     algorithm: configAlgorithm,
-  } = options;
+  } = normalizeCreateOAuth2TokenRouterOptions(options);
+
+  if (!cryptoProvider) {
+    throw new Error('cryptoProvider is required to create OAuth2 token router');
+  }
 
   // Resolve configuration with environment variable priority
   const defaultIssuer =
@@ -228,6 +328,7 @@ export function createOAuth2TokenRouter(
     configAlgorithm ??
     DEFAULT_JWT_ALGORITHM;
   const allowedScopes = getAllowedScopes(configAllowedScopes);
+  const resolvedTokenTtlSec = tokenTtlSec ?? 3600;
 
   logger.debug('oauth2_router_created', {
     prefix,
@@ -235,7 +336,7 @@ export function createOAuth2TokenRouter(
     audience: defaultAudience,
     algorithm,
     allowedScopes,
-    tokenTtlSec,
+    tokenTtlSec: resolvedTokenTtlSec,
   });
 
   // Token endpoint
@@ -335,7 +436,7 @@ export function createOAuth2TokenRouter(
           kid: cryptoProvider.signatureKeyId,
           issuer: defaultIssuer,
           algorithm,
-          ttlSec: tokenTtlSec,
+          ttlSec: resolvedTokenTtlSec,
           audience: defaultAudience,
         });
 
@@ -366,7 +467,7 @@ export function createOAuth2TokenRouter(
         const response: TokenResponse = {
           access_token: accessToken,
           token_type: 'Bearer',
-          expires_in: tokenTtlSec,
+          expires_in: resolvedTokenTtlSec,
         };
 
         if (grantedScopes.length > 0) {

@@ -746,6 +746,29 @@ describe('EnvelopeSecurityHandler', () => {
   });
 
   describe('performEncryption and queue handling', () => {
+    it('normalizes snake_case options before calling the encryption manager', async () => {
+      const encryptionManager = createEncryptionManagerMock();
+      encryptionManager.encryptEnvelope.mockResolvedValue(
+        EncryptionResult.skipped(createEnvelope())
+      );
+
+      const { handler } = createHandler({ encryptionManager });
+      const envelope = createEnvelope();
+      const context = createContext({ originType: DeliveryOriginType.LOCAL });
+
+      await (handler as any).performEncryption(envelope, context, {
+        request_address: 'naylence://node/peer-alias',
+      } as any as EncryptionOptions);
+
+      expect(encryptionManager.encryptEnvelope).toHaveBeenCalledWith(
+        envelope,
+        expect.objectContaining({
+          requestAddress: 'naylence://node/peer-alias',
+          request_address: 'naylence://node/peer-alias',
+        })
+      );
+    });
+
     it('queues envelopes by recipient key id when encryption manager defers encryption', async () => {
       const encryptionManager = createEncryptionManagerMock();
       encryptionManager.encryptEnvelope.mockResolvedValue(
@@ -763,7 +786,7 @@ describe('EnvelopeSecurityHandler', () => {
         originType: DeliveryOriginType.LOCAL,
         fromSystemId: 'local',
       });
-      const options: EncryptionOptions = { recipKid: 'target-kid' };
+      const options: EncryptionOptions = { recipientKeyId: 'target-kid' };
 
       let result = false;
       try {
@@ -777,7 +800,11 @@ describe('EnvelopeSecurityHandler', () => {
       }
 
       expect(result).toBe(false);
-      expect(queueMock).toHaveBeenCalledWith(envelope, context, options);
+      expect(queueMock).toHaveBeenCalledWith(
+        envelope,
+        context,
+        expect.objectContaining({ recipientKeyId: 'target-kid' })
+      );
     });
 
     it('handles queueing by request address when provided', async () => {
@@ -810,6 +837,40 @@ describe('EnvelopeSecurityHandler', () => {
       );
     });
 
+    it('handles queueing by request_address alias when provided', async () => {
+      const encryptionManager = createEncryptionManagerMock();
+      encryptionManager.encryptEnvelope.mockResolvedValue(
+        EncryptionResult.queued()
+      );
+      const keyManagement = createKeyManagementHandlerMock();
+      const { handler } = createHandler({ encryptionManager, keyManagement });
+
+      const envelope = createEnvelope();
+      const context = createContext({
+        originType: DeliveryOriginType.LOCAL,
+        fromSystemId: 'system-alias',
+      });
+
+      await (handler as any).handleEncryptionQueueing(envelope, context, {
+        request_address: 'naylence://node/peer-alias',
+      } as any as EncryptionOptions);
+
+      expect(
+        keyManagement.fns.queuePendingEncryptionEnvelope
+      ).toHaveBeenCalledWith(
+        'naylence://node/peer-alias',
+        envelope,
+        context
+      );
+      expect(
+        keyManagement.fns.maybeRequestEncryptionKeyByAddress
+      ).toHaveBeenCalledWith(
+        'naylence://node/peer-alias',
+        DeliveryOriginType.LOCAL,
+        'system-alias'
+      );
+    });
+
     it('skips queueing when channel encryption queueing is handled internally', async () => {
       const { handler, keyManagement } = createHandler();
 
@@ -823,6 +884,26 @@ describe('EnvelopeSecurityHandler', () => {
           encryptionType: 'channel',
           destination: 'naylence://channel/123',
         }
+      );
+
+      expect(
+        keyManagement.fns.queuePendingEncryptionEnvelope
+      ).not.toHaveBeenCalled();
+    });
+
+    it('skips queueing when snake_case channel encryption is handled internally', async () => {
+      const { handler, keyManagement } = createHandler();
+
+      await (handler as any).handleEncryptionQueueing(
+        createEnvelope(),
+        createContext({
+          originType: DeliveryOriginType.LOCAL,
+          fromSystemId: 'system-chan',
+        }),
+        {
+          encryption_type: 'channel',
+          destination: 'naylence://channel/alias',
+        } as any as EncryptionOptions
       );
 
       expect(
@@ -1065,9 +1146,44 @@ describe('EnvelopeSecurityHandler', () => {
           envelope,
           createContext()
         );
-        expect(spy).toHaveBeenCalledWith(envelope, expect.any(Object), {
-          requestAddress: 'naylence://peer/1',
-        });
+        expect(spy).toHaveBeenCalledWith(
+          envelope,
+          expect.any(Object),
+          expect.objectContaining({
+            requestAddress: 'naylence://peer/1',
+          })
+        );
+      } finally {
+        (handler as any).handleToBeEncryptedEnvelopeWithOptions = original;
+      }
+    });
+
+    it('wraps snake_case channel encryption options into request address', async () => {
+      const securityPolicy = createSecurityPolicyMock();
+      securityPolicy.getEncryptionOptions.mockResolvedValue({
+        encryption_type: 'channel',
+      } as any);
+      const { handler } = createHandler({ securityPolicy });
+
+      const original = (handler as any).handleToBeEncryptedEnvelopeWithOptions;
+      const spy = jest.fn().mockResolvedValue(true);
+      (handler as any).handleToBeEncryptedEnvelopeWithOptions = spy;
+
+      const envelope = createEnvelope({ to: 'naylence://peer/1a' });
+
+      try {
+        await (handler as any).handleSealedEncryption(
+          envelope,
+          createContext()
+        );
+        expect(spy).toHaveBeenCalledWith(
+          envelope,
+          expect.any(Object),
+          expect.objectContaining({
+            requestAddress: 'naylence://peer/1a',
+            request_address: 'naylence://peer/1a',
+          })
+        );
       } finally {
         (handler as any).handleToBeEncryptedEnvelopeWithOptions = original;
       }
@@ -1088,9 +1204,13 @@ describe('EnvelopeSecurityHandler', () => {
           envelope,
           createContext()
         );
-        expect(spy).toHaveBeenCalledWith(envelope, expect.any(Object), {
-          requestAddress: 'naylence://peer/2',
-        });
+        expect(spy).toHaveBeenCalledWith(
+          envelope,
+          expect.any(Object),
+          expect.objectContaining({
+            requestAddress: 'naylence://peer/2',
+          })
+        );
       } finally {
         (handler as any).handleToBeEncryptedEnvelopeWithOptions = original;
       }
@@ -1114,9 +1234,13 @@ describe('EnvelopeSecurityHandler', () => {
           envelope,
           createContext()
         );
-        expect(spy).toHaveBeenCalledWith(envelope, expect.any(Object), {
-          requestAddress: 'naylence://peer/3',
-        });
+        expect(spy).toHaveBeenCalledWith(
+          envelope,
+          expect.any(Object),
+          expect.objectContaining({
+            requestAddress: 'naylence://peer/3',
+          })
+        );
       } finally {
         (handler as any).handleToBeEncryptedEnvelopeWithOptions = original;
       }
@@ -1140,10 +1264,14 @@ describe('EnvelopeSecurityHandler', () => {
           envelope,
           createContext()
         );
-        expect(spy).toHaveBeenCalledWith(envelope, expect.any(Object), {
-          encryptionType: 'sealed',
-          kid: 'abc',
-        });
+        expect(spy).toHaveBeenCalledWith(
+          envelope,
+          expect.any(Object),
+          expect.objectContaining({
+            encryptionType: 'sealed',
+            kid: 'abc',
+          })
+        );
       } finally {
         (handler as any).handleToBeEncryptedEnvelopeWithOptions = original;
       }
@@ -1175,10 +1303,14 @@ describe('EnvelopeSecurityHandler', () => {
           envelope,
           createContext()
         );
-        expect(spy).toHaveBeenCalledWith(envelope, expect.any(Object), {
-          encryptionType: 'channel',
-          destination: 'naylence://channel/88',
-        });
+        expect(spy).toHaveBeenCalledWith(
+          envelope,
+          expect.any(Object),
+          expect.objectContaining({
+            encryptionType: 'channel',
+            destination: 'naylence://channel/88',
+          })
+        );
       } finally {
         (handler as any).handleToBeEncryptedEnvelopeWithOptions = original;
       }
@@ -1251,9 +1383,10 @@ describe('EnvelopeSecurityHandler', () => {
         expect(spy).toHaveBeenCalledWith(
           expect.any(Object),
           expect.any(Object),
-          {
+          expect.objectContaining({
             requestAddress: 'dest',
-          }
+            request_address: 'dest',
+          })
         );
       } finally {
         (handler as any).performEncryption = original;
@@ -1320,9 +1453,10 @@ describe('EnvelopeSecurityHandler', () => {
         expect(spy).toHaveBeenCalledWith(
           expect.any(Object),
           expect.any(Object),
-          {
+          expect.objectContaining({
             encryptionType: 'sealed',
-          }
+            encryption_type: 'sealed',
+          })
         );
       } finally {
         (handler as any).performEncryption = original;
@@ -1351,7 +1485,7 @@ describe('EnvelopeSecurityHandler', () => {
       );
     });
 
-    it('queues by recip_kid option', async () => {
+    it('queues by recipKid option (legacy compatibility)', async () => {
       const keyManagement = createKeyManagementHandlerMock();
       const { handler } = createHandler({ keyManagement });
       const envelope = createEnvelope();
@@ -1364,6 +1498,11 @@ describe('EnvelopeSecurityHandler', () => {
       expect(
         keyManagement.fns.queuePendingEncryptionEnvelope
       ).toHaveBeenCalledWith('kid-2', envelope, context);
+      expect(keyManagement.fns.maybeRequestEncryptionKey).toHaveBeenCalledWith(
+        'kid-2',
+        DeliveryOriginType.LOCAL,
+        'sys-b'
+      );
     });
 
     it('queues by recipientKeyId option', async () => {
@@ -1379,6 +1518,11 @@ describe('EnvelopeSecurityHandler', () => {
       expect(
         keyManagement.fns.queuePendingEncryptionEnvelope
       ).toHaveBeenCalledWith('kid-3', envelope, context);
+      expect(keyManagement.fns.maybeRequestEncryptionKey).toHaveBeenCalledWith(
+        'kid-3',
+        DeliveryOriginType.LOCAL,
+        'sys-c'
+      );
     });
 
     it('returns early when key management handler is missing', async () => {

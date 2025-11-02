@@ -26,7 +26,8 @@ type DeliverFn = (
 type DeliverWrapper = () => DeliverFn;
 
 interface StopState {
-  stopped: boolean;
+  stopped?: boolean;
+  stop_state?: boolean;
 }
 
 export class ChannelPollingManager {
@@ -51,7 +52,7 @@ export class ChannelPollingManager {
       let draining = false;
 
       while (true) {
-        if (stopState.stopped && !draining) {
+  if (this.isStopRequested(stopState) && !draining) {
           draining = true;
           logger.debug('poll_loop_draining_pending_messages', {
             recipient: serviceName,
@@ -73,7 +74,7 @@ export class ChannelPollingManager {
           }
 
           if (error instanceof TaskTimeoutError) {
-            if (stopState.stopped) {
+            if (this.isStopRequested(stopState)) {
               break;
             }
             continue;
@@ -87,7 +88,7 @@ export class ChannelPollingManager {
           }
 
           if (error instanceof Error && error.name === 'TimeoutError') {
-            if (stopState.stopped) {
+            if (this.isStopRequested(stopState)) {
               break;
             }
             continue;
@@ -108,7 +109,7 @@ export class ChannelPollingManager {
           }
 
           if (error instanceof Error && error.message.includes('Timeout')) {
-            if (stopState.stopped) {
+            if (this.isStopRequested(stopState)) {
               break;
             }
             continue;
@@ -129,7 +130,7 @@ export class ChannelPollingManager {
         }
 
         if (message == null) {
-          if (stopState.stopped) {
+          if (this.isStopRequested(stopState)) {
             break;
           }
 
@@ -222,5 +223,17 @@ export class ChannelPollingManager {
     );
 
     await this.deliverWrapper()(response.envelope, responseContext);
+  }
+
+  private isStopRequested(state: StopState): boolean {
+    if (state.stopped === true) {
+      return true;
+    }
+
+    if ((state as { stop_state?: boolean }).stop_state === true) {
+      return true;
+    }
+
+    return false;
   }
 }

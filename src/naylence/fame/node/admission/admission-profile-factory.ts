@@ -32,71 +32,82 @@ const PROFILE_NAME_OPEN = 'open';
 const PROFILE_NAME_NOOP = 'noop';
 const PROFILE_NAME_NONE = 'none';
 
+function createOAuthTokenProviderConfig() {
+  const tokenUrl = Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL);
+  const clientId = Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID);
+  const clientSecret = Expressions.env(ENV_VAR_ADMISSION_CLIENT_SECRET);
+  const audience = Expressions.env(ENV_VAR_JWT_AUDIENCE);
+
+  return {
+    type: 'OAuth2ClientCredentialsTokenProvider',
+    token_url: tokenUrl,
+    tokenUrl,
+    client_id: clientId,
+    clientId,
+    client_secret: clientSecret,
+    clientSecret,
+    scopes: ['node.connect'],
+    audience,
+  };
+}
+
+const welcomeIsRoot = Expressions.env(ENV_VAR_IS_ROOT, 'false');
+const welcomeTokenProvider = createOAuthTokenProviderConfig();
+
 const WELCOME_SERVICE_PROFILE: AdmissionConfig = {
   type: 'WelcomeServiceClient',
-  is_root: Expressions.env(ENV_VAR_IS_ROOT, 'false'),
+  is_root: welcomeIsRoot,
+  isRoot: welcomeIsRoot,
   url: Expressions.env(ENV_VAR_ADMISSION_SERVICE_URL),
   supported_transports: ['websocket'],
   supportedTransports: ['websocket'],
   auth: {
     type: 'BearerTokenHeaderAuth',
-    token_provider: {
-      type: 'OAuth2ClientCredentialsTokenProvider',
-      token_url: Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL),
-      client_id: Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID),
-      client_secret: Expressions.env(ENV_VAR_ADMISSION_CLIENT_SECRET),
-      scopes: ['node.connect'],
-      audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
-    },
+    token_provider: welcomeTokenProvider,
+    tokenProvider: welcomeTokenProvider,
   },
 };
 
+const directGrantTokenProvider = createOAuthTokenProviderConfig();
+const directGrant = {
+  type: 'WebSocketConnectionGrant',
+  purpose: GRANT_PURPOSE_NODE_ATTACH,
+  url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
+  auth: {
+    type: 'WebSocketSubprotocolAuth',
+    token_provider: directGrantTokenProvider,
+    tokenProvider: directGrantTokenProvider,
+  },
+  ttl: 0,
+  durable: false,
+};
+const directGrants = [directGrant];
+
 const DIRECT_PROFILE: AdmissionConfig = {
   type: 'DirectAdmissionClient',
-  connection_grants: [
-    {
-      type: 'WebSocketConnectionGrant',
-      purpose: GRANT_PURPOSE_NODE_ATTACH,
-      url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
-      auth: {
-        type: 'WebSocketSubprotocolAuth',
-        token_provider: {
-          type: 'OAuth2ClientCredentialsTokenProvider',
-          token_url: Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL),
-          client_id: Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID),
-          client_secret: Expressions.env(ENV_VAR_ADMISSION_CLIENT_SECRET),
-          scopes: ['node.connect'],
-          audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
-        },
-      },
-      ttl: 0,
-      durable: false,
-    },
-  ],
+  connection_grants: directGrants,
+  connectionGrants: directGrants,
 };
+
+const directHttpTokenProvider = createOAuthTokenProviderConfig();
+const directHttpGrant = {
+  type: 'HttpConnectionGrant',
+  purpose: GRANT_PURPOSE_NODE_ATTACH,
+  url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
+  auth: {
+    type: 'BearerTokenHeaderAuth',
+    token_provider: directHttpTokenProvider,
+    tokenProvider: directHttpTokenProvider,
+  },
+  ttl: 0,
+  durable: false,
+};
+const directHttpGrants = [directHttpGrant];
 
 const DIRECT_HTTP_PROFILE: AdmissionConfig = {
   type: 'DirectAdmissionClient',
-  connection_grants: [
-    {
-      type: 'HttpConnectionGrant',
-      purpose: GRANT_PURPOSE_NODE_ATTACH,
-      url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
-      auth: {
-        type: 'BearerTokenHeaderAuth',
-        token_provider: {
-          type: 'OAuth2ClientCredentialsTokenProvider',
-          token_url: Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL),
-          client_id: Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID),
-          client_secret: Expressions.env(ENV_VAR_ADMISSION_CLIENT_SECRET),
-          scopes: ['node.connect'],
-          audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
-        },
-      },
-      ttl: 0,
-      durable: false,
-    },
-  ],
+  connection_grants: directHttpGrants,
+  connectionGrants: directHttpGrants,
 };
 
 const OPEN_PROFILE: AdmissionConfig = {
@@ -113,11 +124,24 @@ const OPEN_PROFILE: AdmissionConfig = {
       durable: false,
     },
   ],
+  connectionGrants: [
+    {
+      type: 'WebSocketConnectionGrant',
+      purpose: GRANT_PURPOSE_NODE_ATTACH,
+      url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
+      auth: {
+        type: 'NoAuth',
+      },
+      ttl: 0,
+      durable: false,
+    },
+  ],
 };
 
 const NOOP_PROFILE: AdmissionConfig = {
   type: 'NoopAdmissionClient',
   auto_accept_logicals: true,
+  autoAcceptLogicals: true,
 };
 
 const PROFILE_MAP: Record<string, AdmissionConfig> = {

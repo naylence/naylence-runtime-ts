@@ -51,14 +51,25 @@ export interface InMemoryFanoutBrokerConfig {
 export class InMemoryFanoutBroker extends TaskSpawner {
   private readonly _sink: ReadWriteChannel;
   private readonly _subscribers = new Set<WriteChannel>();
+  private readonly _pollTimeoutMs: number;
   private readonly _pollTimeoutSec: number;
   private _running = false;
 
   constructor(sink: ReadWriteChannel, config: InMemoryFanoutBrokerConfig = {}) {
     super();
     this._sink = sink;
-    this._pollTimeoutSec =
-      (config.pollTimeoutMs ?? DEFAULT_POLLING_TIMEOUT_MS) / 1000.0;
+    const legacyPollTimeoutMs = (config as { poll_timeout_ms?: number })
+      .poll_timeout_ms;
+    const configuredPollTimeoutMs =
+      typeof config.pollTimeoutMs === 'number'
+        ? config.pollTimeoutMs
+        : legacyPollTimeoutMs;
+
+    this._pollTimeoutMs =
+      typeof configuredPollTimeoutMs === 'number'
+        ? configuredPollTimeoutMs
+        : DEFAULT_POLLING_TIMEOUT_MS;
+    this._pollTimeoutSec = this._pollTimeoutMs / 1000.0;
   }
 
   /**
@@ -231,5 +242,10 @@ export class InMemoryFanoutBroker extends TaskSpawner {
    */
   get subscribers(): ReadonlySet<WriteChannel> {
     return new Set(this._subscribers);
+  }
+
+  /** Poll timeout applied to the broker's sink channel in milliseconds */
+  get pollTimeoutMs(): number {
+    return this._pollTimeoutMs;
   }
 }

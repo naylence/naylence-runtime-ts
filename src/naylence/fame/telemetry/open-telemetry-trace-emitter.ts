@@ -105,16 +105,13 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   private authStrategy: AuthInjectionStrategy | null;
   private shutdownInvoked = false;
 
-  public constructor(options: {
-    serviceName: string;
-    tracer?: Tracer;
-    lifecycle?: OtelLifecycleControl | null;
-    authStrategy?: AuthInjectionStrategy | null;
-  }) {
+  public constructor(options: OpenTelemetryTraceEmitterOptionsInput) {
     super();
-    this.tracer = options.tracer ?? trace.getTracer(options.serviceName);
-    this.lifecycle = options.lifecycle ?? null;
-    this.authStrategy = options.authStrategy ?? null;
+    const normalized = normalizeOpenTelemetryTraceEmitterOptions(options);
+    this.tracer =
+      normalized.tracer ?? trace.getTracer(normalized.serviceName);
+    this.lifecycle = normalized.lifecycle ?? null;
+    this.authStrategy = normalized.authStrategy ?? null;
   }
 
   public startSpan(name: string, options?: TraceSpanOptions): TraceSpanScope {
@@ -229,6 +226,82 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
     }
     return hex;
   }
+}
+
+type OpenTelemetryTraceEmitterOptionsInput = {
+  serviceName?: string;
+  service_name?: string;
+  tracer?: Tracer;
+  lifecycle?: OtelLifecycleControl | null;
+  lifeCycle?: OtelLifecycleControl | null;
+  life_cycle?: OtelLifecycleControl | null;
+  authStrategy?: AuthInjectionStrategy | null;
+  auth_strategy?: AuthInjectionStrategy | null;
+};
+
+type NormalizedOpenTelemetryTraceEmitterOptions = {
+  serviceName: string;
+  tracer?: Tracer;
+  lifecycle?: OtelLifecycleControl | null;
+  authStrategy?: AuthInjectionStrategy | null;
+};
+
+function normalizeOpenTelemetryTraceEmitterOptions(
+  input: OpenTelemetryTraceEmitterOptionsInput
+): NormalizedOpenTelemetryTraceEmitterOptions {
+  const source = (input ?? {}) as Record<string, unknown>;
+
+  const serviceName =
+    extractNonEmptyString(
+      pickFirst<string>(source, ['serviceName', 'service_name'])
+    ) ?? 'naylence-service';
+
+  const tracer = pickFirst<Tracer | undefined>(source, ['tracer']);
+
+  const lifecycle =
+    pickFirst<OtelLifecycleControl | null>(source, [
+      'lifecycle',
+      'lifeCycle',
+      'life_cycle',
+    ]) ?? null;
+
+  const authStrategy =
+    pickFirst<AuthInjectionStrategy | null>(source, [
+      'authStrategy',
+      'auth_strategy',
+    ]) ?? null;
+
+  return {
+    serviceName,
+    tracer,
+    lifecycle,
+    authStrategy,
+  };
+}
+
+function pickFirst<T>(
+  source: Record<string, unknown>,
+  keys: string[]
+): T | undefined {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const value = source[key] as T | undefined;
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
+function extractNonEmptyString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return undefined;
 }
 
 function normalizeAttributeValue(value: unknown): AttributeValue {

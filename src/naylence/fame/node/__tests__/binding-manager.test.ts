@@ -135,6 +135,26 @@ describe('BindingManager', () => {
     }
   }
 
+  it('supports snake_case option aliases', async () => {
+    const manager = new BindingManager({
+      has_upstream: false,
+      get_id: () => 'node-1',
+      get_physical_path: () => '/node-1',
+      get_accepted_logicals: () => new Set<string>(),
+      forward_upstream: async () => {
+        /* no-op */
+      },
+      envelope_factory: {
+        createEnvelope: createFameEnvelope,
+      },
+      delivery_tracker: new DeliveryTracker(),
+    });
+
+    await manager.bind('service');
+
+    expect(manager.hasBinding('service@/node-1')).toBe(true);
+  });
+
   it('binds local participant without upstream', async () => {
     const manager = createManager();
     const binding = await manager.bind('service');
@@ -377,7 +397,7 @@ describe('BindingManager', () => {
       acceptedLogicals: ['api.service'],
     });
 
-    await withEnvelopeContext({ trace_id: 'trace-123' }, () =>
+    await withEnvelopeContext({ traceId: 'trace-123' }, () =>
       manager.bind('svc@api.service')
     );
 

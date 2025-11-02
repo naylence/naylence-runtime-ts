@@ -106,6 +106,24 @@ function tryGetImportMetaUrl(): string | undefined {
   }
 }
 
+function readEnvValue(
+  env: Record<string, string | undefined> | undefined,
+  aliases: string[]
+): string | undefined {
+  if (!env) {
+    return undefined;
+  }
+
+  for (const alias of aliases) {
+    const value = env[alias];
+    if (typeof value === 'string') {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 function resolveFromEnv(
   env: Record<string, string | undefined> | undefined
 ): string | null {
@@ -113,13 +131,22 @@ function resolveFromEnv(
     return null;
   }
 
-  const explicit = env.NAYLENCE_RUNTIME_VERSION?.trim();
+  const explicitRaw = readEnvValue(env, [
+    'NAYLENCE_RUNTIME_VERSION',
+    'naylence_runtime_version',
+    'naylenceRuntimeVersion',
+    'NaylenceRuntimeVersion',
+  ]);
+  const explicit = explicitRaw?.trim();
   if (explicit) {
     return explicit;
   }
 
-  const npmName = env.npm_package_name;
-  const npmVersion = env.npm_package_version;
+  const npmName = readEnvValue(env, ['npm_package_name', 'npmPackageName']);
+  const npmVersion = readEnvValue(env, [
+    'npm_package_version',
+    'npmPackageVersion',
+  ]);
   if (npmName === '@naylence/runtime' && typeof npmVersion === 'string') {
     return npmVersion;
   }

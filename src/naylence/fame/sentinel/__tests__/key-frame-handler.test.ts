@@ -359,6 +359,41 @@ describe('KeyFrameHandler', () => {
     );
   });
 
+  it('accepts key announce when context uses snake_case aliases', async () => {
+    const acceptParent = jest.fn();
+    const handler = new KeyFrameHandler({
+      routingNode: createRoutingNode(),
+      routeManager: {
+        peer_routes: { 'peer-alias': {} },
+      } as any,
+      bindingManager: createBindingManager(),
+      acceptKeyAnnounceParent: acceptParent,
+      keyManager: createKeyManager(),
+      correlationMap: createCorrelationMap({ pop: jest.fn(() => null) }),
+    });
+
+    const frame = makeKeyAnnounceFrame();
+    const envelope = createEnvelope(frame);
+    const context = {
+      origin_type: DeliveryOriginType.PEER,
+      from_system_id: 'peer-alias',
+    } as unknown as FameDeliveryContext;
+
+    await handler.acceptKeyAnnounce(envelope, context);
+
+    expect(acceptParent).toHaveBeenCalledWith(
+      envelope,
+      expect.objectContaining({
+        originType: DeliveryOriginType.PEER,
+        fromSystemId: 'peer-alias',
+      })
+    );
+    expect(context.originType).toBe(DeliveryOriginType.PEER);
+    expect((context as any).origin_type).toBe(DeliveryOriginType.PEER);
+    expect(context.fromSystemId).toBe('peer-alias');
+    expect((context as any).from_system_id).toBe('peer-alias');
+  });
+
   it('warns and skips when frame is not a key announce', async () => {
     const handler = new KeyFrameHandler({
       routingNode: createRoutingNode(),
@@ -882,6 +917,62 @@ describe('KeyFrameHandler', () => {
       expect.objectContaining({ kid: 'kid-meta', physicalPath: '/meta/path' })
     );
     expect(context.stickinessRequired).toBe(true);
+  });
+
+  it('handles key request when metadata and context use snake_case fields', async () => {
+    const keyManager = createKeyManager();
+
+    const handler = new KeyFrameHandler({
+      routingNode: createRoutingNode(),
+      routeManager: {
+        downstream_addresses_routes: {
+          'svc@/alias': {
+            encryptionKeyId: 'kid-alias',
+            physicalPath: '/alias/path',
+          },
+        },
+      } as any,
+      bindingManager: createBindingManager(),
+      acceptKeyAnnounceParent: jest.fn(),
+      keyManager,
+      correlationMap: createCorrelationMap(),
+    });
+
+    const context = {
+      origin_type: DeliveryOriginType.DOWNSTREAM,
+      from_system_id: 'segment-alias',
+    } as unknown as FameDeliveryContext;
+
+    const frame: KeyRequestFrame = {
+      type: 'KeyRequest',
+      address: 'svc@/alias',
+    } as KeyRequestFrame;
+    const envelope = createEnvelope(frame, {
+      corrId: 'corr-alias',
+      sid: 'sid-alias',
+    });
+
+    const handled = await handler.acceptKeyRequest(envelope, context);
+
+    expect(handled).toBe(true);
+    expect(keyManager.handleKeyRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kid: 'kid-alias',
+        origin: DeliveryOriginType.DOWNSTREAM,
+        fromSegment: 'segment-alias',
+        physicalPath: '/alias/path',
+        correlationId: 'corr-alias',
+        originalClientSid: 'sid-alias',
+      })
+    );
+    expect(context.originType).toBe(DeliveryOriginType.DOWNSTREAM);
+    expect((context as any).origin_type).toBe(DeliveryOriginType.DOWNSTREAM);
+    expect(context.fromSystemId).toBe('segment-alias');
+    expect((context as any).from_system_id).toBe('segment-alias');
+    expect(context.stickinessRequired).toBe(true);
+    expect((context as any).stickiness_required).toBe(true);
+    expect(context.stickySid).toBe('sid-alias');
+    expect((context as any).sticky_sid).toBe('sid-alias');
   });
 
   it('logs when route metadata encryption key handling fails', async () => {

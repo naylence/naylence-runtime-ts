@@ -65,7 +65,7 @@ export class SentinelFactory extends NodeLikeFactory<SentinelConfig> {
       ...(config ?? {}),
       type: 'Node' as const,
     });
-    const components = await makeCommonOptions(baseNodeConfig);
+    const components = await makeCommonOptions(baseNodeConfig, config ?? null);
 
     const eventListeners: NodeEventListener[] = [...components.eventListeners];
     const transportListeners = await this.ensureTransportListeners(

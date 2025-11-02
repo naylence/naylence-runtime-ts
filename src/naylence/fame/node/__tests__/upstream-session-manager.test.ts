@@ -178,6 +178,29 @@ describe('UpstreamSessionManager', () => {
     jest.restoreAllMocks();
   });
 
+  it('supports snake_case constructor options', () => {
+    const manager = new UpstreamSessionManager({
+      node,
+      attach_client: attachClient,
+      requested_logicals: ['alias-logic'],
+      outbound_origin_type: DeliveryOriginType.LOCAL,
+      inbound_origin_type: DeliveryOriginType.LOCAL,
+      inbound_handler: inboundHandler,
+      on_welcome: onWelcome,
+      on_attach: onAttach,
+      on_epoch_change: onEpochChange,
+      admission_client: admissionClient,
+    } as never);
+
+    const internal = manager as unknown as {
+      requestedLogicals: string[];
+      outboundOriginType: DeliveryOriginType;
+    };
+
+    expect(internal.requestedLogicals).toEqual(['alias-logic']);
+    expect(internal.outboundOriginType).toBe(DeliveryOriginType.LOCAL);
+  });
+
   function createTaskStub(
     promise: Promise<void> = Promise.resolve(),
     overrides: Partial<SpawnedTask<void>> = {}

@@ -24,6 +24,95 @@ export interface OAuth2ClientCredentialsTokenProviderOptions {
   clockSkewSeconds?: number;
 }
 
+type SnakeCaseOAuth2ClientCredentialsOptions = Partial<
+  Record<
+    | 'token_url'
+    | 'client_id_provider'
+    | 'client_secret_provider'
+    | 'scope'
+    | 'scopes'
+    | 'audience'
+    | 'aud'
+    | 'fetch_impl'
+    | 'clock_skew_seconds',
+    unknown
+  >
+>;
+
+function normalizeOptions(
+  raw:
+    | OAuth2ClientCredentialsTokenProviderOptions
+    | Record<string, unknown>
+): OAuth2ClientCredentialsTokenProviderOptions {
+  const camel = raw as OAuth2ClientCredentialsTokenProviderOptions;
+  const snake = raw as SnakeCaseOAuth2ClientCredentialsOptions;
+
+  const tokenUrlCandidate = camel.tokenUrl ?? snake.token_url;
+  const tokenUrl =
+    typeof tokenUrlCandidate === 'string' && tokenUrlCandidate.trim().length > 0
+      ? tokenUrlCandidate.trim()
+      : undefined;
+  if (!tokenUrl) {
+    throw new Error('OAuth2 token URL must be provided');
+  }
+
+  const clientIdProvider =
+    camel.clientIdProvider ??
+    (snake.client_id_provider as CredentialProvider | undefined);
+  if (!clientIdProvider) {
+    throw new Error('OAuth2 client ID provider must be supplied');
+  }
+
+  const clientSecretProvider =
+    camel.clientSecretProvider ??
+    (snake.client_secret_provider as CredentialProvider | undefined);
+  if (!clientSecretProvider) {
+    throw new Error('OAuth2 client secret provider must be supplied');
+  }
+
+  const scopesCandidate = camel.scopes ?? snake.scopes ?? snake.scope;
+  let scopes: string[] | undefined;
+  if (Array.isArray(scopesCandidate)) {
+    scopes = scopesCandidate
+      .map((scope) => (typeof scope === 'string' ? scope.trim() : ''))
+      .filter((scope) => scope.length > 0);
+  } else if (typeof scopesCandidate === 'string') {
+    scopes = scopesCandidate
+      .split(/[\s,]+/)
+      .map((scope) => scope.trim())
+      .filter((scope) => scope.length > 0);
+  }
+
+  const audienceCandidate = camel.audience ?? snake.audience ?? snake.aud;
+  const audience =
+    typeof audienceCandidate === 'string' && audienceCandidate.trim().length > 0
+      ? audienceCandidate.trim()
+      : undefined;
+
+  const fetchImplCandidate = camel.fetchImpl ?? snake.fetch_impl;
+  const fetchImpl =
+    typeof fetchImplCandidate === 'function'
+      ? (fetchImplCandidate as FetchLike)
+      : undefined;
+
+  const clockSkewCandidate =
+    camel.clockSkewSeconds ?? snake.clock_skew_seconds;
+  const clockSkewSeconds =
+    typeof clockSkewCandidate === 'number' && Number.isFinite(clockSkewCandidate)
+      ? clockSkewCandidate
+      : undefined;
+
+  return {
+    tokenUrl,
+    clientIdProvider,
+    clientSecretProvider,
+    ...(scopes ? { scopes } : {}),
+    ...(audience ? { audience } : {}),
+    ...(fetchImpl ? { fetchImpl } : {}),
+    ...(clockSkewSeconds !== undefined ? { clockSkewSeconds } : {}),
+  };
+}
+
 interface OAuth2TokenResponse {
   access_token?: string;
   expires_in?: number;
@@ -38,13 +127,16 @@ const DEFAULT_CLOCK_SKEW_SECONDS = 30;
 
 export class OAuth2ClientCredentialsTokenProvider implements TokenProvider {
   private cachedToken: Token | undefined;
+  private readonly options: OAuth2ClientCredentialsTokenProviderOptions;
 
   constructor(
-    private readonly options: OAuth2ClientCredentialsTokenProviderOptions
+    rawOptions:
+      | OAuth2ClientCredentialsTokenProviderOptions
+      | Record<string, unknown>
   ) {
-    if (!options.tokenUrl) {
-      throw new Error('OAuth2 token URL must be provided');
-    }
+    const options = normalizeOptions(rawOptions);
+
+    this.options = options;
   }
 
   public async getToken(): Promise<Token> {

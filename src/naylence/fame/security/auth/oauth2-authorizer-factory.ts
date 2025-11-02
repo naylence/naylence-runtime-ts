@@ -155,8 +155,10 @@ function normalizeConfig(
     throw new Error('OAuth2Authorizer configuration requires "issuer"');
   }
 
+  const audienceCandidate =
+    source.audience ?? (source as Record<string, unknown>).aud;
   const audienceRaw =
-    typeof source.audience === 'string' ? source.audience : null;
+    typeof audienceCandidate === 'string' ? audienceCandidate : null;
   const audience =
     audienceRaw && audienceRaw.trim().length > 0
       ? audienceRaw.trim()
@@ -247,8 +249,11 @@ function normalizeConfig(
     tokenVerifierConfig,
     reverseAuthTtlSec: reverseAuthCandidate,
     ...(audience ? { audience } : {}),
-    ...(tokenIssuerConfig ? { tokenIssuerConfig } : {}),
   };
+
+  if (tokenIssuerConfig) {
+    normalized.tokenIssuerConfig = tokenIssuerConfig;
+  }
 
   return normalized;
 }

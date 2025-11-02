@@ -8,11 +8,20 @@ type NodeTracerProvider =
   import('@opentelemetry/sdk-trace-node').NodeTracerProvider;
 
 export interface SetupOtelOptions {
-  serviceName: string;
+  serviceName?: string;
+  service_name?: string;
   endpoint?: string | null;
+  otlpEndpoint?: string | null;
+  otlp_endpoint?: string | null;
   environment?: string | null;
+  deploymentEnvironment?: string | null;
+  deployment_environment?: string | null;
   sampler?: string | null;
+  samplingStrategy?: string | null;
+  sampling_strategy?: string | null;
   headers?: Record<string, string> | undefined;
+  otlpHeaders?: Record<string, string> | undefined;
+  otlp_headers?: Record<string, string> | undefined;
 }
 
 export interface OtelLifecycleControl {
@@ -28,10 +37,12 @@ let registeredOtel: {
 export async function setupOtel(
   options: SetupOtelOptions
 ): Promise<OtelLifecycleControl | null> {
+  const normalized = normalizeSetupOtelOptions(options);
+
   try {
     if (registeredOtel) {
       logger.debug('open_telemetry_reusing_provider', {
-        service_name: options.serviceName,
+        service_name: normalized.serviceName,
       });
       return registeredOtel.control;
     }
@@ -67,22 +78,22 @@ export async function setupOtel(
       currentProvider.constructor?.name === 'NodeTracerProvider'
     ) {
       logger.debug('open_telemetry_existing_node_provider', {
-        service_name: options.serviceName,
+        service_name: normalized.serviceName,
       });
       return null;
     }
 
     logger.debug('open_telemetry_initializing', {
-      service_name: options.serviceName,
-      endpoint: options.endpoint ?? null,
-      environment: options.environment ?? null,
-      sampler: options.sampler ?? null,
+      service_name: normalized.serviceName,
+      endpoint: normalized.endpoint ?? null,
+      environment: normalized.environment ?? null,
+      sampler: normalized.sampler ?? null,
       headers_present: Boolean(
-        options.headers && Object.keys(options.headers).length
+        normalized.headers && Object.keys(normalized.headers).length
       ),
     });
 
-    const sampler = resolveSampler(options.sampler, {
+    const sampler = resolveSampler(normalized.sampler, {
       ParentBasedSampler,
       AlwaysOnSampler,
       AlwaysOffSampler,
@@ -91,15 +102,15 @@ export async function setupOtel(
 
     const baseResource = defaultResource();
     const mergedResource = resourceFromAttributes({
-      'service.name': options.serviceName,
+      'service.name': normalized.serviceName,
       'service.instance.id': generateInstanceId(),
-      'deployment.environment': options.environment ?? 'dev',
+      'deployment.environment': normalized.environment ?? 'dev',
     });
     const resource = baseResource.merge(mergedResource);
 
     const exporter = await resolveExporter(
-      options.endpoint ?? undefined,
-      options.headers,
+      normalized.endpoint ?? undefined,
+      normalized.headers,
       ConsoleSpanExporter
     );
 
@@ -112,7 +123,7 @@ export async function setupOtel(
     provider.register();
 
     logger.debug('open_telemetry_initialized', {
-      service_name: options.serviceName,
+      service_name: normalized.serviceName,
       exporter: exporter.constructor?.name ?? 'unknown_exporter',
     });
 
@@ -158,6 +169,94 @@ export async function setupOtel(
     });
     return null;
   }
+}
+
+interface NormalizedSetupOtelOptions {
+  serviceName: string;
+  endpoint: string | null;
+  environment: string | null;
+  sampler: string | null;
+  headers?: Record<string, string>;
+}
+
+function normalizeSetupOtelOptions(
+  options: SetupOtelOptions
+): NormalizedSetupOtelOptions {
+  const source = (options ?? {}) as Record<string, unknown>;
+
+  const serviceName =
+    extractNonEmptyString(
+      pickFirst(source, ['serviceName', 'service_name'])
+    ) ?? 'naylence-service';
+
+  const endpoint =
+    extractNonEmptyString(
+      pickFirst(source, ['endpoint', 'otlpEndpoint', 'otlp_endpoint'])
+    ) ?? null;
+
+  const environment =
+    extractNonEmptyString(
+      pickFirst(source, [
+        'environment',
+        'deploymentEnvironment',
+        'deployment_environment',
+      ])
+    ) ?? null;
+
+  const sampler =
+    extractNonEmptyString(
+      pickFirst(source, ['sampler', 'samplingStrategy', 'sampling_strategy'])
+    ) ?? null;
+
+  const headers = extractHeaders(
+    pickFirst(source, ['headers', 'otlpHeaders', 'otlp_headers'])
+  );
+
+  return {
+    serviceName,
+    endpoint,
+    environment,
+    sampler,
+    headers: headers ?? undefined,
+  };
+}
+
+function pickFirst<T>(
+  source: Record<string, unknown>,
+  keys: string[]
+): T | undefined {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const value = source[key] as T | undefined;
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
+function extractNonEmptyString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return undefined;
+}
+
+function extractHeaders(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const headers: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw === 'string') {
+      headers[key] = raw;
+    }
+  }
+  return Object.keys(headers).length > 0 ? headers : null;
 }
 
 function generateInstanceId(): string {

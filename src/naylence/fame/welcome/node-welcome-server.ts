@@ -17,29 +17,15 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { WelcomeServiceFactory } from './welcome-service-factory.js';
 import { nodeWelcomeRouter } from './node-welcome-router.js';
+import {
+  getAllowedKeyTypesFromEnv,
+  resolveServerAddress,
+} from './node-welcome-server-env.js';
 import { getLogger } from '../util/logging.js';
 import { DefaultCryptoProvider } from '../security/crypto/providers/default-crypto-provider.js';
 import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 
-const ENV_VAR_FAME_APP_HOST = 'FAME_APP_HOST';
-const ENV_VAR_FAME_APP_PORT = 'FAME_APP_PORT';
-const ENV_VAR_KEY_TYPES = 'FAME_JWKS_KEY_TYPES';
-
 const logger = getLogger('naylence.fame.welcome.node_welcome_server');
-
-/**
- * Get allowed key types from environment variable
- */
-function getAllowedKeyTypes(): string[] | null {
-  const envKeyTypes = process.env[ENV_VAR_KEY_TYPES];
-  if (envKeyTypes) {
-    return envKeyTypes
-      .split(/[,\s]+/)
-      .map((kty) => kty.trim())
-      .filter((kty) => kty.length > 0);
-  }
-  return null;
-}
 
 /**
  * Filter JWKS keys by allowed key types
@@ -100,7 +86,7 @@ async function createApp(): Promise<FastifyInstance> {
 
   // Register JWKS endpoint using the same crypto provider
   // This provides the public keys for JWT verification
-  const allowedKeyTypes = getAllowedKeyTypes();
+  const allowedKeyTypes = getAllowedKeyTypesFromEnv();
 
   fastify.get('/fame/welcome/.well-known/jwks.json', async () => {
     const jwks = cryptoProvider.getJwks?.() ?? { keys: [] };
@@ -125,10 +111,9 @@ async function createApp(): Promise<FastifyInstance> {
 
 async function main(): Promise<void> {
   try {
-    const app = await createApp();
+  const app = await createApp();
 
-    const host = process.env[ENV_VAR_FAME_APP_HOST] || '0.0.0.0';
-    const port = parseInt(process.env[ENV_VAR_FAME_APP_PORT] || '8090', 10);
+  const { host, port } = resolveServerAddress();
 
     await app.listen({ host, port });
 

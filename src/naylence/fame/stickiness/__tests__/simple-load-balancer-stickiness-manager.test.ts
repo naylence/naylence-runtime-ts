@@ -74,6 +74,36 @@ describe('SimpleLoadBalancerStickinessManager', () => {
     expect(result).toEqual({ enabled: false, version: 4 });
   });
 
+  it('accepts snake_case supported_modes offers with mixed casing', () => {
+    const manager = new SimpleLoadBalancerStickinessManager(enabledConfig);
+    const offer = {
+      supported_modes: ['ATTR'],
+      version: '6',
+    } as unknown as Stickiness;
+
+    const result = manager.negotiate(offer);
+
+    expect(result).toEqual({ enabled: true, mode: 'attr', version: 6 });
+  });
+
+  it('treats offered mode values case-insensitively', () => {
+    const manager = new SimpleLoadBalancerStickinessManager(enabledConfig);
+    const offer = { mode: 'Attr', version: 7 } as unknown as Stickiness;
+
+    const result = manager.negotiate(offer);
+
+    expect(result).toEqual({ enabled: true, mode: 'attr', version: 7 });
+  });
+
+  it('coerces string version values when disabling stickiness', () => {
+    const manager = new SimpleLoadBalancerStickinessManager(null);
+    const offer = { mode: 'attr', version: '8' } as unknown as Stickiness;
+
+    const result = manager.negotiate(offer);
+
+    expect(result).toEqual({ enabled: false, version: 8 });
+  });
+
   it('returns null routing when stickiness disabled locally', () => {
     const manager = new SimpleLoadBalancerStickinessManager(null);
     const envelope = createEnvelope({ sid: 'sid-1' });

@@ -7,6 +7,7 @@
 
 import type { NodeEventListener } from '../node/node-event-listener.js';
 import type { NodeLike } from '../node/node-like.js';
+import { withLegacySnakeCaseKeys as ensureLegacySnakeCaseKeys } from '../util/util.js';
 
 /**
  * Abstract base class for transport listeners.
@@ -34,7 +35,8 @@ export abstract class TransportListener implements NodeEventListener {
   /**
    * Return a descriptor that can be used to create callback grants
    * for this listener. This will be used to automatically derive
-   * callback_grants in NodeAttachFrame for reverse admission.
+  * callbackGrants (legacy callback_grants) in NodeAttachFrame for reverse
+  * admission.
    *
    * @returns Dictionary containing connector type and configuration
    */
@@ -50,5 +52,12 @@ export abstract class TransportListener implements NodeEventListener {
    */
   asCallbackGrant(): Record<string, any> | null {
     return this.getCallbackGrant();
+  }
+
+  /** Convenience wrapper around util.withLegacySnakeCaseKeys. */
+  protected withLegacySnakeCaseKeys<T extends Record<string, unknown>>(
+    descriptor: T
+  ): T & Record<string, unknown> {
+    return ensureLegacySnakeCaseKeys(descriptor);
   }
 }

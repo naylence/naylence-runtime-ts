@@ -95,6 +95,38 @@ describe('WebSocketTransportProvisioner', () => {
 
     expect(result.metadata).toMatchObject({ ttlSec: 90 });
   });
+
+  it('normalizes ttl using snake_case configuration', async () => {
+    const provisioner =
+      await TransportProvisionerFactory.createTransportProvisioner({
+        type: 'WebSocketTransportProvisioner',
+        url: 'ws://fabric/ws',
+        ttl_sec: 45,
+      });
+
+    const hello = makeHelloFrame({ supportedTransports: ['websocket'] });
+    const decision = makePlacementDecision();
+
+    const result = await provisioner.provision(decision, hello, {});
+
+    expect(result.metadata).toMatchObject({ ttlSec: 45 });
+  });
+
+  it('parses ttl when provided as string alias', async () => {
+    const provisioner =
+      await TransportProvisionerFactory.createTransportProvisioner({
+        type: 'WebSocketTransportProvisioner',
+        url: 'ws://fabric/ws',
+        ttlSEC: '120',
+      } as any);
+
+    const hello = makeHelloFrame({ supportedTransports: ['websocket'] });
+    const decision = makePlacementDecision();
+
+    const result = await provisioner.provision(decision, hello, {});
+
+    expect(result.metadata).toMatchObject({ ttlSec: 120 });
+  });
 });
 
 describe('TransportProvisionerFactory', () => {

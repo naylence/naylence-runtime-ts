@@ -24,6 +24,11 @@ type CapabilityRouteEntry = {
   segment: string;
 };
 
+type RouteRegistryLike =
+  | Map<string, unknown>
+  | Record<string, unknown>
+  | undefined;
+
 export interface CapabilityFrameHandlerOptions {
   routingNode: RoutingNodeLike;
   routeManager: RouteManager;
@@ -66,7 +71,9 @@ export class CapabilityFrameHandler {
     }
 
     const segment = this.getSourceSystemId(context);
-    if (!segment || !this.routeManager.downstreamRoutes.has(segment)) {
+    const downstreamRoutes = getDownstreamRoutes(this.routeManager);
+
+    if (!segment || !hasRoute(downstreamRoutes, segment)) {
       logger.debug('capability_advertise_unknown_segment', { segment });
       return;
     }
@@ -163,8 +170,15 @@ export class CapabilityFrameHandler {
   private getSourceSystemId(
     context: FameDeliveryContext | null | undefined
   ): string | null {
-    if (context?.fromSystemId) {
-      return context.fromSystemId;
+    if (!context) {
+      return null;
+    }
+    const typed = context as FameDeliveryContext & {
+      from_system_id?: string | null;
+    };
+    const candidate = typed.fromSystemId ?? typed.from_system_id ?? null;
+    if (typeof candidate === 'string' && candidate.length) {
+      return candidate;
     }
     return null;
   }
@@ -203,8 +217,8 @@ export class CapabilityFrameHandler {
     return {
       originType: DeliveryOriginType.LOCAL,
       security: context?.security,
-      stickinessRequired: context?.stickinessRequired,
-      stickySid: context?.stickySid,
+      stickinessRequired: getStickinessRequired(context),
+      stickySid: getStickySid(context),
       expectedResponseType: FameResponseType.NONE,
     };
   }
@@ -212,4 +226,52 @@ export class CapabilityFrameHandler {
   private normalizeAddress(address: FameAddress): string {
     return address.toString();
   }
+}
+
+function getDownstreamRoutes(routeManager: RouteManager): RouteRegistryLike {
+  const manager = routeManager as RouteManager & {
+    downstream_routes?: RouteRegistryLike;
+  };
+  return (
+    routeManager.downstreamRoutes ??
+    manager.downstream_routes ??
+    undefined
+  ) as RouteRegistryLike;
+}
+
+function hasRoute(container: RouteRegistryLike, segment: string): boolean {
+  if (!container) {
+    return false;
+  }
+  if (container instanceof Map) {
+    return container.has(segment);
+  }
+  if (typeof container === 'object') {
+    return Object.prototype.hasOwnProperty.call(container, segment);
+  }
+  return false;
+}
+
+function getStickinessRequired(
+  context: FameDeliveryContext | null | undefined
+): boolean | undefined {
+  if (!context) {
+    return undefined;
+  }
+  const typed = context as FameDeliveryContext & {
+    stickiness_required?: boolean;
+  };
+  return typed.stickinessRequired ?? typed.stickiness_required ?? undefined;
+}
+
+function getStickySid(
+  context: FameDeliveryContext | null | undefined
+): string | undefined {
+  if (!context) {
+    return undefined;
+  }
+  const typed = context as FameDeliveryContext & {
+    sticky_sid?: string;
+  };
+  return typed.stickySid ?? typed.sticky_sid ?? undefined;
 }

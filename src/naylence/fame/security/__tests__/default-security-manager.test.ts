@@ -554,6 +554,90 @@ describe('DefaultSecurityManager.handleChildKeyRequest', () => {
   });
 });
 
+describe('DefaultSecurityManager context normalization', () => {
+  function createEnvelope(overrides: Partial<FameEnvelope> = {}): FameEnvelope {
+    return {
+      id: 'env-alias',
+      version: '1.0',
+      ts: new Date(),
+      frame: { type: 'Data' } as FameEnvelope['frame'],
+      ...overrides,
+    };
+  }
+
+  it('normalizes snake_case delivery context for outbound security', async () => {
+    const manager = new DefaultSecurityManager({} as SecurityPolicy);
+    const node = createNodeWithOverrides();
+    const envelope = createEnvelope();
+    const handler = {
+      handleOutboundSecurity: jest.fn(async () => true),
+    };
+
+    (manager as unknown as { _envelopeSecurityHandler: unknown })
+      ._envelopeSecurityHandler = handler;
+
+    const context = {
+      origin_type: DeliveryOriginType.LOCAL,
+      from_system_id: 'snake-origin',
+      expected_response_type: FameResponseType.ACK,
+      stickiness_required: true,
+      sticky_sid: 'sticky-alias',
+      corr_id: 'corr-alias',
+      trace_id: 'trace-alias',
+    } as unknown as FameDeliveryContext;
+
+    await manager.onForwardUpstream(node, envelope, context);
+
+    expect(handler.handleOutboundSecurity).toHaveBeenCalledWith(
+      envelope,
+      expect.objectContaining({
+        originType: DeliveryOriginType.LOCAL,
+        fromSystemId: 'snake-origin',
+        expectedResponseType: FameResponseType.ACK,
+        stickinessRequired: true,
+        stickySid: 'sticky-alias',
+        corrId: 'corr-alias',
+        traceId: 'trace-alias',
+      })
+    );
+  });
+
+  it('hydrates local context using snake_case aliases', async () => {
+    const manager = new DefaultSecurityManager({} as SecurityPolicy);
+    manager.policy = {} as SecurityPolicy;
+    const node = createNodeWithOverrides();
+    const envelope = createEnvelope({ frame: { type: 'KeyRequest' } });
+    const handler = {
+      handleOutboundSecurity: jest.fn(async () => true),
+    };
+
+    (manager as unknown as { _envelopeSecurityHandler: unknown })
+      ._envelopeSecurityHandler = handler;
+
+    const context = {
+      stickiness_required: true,
+      sticky_sid: 'route-sticky',
+      corr_id: 'route-corr',
+      trace_id: 'route-trace',
+    } as unknown as FameDeliveryContext;
+
+    await manager.onForwardToRoute(node, 'segment-1', envelope, context);
+
+    expect(handler.handleOutboundSecurity).toHaveBeenCalledWith(
+      envelope,
+      expect.objectContaining({
+        originType: DeliveryOriginType.LOCAL,
+        fromSystemId: node.id,
+        expectedResponseType: FameResponseType.NONE,
+        stickinessRequired: true,
+        stickySid: 'route-sticky',
+        corrId: 'route-corr',
+        traceId: 'route-trace',
+      })
+    );
+  });
+});
+
 describe('DefaultSecurityManager.getSpawner', () => {
   it('returns a bound spawn function when callable', async () => {
     const manager = new DefaultSecurityManager({} as SecurityPolicy);

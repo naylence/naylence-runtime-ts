@@ -91,11 +91,11 @@ export class LoadBalancingProfileFactory extends LoadBalancingStrategyFactory {
       );
     }
 
-    const profile = (config as Record<string, unknown>).profile;
+  const profileCandidate = this.extractProfile(config);
     if (
-      profile !== undefined &&
-      profile !== null &&
-      typeof profile !== 'string'
+      profileCandidate !== undefined &&
+      profileCandidate !== null &&
+      typeof profileCandidate !== 'string'
     ) {
       throw new Error('profile must be a string when provided');
     }
@@ -103,8 +103,27 @@ export class LoadBalancingProfileFactory extends LoadBalancingStrategyFactory {
     return {
       type: this.type,
       profile:
-        (profile as string | undefined | null) ?? PROFILE_NAME_DEVELOPMENT,
+        (profileCandidate as string | undefined | null) ??
+        PROFILE_NAME_DEVELOPMENT,
     };
+  }
+
+  private extractProfile(
+    config: LoadBalancingProfileConfig | Record<string, unknown>
+  ): unknown {
+    const typedCandidate = config as { profile?: unknown };
+    if (Object.prototype.hasOwnProperty.call(typedCandidate, 'profile')) {
+      return typedCandidate.profile;
+    }
+
+    const recordCandidate = config as Record<string, unknown>;
+    for (const key of ['profile_name', 'profileName'] as const) {
+      if (Object.prototype.hasOwnProperty.call(recordCandidate, key)) {
+        return recordCandidate[key];
+      }
+    }
+
+    return undefined;
   }
 
   private resolveProfile(profile: string): LoadBalancingStrategyConfig {

@@ -29,6 +29,82 @@ export interface RootSessionManagerOptions {
   enableContinuousRefresh?: boolean;
 }
 
+type RootSessionManagerOptionsInput = RootSessionManagerOptions & {
+  admission_client?: AdmissionClient;
+  requested_logicals?: unknown;
+  on_welcome?: WelcomeCallback;
+  on_epoch_change?: EpochCallback;
+  on_admission_failed?: AdmissionFailureCallback;
+  enable_continuous_refresh?: unknown;
+};
+
+function resolveOption<T>(
+  options: RootSessionManagerOptionsInput,
+  primary: keyof RootSessionManagerOptions,
+  ...aliases: string[]
+): T | undefined {
+  const record = options as unknown as Record<string, unknown>;
+  const primaryKey = primary as string;
+  if (record[primaryKey] !== undefined) {
+    return record[primaryKey] as T;
+  }
+
+  for (const alias of aliases) {
+    if (record[alias] !== undefined) {
+      return record[alias] as T;
+    }
+  }
+
+  return undefined;
+}
+
+function coerceStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === 'string');
+}
+
+function resolveStringArrayOption(
+  options: RootSessionManagerOptionsInput,
+  primary: keyof RootSessionManagerOptions,
+  ...aliases: string[]
+): string[] | undefined {
+  const value = resolveOption<unknown>(options, primary, ...aliases);
+  if (value === undefined) {
+    return undefined;
+  }
+  return coerceStringArray(value);
+}
+
+function resolveBooleanOption(
+  options: RootSessionManagerOptionsInput,
+  primary: keyof RootSessionManagerOptions,
+  ...aliases: string[]
+): boolean | undefined {
+  const value = resolveOption<unknown>(options, primary, ...aliases);
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+
+  return undefined;
+}
+
 export class RootSessionManager extends TaskSpawner implements SessionManager {
   public static readonly BACKOFF_INITIAL = 1.0;
   public static readonly BACKOFF_CAP = 30.0;
@@ -52,15 +128,58 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
   private admissionEpoch = 0;
   private currentWelcome: NodeWelcomeFrame | null = null;
 
-  constructor(options: RootSessionManagerOptions) {
+  constructor(options: RootSessionManagerOptionsInput) {
     super();
-    this.node = options.node;
-    this.admissionClient = options.admissionClient;
-    this.requestedLogicals = [...options.requestedLogicals];
-    this.onWelcome = options.onWelcome;
-    this.onEpochChange = options.onEpochChange;
-    this.onAdmissionFailed = options.onAdmissionFailed;
-    this.enableContinuousRefresh = options.enableContinuousRefresh ?? true;
+    const node = resolveOption<NodeLike | undefined>(options, 'node');
+    const admissionClient = resolveOption<AdmissionClient | undefined>(
+      options,
+      'admissionClient',
+      'admission_client'
+    );
+    const requestedLogicals =
+      resolveStringArrayOption(
+        options,
+        'requestedLogicals',
+        'requested_logicals'
+      ) ?? [];
+    const onWelcome = resolveOption<WelcomeCallback | undefined>(
+      options,
+      'onWelcome',
+      'on_welcome'
+    );
+    const onEpochChange = resolveOption<EpochCallback | undefined>(
+      options,
+      'onEpochChange',
+      'on_epoch_change'
+    );
+    const onAdmissionFailed = resolveOption<
+      AdmissionFailureCallback | undefined
+    >(options, 'onAdmissionFailed', 'on_admission_failed');
+    const enableContinuousRefresh = resolveBooleanOption(
+      options,
+      'enableContinuousRefresh',
+      'enable_continuous_refresh'
+    );
+
+    if (!node) {
+      throw new Error('RootSessionManager requires a node option');
+    }
+    if (!admissionClient) {
+      throw new Error('RootSessionManager requires an admissionClient option');
+    }
+    if (!onWelcome) {
+      throw new Error('RootSessionManager requires an onWelcome callback');
+    }
+
+    this.node = node;
+    this.admissionClient = admissionClient;
+    this.requestedLogicals = [...requestedLogicals];
+    this.onWelcome = onWelcome;
+    this.onEpochChange =
+      typeof onEpochChange === 'function' ? onEpochChange : undefined;
+    this.onAdmissionFailed =
+      typeof onAdmissionFailed === 'function' ? onAdmissionFailed : undefined;
+    this.enableContinuousRefresh = enableContinuousRefresh ?? true;
 
     logger.debug('created_root_session_manager');
   }

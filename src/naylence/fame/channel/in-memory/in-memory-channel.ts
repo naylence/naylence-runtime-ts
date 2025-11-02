@@ -1,9 +1,8 @@
 /**
- * in-memory-channel.ts - In-memory ReadWriteChannel implementation
+ * in-memory-channel.ts - In-memory ReadWriteChannel implementation.
  *
- * TypeScript port of Python's InMemoryReadWriteChannel that uses an internal
- * queue for message storage and provides async read/write operations with
- * timeout support.
+ * Maintains an in-memory queue for async read/write operations with optional
+ * size limits and operation timeouts.
  */
 
 import { ReadWriteChannel } from '@naylence/core';
@@ -12,7 +11,7 @@ import { getLogger } from '../../util/logging.js';
 
 export interface InMemoryChannelConfig {
   /** Maximum queue size (0 = unlimited) */
-  maxsize?: number;
+  maxSize?: number;
   /** Default timeout for operations in milliseconds */
   defaultTimeoutMs?: number;
 }
@@ -30,7 +29,7 @@ interface WaitingReader {
 export class InMemoryReadWriteChannel implements ReadWriteChannel {
   private readonly _queue: any[] = [];
   private readonly _waitingReaders: WaitingReader[] = [];
-  private readonly _maxsize: number;
+  private readonly _maxSize: number;
   private readonly _defaultTimeoutMs: number;
   private _closed = false;
   private readonly logger = getLogger(
@@ -38,7 +37,10 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
   );
 
   constructor(config: InMemoryChannelConfig = {}) {
-    this._maxsize = config.maxsize || 0; // 0 = unlimited
+    const legacyMaxSize = (config as { maxsize?: number }).maxsize;
+    const configuredMaxSize =
+      typeof config.maxSize === 'number' ? config.maxSize : legacyMaxSize;
+    this._maxSize = configuredMaxSize || 0; // 0 = unlimited
     this._defaultTimeoutMs = config.defaultTimeoutMs || 0; // 0 = no timeout
   }
 
@@ -128,12 +130,12 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
     }
 
     // No waiting readers, add to queue if there's space
-    if (this._maxsize === 0 || this._queue.length < this._maxsize) {
+    if (this._maxSize === 0 || this._queue.length < this._maxSize) {
       this._queue.push(message);
       this.logger.debug('send_enqueued_message', {
         queue_length: this._queue.length,
         waiting_readers: this._waitingReaders.length,
-        max_size: this._maxsize,
+        max_size: this._maxSize,
       });
       return;
     }
@@ -143,9 +145,9 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
     // In a full implementation, we'd want to wait for space to become available
     this.logger.error('send_queue_full', {
       queue_length: this._queue.length,
-      max_size: this._maxsize,
+      max_size: this._maxSize,
     });
-    throw new Error(`Channel queue is full (maxsize: ${this._maxsize})`);
+    throw new Error(`Channel queue is full (maxSize: ${this._maxSize})`);
   }
 
   /**
@@ -202,7 +204,7 @@ export class InMemoryReadWriteChannel implements ReadWriteChannel {
    * Check if the queue is full
    */
   get isFull(): boolean {
-    return this._maxsize > 0 && this._queue.length >= this._maxsize;
+    return this._maxSize > 0 && this._queue.length >= this._maxSize;
   }
 
   /**

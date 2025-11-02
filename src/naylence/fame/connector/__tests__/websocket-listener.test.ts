@@ -111,6 +111,7 @@ describe('WebSocketListener grants and lifecycle', () => {
 
     expect(listener.getCallbackGrant()).toEqual({
       type: 'WebSocketListener',
+      baseUrl: 'http://localhost:8080',
       base_url: 'http://localhost:8080',
       host: 'localhost',
       port: 8080,

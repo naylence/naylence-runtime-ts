@@ -242,6 +242,29 @@ describe('CompositeRoutingPolicyFactory', () => {
     );
   });
 
+  it('normalizes snake_case type values and policy_configs alias', async () => {
+    const strategy = { choose: jest.fn() } as unknown as LoadBalancingStrategy;
+    const policy = { kind: 'cap' };
+    createResourceMock.mockResolvedValueOnce(policy);
+
+    const config = {
+      type: 'composite_routing_policy',
+      policy_configs: [{ type: 'capability_aware_routing_policy' }],
+    } as unknown as Record<string, unknown>;
+
+    const result = await factory.create(config, strategy);
+
+    expect(createResourceMock).toHaveBeenCalledWith(
+      ROUTING_POLICY_FACTORY_BASE,
+      { type: 'CapabilityAwareRoutingPolicy' },
+      { factoryArgs: [strategy], validate: false }
+    );
+    expect(result).toEqual({
+      kind: 'CompositeRoutingPolicy',
+      policies: [policy],
+    });
+  });
+
   it('validates config type and array structure', async () => {
     await expect(
       factory.create({ type: 'Other' } as unknown as { type: string })

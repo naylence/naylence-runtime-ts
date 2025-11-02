@@ -9,11 +9,37 @@ export interface CreditUpdateFrameHandlerOptions {
   routeManager: RouteManager;
 }
 
+type CreditUpdateFrameHandlerOptionsInput =
+  | CreditUpdateFrameHandlerOptions
+  | Record<string, unknown>
+  | null
+  | undefined;
+
+function normalizeOptions(
+  options?: CreditUpdateFrameHandlerOptionsInput
+): CreditUpdateFrameHandlerOptions {
+  if (!options || typeof options !== 'object') {
+    throw new Error('CreditUpdateFrameHandler requires a routeManager option');
+  }
+
+  const candidate = options as Record<string, unknown>;
+  const routeManager = (
+    candidate.routeManager ?? candidate.route_manager
+  ) as RouteManager | undefined;
+
+  if (!routeManager) {
+    throw new Error('CreditUpdateFrameHandler requires a routeManager option');
+  }
+
+  return { routeManager };
+}
+
 export class CreditUpdateFrameHandler {
   private readonly routeManager: RouteManager;
 
-  constructor(options: CreditUpdateFrameHandlerOptions) {
-    this.routeManager = options.routeManager;
+  constructor(options: CreditUpdateFrameHandlerOptionsInput) {
+    const normalized = normalizeOptions(options);
+    this.routeManager = normalized.routeManager;
   }
 
   public async acceptCreditUpdate(

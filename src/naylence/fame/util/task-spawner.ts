@@ -21,6 +21,152 @@ import {
 
 const logger = getLogger('naylence.fame.util.task_spawner');
 
+// Allow snake_case configuration inputs to match Python parity.
+type TaskSpawnerConfigInput = TaskSpawnerConfig & {
+  max_concurrent?: number | string;
+  default_timeout?: number | string;
+  auto_cleanup?: boolean | string;
+};
+
+type SpawnTaskOptions = {
+  name?: string;
+  task_name?: string;
+  taskName?: string;
+  timeout?: number | string;
+  task_timeout?: number | string;
+  taskTimeout?: number | string;
+};
+
+type ShutdownOptionsInput = ShutdownOptions & {
+  grace_period?: number | string;
+  gracePeriod?: number | string;
+  cancel_hanging?: boolean | string;
+  cancelHanging?: boolean | string;
+  join_timeout?: number | string;
+  joinTimeout?: number | string;
+};
+
+function firstDefined(
+  source: Record<string, unknown>,
+  keys: string[]
+): unknown {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const value = source[key];
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+  return undefined;
+}
+
+function coerceNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return undefined;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function coerceBoolean(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized.length === 0) {
+      return undefined;
+    }
+    if (['true', '1', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+  }
+  return undefined;
+}
+
+function normalizeTaskSpawnerConfig(
+  config: TaskSpawnerConfigInput = {}
+): Required<TaskSpawnerConfig> {
+  const source = config as Record<string, unknown>;
+
+  const maxConcurrent =
+    coerceNumber(
+      firstDefined(source, ['maxConcurrent', 'max_concurrent'])
+    ) ?? 0;
+
+  const defaultTimeout =
+    coerceNumber(
+      firstDefined(source, ['defaultTimeout', 'default_timeout'])
+    ) ?? 0;
+
+  const autoCleanup =
+    coerceBoolean(
+      firstDefined(source, ['autoCleanup', 'auto_cleanup'])
+    ) ?? true;
+
+  return {
+    maxConcurrent,
+    defaultTimeout,
+    autoCleanup,
+  };
+}
+
+function normalizeSpawnOptions(options: SpawnTaskOptions = {}): {
+  name?: string;
+  timeout?: number;
+} {
+  const source = options as Record<string, unknown>;
+  const nameRaw = firstDefined(source, ['name', 'task_name', 'taskName']);
+  const timeoutRaw = firstDefined(source, [
+    'timeout',
+    'task_timeout',
+    'taskTimeout',
+  ]);
+
+  const name = typeof nameRaw === 'string' ? nameRaw : undefined;
+  const timeout = coerceNumber(timeoutRaw);
+
+  return { name, timeout };
+}
+
+function normalizeShutdownOptions(
+  options: ShutdownOptionsInput = {}
+): Required<ShutdownOptions> {
+  const source = options as Record<string, unknown>;
+
+  const gracePeriod =
+    coerceNumber(
+      firstDefined(source, ['gracePeriod', 'grace_period'])
+    ) ?? 2000;
+  const cancelHanging =
+    coerceBoolean(
+      firstDefined(source, ['cancelHanging', 'cancel_hanging'])
+    ) ?? true;
+  const joinTimeout =
+    coerceNumber(
+      firstDefined(source, ['joinTimeout', 'join_timeout'])
+    ) ?? 1000;
+
+  return {
+    gracePeriod,
+    cancelHanging,
+    joinTimeout,
+  };
+}
+
 // Internal task implementation
 class TaskImpl<T> implements SpawnedTask<T> {
   public readonly id: string;
@@ -104,13 +250,8 @@ export class TaskSpawner {
   private _lastSpawnerError: Error | null = null;
   private _suppressCompletionLogging = false;
 
-  constructor(config: TaskSpawnerConfig = {}) {
-    this._config = {
-      maxConcurrent: config.maxConcurrent ?? 0, // 0 = unlimited
-      defaultTimeout: config.defaultTimeout ?? 0, // 0 = no timeout
-      autoCleanup: config.autoCleanup ?? true,
-      ...config,
-    };
+  constructor(config: TaskSpawnerConfigInput = {}) {
+    this._config = normalizeTaskSpawnerConfig(config);
   }
 
   /**
@@ -118,11 +259,9 @@ export class TaskSpawner {
    */
   spawn<T>(
     taskFn: (signal?: AbortSignal) => Promise<T>,
-    options: {
-      name?: string;
-      timeout?: number;
-    } = {}
+    options: SpawnTaskOptions = {}
   ): SpawnedTask<T> {
+    const normalizedOptions = normalizeSpawnOptions(options);
     // Reset logging suppression when new work is spawned. Any lingering
     // completion events from a previous shutdown will remain suppressed
     // until the corresponding tasks finish.
@@ -139,8 +278,8 @@ export class TaskSpawner {
     }
 
     const taskId = `task-${++this._taskCounter}`;
-    const taskName = options.name || `unnamed-${taskId}`;
-    const timeout = options.timeout ?? this._config.defaultTimeout;
+    const taskName = normalizedOptions.name || `unnamed-${taskId}`;
+    const timeout = normalizedOptions.timeout ?? this._config.defaultTimeout;
 
     logger.debug('starting_background_task', {
       task_name: taskName,
@@ -304,12 +443,9 @@ export class TaskSpawner {
    * This implementation mimics Python's asyncio.wait() behavior more closely
    * for better shutdown performance and responsiveness.
    */
-  async shutdownTasks(options: ShutdownOptions = {}): Promise<void> {
-    const {
-      gracePeriod = 2000, // 2 seconds
-      cancelHanging = true,
-      joinTimeout = 1000, // 1 second
-    } = options;
+  async shutdownTasks(options: ShutdownOptionsInput = {}): Promise<void> {
+    const { gracePeriod, cancelHanging, joinTimeout } =
+      normalizeShutdownOptions(options);
 
     if (this._tasks.size === 0) {
       logger.debug('shutdown_tasks_no_tasks_to_shutdown');

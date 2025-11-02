@@ -70,4 +70,25 @@ describe('HRWLoadBalancingStrategy', () => {
     expect(chosen).toBe('second');
     expect(calls).toEqual(['first:', 'second:']);
   });
+
+  it('accepts snake_case aliases for hash function and sticky attribute', () => {
+    const calls: string[] = [];
+    const strategy = new HRWLoadBalancingStrategy({
+      hash_func: (value: string) => {
+        calls.push(value);
+        return value.includes('beta') ? 7n : 1n;
+      },
+      sticky_attribute: 'session_id',
+    } as unknown as Record<string, unknown>);
+
+    const envelope = {
+      id: 'ignored',
+      session_id: 'sticky-session',
+    } as unknown as FameEnvelope;
+
+    const chosen = strategy.choose(null, ['alpha', 'beta'], envelope);
+
+    expect(chosen).toBe('beta');
+    expect(calls).toEqual(['alpha:sticky-session', 'beta:sticky-session']);
+  });
 });

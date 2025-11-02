@@ -60,6 +60,34 @@ interface SQLiteKeyValueStoreOptions<V> {
   autoRecover?: boolean;
 }
 
+const BOOLEAN_TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
+const BOOLEAN_FALSE_VALUES = new Set(['false', '0', 'no', 'off', '']);
+
+type SQLiteStorageProviderOptionsInput = {
+  dbDirectory?: string;
+  db_directory?: string;
+  isEncrypted?: boolean | string;
+  is_encrypted?: boolean | string;
+  masterKeyProvider?: CredentialProvider | null;
+  master_key_provider?: CredentialProvider | null;
+  masterKey?: CredentialProvider | null;
+  master_key?: CredentialProvider | null;
+  isCached?: boolean | string;
+  is_cached?: boolean | string;
+  enableCaching?: boolean | string;
+  enable_caching?: boolean | string;
+  autoRecover?: boolean | string;
+  auto_recover?: boolean | string;
+};
+
+interface NormalizedSQLiteStorageProviderOptions {
+  dbDirectory: string;
+  isEncrypted: boolean;
+  masterKeyProvider: CredentialProvider | null;
+  isCached: boolean;
+  autoRecover: boolean;
+}
+
 function formatTimestampSuffix(date: Date): string {
   const year = date.getUTCFullYear().toString().padStart(4, '0');
   const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
@@ -350,20 +378,34 @@ export class SQLiteStorageProvider extends EncryptedStorageProviderBase {
   private readonly stores = new Map<string, SQLiteKeyValueStore<any>>();
 
   constructor(
-    dbDirectory: string,
+    optionsOrDirectory:
+      | string
+      | SQLiteStorageProviderOptionsInput = './data/sqlite',
     isEncrypted = false,
     masterKeyProvider: CredentialProvider | null = null,
     isCached = false,
     autoRecover = true
   ) {
+    const normalized = normalizeSQLiteStorageProviderOptions(
+      typeof optionsOrDirectory === 'string'
+        ? {
+            dbDirectory: optionsOrDirectory,
+            isEncrypted,
+            masterKeyProvider,
+            isCached,
+            autoRecover,
+          }
+        : optionsOrDirectory
+    );
+
     super({
-      isEncrypted,
-      masterKeyProvider: masterKeyProvider ?? null,
-      enableCaching: isCached,
+      isEncrypted: normalized.isEncrypted,
+      masterKeyProvider: normalized.masterKeyProvider,
+      enableCaching: normalized.isCached,
     });
 
-    this.dbDirectory = dbDirectory;
-    this.autoRecover = autoRecover;
+    this.dbDirectory = normalized.dbDirectory;
+    this.autoRecover = normalized.autoRecover;
   }
 
   private sanitizeNamespace(namespace: string): string {
@@ -401,4 +443,102 @@ export class SQLiteStorageProvider extends EncryptedStorageProviderBase {
     this.stores.set(cacheKey, store as SQLiteKeyValueStore<any>);
     return store;
   }
+}
+
+function normalizeSQLiteStorageProviderOptions(
+  input: SQLiteStorageProviderOptionsInput
+): NormalizedSQLiteStorageProviderOptions {
+  const source = (input ?? {}) as Record<string, unknown>;
+
+  const dbDirectoryRaw = pickFirst(source, ['dbDirectory', 'db_directory']);
+  const dbDirectory =
+    typeof dbDirectoryRaw === 'string' && dbDirectoryRaw.trim().length > 0
+      ? dbDirectoryRaw
+      : './data/sqlite';
+
+  const isEncrypted = coerceBooleanOption(
+    pickFirst(source, ['isEncrypted', 'is_encrypted']),
+    false,
+    'isEncrypted'
+  );
+
+  const masterKeyProvider =
+    (pickFirst(source, [
+      'masterKeyProvider',
+      'master_key_provider',
+      'masterKey',
+      'master_key',
+    ]) as CredentialProvider | null | undefined) ?? null;
+
+  if (isEncrypted && !masterKeyProvider) {
+    throw new Error(
+      'SQLiteStorageProvider requires a masterKeyProvider when isEncrypted is true'
+    );
+  }
+
+  const isCached = coerceBooleanOption(
+    pickFirst(source, [
+      'isCached',
+      'is_cached',
+      'enableCaching',
+      'enable_caching',
+    ]),
+    false,
+    'isCached'
+  );
+
+  const autoRecover = coerceBooleanOption(
+    pickFirst(source, ['autoRecover', 'auto_recover']),
+    true,
+    'autoRecover'
+  );
+
+  return {
+    dbDirectory,
+    isEncrypted,
+    masterKeyProvider,
+    isCached,
+    autoRecover,
+  };
+}
+
+function coerceBooleanOption(
+  value: unknown,
+  defaultValue: boolean,
+  fieldName: string
+): boolean {
+  if (value === undefined) {
+    return defaultValue;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (BOOLEAN_TRUE_VALUES.has(normalized)) {
+      return true;
+    }
+    if (BOOLEAN_FALSE_VALUES.has(normalized)) {
+      return false;
+    }
+  }
+
+  throw new Error(
+    `Expected a boolean-like value for "${fieldName}" but received "${String(value)}"`
+  );
+}
+
+function pickFirst<T>(
+  source: Record<string, unknown>,
+  keys: string[]
+): T | undefined {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      const value = source[key] as T | undefined;
+      if (value !== undefined) {
+        return value;
+      }
+    }
+  }
+  return undefined;
 }

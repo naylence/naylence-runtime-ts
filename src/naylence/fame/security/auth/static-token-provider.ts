@@ -6,6 +6,12 @@ export interface StaticTokenProviderOptions {
   expiresAt?: number | string | Date | null;
 }
 
+type StaticTokenProviderOptionsInput =
+  | StaticTokenProviderOptions
+  | string
+  | (StaticTokenProviderOptions & Record<string, unknown>)
+  | Record<string, unknown>;
+
 function normalizeExpiresAt(
   expiresAt?: number | string | Date | null
 ): number | undefined {
@@ -46,7 +52,8 @@ function normalizeExpiresAt(
 export class StaticTokenProvider implements TokenProvider {
   private readonly token: Token;
 
-  constructor(options: StaticTokenProviderOptions) {
+  constructor(input: StaticTokenProviderOptionsInput) {
+    const options = normalizeOptions(input);
     if (!options || typeof options.token !== 'string') {
       throw new TypeError('StaticTokenProvider requires a string token value');
     }
@@ -64,4 +71,59 @@ export class StaticTokenProvider implements TokenProvider {
   public async getToken(): Promise<Token> {
     return { ...this.token };
   }
+}
+
+function normalizeOptions(
+  input: StaticTokenProviderOptionsInput
+): StaticTokenProviderOptions {
+  if (input === null || input === undefined) {
+    throw new TypeError('StaticTokenProvider requires a string token value');
+  }
+
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    return { token: trimmed };
+  }
+
+  if (typeof input !== 'object') {
+    throw new TypeError('StaticTokenProvider requires a string token value');
+  }
+
+  const candidate = input as StaticTokenProviderOptions & Record<string, unknown>;
+  const tokenCandidate =
+    candidate.token ??
+    candidate.tokenValue ??
+    candidate.token_value ??
+    candidate.value;
+
+  if (typeof tokenCandidate !== 'string') {
+    throw new TypeError('StaticTokenProvider requires a string token value');
+  }
+
+  const expiresCandidate =
+    candidate.expiresAt ??
+    candidate.expires_at ??
+    candidate.expiration ??
+    candidate.expiration_at;
+
+  let expiresAt: number | string | Date | null | undefined;
+  if (expiresCandidate !== undefined) {
+    if (
+      typeof expiresCandidate === 'string' ||
+      typeof expiresCandidate === 'number' ||
+      expiresCandidate instanceof Date ||
+      expiresCandidate === null
+    ) {
+      expiresAt = expiresCandidate;
+    } else {
+      throw new TypeError(
+        'expiresAt must be a number, string, Date, or null/undefined'
+      );
+    }
+  }
+
+  return {
+    token: tokenCandidate,
+    ...(expiresAt !== undefined ? { expiresAt } : {}),
+  };
 }

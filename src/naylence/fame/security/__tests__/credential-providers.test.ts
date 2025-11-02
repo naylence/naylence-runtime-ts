@@ -1,4 +1,11 @@
+import { Buffer } from 'node:buffer';
 import { CredentialProviderFactory } from '../credential/credential-provider-factory.js';
+import {
+  DevFixedKeyCredentialProviderFactory,
+  type DevFixedKeyCredentialProviderConfig,
+  normalizeDevFixedConfig,
+} from '../credential/dev-fixed-key-credential-provider-factory.js';
+import { DevFixedKeyCredentialProvider } from '../credential/dev-fixed-key-credential-provider.js';
 import {
   type EnvCredentialProviderConfig,
   normalizeEnvConfig,
@@ -137,6 +144,18 @@ describe('SecretSource.normalize', () => {
     expect(normalized).toEqual({
       type: 'SecretStoreCredentialProvider',
       secretName: 'under_score',
+    });
+  });
+
+  it('preserves camelCase keys for record inputs', () => {
+    const normalized = SecretSource.normalize({
+      type: 'SecretStoreCredentialProvider',
+      secretName: 'camelCaseSecret',
+    });
+
+    expect(normalized).toEqual({
+      type: 'SecretStoreCredentialProvider',
+      secretName: 'camelCaseSecret',
     });
   });
 
@@ -282,6 +301,60 @@ describe('Normalization helpers', () => {
         credentialName: '',
       })
     ).toThrow('PromptCredentialProvider requires a non-empty "credentialName"');
+  });
+
+  it('normalizes dev fixed key config variations', () => {
+    const hexKey = 'aa'.repeat(32);
+    const rawBytes = Buffer.alloc(32, 0xbb);
+    const base64Key = Buffer.from(rawBytes).toString('base64');
+
+    expect(
+      normalizeDevFixedConfig({
+        type: 'DevFixedKeyCredentialProvider',
+        key_hex: hexKey,
+      })
+    ).toEqual({
+      type: 'DevFixedKeyCredentialProvider',
+      keyHex: hexKey,
+    });
+
+    expect(
+      normalizeDevFixedConfig({
+        type: 'DevFixedKeyCredentialProvider',
+        keyHex: hexKey,
+      })
+    ).toEqual({
+      type: 'DevFixedKeyCredentialProvider',
+      keyHex: hexKey,
+    });
+
+    expect(
+      normalizeDevFixedConfig({
+        type: 'DevFixedKeyCredentialProvider',
+        key_base64: base64Key,
+      })
+    ).toEqual({
+      type: 'DevFixedKeyCredentialProvider',
+      keyBase64: base64Key,
+    });
+
+    expect(
+      normalizeDevFixedConfig({
+        type: 'DevFixedKeyCredentialProvider',
+        keyBase64: base64Key,
+      })
+    ).toEqual({
+      type: 'DevFixedKeyCredentialProvider',
+      keyBase64: base64Key,
+    });
+
+    expect(() =>
+      normalizeDevFixedConfig({
+        type: 'DevFixedKeyCredentialProvider',
+        keyHex: hexKey,
+        key_base64: base64Key,
+      })
+    ).toThrow('Provide either keyHex or keyBase64, not both');
   });
 });
 
@@ -502,6 +575,37 @@ describe('PromptCredentialProvider', () => {
     } finally {
       globalObject.process = originalProcess;
     }
+  });
+});
+
+describe('DevFixedKeyCredentialProviderFactory', () => {
+  it('creates providers from snake_case hex configuration', async () => {
+    const factory = new DevFixedKeyCredentialProviderFactory();
+    const hexKey = '01'.repeat(32);
+    const provider = await factory.create({
+      type: 'DevFixedKeyCredentialProvider',
+      key_hex: hexKey,
+    } satisfies DevFixedKeyCredentialProviderConfig);
+
+    expect(provider).toBeInstanceOf(DevFixedKeyCredentialProvider);
+    await expect(provider.get()).resolves.toEqual(
+      Uint8Array.from(Buffer.from(hexKey, 'hex'))
+    );
+  });
+
+  it('creates providers from snake_case base64 configuration', async () => {
+    const factory = new DevFixedKeyCredentialProviderFactory();
+    const keyBytes = Buffer.alloc(32, 0x7f);
+    const base64Key = keyBytes.toString('base64');
+    const provider = await factory.create({
+      type: 'DevFixedKeyCredentialProvider',
+      key_base64: base64Key,
+    } satisfies DevFixedKeyCredentialProviderConfig);
+
+    expect(provider).toBeInstanceOf(DevFixedKeyCredentialProvider);
+    await expect(provider.get()).resolves.toEqual(
+      Uint8Array.from(keyBytes)
+    );
   });
 });
 

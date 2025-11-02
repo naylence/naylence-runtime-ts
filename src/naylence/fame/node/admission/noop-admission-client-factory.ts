@@ -51,9 +51,13 @@ function normalizeConfig(
   const systemId =
     typeof candidate.systemId === 'string'
       ? candidate.systemId
-      : typeof fromArgs.systemId === 'string'
-        ? fromArgs.systemId
-        : undefined;
+      : typeof candidate.system_id === 'string'
+        ? candidate.system_id
+        : typeof fromArgs.systemId === 'string'
+          ? fromArgs.systemId
+          : typeof fromArgs.system_id === 'string'
+            ? fromArgs.system_id
+            : undefined;
 
   const autoAcceptLogicals =
     typeof candidate.autoAcceptLogicals === 'boolean'
@@ -62,7 +66,9 @@ function normalizeConfig(
         ? candidate.auto_accept_logicals
         : typeof fromArgs.autoAcceptLogicals === 'boolean'
           ? fromArgs.autoAcceptLogicals
-          : true;
+          : typeof fromArgs.auto_accept_logicals === 'boolean'
+            ? fromArgs.auto_accept_logicals
+            : true;
 
   return {
     autoAcceptLogicals,

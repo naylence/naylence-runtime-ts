@@ -18,6 +18,48 @@ const logger = getLogger('naylence.fame.node.rpc_server_handler');
 
 type RpcHandlerResult = FameMessageResponse | unknown;
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  if (Object.prototype.toString.call(value) !== '[object Object]') {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === null || proto === Object.prototype;
+}
+
+function cloneParams(value: unknown): Record<string, unknown> {
+  if (!isPlainRecord(value)) {
+    return {};
+  }
+  return { ...value };
+}
+
+function coerceReplyDestination(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toString' in value &&
+    typeof (value as { toString: () => unknown }).toString === 'function'
+  ) {
+    const result = (value as { toString: () => unknown }).toString();
+    if (typeof result === 'string') {
+      const trimmed = result.trim();
+      if (trimmed.length > 0 && trimmed !== '[object Object]') {
+        return trimmed;
+      }
+    }
+  }
+
+  return null;
+}
+
 export class RPCServerHandler {
   constructor(
     private readonly envelopeFactory: EnvelopeFactory,
@@ -47,14 +89,17 @@ export class RPCServerHandler {
     });
 
     let request: ReturnType<typeof parseRequest>;
+    let params: Record<string, unknown> = {};
     try {
       request = parseRequest(envelope.frame.payload);
+      params = cloneParams(request.params);
+      const paramKeys = Object.keys(params);
       logger.debug('parsed_rpc_request', {
         service_name: serviceName,
         method: request.method,
         request_id: request.id,
         envelope_id: envelope.id,
-        params_keys: request.params ? Object.keys(request.params) : undefined,
+        params_keys: paramKeys.length > 0 ? paramKeys : undefined,
       });
     } catch (error) {
       logger.warning('request_decode_error', {
@@ -73,7 +118,6 @@ export class RPCServerHandler {
       return;
     }
 
-    const params = (request.params ?? {}) as Record<string, unknown>;
     const replyTo = this.resolveReplyTo(envelope, params);
     if (!replyTo) {
       logger.warning('missing_reply_to', {
@@ -161,17 +205,23 @@ export class RPCServerHandler {
   private resolveReplyTo(
     envelope: FameEnvelope,
     params: Record<string, unknown>
-  ): string | null | undefined {
-    if (envelope.replyTo) {
-      return envelope.replyTo as string;
+  ): string | null {
+    const envelopeReply = coerceReplyDestination(envelope.replyTo);
+    if (envelopeReply) {
+      return envelopeReply;
     }
-    const value = params?.reply_to ?? params?.replyTo;
-    if (typeof value === 'string') {
-      return value;
+
+    const aliases = ['reply_to', 'replyTo', 'reply_address', 'replyAddress'];
+    for (const alias of aliases) {
+      if (!Object.prototype.hasOwnProperty.call(params, alias)) {
+        continue;
+      }
+      const candidate = coerceReplyDestination(params[alias]);
+      if (candidate) {
+        return candidate;
+      }
     }
-    if (typeof value === 'object' && value !== null && 'toString' in value) {
-      return String(value);
-    }
+
     return null;
   }
 
