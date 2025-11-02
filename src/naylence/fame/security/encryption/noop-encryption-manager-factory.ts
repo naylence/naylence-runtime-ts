@@ -39,8 +39,9 @@ export class NoopEncryptionManagerFactory extends EncryptionManagerFactory<NoopE
 
     const aliases = opts as Record<string, unknown>;
 
-    const encryptionType =
-      (opts.encryptionType ?? aliases.encryption_type) as string | undefined;
+    const encryptionType = (opts.encryptionType ?? aliases.encryption_type) as
+      | string
+      | undefined;
     const normalizedEncryptionType =
       typeof encryptionType === 'string'
         ? encryptionType.toLowerCase()

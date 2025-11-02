@@ -126,16 +126,14 @@ function coerceProfileString(value: unknown): string | null {
 const PROFILE_ALIASES: Record<string, string> = {
   noop: PROFILE_NAME_NOOP,
   'no-op': PROFILE_NAME_NOOP,
-  'no_op': PROFILE_NAME_NOOP,
+  no_op: PROFILE_NAME_NOOP,
   'open-telemetry': PROFILE_NAME_OPEN_TELEMETRY,
-  'open_telemetry': PROFILE_NAME_OPEN_TELEMETRY,
+  open_telemetry: PROFILE_NAME_OPEN_TELEMETRY,
   opentelemetry: PROFILE_NAME_OPEN_TELEMETRY,
 };
 
 function canonicalizeProfileName(value: string): string {
-  const normalized = value
-    .replace(/[\s_]+/g, '-')
-    .toLowerCase();
+  const normalized = value.replace(/[\s_]+/g, '-').toLowerCase();
   return PROFILE_ALIASES[normalized] ?? normalized;
 }
 

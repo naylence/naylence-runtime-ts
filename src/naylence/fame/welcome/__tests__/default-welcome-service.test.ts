@@ -222,20 +222,26 @@ describe('DefaultWelcomeService', () => {
 describe('resolveShowEnvelopesFlag', () => {
   it('returns true for snake_case env flag', () => {
     expect(
-      resolveShowEnvelopesFlag({ FAME_SHOW_ENVELOPES: 'true' } as NodeJS.ProcessEnv)
+      resolveShowEnvelopesFlag({
+        FAME_SHOW_ENVELOPES: 'true',
+      } as NodeJS.ProcessEnv)
     ).toBe(true);
   });
 
   it('accepts camelCase alias for env flag', () => {
     expect(
-      resolveShowEnvelopesFlag({ fameShowEnvelopes: 'true' } as NodeJS.ProcessEnv)
+      resolveShowEnvelopesFlag({
+        fameShowEnvelopes: 'true',
+      } as NodeJS.ProcessEnv)
     ).toBe(true);
   });
 
   it('returns false when flag absent or not true', () => {
     expect(resolveShowEnvelopesFlag(undefined)).toBe(false);
     expect(
-      resolveShowEnvelopesFlag({ FAME_SHOW_ENVELOPES: 'false' } as NodeJS.ProcessEnv)
+      resolveShowEnvelopesFlag({
+        FAME_SHOW_ENVELOPES: 'false',
+      } as NodeJS.ProcessEnv)
     ).toBe(false);
   });
 });

@@ -110,7 +110,9 @@ function resolveOriginType(raw: unknown): DeliveryOriginType | null {
     return null;
   }
 
-  const deliveryValues = Object.values(DeliveryOriginType) as DeliveryOriginType[];
+  const deliveryValues = Object.values(
+    DeliveryOriginType
+  ) as DeliveryOriginType[];
 
   if (deliveryValues.includes(raw as DeliveryOriginType)) {
     return raw as DeliveryOriginType;
@@ -452,10 +454,7 @@ export class KeyFrameHandler {
           const kid =
             typeof selected.kid === 'string' ? selected.kid : undefined;
           if (kid) {
-            this.markStickiness(
-              context,
-              originalEnvelope?.sid ?? fromSegment
-            );
+            this.markStickiness(context, originalEnvelope?.sid ?? fromSegment);
 
             await this.sendKeyRequest({
               kid,
@@ -506,10 +505,7 @@ export class KeyFrameHandler {
         if (encryptionKeys.length > 0) {
           const kid = encryptionKeys[0]?.kid;
           if (kid && typeof kid === 'string') {
-            this.markStickiness(
-              context,
-              originalEnvelope?.sid ?? fromSegment
-            );
+            this.markStickiness(context, originalEnvelope?.sid ?? fromSegment);
             await this.sendKeyRequest({
               kid,
               fromSegment,
@@ -540,10 +536,7 @@ export class KeyFrameHandler {
         if (encryptionKeys.length > 0) {
           const kid = encryptionKeys[0]?.kid;
           if (kid && typeof kid === 'string') {
-            this.markStickiness(
-              context,
-              originalEnvelope?.sid ?? fromSegment
-            );
+            this.markStickiness(context, originalEnvelope?.sid ?? fromSegment);
             await this.sendKeyRequest({
               kid,
               fromSegment,

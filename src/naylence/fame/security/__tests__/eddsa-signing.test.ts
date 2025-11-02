@@ -175,9 +175,12 @@ describe('EdDSA envelope signing', () => {
     expect(internals.explicitPrivateKey).toBe(PRIVATE_KEY_BASE64);
     expect(internals.explicitKeyId).toBe('alias-kid');
 
-    const envelope = signer.signEnvelope(createSampleEnvelope({ alias: true }), {
-      physicalPath: PHYSICAL_PATH,
-    });
+    const envelope = signer.signEnvelope(
+      createSampleEnvelope({ alias: true }),
+      {
+        physicalPath: PHYSICAL_PATH,
+      }
+    );
     expect(envelope.sec?.sig?.kid).toBe('alias-kid');
   });
 
@@ -185,14 +188,11 @@ describe('EdDSA envelope signing', () => {
     const signer = new EdDSAEnvelopeSigner({
       cryptoProvider,
     });
-    const verifier = new EdDSAEnvelopeVerifier(
-      keyProvider,
-      {
-        signing_config: {
-          require_cert_sid_match: true,
-        },
-      } as unknown as EdDSAEnvelopeVerifierOptions
-    );
+    const verifier = new EdDSAEnvelopeVerifier(keyProvider, {
+      signing_config: {
+        require_cert_sid_match: true,
+      },
+    } as unknown as EdDSAEnvelopeVerifierOptions);
 
     const internals = verifier as unknown as { signingConfig: SigningConfig };
     expect(internals.signingConfig.requireCertSidMatch).toBe(true);

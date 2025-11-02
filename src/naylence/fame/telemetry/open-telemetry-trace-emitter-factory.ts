@@ -202,9 +202,8 @@ function normalizeConfig(
 
   const candidate = config as Record<string, unknown>;
   const serviceName =
-    extractString(
-      pickFirst(candidate, ['serviceName', 'service_name'])
-    ) ?? 'naylence-service';
+    extractString(pickFirst(candidate, ['serviceName', 'service_name'])) ??
+    'naylence-service';
   const endpoint =
     extractString(
       pickFirst(candidate, ['endpoint', 'otlpEndpoint', 'otlp_endpoint'])
@@ -235,7 +234,8 @@ function normalizeConfig(
     environment,
     sampler,
     headers: headersFromConfig ?? {},
-    auth: (authConfig as AuthInjectionStrategyConfig | null | undefined) ?? null,
+    auth:
+      (authConfig as AuthInjectionStrategyConfig | null | undefined) ?? null,
   };
 }
 

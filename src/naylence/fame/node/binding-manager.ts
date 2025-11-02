@@ -117,15 +117,15 @@ export class BindingManager {
   private readonly capabilitiesByAddress = new Map<string, Set<string>>();
 
   constructor(options: BindingManagerOptions) {
-    const hasUpstream =
-      options.hasUpstream ?? options.has_upstream ?? false;
+    const hasUpstream = options.hasUpstream ?? options.has_upstream ?? false;
 
     const getId = options.getId ?? options.get_id;
     if (!getId) {
       throw new Error('BindingManager requires getId callback');
     }
 
-    const getPhysicalPath = options.getPhysicalPath ?? options.get_physical_path;
+    const getPhysicalPath =
+      options.getPhysicalPath ?? options.get_physical_path;
     if (!getPhysicalPath) {
       throw new Error('BindingManager requires getPhysicalPath callback');
     }
@@ -136,20 +136,17 @@ export class BindingManager {
       throw new Error('BindingManager requires getAcceptedLogicals callback');
     }
 
-    const forwardUpstream =
-      options.forwardUpstream ?? options.forward_upstream;
+    const forwardUpstream = options.forwardUpstream ?? options.forward_upstream;
     if (!forwardUpstream) {
       throw new Error('BindingManager requires forwardUpstream function');
     }
 
-    const envelopeFactory =
-      options.envelopeFactory ?? options.envelope_factory;
+    const envelopeFactory = options.envelopeFactory ?? options.envelope_factory;
     if (!envelopeFactory) {
       throw new Error('BindingManager requires envelopeFactory');
     }
 
-    const deliveryTracker =
-      options.deliveryTracker ?? options.delivery_tracker;
+    const deliveryTracker = options.deliveryTracker ?? options.delivery_tracker;
     if (!deliveryTracker) {
       throw new Error('BindingManager requires deliveryTracker');
     }

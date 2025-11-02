@@ -44,10 +44,8 @@ const createNodePlacementStrategyMock =
   NodePlacementStrategyFactory.createNodePlacementStrategy as jest.Mock;
 const createTransportProvisionerMock =
   TransportProvisionerFactory.createTransportProvisioner as jest.Mock;
-const createTokenIssuerMock =
-  TokenIssuerFactory.createTokenIssuer as jest.Mock;
-const createAuthorizerMock =
-  AuthorizerFactory.createAuthorizer as jest.Mock;
+const createTokenIssuerMock = TokenIssuerFactory.createTokenIssuer as jest.Mock;
+const createAuthorizerMock = AuthorizerFactory.createAuthorizer as jest.Mock;
 const defaultWelcomeServiceCtor = DefaultWelcomeService as unknown as jest.Mock;
 
 describe('DefaultWelcomeServiceFactory', () => {
@@ -127,9 +125,12 @@ describe('DefaultWelcomeServiceFactory', () => {
       config.token_issuer,
       undefined
     );
-    expect(createAuthorizerMock).toHaveBeenCalledWith(config.authorizer_config, {
-      factoryArgs: [],
-    });
+    expect(createAuthorizerMock).toHaveBeenCalledWith(
+      config.authorizer_config,
+      {
+        factoryArgs: [],
+      }
+    );
     expect(defaultWelcomeServiceCtor).toHaveBeenCalledWith(
       expect.objectContaining({
         ttlSec: 180,

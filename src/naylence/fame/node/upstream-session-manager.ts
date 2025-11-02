@@ -107,14 +107,13 @@ function coerceStringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
-  const filtered = value.filter((entry): entry is string => typeof entry === 'string');
+  const filtered = value.filter(
+    (entry): entry is string => typeof entry === 'string'
+  );
   return [...filtered];
 }
 
-function resolveOriginType(
-  value: unknown,
-  label: string
-): DeliveryOriginType {
+function resolveOriginType(value: unknown, label: string): DeliveryOriginType {
   if (value === undefined || value === null) {
     throw new Error(`UpstreamSessionManager requires a ${label} option`);
   }
@@ -202,11 +201,7 @@ function normalizeOptions(
     'onWelcome'
   );
 
-  const onAttach = pickOption<AttachCallback>(
-    record,
-    'onAttach',
-    'on_attach'
-  );
+  const onAttach = pickOption<AttachCallback>(record, 'onAttach', 'on_attach');
   const validatedOnAttach = ensureCallback<AttachCallback>(
     onAttach,
     'onAttach'

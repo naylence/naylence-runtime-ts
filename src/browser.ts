@@ -18,7 +18,12 @@ export * from './naylence/fame/channel/index.js';
 // Storage providers that are safe for browsers (in-memory + IndexedDB)
 export * from './naylence/fame/storage/index.js';
 
-export { getNode, getCurrentNode, withNodeContextAsync, runWithNodeContext } from './naylence/fame/node/node-context-stack.js';
+export {
+  getNode,
+  getCurrentNode,
+  withNodeContextAsync,
+  runWithNodeContext,
+} from './naylence/fame/node/node-context-stack.js';
 
 // Connector layer exports trimmed to browser-safe components
 export {
@@ -100,9 +105,9 @@ if (isBrowserEnvironment) {
         return runtimePluginModulePromise;
       }
 
-      return import(
-        /* @vite-ignore */ specifier
-      ) as Promise<Record<string, unknown>>;
+      return import(/* @vite-ignore */ specifier) as Promise<
+        Record<string, unknown>
+      >;
     };
 
     globalScope.__naylenceFactoryDynamicImporter = loader;

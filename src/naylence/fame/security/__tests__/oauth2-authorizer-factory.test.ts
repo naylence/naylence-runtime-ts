@@ -153,9 +153,8 @@ describe('OAuth2AuthorizerFactory', () => {
       expectedAudience: '/nodes/node-2',
     });
 
-    const reverseConfig = await authorizer.createReverseAuthorizationConfig(
-      node
-    );
+    const reverseConfig =
+      await authorizer.createReverseAuthorizationConfig(node);
     expect(reverseConfig).toBeDefined();
     expect(issue).toHaveBeenCalledWith(
       expect.objectContaining({

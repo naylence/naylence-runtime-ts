@@ -62,9 +62,7 @@ type DefaultSecurityPolicyOptionsInput =
   | null
   | undefined;
 
-function normalizePolicyOptions(
-  options?: DefaultSecurityPolicyOptionsInput
-): {
+function normalizePolicyOptions(options?: DefaultSecurityPolicyOptionsInput): {
   customSigningPolicy?: DefaultSecurityPolicyOptions['customSigningPolicy'];
   customEncryptionPolicy?: DefaultSecurityPolicyOptions['customEncryptionPolicy'];
   signing?: SigningConfiguration | SigningConfig | null;

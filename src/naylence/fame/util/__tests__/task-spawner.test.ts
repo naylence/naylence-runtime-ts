@@ -262,10 +262,13 @@ describe('TaskSpawner', () => {
       const aliasSpawner = new TaskSpawner({ auto_cleanup: false });
 
       try {
-        const stickyTask = aliasSpawner.spawn(async () => {
-          await delay(10);
-          return 'done';
-        }, { name: 'sticky-task' });
+        const stickyTask = aliasSpawner.spawn(
+          async () => {
+            await delay(10);
+            return 'done';
+          },
+          { name: 'sticky-task' }
+        );
 
         await expect(stickyTask.promise).resolves.toBe('done');
         expect(aliasSpawner.taskCount).toBe(1);

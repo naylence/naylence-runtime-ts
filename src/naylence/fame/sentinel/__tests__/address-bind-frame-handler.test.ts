@@ -408,14 +408,10 @@ describe('AddressBindFrameHandler', () => {
         downstream_addresses_routes: downstreamAddressRoutes,
       };
 
-      const {
-        handler,
-        forwardToRoute,
-        forwardToPeers,
-        forwardUpstream,
-      } = createTestContext({
-        routeManager,
-      });
+      const { handler, forwardToRoute, forwardToPeers, forwardUpstream } =
+        createTestContext({
+          routeManager,
+        });
 
       const envelope = createBindEnvelope(address);
       const frameAny = envelope.frame as Record<string, unknown>;

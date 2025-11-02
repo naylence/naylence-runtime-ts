@@ -61,10 +61,13 @@ describe('TraceEmitterProfileFactory', () => {
 
   it('passes through factory args when resolving trace emitter', async () => {
     const extractor = async () => undefined;
-    await factory.create({
-      type: 'TraceEmitterProfile',
-      profile: PROFILE_NAME_NOOP,
-    }, extractor);
+    await factory.create(
+      {
+        type: 'TraceEmitterProfile',
+        profile: PROFILE_NAME_NOOP,
+      },
+      extractor
+    );
 
     expect(createTraceEmitterSpy).toHaveBeenCalledTimes(1);
     const [, options] = createTraceEmitterSpy.mock.calls[0];

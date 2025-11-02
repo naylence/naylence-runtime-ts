@@ -1,33 +1,15 @@
 import type { FameNodeConfig } from '../node-config.js';
 import { makeCommonOptions } from '../factory-commons.js';
 import { SECURITY_MANAGER_FACTORY_BASE_TYPE } from '../../security/security-manager-factory.js';
-import {
-  StorageProviderFactory,
-} from '../../storage/storage-provider-factory.js';
-import {
-  AdmissionClientFactory,
-} from '../admission/admission-client-factory.js';
-import {
-  ReplicaStickinessManagerFactory,
-} from '../../stickiness/replica-stickiness-manager-factory.js';
-import {
-  AttachmentKeyValidatorFactory,
-} from '../../security/keys/attachment-key-validator-factory.js';
-import {
-  KeyStoreFactory,
-} from '../../security/keys/key-store-factory.js';
-import {
-  DeliveryPolicyFactory,
-} from '../../delivery/delivery-policy-factory.js';
-import {
-  TransportListenerFactory,
-} from '../../connector/transport-listener-factory.js';
-import {
-  TraceEmitterFactory,
-} from '../../telemetry/trace-emitter-factory.js';
-import {
-  SecurityManagerFactory,
-} from '../../security/security-manager-factory.js';
+import { StorageProviderFactory } from '../../storage/storage-provider-factory.js';
+import { AdmissionClientFactory } from '../admission/admission-client-factory.js';
+import { ReplicaStickinessManagerFactory } from '../../stickiness/replica-stickiness-manager-factory.js';
+import { AttachmentKeyValidatorFactory } from '../../security/keys/attachment-key-validator-factory.js';
+import { KeyStoreFactory } from '../../security/keys/key-store-factory.js';
+import { DeliveryPolicyFactory } from '../../delivery/delivery-policy-factory.js';
+import { TransportListenerFactory } from '../../connector/transport-listener-factory.js';
+import { TraceEmitterFactory } from '../../telemetry/trace-emitter-factory.js';
+import { SecurityManagerFactory } from '../../security/security-manager-factory.js';
 import { DefaultNodeAttachClient } from '../admission/default-node-attach-client.js';
 import { DefaultDeliveryTracker } from '../../delivery/default-delivery-tracker.js';
 import { createResource } from '@naylence/factory';
@@ -151,21 +133,21 @@ describe('makeCommonOptions alias support', () => {
       }
     );
 
-    (StorageProviderFactory.createStorageProvider as jest.Mock).mockResolvedValue(
-      mockStorageProvider
-    );
+    (
+      StorageProviderFactory.createStorageProvider as jest.Mock
+    ).mockResolvedValue(mockStorageProvider);
 
-    (AdmissionClientFactory.createAdmissionClient as jest.Mock).mockResolvedValue(
-      mockAdmissionClient
-    );
+    (
+      AdmissionClientFactory.createAdmissionClient as jest.Mock
+    ).mockResolvedValue(mockAdmissionClient);
 
-    (ReplicaStickinessManagerFactory.createReplicaStickinessManager as jest.Mock).mockResolvedValue(
-      mockReplicaManager
-    );
+    (
+      ReplicaStickinessManagerFactory.createReplicaStickinessManager as jest.Mock
+    ).mockResolvedValue(mockReplicaManager);
 
-    (AttachmentKeyValidatorFactory.createAttachmentKeyValidator as jest.Mock).mockResolvedValue(
-      mockAttachmentValidator
-    );
+    (
+      AttachmentKeyValidatorFactory.createAttachmentKeyValidator as jest.Mock
+    ).mockResolvedValue(mockAttachmentValidator);
 
     (KeyStoreFactory.createKeyStore as jest.Mock).mockResolvedValue(
       mockKeyStore
@@ -175,23 +157,23 @@ describe('makeCommonOptions alias support', () => {
       mockDeliveryPolicy
     );
 
-    (TransportListenerFactory.createTransportListeners as jest.Mock).mockResolvedValue([
-      mockTransportListener,
-    ]);
+    (
+      TransportListenerFactory.createTransportListeners as jest.Mock
+    ).mockResolvedValue([mockTransportListener]);
 
     (TraceEmitterFactory.createTraceEmitter as jest.Mock).mockResolvedValue(
       mockTraceEmitter
     );
 
-    (SecurityManagerFactory.createSecurityManager as jest.Mock).mockResolvedValue(
-      mockSecurityManager
-    );
+    (
+      SecurityManagerFactory.createSecurityManager as jest.Mock
+    ).mockResolvedValue(mockSecurityManager);
 
     (createResource as jest.Mock).mockResolvedValue(mockSecurityManager);
 
-  defaultDeliveryTrackerMock.mockImplementation(() => ({ priority: 1 }));
+    defaultDeliveryTrackerMock.mockImplementation(() => ({ priority: 1 }));
 
-  defaultNodeAttachClientMock.mockImplementation(() => ({}));
+    defaultNodeAttachClientMock.mockImplementation(() => ({}));
   });
 
   it('accepts snake_case aliases for node factory configuration', async () => {
@@ -217,7 +199,7 @@ describe('makeCommonOptions alias support', () => {
     } as FameNodeConfig;
 
     const config = baseConfig as FameNodeConfig & Record<string, unknown>;
-  config.requested_logicals = ['*.snake'];
+    config.requested_logicals = ['*.snake'];
     config.requested_capabilities = ['snake-cap'];
     config.env_context = { SNAKE_ONLY: 'ok' };
     config.service_configs = [{ name: 'snake-service' }];
@@ -279,7 +261,9 @@ describe('makeCommonOptions alias support', () => {
       expect.any(Object)
     );
 
-    expect(TransportListenerFactory.createTransportListeners).toHaveBeenCalledWith(
+    expect(
+      TransportListenerFactory.createTransportListeners
+    ).toHaveBeenCalledWith(
       config.transport_listeners,
       expect.any(Array),
       expect.any(Object)
@@ -305,7 +289,7 @@ describe('makeCommonOptions alias support', () => {
     expect(components.systemId).toBe('snake-system');
     expect(components.publicUrl).toBe('https://snake');
     expect(components.hasParent).toBe(true);
-  expect(components.requestedLogicals).toEqual(['camel', '*.snake']);
+    expect(components.requestedLogicals).toEqual(['camel', '*.snake']);
     expect(components.requestedCapabilities).toEqual([
       'camel-cap',
       'snake-cap',
@@ -328,15 +312,17 @@ describe('makeCommonOptions alias support', () => {
       ])
     );
 
-      expect(defaultDeliveryTrackerMock).toHaveBeenCalledWith(mockStorageProvider);
+    expect(defaultDeliveryTrackerMock).toHaveBeenCalledWith(
+      mockStorageProvider
+    );
 
-      expect(defaultNodeAttachClientMock).toHaveBeenCalledWith({
-        attachmentKeyValidator: mockAttachmentValidator,
-        replicaStickinessManager: mockReplicaManager,
-      });
+    expect(defaultNodeAttachClientMock).toHaveBeenCalledWith({
+      attachmentKeyValidator: mockAttachmentValidator,
+      replicaStickinessManager: mockReplicaManager,
+    });
 
-      const attachClientInstance =
-        defaultNodeAttachClientMock.mock.results[0]?.value;
-      expect(components.attachClient).toBe(attachClientInstance);
+    const attachClientInstance =
+      defaultNodeAttachClientMock.mock.results[0]?.value;
+    expect(components.attachClient).toBe(attachClientInstance);
   });
 });

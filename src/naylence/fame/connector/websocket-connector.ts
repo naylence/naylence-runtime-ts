@@ -107,9 +107,9 @@ export class WebSocketConnector extends BaseAsyncConnector {
       normalizedConfig.type = 'websocket';
     }
 
-    const legacyAuthContext =
-      (config as { authorization_context?: AuthorizationContext })
-        .authorization_context;
+    const legacyAuthContext = (
+      config as { authorization_context?: AuthorizationContext }
+    ).authorization_context;
     if (
       legacyAuthContext !== undefined &&
       normalizedConfig.authorizationContext === undefined

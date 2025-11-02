@@ -19,17 +19,20 @@ describe('OAuth2ClientCredentialsTokenProvider', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2024-01-01T00:00:00Z'));
 
-    const fetchCalls: Array<{ url: RequestInfo | URL; init?: RequestInit }> = [];
-    const fetchImpl = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      fetchCalls.push({ url: input, init });
-      return new Response(
-        JSON.stringify({ access_token: 'token-value', expires_in: 60 }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    });
+    const fetchCalls: Array<{ url: RequestInfo | URL; init?: RequestInit }> =
+      [];
+    const fetchImpl = jest.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        fetchCalls.push({ url: input, init });
+        return new Response(
+          JSON.stringify({ access_token: 'token-value', expires_in: 60 }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    );
 
     const provider = new OAuth2ClientCredentialsTokenProvider({
       token_url: 'https://issuer.example/oauth/token',
@@ -39,7 +42,7 @@ describe('OAuth2ClientCredentialsTokenProvider', () => {
       aud: '/nodes/node-1',
       fetch_impl: fetchImpl,
       clock_skew_seconds: 10,
-  } as Record<string, unknown>);
+    } as Record<string, unknown>);
 
     const firstToken = await provider.getToken();
     expect(firstToken.value).toBe('token-value');

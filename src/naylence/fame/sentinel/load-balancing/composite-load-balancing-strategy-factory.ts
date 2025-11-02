@@ -85,9 +85,7 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
   }
 
   private extractStrategies(
-    config:
-      | CompositeLoadBalancingStrategyConfig
-      | Record<string, unknown>
+    config: CompositeLoadBalancingStrategyConfig | Record<string, unknown>
   ): unknown {
     const typedCandidate = config as { strategies?: unknown };
     if (Array.isArray(typedCandidate.strategies)) {
@@ -95,7 +93,11 @@ export class CompositeLoadBalancingStrategyFactory extends LoadBalancingStrategy
     }
 
     const recordCandidate = config as Record<string, unknown>;
-    for (const key of ['strategies', 'strategy_configs', 'strategyConfigs'] as const) {
+    for (const key of [
+      'strategies',
+      'strategy_configs',
+      'strategyConfigs',
+    ] as const) {
       if (Object.prototype.hasOwnProperty.call(recordCandidate, key)) {
         return recordCandidate[key];
       }

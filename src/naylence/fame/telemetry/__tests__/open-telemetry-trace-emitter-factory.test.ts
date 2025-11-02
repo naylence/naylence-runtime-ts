@@ -3,7 +3,8 @@ import type { OtelLifecycleControl } from '../otel-setup.js';
 
 type SafeImportModule = typeof import('../../util/lazy-import.js');
 type SetupOtelModule = typeof import('../otel-setup.js');
-type AuthFactoryModule = typeof import('../../security/auth/auth-injection-strategy-factory.js');
+type AuthFactoryModule =
+  typeof import('../../security/auth/auth-injection-strategy-factory.js');
 
 jest.mock('../../util/logging.js', () => ({
   getLogger: () => ({
@@ -42,13 +43,17 @@ jest.mock('../otel-setup.js', () => ({
 
 const createAuthStrategyMock = jest.fn<
   Promise<AuthInjectionStrategy>,
-  Parameters<AuthFactoryModule['AuthInjectionStrategyFactory']['createAuthInjectionStrategy']>
+  Parameters<
+    AuthFactoryModule['AuthInjectionStrategyFactory']['createAuthInjectionStrategy']
+  >
 >();
 
 jest.mock('../../security/auth/auth-injection-strategy-factory.js', () => ({
   AuthInjectionStrategyFactory: {
     createAuthInjectionStrategy: (
-      ...args: Parameters<AuthFactoryModule['AuthInjectionStrategyFactory']['createAuthInjectionStrategy']>
+      ...args: Parameters<
+        AuthFactoryModule['AuthInjectionStrategyFactory']['createAuthInjectionStrategy']
+      >
     ) => createAuthStrategyMock(...args),
   },
   __esModule: true,

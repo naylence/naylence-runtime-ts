@@ -350,8 +350,8 @@ describe('DefaultDeliveryTracker', () => {
       expect(items[0].meta['dlq']).toBe(true);
       expect(items[0].meta.dlqReason).toBe('boom');
       expect(items[0].meta['dlq_reason']).toBe('boom');
-  expect(typeof items[0].meta.deadLetteredAtMs).toBe('number');
-  expect(typeof items[0].meta['dead_lettered_at_ms']).toBe('number');
+      expect(typeof items[0].meta.deadLetteredAtMs).toBe('number');
+      expect(typeof items[0].meta['dead_lettered_at_ms']).toBe('number');
 
       const purged = await tracker.purgeInboxDlq();
       expect(purged).toBe(1);
@@ -458,8 +458,8 @@ describe('DefaultDeliveryTracker', () => {
 
       const tracked = await tracker.getTrackedEnvelope(envelope.id);
       expect(tracked?.status).toBe(EnvelopeStatus.NACKED);
-  expect(tracked?.meta.nackReason).toBeUndefined();
-  expect(tracked?.meta['nack_reason']).toBeUndefined();
+      expect(tracked?.meta.nackReason).toBeUndefined();
+      expect(tracked?.meta['nack_reason']).toBeUndefined();
     } finally {
       await disposeTracker(tracker);
       await node.stop();
@@ -1148,10 +1148,10 @@ describe('DefaultDeliveryTracker', () => {
       await tracker.addToInboxDlq(inbound, 'failure');
       const stored = await tracker.getFromInboxDlq(inbound.originalEnvelope.id);
       expect(stored?.meta['dlq']).toBe(true);
-  expect(stored?.meta.dlqReason).toBe('failure');
-  expect(stored?.meta['dlq_reason']).toBe('failure');
-  expect(typeof stored?.meta.deadLetteredAtMs).toBe('number');
-  expect(typeof stored?.meta['dead_lettered_at_ms']).toBe('number');
+      expect(stored?.meta.dlqReason).toBe('failure');
+      expect(stored?.meta['dlq_reason']).toBe('failure');
+      expect(typeof stored?.meta.deadLetteredAtMs).toBe('number');
+      expect(typeof stored?.meta['dead_lettered_at_ms']).toBe('number');
 
       const purged = await tracker.purgeInboxDlq();
       expect(purged).toBe(1);

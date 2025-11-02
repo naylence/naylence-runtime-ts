@@ -103,25 +103,25 @@ function normalizeInMemorySinkServiceOptions(
 ): InMemorySinkServiceOptions {
   const source = (input ?? {}) as Record<string, unknown>;
 
-  const bindingManager = (
-    source.bindingManager ?? source.binding_manager
-  ) as SinkBindingManager | undefined;
+  const bindingManager = (source.bindingManager ?? source.binding_manager) as
+    | SinkBindingManager
+    | undefined;
 
   if (!bindingManager) {
     throw new Error('bindingManager is required to create InMemorySinkService');
   }
 
-  const deliver = (
-    source.deliver ?? source.deliver_fn
-  ) as DeliverFunction | undefined;
+  const deliver = (source.deliver ?? source.deliver_fn) as
+    | DeliverFunction
+    | undefined;
 
-  const brokerConfig = (
-    source.brokerConfig ?? source.broker_config
-  ) as InMemoryFanoutBrokerConfig | undefined;
+  const brokerConfig = (source.brokerConfig ?? source.broker_config) as
+    | InMemoryFanoutBrokerConfig
+    | undefined;
 
-  const nameValue = (
-    source.name ?? source.serviceName ?? source.service_name
-  ) as string | undefined;
+  const nameValue = (source.name ??
+    source.serviceName ??
+    source.service_name) as string | undefined;
   const name = typeof nameValue === 'string' ? nameValue : undefined;
 
   return {
@@ -295,9 +295,7 @@ export class InMemorySinkServiceFactory
   implements FameServiceFactory<InMemorySinkService>
 {
   public create(config: InMemorySinkServiceOptionsInput): InMemorySinkService;
-  create(
-    config: InMemorySinkServiceOptionsInput
-  ): InMemorySinkService {
+  create(config: InMemorySinkServiceOptionsInput): InMemorySinkService {
     return new InMemorySinkService(config);
   }
 }

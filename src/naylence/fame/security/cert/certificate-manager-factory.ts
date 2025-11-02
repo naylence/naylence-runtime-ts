@@ -33,18 +33,15 @@ function normalizeCertificateManagerConfig(
 
   if ('security_settings' in normalized) {
     if (normalized.securitySettings === undefined) {
-      normalized.securitySettings = normalized.security_settings as
-        | SecuritySettings
-        | null;
+      normalized.securitySettings =
+        normalized.security_settings as SecuritySettings | null;
     }
     delete normalized.security_settings;
   }
 
   if ('signing_config' in normalized) {
     if (normalized.signing === undefined) {
-      normalized.signing = normalized.signing_config as
-        | SigningConfig
-        | null;
+      normalized.signing = normalized.signing_config as SigningConfig | null;
     }
     delete normalized.signing_config;
   }
@@ -77,10 +74,12 @@ function normalizeCreateCertificateManagerOptions(
     ...rest
   } = options;
 
-  const securitySettings = (camelSecuritySettings ?? snakeSecuritySettings ?? null) as
-    | SecuritySettings
-    | null;
-  const signing = (camelSigning ?? snakeSigning ?? null) as SigningConfig | null;
+  const securitySettings = (camelSecuritySettings ??
+    snakeSecuritySettings ??
+    null) as SecuritySettings | null;
+  const signing = (camelSigning ??
+    snakeSigning ??
+    null) as SigningConfig | null;
   const rawFactoryArgs = camelFactoryArgs ?? snakeFactoryArgs;
   let factoryArgs: unknown[];
   if (rawFactoryArgs === undefined || rawFactoryArgs === null) {
@@ -122,20 +121,14 @@ export abstract class CertificateManagerFactory<
     cfg?: C | Record<string, unknown> | null,
     opts: CreateCertificateManagerOptions = {}
   ): Promise<CertificateManager | null> {
-    const {
-      rest,
-      securitySettings,
-      signing,
-      factoryArgs,
-    } = normalizeCreateCertificateManagerOptions(
-      opts as CreateCertificateManagerOptionsLike
-    );
+    const { rest, securitySettings, signing, factoryArgs } =
+      normalizeCreateCertificateManagerOptions(
+        opts as CreateCertificateManagerOptionsLike
+      );
     const args = [securitySettings, signing, ...factoryArgs];
 
     const normalizedConfig = cfg
-      ? normalizeCertificateManagerConfig(
-          cfg as CertificateManagerConfigLike
-        )
+      ? normalizeCertificateManagerConfig(cfg as CertificateManagerConfigLike)
       : null;
 
     return await createDefaultResource<CertificateManager>(

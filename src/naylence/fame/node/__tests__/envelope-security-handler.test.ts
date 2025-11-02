@@ -857,11 +857,7 @@ describe('EnvelopeSecurityHandler', () => {
 
       expect(
         keyManagement.fns.queuePendingEncryptionEnvelope
-      ).toHaveBeenCalledWith(
-        'naylence://node/peer-alias',
-        envelope,
-        context
-      );
+      ).toHaveBeenCalledWith('naylence://node/peer-alias', envelope, context);
       expect(
         keyManagement.fns.maybeRequestEncryptionKeyByAddress
       ).toHaveBeenCalledWith(

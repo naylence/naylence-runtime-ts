@@ -231,7 +231,8 @@ describe('NodeAttachFrameHandler', () => {
 
     const stickinessManager: LoadBalancerStickinessManager = {
       negotiate: jest.fn(
-        () => ({ supported_modes: ['aft'], version: 2 }) as unknown as Stickiness
+        () =>
+          ({ supported_modes: ['aft'], version: 2 }) as unknown as Stickiness
       ),
       getStickyReplicaSegment: jest.fn(() => null),
     } as unknown as LoadBalancerStickinessManager;

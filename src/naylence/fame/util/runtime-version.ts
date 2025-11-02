@@ -15,9 +15,10 @@ type PackageMetadata = {
 };
 
 const EMBEDDED_PACKAGE_VERSION =
-  typeof (packageMetadata as PackageMetadata | undefined)?.version === 'string' &&
+  typeof (packageMetadata as PackageMetadata | undefined)?.version ===
+    'string' &&
   (packageMetadata as PackageMetadata | undefined)?.name === '@naylence/runtime'
-    ? (packageMetadata as PackageMetadata).version ?? null
+    ? ((packageMetadata as PackageMetadata).version ?? null)
     : null;
 
 let cachedVersion: string | null | undefined;

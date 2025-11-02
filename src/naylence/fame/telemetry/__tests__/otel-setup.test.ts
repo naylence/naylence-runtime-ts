@@ -23,15 +23,16 @@ jest.mock('@opentelemetry/api', () => ({
 const defaultResourceMock = jest.fn(() => ({
   merge: jest.fn(() => ({ merged: true })),
 }));
-const resourceFromAttributesMock = jest.fn((attrs: Record<string, unknown>) => ({
-  ...attrs,
-}));
+const resourceFromAttributesMock = jest.fn(
+  (attrs: Record<string, unknown>) => ({
+    ...attrs,
+  })
+);
 
 jest.mock('@opentelemetry/resources', () => ({
   defaultResource: () => defaultResourceMock(),
-  resourceFromAttributes: (
-    attrs: Record<string, unknown>
-  ) => resourceFromAttributesMock(attrs),
+  resourceFromAttributes: (attrs: Record<string, unknown>) =>
+    resourceFromAttributesMock(attrs),
   __reset: () => {
     defaultResourceMock.mockClear();
     resourceFromAttributesMock.mockClear();
@@ -68,17 +69,19 @@ jest.mock('@opentelemetry/sdk-trace-node', () => ({
   },
 }));
 
-const BatchSpanProcessorMock = jest
-  .fn()
-  .mockImplementation(function (this: any, exporter: unknown) {
-    this.exporter = exporter;
-  });
+const BatchSpanProcessorMock = jest.fn().mockImplementation(function (
+  this: any,
+  exporter: unknown
+) {
+  this.exporter = exporter;
+});
 const ConsoleSpanExporterMock = jest.fn().mockImplementation(function () {});
-const ParentBasedSamplerMock = jest
-  .fn()
-  .mockImplementation(function (this: any, config: unknown) {
-    this.config = config;
-  });
+const ParentBasedSamplerMock = jest.fn().mockImplementation(function (
+  this: any,
+  config: unknown
+) {
+  this.config = config;
+});
 const AlwaysOnSamplerMock = jest.fn().mockImplementation(function () {});
 const AlwaysOffSamplerMock = jest.fn().mockImplementation(function () {});
 const TraceIdRatioBasedSamplerMock = jest
@@ -102,11 +105,12 @@ jest.mock('@opentelemetry/sdk-trace-base', () => ({
   },
 }));
 
-const OTLPTraceExporterMock = jest
-  .fn()
-  .mockImplementation(function (this: any, config: unknown) {
-    this.config = config;
-  });
+const OTLPTraceExporterMock = jest.fn().mockImplementation(function (
+  this: any,
+  config: unknown
+) {
+  this.config = config;
+});
 
 jest.mock('@opentelemetry/exporter-trace-otlp-http', () => ({
   OTLPTraceExporter: OTLPTraceExporterMock,

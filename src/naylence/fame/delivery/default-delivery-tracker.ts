@@ -156,9 +156,7 @@ function normalizeTrackerOptions(
   );
 
   return {
-    ...(futuresGcGraceSecs !== undefined
-      ? { futuresGcGraceSecs }
-      : undefined),
+    ...(futuresGcGraceSecs !== undefined ? { futuresGcGraceSecs } : undefined),
     ...(futuresSweepIntervalSecs !== undefined
       ? { futuresSweepIntervalSecs }
       : undefined),

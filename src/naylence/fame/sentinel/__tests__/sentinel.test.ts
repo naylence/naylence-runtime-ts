@@ -411,7 +411,7 @@ describe('Sentinel', () => {
 
     (createResource as jest.Mock).mockResolvedValueOnce(fakeConnector);
 
-  const authorization = { roles: ['alias'] } as any;
+    const authorization = { roles: ['alias'] } as any;
 
     await sentinel.createOriginConnector({
       origin_type: DeliveryOriginType.DOWNSTREAM,

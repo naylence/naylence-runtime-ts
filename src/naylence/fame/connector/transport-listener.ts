@@ -35,8 +35,8 @@ export abstract class TransportListener implements NodeEventListener {
   /**
    * Return a descriptor that can be used to create callback grants
    * for this listener. This will be used to automatically derive
-  * callbackGrants (legacy callback_grants) in NodeAttachFrame for reverse
-  * admission.
+   * callbackGrants (legacy callback_grants) in NodeAttachFrame for reverse
+   * admission.
    *
    * @returns Dictionary containing connector type and configuration
    */

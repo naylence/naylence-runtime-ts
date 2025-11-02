@@ -80,7 +80,10 @@ describe('SecureChannelFrameHandler', () => {
     manager.handleOpenFrame.mockResolvedValue(acceptFrame);
 
     const envelopeFactory = createEnvelopeFactoryMock();
-    const responseEnvelope = { id: 'resp-alias', frame: acceptFrame } as FameEnvelope;
+    const responseEnvelope = {
+      id: 'resp-alias',
+      frame: acceptFrame,
+    } as FameEnvelope;
     envelopeFactory.createEnvelope.mockReturnValue(responseEnvelope);
 
     const sendCallback = createSendCallbackMock();

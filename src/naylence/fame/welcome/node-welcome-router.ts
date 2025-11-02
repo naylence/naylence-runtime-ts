@@ -39,9 +39,8 @@ class HelloValidationError extends Error {
 export const nodeWelcomeRouter: FastifyPluginAsync<
   NodeWelcomeRouterOptions
 > = async (fastify: FastifyInstance, options: NodeWelcomeRouterOptions) => {
-  const { prefix: providedPrefix, welcomeService } = normalizeRouterOptions(
-    options
-  );
+  const { prefix: providedPrefix, welcomeService } =
+    normalizeRouterOptions(options);
   const prefix = providedPrefix ?? DEFAULT_PREFIX;
 
   if (!welcomeService) {
@@ -131,9 +130,10 @@ export const nodeWelcomeRouter: FastifyPluginAsync<
 
 export const nodeWelcomeRouterPlugin = nodeWelcomeRouter;
 
-function normalizeRouterOptions(
-  options: NodeWelcomeRouterOptions
-): { welcomeService: WelcomeService | undefined; prefix?: string } {
+function normalizeRouterOptions(options: NodeWelcomeRouterOptions): {
+  welcomeService: WelcomeService | undefined;
+  prefix?: string;
+} {
   const record = options as NodeWelcomeRouterOptions & Record<string, unknown>;
 
   const welcomeService =

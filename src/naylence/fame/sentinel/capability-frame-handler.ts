@@ -232,11 +232,9 @@ function getDownstreamRoutes(routeManager: RouteManager): RouteRegistryLike {
   const manager = routeManager as RouteManager & {
     downstream_routes?: RouteRegistryLike;
   };
-  return (
-    routeManager.downstreamRoutes ??
+  return (routeManager.downstreamRoutes ??
     manager.downstream_routes ??
-    undefined
-  ) as RouteRegistryLike;
+    undefined) as RouteRegistryLike;
 }
 
 function hasRoute(container: RouteRegistryLike, segment: string): boolean {

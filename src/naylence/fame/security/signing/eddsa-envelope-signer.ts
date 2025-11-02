@@ -84,7 +84,10 @@ function normalizeSignerOptions(
     result.privateKeyPem = privateKeyPem;
   }
 
-  const keyId = resolveAlias<string | undefined>(candidate, ['keyId', 'key_id']);
+  const keyId = resolveAlias<string | undefined>(candidate, [
+    'keyId',
+    'key_id',
+  ]);
   if (keyId !== undefined) {
     result.keyId = keyId;
   }

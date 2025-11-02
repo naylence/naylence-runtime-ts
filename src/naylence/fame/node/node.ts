@@ -389,9 +389,12 @@ export class FameNode extends TaskSpawner implements NodeLike {
       new DefaultDeliveryTracker(this._storageProvider);
     this._deliveryTracker = tracker;
 
-    const nodeMetaStoreOption = resolveOption<
-      KeyValueStore<NodeMetaRecord> | null
-    >(options, 'nodeMetaStore', 'node_meta_store');
+    const nodeMetaStoreOption =
+      resolveOption<KeyValueStore<NodeMetaRecord> | null>(
+        options,
+        'nodeMetaStore',
+        'node_meta_store'
+      );
     this._nodeMetaStorePromise = nodeMetaStoreOption
       ? Promise.resolve(nodeMetaStoreOption)
       : this._storageProvider.getKeyValueStore(
@@ -432,9 +435,12 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
     this._eventListeners = sortListeners(listeners);
 
-    const bindingStoreOption = resolveOption<
-      KeyValueStore<BindingStoreEntry> | null
-    >(options, 'bindingStore', 'binding_store');
+    const bindingStoreOption =
+      resolveOption<KeyValueStore<BindingStoreEntry> | null>(
+        options,
+        'bindingStore',
+        'binding_store'
+      );
 
     const bindingManagerOptions: BindingManagerOptions = {
       hasUpstream: this._hasParent,

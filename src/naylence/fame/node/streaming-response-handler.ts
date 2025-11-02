@@ -101,10 +101,14 @@ function normalizeOptions(
   );
 
   if (typeof deliverWrapper !== 'function') {
-    throw new Error('StreamingResponseHandler requires a deliverWrapper option');
+    throw new Error(
+      'StreamingResponseHandler requires a deliverWrapper option'
+    );
   }
   if (!envelopeFactory) {
-    throw new Error('StreamingResponseHandler requires an envelopeFactory option');
+    throw new Error(
+      'StreamingResponseHandler requires an envelopeFactory option'
+    );
   }
   if (!responseContextManager) {
     throw new Error(

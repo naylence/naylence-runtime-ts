@@ -52,7 +52,7 @@ export class ChannelPollingManager {
       let draining = false;
 
       while (true) {
-  if (this.isStopRequested(stopState) && !draining) {
+        if (this.isStopRequested(stopState) && !draining) {
           draining = true;
           logger.debug('poll_loop_draining_pending_messages', {
             recipient: serviceName,

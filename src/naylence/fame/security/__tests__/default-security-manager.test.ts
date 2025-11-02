@@ -573,8 +573,9 @@ describe('DefaultSecurityManager context normalization', () => {
       handleOutboundSecurity: jest.fn(async () => true),
     };
 
-    (manager as unknown as { _envelopeSecurityHandler: unknown })
-      ._envelopeSecurityHandler = handler;
+    (
+      manager as unknown as { _envelopeSecurityHandler: unknown }
+    )._envelopeSecurityHandler = handler;
 
     const context = {
       origin_type: DeliveryOriginType.LOCAL,
@@ -611,8 +612,9 @@ describe('DefaultSecurityManager context normalization', () => {
       handleOutboundSecurity: jest.fn(async () => true),
     };
 
-    (manager as unknown as { _envelopeSecurityHandler: unknown })
-      ._envelopeSecurityHandler = handler;
+    (
+      manager as unknown as { _envelopeSecurityHandler: unknown }
+    )._envelopeSecurityHandler = handler;
 
     const context = {
       stickiness_required: true,

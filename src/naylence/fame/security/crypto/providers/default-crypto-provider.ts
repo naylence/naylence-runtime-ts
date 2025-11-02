@@ -89,9 +89,7 @@ function normalizeDefaultCryptoProviderOptions(
   const source = options as Record<string, unknown>;
   const normalized: DefaultCryptoProviderOptions = {};
 
-  const readNullableString = (
-    ...keys: string[]
-  ): string | null | undefined => {
+  const readNullableString = (...keys: string[]): string | null | undefined => {
     for (const key of keys) {
       if (!Object.prototype.hasOwnProperty.call(source, key)) {
         continue;
@@ -112,9 +110,7 @@ function normalizeDefaultCryptoProviderOptions(
     return undefined;
   };
 
-  const readNullableNumber = (
-    ...keys: string[]
-  ): number | null | undefined => {
+  const readNullableNumber = (...keys: string[]): number | null | undefined => {
     for (const key of keys) {
       if (!Object.prototype.hasOwnProperty.call(source, key)) {
         continue;
@@ -142,9 +138,7 @@ function normalizeDefaultCryptoProviderOptions(
     return undefined;
   };
 
-  const assignStringOption = <
-    Key extends keyof DefaultCryptoProviderOptions,
-  >(
+  const assignStringOption = <Key extends keyof DefaultCryptoProviderOptions>(
     targetKey: Key,
     ...keys: string[]
   ): void => {
@@ -164,11 +158,7 @@ function normalizeDefaultCryptoProviderOptions(
     'signaturePublicPem',
     'signature_public_pem'
   );
-  assignStringOption(
-    'signatureKeyId',
-    'signatureKeyId',
-    'signature_key_id'
-  );
+  assignStringOption('signatureKeyId', 'signatureKeyId', 'signature_key_id');
   assignStringOption(
     'encryptionPrivatePem',
     'encryptionPrivatePem',
@@ -179,11 +169,7 @@ function normalizeDefaultCryptoProviderOptions(
     'encryptionPublicPem',
     'encryption_public_pem'
   );
-  assignStringOption(
-    'encryptionKeyId',
-    'encryptionKeyId',
-    'encryption_key_id'
-  );
+  assignStringOption('encryptionKeyId', 'encryptionKeyId', 'encryption_key_id');
   assignStringOption('hmacSecret', 'hmacSecret', 'hmac_secret');
   assignStringOption('issuer', 'issuer', 'iss');
   assignStringOption('audience', 'audience', 'aud');

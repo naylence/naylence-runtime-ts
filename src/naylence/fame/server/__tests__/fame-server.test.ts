@@ -135,9 +135,14 @@ describe('Fastify fame server routes', () => {
     const initialConfig = server.app.initialConfig as any;
     expect(initialConfig.disableRequestLogging).toBe(false);
     expect(initialConfig.bodyLimit).toBe(2_048);
-    const routerOptions = initialConfig.router ?? initialConfig.routerOptions ?? {};
-    expect(routerOptions.caseSensitive ?? initialConfig.caseSensitive).toBe(true);
-    expect(routerOptions.maxParamLength ?? initialConfig.maxParamLength).toBe(64);
+    const routerOptions =
+      initialConfig.router ?? initialConfig.routerOptions ?? {};
+    expect(routerOptions.caseSensitive ?? initialConfig.caseSensitive).toBe(
+      true
+    );
+    expect(routerOptions.maxParamLength ?? initialConfig.maxParamLength).toBe(
+      64
+    );
   });
 
   it('serves health endpoint with uptime data', async () => {

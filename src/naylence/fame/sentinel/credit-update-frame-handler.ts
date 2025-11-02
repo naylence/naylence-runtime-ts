@@ -23,9 +23,9 @@ function normalizeOptions(
   }
 
   const candidate = options as Record<string, unknown>;
-  const routeManager = (
-    candidate.routeManager ?? candidate.route_manager
-  ) as RouteManager | undefined;
+  const routeManager = (candidate.routeManager ?? candidate.route_manager) as
+    | RouteManager
+    | undefined;
 
   if (!routeManager) {
     throw new Error('CreditUpdateFrameHandler requires a routeManager option');

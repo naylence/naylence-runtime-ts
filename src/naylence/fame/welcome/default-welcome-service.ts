@@ -29,8 +29,7 @@ const ENV_VAR_SHOW_ENVELOPES = 'FAME_SHOW_ENVELOPES';
 const DEFAULT_TTL_SEC = 3600;
 
 const showEnvelopes =
-  typeof process !== 'undefined' &&
-  resolveShowEnvelopesFlag(process.env);
+  typeof process !== 'undefined' && resolveShowEnvelopesFlag(process.env);
 
 function nowUtc(): Date {
   return new Date();

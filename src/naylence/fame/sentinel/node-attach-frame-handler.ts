@@ -63,9 +63,7 @@ function resolveOriginType(raw: unknown): DeliveryOriginType | null {
 
   if (typeof raw === 'string') {
     const lower = raw.toLowerCase();
-    const directMatch = values.find(
-      (entry) => entry.toLowerCase() === lower
-    );
+    const directMatch = values.find((entry) => entry.toLowerCase() === lower);
     if (directMatch) {
       return directMatch;
     }
@@ -191,7 +189,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
 
     const { connector, attached, buffer } = pendingRoute;
     pendingRoute.cancelAttachTimeout?.();
-      if (connector !== normalizedContext.fromConnector) {
+    if (connector !== normalizedContext.fromConnector) {
       throw new Error('Connector in context does not match pending connector');
     }
 
@@ -199,7 +197,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
       frame,
       envelope,
       connector,
-        normalizedContext,
+      normalizedContext,
       attachedSystemId
     );
 
@@ -707,8 +705,7 @@ export class NodeAttachFrameHandler extends TaskSpawner {
 
     const mutable = context as FameDeliveryContext & Record<string, unknown>;
 
-    const originCandidate =
-      mutable.originType ?? mutable.origin_type ?? null;
+    const originCandidate = mutable.originType ?? mutable.origin_type ?? null;
     const resolvedOrigin = resolveOriginType(originCandidate);
     if (resolvedOrigin) {
       mutable.originType = resolvedOrigin;
@@ -733,7 +730,9 @@ export class NodeAttachFrameHandler extends TaskSpawner {
     }
 
     const expectedResponse =
-      mutable.expectedResponseType ?? mutable.expected_response_type ?? undefined;
+      mutable.expectedResponseType ??
+      mutable.expected_response_type ??
+      undefined;
     if (expectedResponse !== undefined) {
       mutable.expectedResponseType = expectedResponse;
       mutable.expected_response_type = expectedResponse;
@@ -747,7 +746,9 @@ export class NodeAttachFrameHandler extends TaskSpawner {
   ): NodeAttachFrame {
     const frame = rawFrame as NodeAttachFrameLike | undefined;
     if (!frame) {
-      throw new Error('Invalid envelope frame. Expected: NodeAttachFrame, actual: unknown');
+      throw new Error(
+        'Invalid envelope frame. Expected: NodeAttachFrame, actual: unknown'
+      );
     }
 
     const rawType = (frame as Record<string, unknown>).type;

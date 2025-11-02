@@ -424,8 +424,7 @@ export class KeyManagementHandler extends TaskSpawner {
       toRetry.push({
         kid,
         origin: normalizedContext.originType,
-        fromSystemId:
-          normalizedContext.fromSystemId ?? 'pending-attachment',
+        fromSystemId: normalizedContext.fromSystemId ?? 'pending-attachment',
       });
     }
 

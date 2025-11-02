@@ -134,7 +134,10 @@ export interface SentinelServeOptions {
   [key: string]: unknown;
 }
 
-type SentinelInitOptions = SentinelOptions | (SentinelOptions & Record<string, unknown>) | Record<string, unknown>;
+type SentinelInitOptions =
+  | SentinelOptions
+  | (SentinelOptions & Record<string, unknown>)
+  | Record<string, unknown>;
 
 function normalizeSentinelOptions(
   rawOptions: SentinelInitOptions | null | undefined

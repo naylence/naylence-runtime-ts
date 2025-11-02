@@ -122,12 +122,10 @@ function normalizeOpenIDConfigurationRouterOptions(
     Record<string, unknown>;
 
   const prefix =
-    coerceString(descriptor.prefix) ??
-    coerceString((descriptor as any).prefix);
+    coerceString(descriptor.prefix) ?? coerceString((descriptor as any).prefix);
 
   const issuer =
-    coerceString(descriptor.issuer) ??
-    coerceString((descriptor as any).issuer);
+    coerceString(descriptor.issuer) ?? coerceString((descriptor as any).issuer);
 
   const baseUrl =
     coerceString(descriptor.baseUrl) ??

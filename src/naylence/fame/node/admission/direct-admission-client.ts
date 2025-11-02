@@ -46,8 +46,7 @@ export class DirectAdmissionClient implements AdmissionClient {
       cloneGrant(grant)
     );
 
-    const ttlCandidate =
-      options.ttlSec ?? options.ttl_sec ?? TTL_NEVER_EXPIRES;
+    const ttlCandidate = options.ttlSec ?? options.ttl_sec ?? TTL_NEVER_EXPIRES;
     if (ttlCandidate != null && ttlCandidate !== TTL_NEVER_EXPIRES) {
       const validated = validateTtlSec(ttlCandidate, {
         min: 60,

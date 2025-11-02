@@ -54,7 +54,7 @@ describe('NodeEnvelopeFactory', () => {
       flow_flags: FlowFlags.RESET,
       ts: timestampIso,
       corr_id: '  corr-snake  ',
-  response_type: FameResponseType.REPLY,
+      response_type: FameResponseType.REPLY,
     } as unknown as Parameters<NodeEnvelopeFactory['createEnvelope']>[0]);
 
     expect(envelope.sid).toBe('sid-alias');
@@ -68,7 +68,7 @@ describe('NodeEnvelopeFactory', () => {
     expect(envelope.flowFlags).toBe(FlowFlags.RESET);
     expect(envelope.ts.toISOString()).toBe(timestampIso);
     expect(envelope.corrId).toBe('corr-snake');
-  expect(envelope.rtype).toBe(FameResponseType.REPLY);
+    expect(envelope.rtype).toBe(FameResponseType.REPLY);
   });
 
   it('defaults trace id from envelope context when omitted', () => {

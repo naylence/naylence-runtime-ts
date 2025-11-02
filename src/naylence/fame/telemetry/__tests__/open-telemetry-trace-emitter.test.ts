@@ -3,7 +3,9 @@ import type { AuthInjectionStrategy } from '../../security/auth/auth-injection-s
 import type { OtelLifecycleControl } from '../otel-setup.js';
 import { OpenTelemetryTraceEmitter } from '../open-telemetry-trace-emitter.js';
 
-type ConstructorOptions = ConstructorParameters<typeof OpenTelemetryTraceEmitter>[0];
+type ConstructorOptions = ConstructorParameters<
+  typeof OpenTelemetryTraceEmitter
+>[0];
 
 let mockForceFlush: jest.Mock;
 let mockShutdown: jest.Mock;
@@ -16,8 +18,7 @@ let mockGetTracerProvider: jest.Mock;
 jest.mock('@opentelemetry/api', () => ({
   trace: {
     getTracer: (...args: unknown[]) => mockGetTracer(...args),
-    getTracerProvider: (...args: unknown[]) =>
-      mockGetTracerProvider(...args),
+    getTracerProvider: (...args: unknown[]) => mockGetTracerProvider(...args),
   },
   SpanStatusCode: { ERROR: 'ERROR' },
 }));
@@ -66,7 +67,7 @@ describe('OpenTelemetryTraceEmitter', () => {
 
     await emitter.flush();
     expect(lifecycle.forceFlush).toHaveBeenCalled();
-  expect(mockGetTracerProvider).not.toHaveBeenCalled();
+    expect(mockGetTracerProvider).not.toHaveBeenCalled();
 
     await emitter.shutdown();
     expect(lifecycle.shutdown).toHaveBeenCalled();
@@ -75,7 +76,7 @@ describe('OpenTelemetryTraceEmitter', () => {
 
   it('uses provided tracer without fetching a new tracer', () => {
     const customStartSpan = jest.fn(() => createMockSpan());
-  const customTracer = { startSpan: customStartSpan } as unknown as Tracer;
+    const customTracer = { startSpan: customStartSpan } as unknown as Tracer;
 
     const emitter = new OpenTelemetryTraceEmitter({
       serviceName: 'custom-service',

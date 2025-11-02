@@ -18,7 +18,10 @@ import {
 import type { NodeLike } from '../node/node-like.js';
 import { NodeLikeFactory } from '../node/node-like-factory.js';
 import { getLogger } from '../util/logging.js';
-import { decodeFameDataPayload, withLegacySnakeCaseKeys } from '../util/util.js';
+import {
+  decodeFameDataPayload,
+  withLegacySnakeCaseKeys,
+} from '../util/util.js';
 import { resolveRuntimeVersion } from '../util/runtime-version.js';
 import type { ServiceManager } from '../service/service-manager.js';
 import { SinkService, isSinkService } from '../service/sink-service.js';

@@ -94,9 +94,7 @@ function normalizeDeliveryProfileConfig(
   return { profile: profileValue.toLowerCase() };
 }
 
-function resolveProfileName(
-  candidate: Record<string, unknown>
-): string {
+function resolveProfileName(candidate: Record<string, unknown>): string {
   const value = coerceProfileString(candidate.profile);
   if (value) {
     return value;

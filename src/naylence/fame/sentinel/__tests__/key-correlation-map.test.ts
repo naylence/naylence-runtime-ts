@@ -10,9 +10,7 @@ describe('KeyCorrelationMap', () => {
 
   it('accepts snake_case ttl_sec alias for expiration handling', () => {
     const baseTime = Date.now();
-    const nowSpy = jest
-      .spyOn(Date, 'now')
-      .mockImplementation(() => baseTime);
+    const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => baseTime);
 
     const map = new KeyCorrelationMap({
       ttl_sec: 1,

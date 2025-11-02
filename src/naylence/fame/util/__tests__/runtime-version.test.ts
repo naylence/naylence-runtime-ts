@@ -117,8 +117,8 @@ describe('resolveRuntimeVersion', () => {
     delete process.env.npm_package_name;
     delete process.env.npm_package_version;
 
-  const expectedVersion = await readLocalPackageVersion();
-  expect(expectedVersion).not.toBeNull();
+    const expectedVersion = await readLocalPackageVersion();
+    expect(expectedVersion).not.toBeNull();
 
     const processDescriptor = Object.getOwnPropertyDescriptor(
       globalThis,
@@ -133,7 +133,7 @@ describe('resolveRuntimeVersion', () => {
 
     try {
       const version = await runtime.resolveRuntimeVersion();
-  expect(version).toBe(expectedVersion);
+      expect(version).toBe(expectedVersion);
     } finally {
       if (processDescriptor) {
         Object.defineProperty(globalThis, 'process', processDescriptor);

@@ -82,10 +82,11 @@ function normalizeDefaultDeliveryTrackerConfig(
   const candidate = config as DefaultDeliveryTrackerConfig &
     Record<string, unknown>;
 
-  const futuresGcGraceSecs = readNumberWithLegacy(candidate, 'futuresGcGraceSecs', [
-    'futures_gc_grace_secs',
-    'futures_gc_graceSeconds',
-  ]);
+  const futuresGcGraceSecs = readNumberWithLegacy(
+    candidate,
+    'futuresGcGraceSecs',
+    ['futures_gc_grace_secs', 'futures_gc_graceSeconds']
+  );
 
   const futuresSweepIntervalSecs = readNumberWithLegacy(
     candidate,

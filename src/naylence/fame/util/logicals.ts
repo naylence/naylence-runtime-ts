@@ -4,9 +4,7 @@ const POOL_WILDCARD_PREFIX = '*.';
 
 function readEnvValue(aliases: string[]): string | undefined {
   const processRef = (globalThis as any)?.process;
-  const env = processRef?.env as
-    | Record<string, string | undefined>
-    | undefined;
+  const env = processRef?.env as Record<string, string | undefined> | undefined;
   if (!env) {
     return undefined;
   }
@@ -27,12 +25,8 @@ const DNS_LABEL_PATTERN = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 
 export function getFameRoot(): string {
   return (
-    readEnvValue([
-      'FAME_ROOT',
-      'fame_root',
-      'fameRoot',
-      'FameRoot',
-    ]) ?? 'fame.fabric'
+    readEnvValue(['FAME_ROOT', 'fame_root', 'fameRoot', 'FameRoot']) ??
+    'fame.fabric'
   );
 }
 
@@ -318,12 +312,8 @@ export function matchesPoolAddress(
     return false;
   } catch (error) {
     if (
-      readEnvValue([
-        'NODE_ENV',
-        'node_env',
-        'nodeEnv',
-        'NodeEnv',
-      ]) !== 'production'
+      readEnvValue(['NODE_ENV', 'node_env', 'nodeEnv', 'NodeEnv']) !==
+      'production'
     ) {
       // eslint-disable-next-line no-console
       console.debug('matchesPoolAddress failed', error);

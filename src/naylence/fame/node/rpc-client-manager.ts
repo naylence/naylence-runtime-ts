@@ -128,7 +128,9 @@ function coerceStringArray(value: unknown): string[] | undefined {
     return undefined;
   }
 
-  const filtered = value.filter((entry): entry is string => typeof entry === 'string');
+  const filtered = value.filter(
+    (entry): entry is string => typeof entry === 'string'
+  );
   return filtered.length > 0 ? [...filtered] : [];
 }
 

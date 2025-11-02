@@ -111,9 +111,9 @@ async function createApp(): Promise<FastifyInstance> {
 
 async function main(): Promise<void> {
   try {
-  const app = await createApp();
+    const app = await createApp();
 
-  const { host, port } = resolveServerAddress();
+    const { host, port } = resolveServerAddress();
 
     await app.listen({ host, port });
 

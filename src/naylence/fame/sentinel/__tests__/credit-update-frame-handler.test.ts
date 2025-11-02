@@ -7,13 +7,14 @@ import {
 import type { RouteManager } from '../route-manager.js';
 
 describe('CreditUpdateFrameHandler', () => {
-  const makeEnvelope = (overrides: Partial<FameEnvelope> = {}): FameEnvelope => ({
-    id: 'env-1',
-    frame: { type: 'CreditUpdate' } as unknown,
-    sec: undefined,
-    meta: {},
-    ...overrides,
-  }) as FameEnvelope;
+  const makeEnvelope = (overrides: Partial<FameEnvelope> = {}): FameEnvelope =>
+    ({
+      id: 'env-1',
+      frame: { type: 'CreditUpdate' } as unknown,
+      sec: undefined,
+      meta: {},
+      ...overrides,
+    }) as FameEnvelope;
 
   it('accepts snake_case route_manager option and forwards credit updates', async () => {
     const send = jest.fn(async () => {});
@@ -45,7 +46,9 @@ describe('CreditUpdateFrameHandler', () => {
     const handler = new CreditUpdateFrameHandler({ routeManager });
 
     const envelope = makeEnvelope({ flowId: 'flow-2' });
-    const context = { fromConnector: connector } as unknown as FameDeliveryContext;
+    const context = {
+      fromConnector: connector,
+    } as unknown as FameDeliveryContext;
 
     await handler.acceptCreditUpdate(envelope, context);
 

@@ -1,6 +1,4 @@
-import {
-  DefaultSecurityPolicyFactory,
-} from '../policy/default-security-policy-factory.js';
+import { DefaultSecurityPolicyFactory } from '../policy/default-security-policy-factory.js';
 import type { KeyProvider } from '../keys/key-provider.js';
 import {
   CryptoLevel,

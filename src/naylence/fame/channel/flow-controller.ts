@@ -84,7 +84,7 @@ export class FlowController {
 
   constructor(initialWindow: number, lowWatermarkRatio: number = 0.25) {
     if (initialWindow <= 0) {
-  throw new Error('initialWindow must be > 0');
+      throw new Error('initialWindow must be > 0');
     }
 
     this.initialWindow = initialWindow;

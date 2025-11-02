@@ -125,46 +125,54 @@ export function createFameFastifyServer(
 
   app.addHook(
     'onRequest',
-    (request: FastifyRequest, _reply: FastifyReply, done: HookHandlerDoneFunction) => {
-    requestStartTimes.set(request, Date.now());
-    logger.debug('http_request_received', {
-      request_id: request.id,
-      method: request.method,
-      url: request.url,
-      remote_address: request.ip,
-    });
+    (
+      request: FastifyRequest,
+      _reply: FastifyReply,
+      done: HookHandlerDoneFunction
+    ) => {
+      requestStartTimes.set(request, Date.now());
+      logger.debug('http_request_received', {
+        request_id: request.id,
+        method: request.method,
+        url: request.url,
+        remote_address: request.ip,
+      });
       done();
     }
   );
 
   app.addHook(
     'onResponse',
-    (request: FastifyRequest, reply: FastifyReply, done: HookHandlerDoneFunction) => {
-    const startedAt = requestStartTimes.get(request);
-    logger.debug('http_request_completed', {
-      request_id: request.id,
-      method: request.method,
-      url: request.url,
-      status_code: reply.statusCode,
-      duration_ms:
-        typeof startedAt === 'number' ? Date.now() - startedAt : null,
-    });
-    if (startedAt !== undefined) {
-      requestStartTimes.delete(request);
-    }
+    (
+      request: FastifyRequest,
+      reply: FastifyReply,
+      done: HookHandlerDoneFunction
+    ) => {
+      const startedAt = requestStartTimes.get(request);
+      logger.debug('http_request_completed', {
+        request_id: request.id,
+        method: request.method,
+        url: request.url,
+        status_code: reply.statusCode,
+        duration_ms:
+          typeof startedAt === 'number' ? Date.now() - startedAt : null,
+      });
+      if (startedAt !== undefined) {
+        requestStartTimes.delete(request);
+      }
       done();
     }
   );
 
   app.setErrorHandler(
     (error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
-    logger.error('http_request_error', {
-      request_id: request.id,
-      method: request.method,
-      url: request.url,
-      status_code: reply.statusCode,
-      error: error instanceof Error ? error.message : String(error),
-    });
+      logger.error('http_request_error', {
+        request_id: request.id,
+        method: request.method,
+        url: request.url,
+        status_code: reply.statusCode,
+        error: error instanceof Error ? error.message : String(error),
+      });
       void reply.status(reply.statusCode >= 400 ? reply.statusCode : 500).send({
         error: 'internal_server_error',
         message: 'Unexpected server error',
@@ -217,12 +225,15 @@ export function createFameFastifyServer(
         abortCleanup = null;
       };
 
-      app.addHook('onClose', (_instance: FastifyInstance, done: HookHandlerDoneFunction) => {
-        if (abortCleanup) {
-          abortCleanup();
+      app.addHook(
+        'onClose',
+        (_instance: FastifyInstance, done: HookHandlerDoneFunction) => {
+          if (abortCleanup) {
+            abortCleanup();
+          }
+          done();
         }
-        done();
-      });
+      );
     }
   }
 
@@ -303,9 +314,8 @@ function normalizeCreateFameServerOptions(
 
   const fastifyOptionsInput =
     source.fastifyOptions ?? source.fastify_options ?? undefined;
-  const normalizedFastifyOptions = normalizeFastifyOptionsInput(
-    fastifyOptionsInput
-  );
+  const normalizedFastifyOptions =
+    normalizeFastifyOptionsInput(fastifyOptionsInput);
 
   const existingInstance = (source.existingInstance ??
     source.existing_instance) as FastifyInstance | undefined;
@@ -386,7 +396,9 @@ function normalizeFameServerConfigInputAliases(
   if (Array.isArray(source.clients)) {
     source.clients = source.clients
       .map((client) => normalizeClientConfigEntry(client))
-      .filter((client): client is FameServerClientConfigInput => client !== undefined);
+      .filter(
+        (client): client is FameServerClientConfigInput => client !== undefined
+      );
   }
 
   return source as FameServerConfigInput;
@@ -475,7 +487,8 @@ function normalizeFastifyOptionsInput(
       delete routerSource[alias];
     }
 
-    source.routerOptions = routerSource as FastifyServerOptions['routerOptions'];
+    source.routerOptions =
+      routerSource as FastifyServerOptions['routerOptions'];
   }
   delete source.router_options;
 

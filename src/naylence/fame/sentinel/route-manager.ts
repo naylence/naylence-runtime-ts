@@ -73,13 +73,15 @@ type RouteManagerOptionsInput = RouteManagerOptions & {
   retain_address_bindings_on_disconnect?: boolean;
 };
 
-type NormalizedRouteManagerOptions = RouteManagerOptions & Required<
-    Pick<RouteManagerOptions, 'deliver'>
-  > &
+type NormalizedRouteManagerOptions = RouteManagerOptions &
+  Required<Pick<RouteManagerOptions, 'deliver'>> &
   Partial<
     Pick<
       RouteManagerOptions,
-      'routeStore' | 'getId' | 'cleanupDelayMs' | 'retainAddressBindingsOnDisconnect'
+      | 'routeStore'
+      | 'getId'
+      | 'cleanupDelayMs'
+      | 'retainAddressBindingsOnDisconnect'
     >
   >;
 

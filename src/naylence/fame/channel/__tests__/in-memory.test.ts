@@ -451,12 +451,9 @@ describe('InMemoryFanoutBroker', () => {
     });
 
     it('should support legacy poll_timeout_ms configuration', async () => {
-      const legacyBroker = new InMemoryFanoutBroker(
-        sinkChannel,
-        {
-          poll_timeout_ms: 250,
-        } as InMemoryFanoutBrokerConfig & { poll_timeout_ms: number }
-      );
+      const legacyBroker = new InMemoryFanoutBroker(sinkChannel, {
+        poll_timeout_ms: 250,
+      } as InMemoryFanoutBrokerConfig & { poll_timeout_ms: number });
 
       expect(legacyBroker.pollTimeoutMs).toBe(250);
 

@@ -103,19 +103,16 @@ function normalizeTaskSpawnerConfig(
   const source = config as Record<string, unknown>;
 
   const maxConcurrent =
-    coerceNumber(
-      firstDefined(source, ['maxConcurrent', 'max_concurrent'])
-    ) ?? 0;
+    coerceNumber(firstDefined(source, ['maxConcurrent', 'max_concurrent'])) ??
+    0;
 
   const defaultTimeout =
-    coerceNumber(
-      firstDefined(source, ['defaultTimeout', 'default_timeout'])
-    ) ?? 0;
+    coerceNumber(firstDefined(source, ['defaultTimeout', 'default_timeout'])) ??
+    0;
 
   const autoCleanup =
-    coerceBoolean(
-      firstDefined(source, ['autoCleanup', 'auto_cleanup'])
-    ) ?? true;
+    coerceBoolean(firstDefined(source, ['autoCleanup', 'auto_cleanup'])) ??
+    true;
 
   return {
     maxConcurrent,
@@ -148,17 +145,12 @@ function normalizeShutdownOptions(
   const source = options as Record<string, unknown>;
 
   const gracePeriod =
-    coerceNumber(
-      firstDefined(source, ['gracePeriod', 'grace_period'])
-    ) ?? 2000;
+    coerceNumber(firstDefined(source, ['gracePeriod', 'grace_period'])) ?? 2000;
   const cancelHanging =
-    coerceBoolean(
-      firstDefined(source, ['cancelHanging', 'cancel_hanging'])
-    ) ?? true;
+    coerceBoolean(firstDefined(source, ['cancelHanging', 'cancel_hanging'])) ??
+    true;
   const joinTimeout =
-    coerceNumber(
-      firstDefined(source, ['joinTimeout', 'join_timeout'])
-    ) ?? 1000;
+    coerceNumber(firstDefined(source, ['joinTimeout', 'join_timeout'])) ?? 1000;
 
   return {
     gracePeriod,

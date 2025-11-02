@@ -28,19 +28,22 @@ type EncryptionTarget = string;
 
 type MessageType = 'response' | 'protocol-response';
 
-const ENCRYPTION_OPTION_ALIAS_PAIRS: ReadonlyArray<readonly [string, string]> = [
-  ['recipKid', 'recip_kid'],
-  ['recipientKeyId', 'recipient_key_id'],
-  ['recipPub', 'recip_pub'],
-  ['recipientPublicKey', 'recipient_public_key'],
-  ['privKey', 'priv_key'],
-  ['privateKey', 'private_key'],
-  ['channelKey', 'channel_key'],
-  ['requestAddress', 'request_address'],
-  ['encryptionType', 'encryption_type'],
-];
+const ENCRYPTION_OPTION_ALIAS_PAIRS: ReadonlyArray<readonly [string, string]> =
+  [
+    ['recipKid', 'recip_kid'],
+    ['recipientKeyId', 'recipient_key_id'],
+    ['recipPub', 'recip_pub'],
+    ['recipientPublicKey', 'recipient_public_key'],
+    ['privKey', 'priv_key'],
+    ['privateKey', 'private_key'],
+    ['channelKey', 'channel_key'],
+    ['requestAddress', 'request_address'],
+    ['encryptionType', 'encryption_type'],
+  ];
 
-function normalizeEncryptionOptions(options: EncryptionOptions): EncryptionOptions;
+function normalizeEncryptionOptions(
+  options: EncryptionOptions
+): EncryptionOptions;
 function normalizeEncryptionOptions(
   options?: EncryptionOptions
 ): EncryptionOptions | undefined {

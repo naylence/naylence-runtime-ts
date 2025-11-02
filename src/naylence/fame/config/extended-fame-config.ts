@@ -39,16 +39,16 @@ function readConfigFile(filePath: string): Record<string, unknown> {
 
   try {
     if (lower.endsWith('.yaml') || lower.endsWith('.yml')) {
-  const parsed = parseYamlContent(content);
-  logger.debug('loaded_fame_config_from_file_yaml', { file: filePath });
+      const parsed = parseYamlContent(content);
+      logger.debug('loaded_fame_config_from_file_yaml', { file: filePath });
       return parsed;
     }
 
-  const parsed = parseJson(content);
-  logger.debug('loaded_fame_config_from_file_json', { file: filePath });
+    const parsed = parseJson(content);
+    logger.debug('loaded_fame_config_from_file_json', { file: filePath });
     return parsed;
   } catch (error) {
-  logger.error('fame_config_file_parse_error', {
+    logger.error('fame_config_file_parse_error', {
       file: filePath,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -87,7 +87,7 @@ function loadFromEnv(): Record<string, unknown> | null {
   try {
     return resolveEnvValue(raw);
   } catch (error) {
-  logger.error('fame_config_env_parse_error', {
+    logger.error('fame_config_env_parse_error', {
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
@@ -107,7 +107,7 @@ function loadFromFiles(): Record<string, unknown> {
 
       return readConfigFile(candidate);
     } catch (error) {
-  logger.error('fame_config_file_error', {
+      logger.error('fame_config_file_error', {
         file: candidate,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -140,7 +140,7 @@ export function loadFameConfig(): ExtendedFameConfig {
     cachedConfig = normalized;
     return normalized;
   } catch (error) {
-  logger.error('fame_config_validation_error', {
+    logger.error('fame_config_validation_error', {
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
@@ -197,7 +197,7 @@ export async function loadPluginsFromConfig(): Promise<void> {
           );
         }
       } catch (error) {
-  logger.error('plugin_load_failed', {
+        logger.error('plugin_load_failed', {
           plugin: pluginName,
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
@@ -207,9 +207,9 @@ export async function loadPluginsFromConfig(): Promise<void> {
     }
 
     pluginsLoaded = true;
-  logger.debug('plugins_loaded_from_config');
+    logger.debug('plugins_loaded_from_config');
   } catch (error) {
-  logger.error('failed_to_load_plugins_from_config', {
+    logger.error('failed_to_load_plugins_from_config', {
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;

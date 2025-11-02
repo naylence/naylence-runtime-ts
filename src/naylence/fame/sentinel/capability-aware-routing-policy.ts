@@ -52,7 +52,8 @@ function normalizeOptions(
   if ('resolve_address_by_capability' in candidate) {
     const resolver = candidate.resolve_address_by_capability;
     if (typeof resolver === 'function') {
-      resolved.resolveAddressByCapability = resolver as ResolveAddressByCapability;
+      resolved.resolveAddressByCapability =
+        resolver as ResolveAddressByCapability;
     }
   }
 
@@ -67,8 +68,7 @@ export class CapabilityAwareRoutingPolicy implements RoutingPolicy {
     const normalized = normalizeOptions(options);
     this.loadBalancingStrategy =
       normalized.loadBalancingStrategy ?? new HRWLoadBalancingStrategy();
-    this.resolveAddressOverride =
-      normalized.resolveAddressByCapability ?? null;
+    this.resolveAddressOverride = normalized.resolveAddressByCapability ?? null;
   }
 
   public async decide(

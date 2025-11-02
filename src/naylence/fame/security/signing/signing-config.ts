@@ -26,10 +26,9 @@ function normalizeSigningConfigOptions(
     ...(options as SigningConfigOptions),
   };
 
-  const signingMaterialValue = resolveAlias<SigningMaterial | string | null | undefined>(
-    candidate,
-    ['signingMaterial', 'signing_material']
-  );
+  const signingMaterialValue = resolveAlias<
+    SigningMaterial | string | null | undefined
+  >(candidate, ['signingMaterial', 'signing_material']);
   if (typeof signingMaterialValue === 'string') {
     if (
       signingMaterialValue === SigningMaterial.RAW_KEY ||
@@ -80,8 +79,7 @@ export class SigningConfig {
     this.validateCertNameConstraints =
       normalized.validateCertNameConstraints ?? true;
     this.requireCertSidMatch = normalized.requireCertSidMatch ?? false;
-    this.requireCertLogicalMatch =
-      normalized.requireCertLogicalMatch ?? false;
+    this.requireCertLogicalMatch = normalized.requireCertLogicalMatch ?? false;
   }
 
   public static forDevelopment(): SigningConfig {

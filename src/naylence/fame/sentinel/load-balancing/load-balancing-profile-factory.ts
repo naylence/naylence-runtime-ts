@@ -91,7 +91,7 @@ export class LoadBalancingProfileFactory extends LoadBalancingStrategyFactory {
       );
     }
 
-  const profileCandidate = this.extractProfile(config);
+    const profileCandidate = this.extractProfile(config);
     if (
       profileCandidate !== undefined &&
       profileCandidate !== null &&

@@ -4,9 +4,7 @@ import { TokenProviderFactory } from './token-provider-factory.js';
 
 export interface QueryParamAuthInjectionStrategyOptions {
   type?: 'QueryParamAuth';
-  tokenProvider?:
-    | QueryParamAuthInjectionStrategyConfig['tokenProvider']
-    | null;
+  tokenProvider?: QueryParamAuthInjectionStrategyConfig['tokenProvider'] | null;
   token_provider?:
     | QueryParamAuthInjectionStrategyConfig['tokenProvider']
     | null;
@@ -32,9 +30,7 @@ function normalizeOptions(
   const candidate = options as QueryParamAuthInjectionStrategyOptions &
     Record<string, unknown>;
   const type =
-    typeof candidate.type === 'string'
-      ? candidate.type
-      : 'QueryParamAuth';
+    typeof candidate.type === 'string' ? candidate.type : 'QueryParamAuth';
   if (type !== 'QueryParamAuth') {
     throw new Error(
       `QueryParamAuthInjectionStrategy expects type "QueryParamAuth", got "${type ?? 'undefined'}"`

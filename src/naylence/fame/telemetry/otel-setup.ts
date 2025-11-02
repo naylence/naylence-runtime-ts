@@ -185,9 +185,8 @@ function normalizeSetupOtelOptions(
   const source = (options ?? {}) as Record<string, unknown>;
 
   const serviceName =
-    extractNonEmptyString(
-      pickFirst(source, ['serviceName', 'service_name'])
-    ) ?? 'naylence-service';
+    extractNonEmptyString(pickFirst(source, ['serviceName', 'service_name'])) ??
+    'naylence-service';
 
   const endpoint =
     extractNonEmptyString(

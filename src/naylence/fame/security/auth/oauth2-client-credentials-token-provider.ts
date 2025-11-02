@@ -40,9 +40,7 @@ type SnakeCaseOAuth2ClientCredentialsOptions = Partial<
 >;
 
 function normalizeOptions(
-  raw:
-    | OAuth2ClientCredentialsTokenProviderOptions
-    | Record<string, unknown>
+  raw: OAuth2ClientCredentialsTokenProviderOptions | Record<string, unknown>
 ): OAuth2ClientCredentialsTokenProviderOptions {
   const camel = raw as OAuth2ClientCredentialsTokenProviderOptions;
   const snake = raw as SnakeCaseOAuth2ClientCredentialsOptions;
@@ -95,10 +93,10 @@ function normalizeOptions(
       ? (fetchImplCandidate as FetchLike)
       : undefined;
 
-  const clockSkewCandidate =
-    camel.clockSkewSeconds ?? snake.clock_skew_seconds;
+  const clockSkewCandidate = camel.clockSkewSeconds ?? snake.clock_skew_seconds;
   const clockSkewSeconds =
-    typeof clockSkewCandidate === 'number' && Number.isFinite(clockSkewCandidate)
+    typeof clockSkewCandidate === 'number' &&
+    Number.isFinite(clockSkewCandidate)
       ? clockSkewCandidate
       : undefined;
 

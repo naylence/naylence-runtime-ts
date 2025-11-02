@@ -33,18 +33,17 @@ interface SecureChannelFrameHandlerOptions {
   envelopeSecurityHandler?: EnvelopeSecurityHandler | null;
 }
 
-type SecureChannelFrameHandlerOptionsInput = Partial<
-  SecureChannelFrameHandlerOptions
-> & {
-  secureChannelManager?: SecureChannelManager | null;
-  envelopeFactory?: EnvelopeFactory;
-  sendCallback?: SendCallback;
-  envelopeSecurityHandler?: EnvelopeSecurityHandler | null;
-  secure_channel_manager?: SecureChannelManager | null;
-  envelope_factory?: EnvelopeFactory;
-  send_callback?: SendCallback;
-  envelope_security_handler?: EnvelopeSecurityHandler | null;
-};
+type SecureChannelFrameHandlerOptionsInput =
+  Partial<SecureChannelFrameHandlerOptions> & {
+    secureChannelManager?: SecureChannelManager | null;
+    envelopeFactory?: EnvelopeFactory;
+    sendCallback?: SendCallback;
+    envelopeSecurityHandler?: EnvelopeSecurityHandler | null;
+    secure_channel_manager?: SecureChannelManager | null;
+    envelope_factory?: EnvelopeFactory;
+    send_callback?: SendCallback;
+    envelope_security_handler?: EnvelopeSecurityHandler | null;
+  };
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null) {
@@ -90,11 +89,12 @@ function normalizeOptions(
 
   const record = options as Record<string, unknown>;
 
-  const secureChannelManager = pickOption<SecureChannelManager | null>(
-    record,
-    'secureChannelManager',
-    'secure_channel_manager'
-  ) ?? null;
+  const secureChannelManager =
+    pickOption<SecureChannelManager | null>(
+      record,
+      'secureChannelManager',
+      'secure_channel_manager'
+    ) ?? null;
 
   const envelopeFactory = pickOption<EnvelopeFactory>(
     record,

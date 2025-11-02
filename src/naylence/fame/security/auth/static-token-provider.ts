@@ -89,7 +89,8 @@ function normalizeOptions(
     throw new TypeError('StaticTokenProvider requires a string token value');
   }
 
-  const candidate = input as StaticTokenProviderOptions & Record<string, unknown>;
+  const candidate = input as StaticTokenProviderOptions &
+    Record<string, unknown>;
   const tokenCandidate =
     candidate.token ??
     candidate.tokenValue ??

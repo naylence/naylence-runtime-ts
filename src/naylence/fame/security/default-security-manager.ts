@@ -70,7 +70,10 @@ function normalizeContextAliases(
 ): DeliveryContextWithAliases {
   const normalized = context;
 
-  if (normalized.originType === undefined && context.origin_type !== undefined) {
+  if (
+    normalized.originType === undefined &&
+    context.origin_type !== undefined
+  ) {
     normalized.originType = context.origin_type;
   }
 
@@ -1142,8 +1145,8 @@ export class DefaultSecurityManager implements SecurityManager {
       !envelope.sec?.sig
     ) {
       if (this._envelopeSecurityHandler) {
-  const localContext = createLocalContext(node, context);
-  ensureSecurityContext(localContext);
+        const localContext = createLocalContext(node, context);
+        ensureSecurityContext(localContext);
         ensureSecurityContext(localContext);
 
         const handled =
@@ -1217,8 +1220,8 @@ export class DefaultSecurityManager implements SecurityManager {
       !envelope.sec?.sig
     ) {
       if (this._envelopeSecurityHandler) {
-  const localContext = createLocalContext(node, context);
-  ensureSecurityContext(localContext);
+        const localContext = createLocalContext(node, context);
+        ensureSecurityContext(localContext);
 
         const handled =
           await this._envelopeSecurityHandler.handleOutboundSecurity(

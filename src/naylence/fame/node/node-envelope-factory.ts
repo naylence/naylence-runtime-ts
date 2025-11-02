@@ -59,9 +59,14 @@ export class NodeEnvelopeFactory implements EnvelopeFactory {
       optionsRecord,
       'trace_id'
     );
-    const toInput = pickAlias<
-      FameEnvelope['to'] | string | null | undefined
-    >(to ?? null, optionsRecord, 'to', 'recipient', 'target', 'address');
+    const toInput = pickAlias<FameEnvelope['to'] | string | null | undefined>(
+      to ?? null,
+      optionsRecord,
+      'to',
+      'recipient',
+      'target',
+      'address'
+    );
     const capabilitiesInput = pickAlias<unknown>(
       capabilities ?? null,
       optionsRecord,
@@ -312,9 +317,7 @@ function normalizeFlowFlags(flags: unknown): FlowFlags | undefined {
   throw new Error('flowFlags must be a finite integer value');
 }
 
-function normalizeResponseType(
-  value: unknown
-): FameResponseType | undefined {
+function normalizeResponseType(value: unknown): FameResponseType | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -322,7 +325,7 @@ function normalizeResponseType(
   if (typeof value === 'string') {
     const trimmed = value.trim();
     return trimmed.length > 0
-      ? ((trimmed as unknown) as FameResponseType)
+      ? (trimmed as unknown as FameResponseType)
       : undefined;
   }
 

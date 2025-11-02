@@ -324,7 +324,10 @@ export class WebSocketConnectorFactory extends ConnectorFactory<
 
     if ('durable' in record && record['durable'] !== undefined) {
       normalized.durable = this._coerceDurable(record['durable']);
-    } else if ('durable_mode' in record && record['durable_mode'] !== undefined) {
+    } else if (
+      'durable_mode' in record &&
+      record['durable_mode'] !== undefined
+    ) {
       normalized.durable = this._coerceDurable(record['durable_mode']);
     } else if ('durableMode' in record && record['durableMode'] !== undefined) {
       normalized.durable = this._coerceDurable(record['durableMode']);

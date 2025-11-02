@@ -228,11 +228,8 @@ describe('ChannelPollingManager', () => {
   });
 
   it('respects stop_state flag when draining channel', async () => {
-    const {
-      deliverWrapper,
-      responseContextManager,
-      streamingResponseHandler,
-    } = createDeps();
+    const { deliverWrapper, responseContextManager, streamingResponseHandler } =
+      createDeps();
 
     const manager = new ChannelPollingManager(
       deliverWrapper,
@@ -256,7 +253,12 @@ describe('ChannelPollingManager', () => {
       async () => undefined
     );
 
-    await manager.startPollingLoop('service-stop', channel, handler, stopState as any);
+    await manager.startPollingLoop(
+      'service-stop',
+      channel,
+      handler,
+      stopState as any
+    );
 
     expect(handler).toHaveBeenCalledTimes(1);
     const receiveMock = (channel as unknown as { receive: jest.Mock }).receive;

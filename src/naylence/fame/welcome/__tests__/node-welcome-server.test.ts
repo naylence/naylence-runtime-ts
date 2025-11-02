@@ -24,7 +24,10 @@ describe('nodeWelcomeServer environment normalization', () => {
       FAME_APP_HOST: '127.0.0.1',
       FAME_APP_PORT: '9000',
     } as NodeJS.ProcessEnv;
-    expect(resolveServerAddress(env)).toEqual({ host: '127.0.0.1', port: 9000 });
+    expect(resolveServerAddress(env)).toEqual({
+      host: '127.0.0.1',
+      port: 9000,
+    });
   });
 
   it('supports camelCase aliases and falls back when port invalid', () => {
@@ -32,6 +35,9 @@ describe('nodeWelcomeServer environment normalization', () => {
       fameAppHost: 'localhost',
       fameAppPort: 'not-a-number',
     } as NodeJS.ProcessEnv;
-    expect(resolveServerAddress(env)).toEqual({ host: 'localhost', port: 8090 });
+    expect(resolveServerAddress(env)).toEqual({
+      host: 'localhost',
+      port: 8090,
+    });
   });
 });

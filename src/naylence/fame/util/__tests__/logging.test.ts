@@ -111,7 +111,6 @@ describe('Cross-platform Logging', () => {
       logger.info('message with args', 'arg1', 'arg2', 123);
     }).not.toThrow();
   });
-
 });
 
 describe('enableLogging', () => {

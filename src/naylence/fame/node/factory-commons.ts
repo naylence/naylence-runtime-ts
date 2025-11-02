@@ -91,10 +91,7 @@ function coerceStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string');
 }
 
-function mergeStringArrays(
-  primary: string[],
-  alias: unknown
-): string[] {
+function mergeStringArrays(primary: string[], alias: unknown): string[] {
   const base = [...primary];
   const seen = new Set(base);
   const aliasValues = coerceStringArray(alias);
@@ -238,7 +235,8 @@ export async function makeCommonOptions(
   const listeners = config.listeners.length
     ? [...config.listeners]
     : coerceTransportListenerConfigs(
-        (aliasRecord.transport_listeners ?? configRecord.transport_listeners) ??
+        aliasRecord.transport_listeners ??
+          configRecord.transport_listeners ??
           aliasRecord.listener_configs ??
           configRecord.listener_configs
       );

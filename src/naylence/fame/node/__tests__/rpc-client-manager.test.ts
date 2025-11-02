@@ -353,7 +353,7 @@ describe('RPCClientManager', () => {
     const manager = createManager();
     const mocks = getCoreMocks();
 
-  const targetAddr = 'alias@/remote' as unknown as FameAddress;
+    const targetAddr = 'alias@/remote' as unknown as FameAddress;
     mocks.generateId.mockReturnValueOnce('listener-alias');
     mocks.generateId.mockReturnValueOnce('req-alias');
     mocks.makeRequest.mockReturnValueOnce({ payload: 'alias-request' });
@@ -368,8 +368,7 @@ describe('RPCClientManager', () => {
 
     await flushAsync();
 
-    const envelopeArgs =
-      defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
+    const envelopeArgs = defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
     expect(envelopeArgs.to).toBe(targetAddr);
     expect(envelopeArgs.capabilities).toBeUndefined();
     expect(envelopeArgs.replyTo?.toString()).toMatch(/__rpc__.*@\/node/);
@@ -430,8 +429,7 @@ describe('RPCClientManager', () => {
       done: true,
     });
 
-    const envelopeArgs =
-      defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
+    const envelopeArgs = defaultEnvelopeFactory.createEnvelope.mock.calls[0][0];
     expect(envelopeArgs.to).toBe(targetAddr);
 
     expect(defaultDeliveryTracker.onStreamItem).toHaveBeenCalled();

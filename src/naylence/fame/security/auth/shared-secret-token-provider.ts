@@ -25,13 +25,17 @@ export class SharedSecretTokenProvider implements TokenProvider {
       typeof options === 'object' &&
       'credentialProvider' in options
     ) {
-      credentialProvider = (options as { credentialProvider: CredentialProvider }).credentialProvider;
+      credentialProvider = (
+        options as { credentialProvider: CredentialProvider }
+      ).credentialProvider;
     } else if (
       options &&
       typeof options === 'object' &&
       'credential_provider' in options
     ) {
-      credentialProvider = (options as { credential_provider: CredentialProvider }).credential_provider;
+      credentialProvider = (
+        options as { credential_provider: CredentialProvider }
+      ).credential_provider;
     }
 
     if (!credentialProvider) {

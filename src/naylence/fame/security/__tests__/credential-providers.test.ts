@@ -603,9 +603,7 @@ describe('DevFixedKeyCredentialProviderFactory', () => {
     } satisfies DevFixedKeyCredentialProviderConfig);
 
     expect(provider).toBeInstanceOf(DevFixedKeyCredentialProvider);
-    await expect(provider.get()).resolves.toEqual(
-      Uint8Array.from(keyBytes)
-    );
+    await expect(provider.get()).resolves.toEqual(Uint8Array.from(keyBytes));
   });
 });
 

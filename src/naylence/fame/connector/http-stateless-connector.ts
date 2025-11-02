@@ -126,7 +126,8 @@ export class HttpStatelessConnector extends BaseAsyncConnector {
 
     const legacyMaxQueue = (config as { max_queue?: unknown }).max_queue;
     const preferredQueueValue =
-      config.maxQueue ?? (legacyMaxQueue !== undefined ? legacyMaxQueue : undefined);
+      config.maxQueue ??
+      (legacyMaxQueue !== undefined ? legacyMaxQueue : undefined);
     const parsedQueueValue =
       typeof preferredQueueValue === 'number'
         ? preferredQueueValue
@@ -134,7 +135,9 @@ export class HttpStatelessConnector extends BaseAsyncConnector {
           ? Number(preferredQueueValue)
           : undefined;
     const queueSize =
-      parsedQueueValue !== undefined && Number.isFinite(parsedQueueValue) && parsedQueueValue > 0
+      parsedQueueValue !== undefined &&
+      Number.isFinite(parsedQueueValue) &&
+      parsedQueueValue > 0
         ? parsedQueueValue
         : 1024;
 

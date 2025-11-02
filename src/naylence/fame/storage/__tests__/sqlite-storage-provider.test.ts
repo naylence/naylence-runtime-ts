@@ -328,8 +328,8 @@ describe('SQLite storage provider', () => {
     const tempDir = await fsPromises.mkdtemp(
       path.join(os.tmpdir(), 'sqlite-provider-encrypted-')
     );
-  const { module } = await setupModule({});
-  const { SQLiteStorageProvider } = module;
+    const { module } = await setupModule({});
+    const { SQLiteStorageProvider } = module;
 
     class EncryptedModel {
       public constructor(public value: string) {}

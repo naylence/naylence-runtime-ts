@@ -97,10 +97,9 @@ function normalizeConfig(
     );
   }
 
-  const authConfig =
-    (source.auth ?? source.auth_strategy ?? null) as
-      | AuthInjectionStrategyConfig
-      | null;
+  const authConfig = (source.auth ??
+    source.auth_strategy ??
+    null) as AuthInjectionStrategyConfig | null;
 
   const isRoot =
     typeof source.isRoot === 'boolean'

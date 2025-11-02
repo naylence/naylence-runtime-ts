@@ -27,7 +27,9 @@ function normalizeOptions(
   options: StaticNodePlacementStrategyOptions | null | undefined
 ): { targetSystemId: string; targetPhysicalPath: string } {
   if (!options || typeof options !== 'object') {
-    throw new TypeError('StaticNodePlacementStrategy options must be an object');
+    throw new TypeError(
+      'StaticNodePlacementStrategy options must be an object'
+    );
   }
 
   const targetSystemId =

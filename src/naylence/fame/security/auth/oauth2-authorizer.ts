@@ -60,8 +60,7 @@ function normalizeOptions(
   const snake = raw as SnakeCaseOAuth2AuthorizerOptions;
 
   const tokenVerifier =
-    camel.tokenVerifier ??
-    (snake.token_verifier as TokenVerifier | undefined);
+    camel.tokenVerifier ?? (snake.token_verifier as TokenVerifier | undefined);
 
   if (!tokenVerifier) {
     throw new Error('OAuth2Authorizer requires a tokenVerifier');
@@ -101,8 +100,8 @@ function normalizeOptions(
     (typeof snake.audience === 'string'
       ? snake.audience
       : typeof snake.aud === 'string'
-      ? snake.aud
-      : undefined);
+        ? snake.aud
+        : undefined);
 
   return {
     tokenVerifier,

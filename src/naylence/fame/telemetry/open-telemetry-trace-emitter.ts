@@ -108,8 +108,7 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   public constructor(options: OpenTelemetryTraceEmitterOptionsInput) {
     super();
     const normalized = normalizeOpenTelemetryTraceEmitterOptions(options);
-    this.tracer =
-      normalized.tracer ?? trace.getTracer(normalized.serviceName);
+    this.tracer = normalized.tracer ?? trace.getTracer(normalized.serviceName);
     this.lifecycle = normalized.lifecycle ?? null;
     this.authStrategy = normalized.authStrategy ?? null;
   }

@@ -1,9 +1,10 @@
-import type {
-  FameDeliveryContext,
-  FameEnvelope,
-} from '@naylence/core';
+import type { FameDeliveryContext, FameEnvelope } from '@naylence/core';
 import type { NodeLike } from '../../node/node-like.js';
-import type { TraceSpan, TraceSpanOptions, TraceSpanScope } from '../trace-emitter.js';
+import type {
+  TraceSpan,
+  TraceSpanOptions,
+  TraceSpanScope,
+} from '../trace-emitter.js';
 import { BaseTraceEmitter } from '../base-trace-emitter.js';
 
 class MockSpan implements TraceSpan {
@@ -33,10 +34,7 @@ class TestTraceEmitter extends BaseTraceEmitter {
   public lastSpanName: string | null = null;
   public lastSpanAttributes: Record<string, unknown> | undefined;
 
-  public startSpan(
-    name: string,
-    options?: TraceSpanOptions
-  ): TraceSpanScope {
+  public startSpan(name: string, options?: TraceSpanOptions): TraceSpanScope {
     this.lastSpanName = name;
     this.lastSpanAttributes = options?.attributes as
       | Record<string, unknown>
