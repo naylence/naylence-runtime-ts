@@ -1,8 +1,8 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "type": "module",
-  "description": "Naylence Runtime - Complete TypeScript runtime including core Fame protocol and utilities",
+  "description": "Naylence Runtime - Complete TypeScript runtime",
   "author": "Naylence Dev <naylencedev@gmail.com>",
   "license": "Apache-2.0",
   "keywords": [
@@ -123,8 +123,8 @@
   "dependencies": {
     "@fastify/formbody": "^8.0.2",
     "@fastify/websocket": "^11.2.0",
-    "@naylence/core": "^0.3.1",
-    "@naylence/factory": "file:../naylence-factory-ts/naylence-factory-0.1.0.tgz",
+    "@naylence/core": "^0.3.2",
+    "@naylence/factory": "^0.1.1",
     "@noble/ciphers": "^2.0.1",
     "@noble/curves": "^2.0.1",
     "@noble/ed25519": "^3.0.0",
@@ -154,7 +154,7 @@
     "@opentelemetry/sdk-trace-base": "^2.1.0",
     "@opentelemetry/sdk-trace-node": "^2.1.0",
     "better-sqlite3": "^12.4.1",
-    "pino": "^9.12.0",
+    "pino": "^9.14.0",
     "pino-pretty": "^13.1.1"
   },
   "devDependencies": {
@@ -185,8 +185,8 @@
     "ts-jest": "^29.4.4",
     "tslib": "^2.6.2",
     "typescript": "^5.3.2",
-    "vite": "^5.4.10",
-    "vitest": "^2.1.4",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9",
     "ws": "^8.18.0"
   },
   "size-limit": [

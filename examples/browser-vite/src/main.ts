@@ -8,6 +8,7 @@ import {
   withFabric,
   RpcMixin,
   RpcProxy,
+  generateIdAsync,
 } from '@naylence/runtime/browser';
 
 type StatusLine = string;
@@ -186,6 +187,10 @@ async function runSmokeTest(): Promise<StatusLine[]> {
       fabric?.constructor?.name ??
       Object.prototype.toString.call(fabric).slice(8, -1);
     lines.push(`Fabric initialized successfully: ${fabricType}`);
+    
+    const node = getNode();
+    lines.push(`Node id: ${node.id}, sid: ${node.sid}`);
+    
     const calculator = new CalculatorService();
     const address = await fabric.serve(calculator, 'calculator');
     lines.push(`Calculator service served at: ${address}`);
@@ -193,6 +198,9 @@ async function runSmokeTest(): Promise<StatusLine[]> {
     const calculatorProxy: any = RpcProxy.remoteByAddress(address);
     const addResult = await calculatorProxy.add({ a: 3, b: 4 });
     lines.push(`Result: add(3,4) = ${addResult}`);
+    const idAsync = await generateIdAsync({ mode: 'fingerprint' })
+    lines.push(`Generated ID (fingerprint mode): ${idAsync}`);
+    
     // const multiplyResult = await calculatorProxy.multiply({ a: 6, b: 7 });
     // lines.push(`Result: multiply(6,7) = ${multiplyResult}`);
     // const stream = await calculatorProxy.fib_stream({ _stream: true, n: 10 });
@@ -202,8 +210,9 @@ async function runSmokeTest(): Promise<StatusLine[]> {
     // }
     // lines.push(`Fib stream: ${fibNumbers.join(', ')}`);
 
-    const node = getNode();
+    
     const envelope = createFameEnvelope({
+        sid: node.sid || "unknown sid",
         frame: {
             type: 'Data',
             payload: 'test'

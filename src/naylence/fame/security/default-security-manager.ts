@@ -769,7 +769,22 @@ export class DefaultSecurityManager implements SecurityManager {
 
       const hasSignature = Boolean(envelope.sec?.sig);
       if (!hasSignature) {
-        if (this._policy.isSignatureRequired(envelope, undefined)) {
+        const nodeSid = (node as { sid?: string | null | undefined }).sid;
+        const envelopeSid = (envelope as { sid?: string | null | undefined }).sid;
+        const isLocalUnsignedSelfEnvelope =
+          localContext.originType === DeliveryOriginType.LOCAL &&
+          typeof nodeSid === 'string' &&
+          nodeSid.length > 0 &&
+          typeof envelopeSid === 'string' &&
+          envelopeSid.length > 0 &&
+          envelopeSid === nodeSid;
+
+        if (isLocalUnsignedSelfEnvelope) {
+          logger.debug('local_message_unsigned_skipping_signature_check', {
+            envp_id: envelope.id,
+            address: String(address),
+          });
+        } else if (this._policy.isSignatureRequired(envelope, undefined)) {
           const violationAction = this._policy.getUnsignedViolationAction(
             envelope,
             undefined
