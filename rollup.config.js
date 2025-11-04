@@ -5,7 +5,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 
 export default defineConfig({
-  input: 'dist/esm/src/browser.js',
+  input: 'dist/esm/browser.js',
   output: {
     file: 'dist/browser/index.js',
     format: 'umd',

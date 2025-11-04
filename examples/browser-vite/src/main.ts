@@ -200,7 +200,7 @@ async function runSmokeTest(): Promise<StatusLine[]> {
     lines.push(`Result: add(3,4) = ${addResult}`);
     const idAsync = await generateIdAsync({ mode: 'fingerprint' })
     lines.push(`Generated ID (fingerprint mode): ${idAsync}`);
-    
+
     // const multiplyResult = await calculatorProxy.multiply({ a: 6, b: 7 });
     // lines.push(`Result: multiply(6,7) = ${multiplyResult}`);
     // const stream = await calculatorProxy.fib_stream({ _stream: true, n: 10 });
