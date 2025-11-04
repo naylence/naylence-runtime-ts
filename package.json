@@ -149,16 +149,16 @@
   },
   "optionalDependencies": {
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.205.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.207.0",
     "@opentelemetry/resources": "^2.1.0",
     "@opentelemetry/sdk-trace-base": "^2.1.0",
     "@opentelemetry/sdk-trace-node": "^2.1.0",
     "better-sqlite3": "^12.4.1",
-    "pino": "^9.14.0",
+    "pino": "^10.1.0",
     "pino-pretty": "^13.1.1"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.4",
@@ -169,7 +169,7 @@
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
-    "esbuild": "^0.24.0",
+  "esbuild": "^0.25.12",
     "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.0.1",
@@ -182,11 +182,11 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.52.3",
     "size-limit": "^11.1.5",
-    "ts-jest": "^29.4.4",
+    "ts-jest": "^29.4.5",
     "tslib": "^2.6.2",
     "typescript": "^5.3.2",
-    "vite": "^5.4.21",
-    "vitest": "^2.1.9",
+    "vite": "^7.1.12",
+    "vitest": "^4.0.6",
     "ws": "^8.18.0"
   },
   "size-limit": [
