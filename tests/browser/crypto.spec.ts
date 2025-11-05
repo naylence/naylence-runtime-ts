@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   BrowserWrappedKeyCredentialProvider,
   hasCryptoSupport,
-} from '@naylence/runtime/browser';
+} from '@naylence/runtime';
 
 const DB_NAME = 'naylence-secrets';
 const PASSPHRASE = 'vitest-browser-secret';

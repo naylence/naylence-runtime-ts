@@ -13,15 +13,170 @@ import { MODULES, type FactoryModuleSpec } from '../factory-manifest.js';
 
 export type RuntimeFactoryRegistry = typeof DefaultRegistry;
 
-function resolveModuleCandidates(spec: string): string[] {
-  const base = spec.startsWith('./') ? `../${spec.slice(2)}` : spec;
+const FACTORY_MODULE_PREFIX = '@naylence/runtime/naylence/fame/';
+const BROWSER_DIST_SEGMENT = '/dist/browser/';
 
-  if (base.endsWith('.js')) {
-    // Prefer built JS artifacts to avoid browser bundlers fetching missing TS sources.
-    return [base, base.replace(/\.js$/u, '.ts')];
+function detectModuleUrl(): string | null {
+  // Prefer Node-friendly __filename when available.
+  if (typeof __filename === 'string') {
+    try {
+      const normalized = __filename.startsWith('file://')
+        ? __filename
+        : `file://${__filename}`;
+      return normalized;
+    } catch {
+      // fall through to stack parsing
+    }
   }
 
-  return [base];
+  // Fallback to parsing the current stack trace to discover the executing module URL.
+  try {
+    throw new Error();
+  } catch (error) {
+    const stack =
+      typeof error === 'object' && error && 'stack' in error
+        ? String((error as Error).stack ?? '')
+        : '';
+
+    const lines = stack.split('\n');
+    for (const line of lines) {
+      const match = line.match(
+        /(https?:\/\/[^\s)]+|file:\/\/[^\s)]+|\/[^\s)]+\.(?:js|ts))/u
+      );
+      if (!match) {
+        continue;
+      }
+
+      const candidate = match[1];
+      if (candidate.startsWith('http://') || candidate.startsWith('https://')) {
+        return candidate;
+      }
+
+      if (candidate.startsWith('file://')) {
+        return candidate;
+      }
+
+      return `file://${candidate}`;
+    }
+  }
+
+  return null;
+}
+
+function computeBrowserFactoryBase(rawUrl: string | null): string | null {
+  if (!rawUrl) {
+    return null;
+  }
+
+  const sanitized = rawUrl.split('?')[0]?.split('#')[0] ?? rawUrl;
+  const esmMarker = '/dist/esm/naylence/fame/';
+  const browserMarker = '/dist/browser/';
+  const distMarker = '/dist/';
+
+  if (sanitized.includes(esmMarker)) {
+    return sanitized.slice(0, sanitized.indexOf(esmMarker) + esmMarker.length);
+  }
+
+  if (rawUrl.includes(BROWSER_DIST_SEGMENT)) {
+    return new URL('../esm/naylence/fame/', rawUrl).href;
+  }
+
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    try {
+      const parsed = new URL(rawUrl);
+      const viteDepsSegment = '/node_modules/.vite/deps/';
+      if (parsed.pathname.includes(viteDepsSegment)) {
+        const baseOrigin = `${parsed.protocol}//${parsed.host}`;
+        return `${baseOrigin}/node_modules/@naylence/runtime/dist/esm/naylence/fame/`;
+      }
+    } catch {
+      // ignore and fall through to null
+    }
+  }
+
+  if (sanitized.includes(browserMarker)) {
+    const base = sanitized.slice(0, sanitized.indexOf(browserMarker) + browserMarker.length);
+    return `${base.replace(/browser\/?$/u, '')}esm/naylence/fame/`;
+  }
+
+  if (sanitized.includes(distMarker)) {
+    const index = sanitized.indexOf(distMarker);
+    const base = sanitized.slice(0, index + distMarker.length);
+    return `${base}esm/naylence/fame/`;
+  }
+
+  // Fallback for development: if this is a source file path, compute dist/esm path
+  const srcMarker = '/src/naylence/fame/';
+  if (sanitized.includes(srcMarker)) {
+    const index = sanitized.indexOf(srcMarker);
+    const projectRoot = sanitized.slice(0, index);
+    return `${projectRoot}/dist/esm/naylence/fame/`;
+  }
+
+  return null;
+}
+
+const moduleUrl = detectModuleUrl();
+const browserFactoryBase = computeBrowserFactoryBase(moduleUrl);
+
+function resolveFactoryModuleSpecifier(specifier: string): string | null {
+  if (specifier.startsWith('../')) {
+    const relativePath = specifier.slice('../'.length);
+    return `${FACTORY_MODULE_PREFIX}${relativePath}`;
+  }
+
+  if (specifier.startsWith('./')) {
+    const relativePath = specifier.slice('./'.length);
+    return `${FACTORY_MODULE_PREFIX}${relativePath}`;
+  }
+
+  return null;
+}
+
+function resolveModuleCandidates(spec: string): string[] {
+  const packageSpecifier = resolveFactoryModuleSpecifier(spec);
+  const candidates: string[] = [];
+  const preferSource = typeof moduleUrl === 'string' && moduleUrl.includes('/src/');
+
+  const addCandidate = (candidate: string | null): void => {
+    if (!candidate) {
+      return;
+    }
+    if (!candidates.includes(candidate)) {
+      candidates.push(candidate);
+    }
+  };
+
+  if (preferSource && spec.startsWith('./')) {
+    const baseSource = `../${spec.slice(2)}`;
+    addCandidate(baseSource);
+    if (baseSource.endsWith('.js')) {
+      addCandidate(baseSource.replace(/\.js$/u, '.ts'));
+    }
+  }
+
+  if (browserFactoryBase && spec.startsWith('./')) {
+    const browserCandidate = new URL(spec.slice('./'.length), browserFactoryBase).href;
+    addCandidate(browserCandidate);
+    if (browserCandidate.endsWith('.js')) {
+      addCandidate(browserCandidate.replace(/\.js$/u, '.ts'));
+    }
+  }
+
+  if (packageSpecifier) {
+    addCandidate(packageSpecifier);
+    if (packageSpecifier.endsWith('.js')) {
+      addCandidate(packageSpecifier.replace(/\.js$/u, '.ts'));
+    }
+  }
+
+  const baseFallback = spec.startsWith('./') ? `../${spec.slice(2)}` : spec;
+  addCandidate(baseFallback);
+  if (baseFallback.endsWith('.js')) {
+    addCandidate(baseFallback.replace(/\.js$/u, '.ts'));
+  }
+
+  return candidates;
 }
 
 export async function registerDefaultFactories(
@@ -34,7 +189,7 @@ export async function registerDefaultFactories(
         let mod: Record<string, unknown> | undefined;
         let lastError: unknown;
 
-        for (const candidate of candidates) {
+        for (const [index, candidate] of candidates.entries()) {
           try {
             mod = await import(/* @vite-ignore */ candidate);
             lastError = undefined;
@@ -42,8 +197,7 @@ export async function registerDefaultFactories(
           } catch (error) {
             lastError = error;
 
-            const isLastCandidate =
-              candidate === candidates[candidates.length - 1];
+            const isLastCandidate = index === candidates.length - 1;
             if (isLastCandidate) {
               throw error;
             }
@@ -53,7 +207,9 @@ export async function registerDefaultFactories(
             const moduleNotFound =
               message.includes('Cannot find module') ||
               message.includes('ERR_MODULE_NOT_FOUND') ||
-              message.includes('Unknown file extension');
+              message.includes('Unknown file extension') ||
+              message.includes('Failed to fetch dynamically imported module') ||
+              message.includes('Importing a module script failed');
 
             if (!moduleNotFound) {
               throw error;

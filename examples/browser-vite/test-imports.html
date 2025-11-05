@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Factory Imports</title></head>
+<body>
+<pre id="log"></pre>
+<script type="module">
+const log = document.getElementById('log');
+const lines = [];
+
+try {
+  const { withFabric } = await import('/@fs/Users/victormatskiv/Documents/Development/naylence/naylence-runtime-ts/dist/browser/index.mjs');
+  lines.push('✓ Main module imported');
+  
+  const config = {
+    rootConfig: {
+      plugins: ["@naylence/runtime"],
+      node: { security: { type: 'DefaultSecurityManager' } }
+    }
+  };
+  
+  await withFabric(config, async (fabric) => {
+    lines.push('✓ Fabric created: ' + fabric.constructor.name);
+    lines.push('✓ Node available: ' + (fabric.node ? 'yes' : 'no'));
+  });
+  
+  lines.push('✓ Test passed');
+} catch (error) {
+  lines.push('✗ Error: ' + error.message);
+  lines.push(error.stack);
+}
+
+log.textContent = lines.join('\n');
+</script>
+</body>
+</html>

@@ -18,6 +18,7 @@ const ENV_VAR_STORAGE_MASTER_KEY = 'FAME_STORAGE_MASTER_KEY';
 const ENV_VAR_STORAGE_ENCRYPTED = 'FAME_STORAGE_ENCRYPTED';
 
 const PROFILE_NAME_MEMORY = 'memory';
+const PROFILE_NAME_INDEXEDDB = 'indexeddb';
 const PROFILE_NAME_SQLITE = 'sqlite';
 const PROFILE_NAME_ENCRYPTED_SQLITE = 'encrypted-sqlite';
 
@@ -27,12 +28,16 @@ const storageProfileSchema = z
     profile: z
       .string()
       .optional()
-      .describe('Storage profile name (memory | sqlite | encrypted-sqlite)'),
+      .describe('Storage profile name (memory | indexeddb | sqlite | encrypted-sqlite)'),
   })
   .passthrough();
 
 const MEMORY_PROFILE_CONFIG = {
   type: 'InMemoryStorageProvider',
+} as const;
+
+const INDEXEDDB_PROFILE_CONFIG = {
+  type: 'IndexedDBStorageProvider',
 } as const;
 
 const SQLITE_PROFILE_CONFIG = {
@@ -51,11 +56,30 @@ const ENCRYPTED_SQLITE_PROFILE_CONFIG = {
   isCached: true,
 } as const;
 
-const PROFILE_MAP: Record<string, Record<string, unknown>> = {
+// Base profile map with browser-safe options
+const BASE_PROFILE_MAP: Record<string, Record<string, unknown>> = {
   [PROFILE_NAME_MEMORY]: MEMORY_PROFILE_CONFIG,
+  [PROFILE_NAME_INDEXEDDB]: INDEXEDDB_PROFILE_CONFIG,
+};
+
+// Extended profile map - can be augmented by Node.js environment
+const PROFILE_MAP: Record<string, Record<string, unknown>> = {
+  ...BASE_PROFILE_MAP,
+};
+
+// Function to register additional profiles (used by Node.js build)
+export function registerStorageProfile(
+  name: string,
+  config: Record<string, unknown>
+): void {
+  PROFILE_MAP[name] = config;
+}
+
+// Export the SQLite configs so they can be registered from node-index.ts
+export const SQLITE_PROFILES = {
   [PROFILE_NAME_SQLITE]: SQLITE_PROFILE_CONFIG,
   [PROFILE_NAME_ENCRYPTED_SQLITE]: ENCRYPTED_SQLITE_PROFILE_CONFIG,
-};
+} as const;
 
 export interface StorageProfileConfig extends StorageProviderConfig {
   type: 'StorageProfile';

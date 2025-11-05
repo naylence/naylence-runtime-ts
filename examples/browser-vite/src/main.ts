@@ -9,7 +9,7 @@ import {
   RpcMixin,
   RpcProxy,
   generateIdAsync,
-} from '@naylence/runtime/browser';
+} from '@naylence/runtime';
 
 type StatusLine = string;
 

@@ -29,6 +29,7 @@ import {
   normalizeExtendedFameConfig,
   type ExtendedFameConfig,
 } from '../config/extended-fame-config-base.js';
+import { pushNode } from '../node/node-context-stack.js';
 
 const logger = getLogger('naylence.fame.fabric.in_process');
 
@@ -46,6 +47,7 @@ export class InProcessFameFabric extends FameFabric {
   private _fabricStarted = false;
   private readonly _config: ExtendedFameConfig | null;
   private _versionLogged = false;
+  private _nodeContextRelease: (() => void) | null = null;
 
   constructor(
     node?: NodeLike | null,
@@ -131,6 +133,30 @@ export class InProcessFameFabric extends FameFabric {
     }
 
     this._fabricStarted = false;
+  }
+
+  async enter(): Promise<FameFabric> {
+    const fabric = await super.enter();
+    const node = this.getRequiredNode();
+    if (this._nodeContextRelease) {
+      this._nodeContextRelease();
+    }
+    this._nodeContextRelease = pushNode(node);
+
+    return fabric;
+  }
+
+  async exit(error?: Error): Promise<void> {
+    const release = this._nodeContextRelease;
+    this._nodeContextRelease = null;
+
+    try {
+      await super.exit(error);
+    } finally {
+      if (release) {
+        release();
+      }
+    }
   }
 
   get node(): NodeLike {

@@ -1,6 +1,6 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.3.5-test.3",
+  "version": "0.3.5-test.903",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime",
   "author": "Naylence Dev <naylencedev@gmail.com>",
@@ -27,19 +27,30 @@
     "url": "https://github.com/naylence/naylence-runtime-ts/issues"
   },
   "homepage": "https://github.com/naylence/naylence-runtime-ts#readme",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
+  "main": "dist/node/node.cjs",
+  "module": "dist/node/node.mjs",
   "types": "dist/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
+      "import": {
+        "browser": "./dist/browser/index.mjs",
+        "default": "./dist/node/node.mjs"
+      },
+      "require": {
+        "browser": "./dist/browser/index.cjs",
+        "default": "./dist/node/node.cjs"
+      }
+    },
+    "./node": {
+      "types": "./dist/types/node.d.ts",
+      "import": "./dist/node/node.mjs",
+      "require": "./dist/node/node.cjs"
     },
     "./browser": {
-      "types": "./dist/types/browser.d.ts",
-      "import": "./dist/esm/browser.js"
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/browser/index.mjs",
+      "require": "./dist/browser/index.cjs"
     },
     "./factory-manifest": {
       "types": "./dist/types/naylence/fame/factory-manifest.d.ts",
@@ -67,6 +78,8 @@
     }
   },
   "browser": {
+    "./dist/node/index.mjs": "./dist/browser/index.mjs",
+    "./dist/node/index.cjs": "./dist/browser/index.cjs",
     "fastify": false,
     "@fastify/websocket": false,
     "@fastify/formbody": false,
@@ -83,7 +96,12 @@
     "node:crypto": false,
     "node:url": false
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*-factory.ts",
+    "**/*-factory.js",
+    "**/storage/index.ts",
+    "**/storage/index.js"
+  ],
   "files": [
     "dist",
     "README.md",

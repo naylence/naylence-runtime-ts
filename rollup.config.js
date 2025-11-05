@@ -1,58 +1,95 @@
 import { defineConfig } from 'rollup';
-import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 
-export default defineConfig({
-  input: 'dist/esm/browser.js',
-  output: {
-    file: 'dist/browser/index.js',
-    format: 'umd',
-    name: 'NaylenceRuntime',
-    sourcemap: true,
-    inlineDynamicImports: true,
-    globals: {
-      'async_hooks': 'null',
-      'pino': 'null',
-      'pino-pretty': 'null',
-      'fastify': 'null',
-      '@fastify/websocket': 'null',
-      'fs': 'null',
-      'path': 'null',
-      'util': 'null',
-      'readline': 'null',
-      'node:module': 'null',
-      'node:fs': 'null',
-      'node:fs/promises': 'null',
-      'node:path': 'null',
-      'node:crypto': 'null',
-      'node:url': 'null'
-    }
+const windowsDrivePath = /^[A-Za-z]:[\\/]/u;
+
+const markExternal = (id) => {
+  if (
+    id.startsWith('.') ||
+    id.startsWith('/') ||
+    id.startsWith('\0') ||
+    windowsDrivePath.test(id) ||
+    id.startsWith('dist/')
+  ) {
+    return false;
+  }
+  return true;
+};
+
+const browserPlugins = [
+  resolve({ browser: true, preferBuiltins: false }),
+  json(),
+  commonjs(),
+];
+
+const nodePlugins = [
+  resolve({ preferBuiltins: true }),
+  json(),
+  commonjs(),
+];
+
+export default defineConfig([
+  {
+    input: 'dist/esm/index.js',
+    output: [
+      {
+        file: 'dist/browser/index.mjs',
+        format: 'es',
+        sourcemap: true,
+        inlineDynamicImports: true,
+      },
+      {
+        file: 'dist/browser/index.cjs',
+        format: 'cjs',
+        sourcemap: true,
+        exports: 'named',
+        inlineDynamicImports: true,
+      },
+    ],
+    external: markExternal,
+    plugins: browserPlugins,
   },
-  plugins: [
-    resolve({
-      browser: true,
-      preferBuiltins: false,
-    }),
-    json(),
-    commonjs(),
-  ],
-  external: [
-    'async_hooks',
-    'pino',
-    'pino-pretty',
-    'fastify',
-    '@fastify/websocket',
-    'fs',
-    'path',
-    'util',
-    'readline',
-    'node:module',
-    'node:fs',
-    'node:fs/promises',
-    'node:path',
-    'node:crypto',
-    'node:url'
-  ], // Mark Node.js modules as external
-});
+  {
+    input: 'dist/esm/index.js',
+    output: [
+      {
+        file: 'dist/node/index.mjs',
+        format: 'es',
+        sourcemap: true,
+        inlineDynamicImports: true,
+      },
+      {
+        file: 'dist/node/index.cjs',
+        format: 'cjs',
+        sourcemap: true,
+        exports: 'named',
+        inlineDynamicImports: true,
+      },
+    ],
+    external: markExternal,
+    plugins: nodePlugins,
+  },
+  {
+    input: 'dist/esm/node.js',
+    treeshake: false,  // Disable tree-shaking for Node build to preserve storage registration
+    output: [
+      {
+        file: 'dist/node/node.mjs',
+        format: 'es',
+        sourcemap: true,
+        inlineDynamicImports: true,
+      },
+      {
+        file: 'dist/node/node.cjs',
+        format: 'cjs',
+        sourcemap: true,
+        exports: 'named',
+        inlineDynamicImports: true,
+      },
+    ],
+    external: markExternal,
+    plugins: nodePlugins,
+  },
+]);

@@ -1,6 +1,12 @@
 import type { NodeLike } from './node-like.js';
 
-const nodeStack: NodeLike[] = [];
+type GlobalWithNodeStack = typeof globalThis & {
+  __naylenceNodeStack__?: NodeLike[];
+};
+
+const globalScope = globalThis as GlobalWithNodeStack;
+const nodeStack: NodeLike[] =
+  globalScope.__naylenceNodeStack__ ?? (globalScope.__naylenceNodeStack__ = []);
 
 export function getCurrentNode(): NodeLike | null {
   return nodeStack.length > 0 ? nodeStack[nodeStack.length - 1] : null;
