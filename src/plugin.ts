@@ -4,11 +4,13 @@
 import type { FamePlugin } from '@naylence/factory';
 
 import { registerRuntimeFactories } from './naylence/fame/util/register-runtime-factories.js';
+import { VERSION } from './version.js';
 
 let initialized = false;
 
 const runtimePlugin: FamePlugin = {
   name: 'naylence:runtime',
+  version: VERSION,
   async register(): Promise<void> {
     // console.log('[naylence:runtime] register() called, initialized=', initialized);
     if (initialized) {

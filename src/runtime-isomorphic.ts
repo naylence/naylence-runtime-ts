@@ -10,6 +10,9 @@
 // Re-export everything from naylence-core for protocol primitives
 export * from '@naylence/core';
 
+// Package version
+export { VERSION } from './version.js';
+
 // Cross-platform Fame runtime exports
 export * from './naylence/fame/errors/index.js';
 export * from './naylence/fame/util/index.js';
