@@ -21,12 +21,8 @@ export * from './naylence/fame/channel/index.js';
 // Storage providers that are safe for browsers (in-memory + IndexedDB)
 export * from './naylence/fame/storage/index.js';
 
-export {
-  getNode,
-  getCurrentNode,
-  withNodeContextAsync,
-  runWithNodeContext,
-} from './naylence/fame/node/node-context-stack.js';
+// Node lifecycle and context (Fame "Node" abstraction, not Node.js)
+export * from './naylence/fame/node/index.js';
 
 // Sentinel (cross-platform routing node)
 export * from './naylence/fame/sentinel/index.js';
@@ -55,6 +51,11 @@ export {
 } from './naylence/fame/connector/websocket-connector.js';
 export type { AuthorizationContext as WebSocketAuthorizationContext } from './naylence/fame/connector/websocket-connector.js';
 export { _NoopFlowController } from './naylence/fame/connector/noop-flow-controller.js';
+export {
+  InPageConnector,
+  INPAGE_CONNECTOR_TYPE,
+  type InPageConnectorConfig,
+} from './naylence/fame/connector/inpage-connector.js';
 
 // RPC helpers are shared
 export {
@@ -63,23 +64,35 @@ export {
   RpcMixin,
   operation,
 } from './naylence/fame/service/rpc.js';
+export { isRegisterable } from './naylence/fame/service/registerable.js';
+export type { Registerable } from './naylence/fame/service/registerable.js';
 
 // Runtime factory registration exposes no Node.js specifics
 export {
   registerDefaultFactories,
   registerRuntimeFactories,
+  ensureRuntimeFactoriesRegistered,
   type RuntimeFactoryRegistry,
 } from './naylence/fame/util/register-runtime-factories.js';
 
-// Browser-facing crypto helpers
-export {
-  hasCryptoSupport,
-  requireCryptoSupport,
-} from './naylence/fame/security/crypto/crypto-dependencies.js';
-export {
-  BrowserWrappedKeyCredentialProvider,
-  InvalidPassphraseError,
-} from './naylence/fame/security/credential/browser-wrapped-key-credential-provider.js';
+// Security module exports (all isomorphic - no Node.js dependencies)
+export * from './naylence/fame/security/index.js';
+
+// Stickiness management (isomorphic)
+export * from './naylence/fame/stickiness/index.js';
+
+// Grants (isomorphic)
+export * from './naylence/fame/grants/index.js';
+
+// Node placement strategies (isomorphic)
+export * from './naylence/fame/placement/node-placement-strategy.js';
+export * from './naylence/fame/placement/node-placement-strategy-factory.js';
+
+// Transport provisioning (isomorphic)
+export * from './naylence/fame/transport/transport-provisioner.js';
+
+// Welcome service (isomorphic)
+export * from './naylence/fame/welcome/index.js';
 
 type PluginModuleLoader = (
   specifier: string

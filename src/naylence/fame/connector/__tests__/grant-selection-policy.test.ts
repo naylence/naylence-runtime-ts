@@ -11,6 +11,7 @@ import {
   HTTP_STATELESS_CONNECTOR_TYPE,
 } from '../../grants/http-connection-grant.js';
 import { WEBSOCKET_CONNECTION_GRANT_TYPE } from '../../grants/websocket-connection-grant.js';
+import { INPAGE_CONNECTION_GRANT_TYPE } from '../../grants/inpage-connection-grant.js';
 
 jest.mock('../../util/logging.js', () => {
   return {
@@ -95,6 +96,30 @@ describe('GrantSelectionPolicy', () => {
       type: HTTP_STATELESS_CONNECTOR_TYPE,
       url: 'https://primary.example.com',
       auth: { header: 'auth-token' },
+    });
+  });
+
+  test('selects in-page grant when inbound type matches', () => {
+    const inPageGrant: SerializedGrant = {
+      type: INPAGE_CONNECTION_GRANT_TYPE,
+      purpose: 'connection',
+      channelName: 'tab-channel',
+      inboxCapacity: 64,
+    };
+    const policy = new GrantSelectionPolicy();
+    const context = createContext({
+      callbackGrantType: INPAGE_CONNECTION_GRANT_TYPE,
+      callbackGrants: [clone(inPageGrant)],
+    });
+
+    const result = policy.selectCallbackGrant(context);
+
+    expect(result.fallbackUsed).toBe(false);
+    expect(result.grant.type).toBe(INPAGE_CONNECTION_GRANT_TYPE);
+    expect(result.grant.toConnectorConfig?.()).toEqual({
+      type: 'inpage-connector',
+      channelName: 'tab-channel',
+      inboxCapacity: 64,
     });
   });
 

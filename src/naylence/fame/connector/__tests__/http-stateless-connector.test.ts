@@ -1,9 +1,9 @@
 import { FameTransportClose } from '../../errors/errors.js';
 import {
   HttpStatelessConnector,
-  QueueFullError,
   type HttpStatelessConnectorConfig,
 } from '../http-stateless-connector.js';
+import { QueueFullError } from '../../util/bounded-async-queue.js';
 
 describe('HttpStatelessConnector', () => {
   const createConfig = (

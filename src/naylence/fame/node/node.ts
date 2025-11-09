@@ -38,7 +38,6 @@ import type { RetryPolicy } from '../delivery/retry-policy.js';
 import type { RetryEventHandler } from '../delivery/retry-event-handler.js';
 import type { NodeLike } from './node-like.js';
 import { TaskSpawner } from '../util/task-spawner.js';
-import { pushNode } from './node-context-stack.js';
 import { getLogger } from '../util/logging.js';
 import type {
   NodeAttachClient,
@@ -273,7 +272,6 @@ export class FameNode extends TaskSpawner implements NodeLike {
   private _sessionManager: SessionManager | null = null;
   private _upstreamConnector: FameConnector | null = null;
   private _isStarted = false;
-  private _releaseNodeContext: (() => void) | null = null;
   private _lastHeartbeatAt: number | null = null;
   private _handshakeCompleted: boolean;
   private _welcomeExpiresAt: string | null;
@@ -532,6 +530,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
         capabilityMap: serviceCapabilityMapOption ?? undefined,
         pollTimeoutMs: servicePollTimeoutOption ?? null,
         defaultServiceConfigs,
+        node: this,
       });
 
     this._serviceManager = serviceManager;
@@ -872,7 +871,6 @@ export class FameNode extends TaskSpawner implements NodeLike {
       throw new Error('Node already started');
     }
 
-    const release = pushNode(this);
     try {
       await this.dispatchEvent('onNodeInitialized', this);
       await this.initializeSessionManager();
@@ -898,7 +896,6 @@ export class FameNode extends TaskSpawner implements NodeLike {
       await this._bindingManager.restore();
       await this._envelopeListenerManager.start();
 
-      this._releaseNodeContext = release;
       this._isStarted = true;
 
       logger.debug('node_started', {
@@ -908,7 +905,6 @@ export class FameNode extends TaskSpawner implements NodeLike {
         logicals: this.acceptedLogicals,
       });
     } catch (error) {
-      release();
       try {
         await this._serviceManager.stop();
       } catch {
@@ -934,10 +930,6 @@ export class FameNode extends TaskSpawner implements NodeLike {
     await this._serviceManager.stop();
     await this.dispatchEvent('onNodeStopped', this);
     this._isStarted = false;
-    if (this._releaseNodeContext) {
-      this._releaseNodeContext();
-      this._releaseNodeContext = null;
-    }
     logger.debug('node_stopped', {
       node_id: this.id,
     });

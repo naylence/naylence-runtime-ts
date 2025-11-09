@@ -2,10 +2,17 @@ import type { NodeLike } from '../node-like.js';
 import { NodeLikeFactory } from '../node-like-factory.js';
 import * as factoryModule from '@naylence/factory';
 import * as configModule from '../../config/extended-fame-config.js';
+import * as runtimeFactoriesModule from '../../util/register-runtime-factories.js';
 
 describe('NodeLikeFactory.createNode', () => {
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    jest
+      .spyOn(runtimeFactoriesModule, 'ensureRuntimeFactoriesRegistered')
+      .mockResolvedValue(undefined);
   });
 
   it('uses node configuration from the extended fame config when none is provided', async () => {
@@ -25,7 +32,7 @@ describe('NodeLikeFactory.createNode', () => {
       },
     } as any);
 
-    const node = await NodeLikeFactory.createNode();
+  const node = await NodeLikeFactory.createNode();
 
     expect(node).toBe(mockNode);
     expect(createResourceSpy).toHaveBeenCalledTimes(1);

@@ -1,7 +1,11 @@
 import './http-listener-factory.js';
 import './websocket-listener-factory.js';
+import './inpage-listener-factory.js';
+import './broadcast-channel-listener-factory.js';
 import './websocket-connector-factory.js';
 import './http-stateless-connector-factory.js';
+import './inpage-connector-factory.js';
+import './broadcast-channel-connector-factory.js';
 
 /**
  * Fame Connector Exports
@@ -37,9 +41,22 @@ export {
 
 export {
   HttpStatelessConnector,
-  QueueFullError,
   type HttpStatelessConnectorConfig,
 } from './http-stateless-connector.js';
+export {
+  QueueFullError,
+  BoundedAsyncQueue,
+} from '../util/bounded-async-queue.js';
+export {
+  InPageConnector,
+  INPAGE_CONNECTOR_TYPE,
+  type InPageConnectorConfig,
+} from './inpage-connector.js';
+export {
+  BroadcastChannelConnector,
+  BROADCAST_CHANNEL_CONNECTOR_TYPE,
+  type BroadcastChannelConnectorConfig,
+} from './broadcast-channel-connector.js';
 
 // Flow controller
 export { _NoopFlowController } from './noop-flow-controller.js';
@@ -56,3 +73,8 @@ export {
   getWebsocketListenerInstance,
 } from './websocket-listener.js';
 export { HttpListener, getHttpListenerInstance } from './http-listener.js';
+export { InPageListener, getInPageListenerInstance } from './inpage-listener.js';
+export {
+  BroadcastChannelListener,
+  getBroadcastChannelListenerInstance,
+} from './broadcast-channel-listener.js';

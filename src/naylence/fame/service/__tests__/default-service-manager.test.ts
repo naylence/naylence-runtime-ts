@@ -8,6 +8,7 @@ import {
 } from '@naylence/core';
 
 import { DefaultServiceManager } from '../default-service-manager.js';
+import type { NodeLike } from '../../node/node-like.js';
 
 const envelope = {
   version: '1.0',
@@ -64,6 +65,77 @@ describe('DefaultServiceManager', () => {
     const handlerResult = await servedHandler!(envelope, context);
     expect(handlerResult).toBeNull();
     expect(handleMessage).toHaveBeenCalledWith(envelope, context);
+  });
+
+  it('invokes registerable lifecycle hooks when node provided', async () => {
+    const node = {} as unknown as NodeLike;
+    const onRegister = jest.fn();
+    const onUnregister = jest.fn();
+    const stopFn = jest.fn(() => undefined);
+
+    const service = {
+      capabilities: ['omega'],
+      handleMessage: jest.fn(async () => undefined),
+      onRegister,
+      onUnregister,
+      stop: stopFn,
+    } as FameMessageService & {
+      onRegister(node: NodeLike): Promise<void> | void;
+      onUnregister(): Promise<void> | void;
+      stop(): void;
+    };
+
+    const servedAddress = FameAddress.create('service@/lifecycle');
+    const serve = jest.fn(async () => {
+      expect(onRegister).toHaveBeenCalledWith(node);
+      return servedAddress;
+    });
+
+    const manager = new DefaultServiceManager({
+      invoke: jest.fn(),
+      serve,
+      serveRpc: jest.fn(),
+      node,
+    });
+
+    await manager.registerService('lifecycle', service);
+
+    expect(onRegister).toHaveBeenCalledTimes(1);
+
+    await manager.stop();
+
+    expect(onUnregister).toHaveBeenCalledTimes(1);
+    expect(stopFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips onRegister when node is not provided but still calls onUnregister', async () => {
+    const onRegister = jest.fn();
+    const onUnregister = jest.fn();
+
+    const service = {
+      capabilities: ['upsilon'],
+      handleMessage: jest.fn(async () => undefined),
+      onRegister,
+      onUnregister,
+    } as FameMessageService & {
+      onRegister(node: NodeLike): Promise<void> | void;
+      onUnregister(): Promise<void> | void;
+    };
+
+    const serve = jest.fn(async () => FameAddress.create('service@/no-node'));
+    const manager = new DefaultServiceManager({
+      invoke: jest.fn(),
+      serve,
+      serveRpc: jest.fn(),
+    });
+
+    await manager.registerService('nonode', service);
+
+    expect(onRegister).not.toHaveBeenCalled();
+
+    await manager.stop();
+
+    expect(onUnregister).toHaveBeenCalledTimes(1);
   });
 
   it('registers rpc services without mutating predefined addresses', async () => {

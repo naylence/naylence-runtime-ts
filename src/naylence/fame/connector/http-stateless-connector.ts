@@ -5,16 +5,15 @@ import {
 import type { ConnectorConfig } from './connector-config.js';
 import { FameTransportClose } from '../errors/errors.js';
 import { getLogger } from '../util/logging.js';
+import {
+  BoundedAsyncQueue,
+  QueueFullError,
+} from '../util/bounded-async-queue.js';
 import type { FameEnvelope, FameChannelMessage } from '@naylence/core';
 
-const logger = getLogger('naylence.fame.connector.http_stateless_connector');
+export { QueueFullError } from '../util/bounded-async-queue.js';
 
-export class QueueFullError extends Error {
-  constructor(message = 'Receive queue is full') {
-    super(message);
-    this.name = 'QueueFullError';
-  }
-}
+const logger = getLogger('naylence.fame.connector.http_stateless_connector');
 
 type FetchImplementation = (
   input: RequestInfo | URL,
@@ -22,80 +21,6 @@ type FetchImplementation = (
 ) => Promise<Response>;
 
 type QueueItem = Uint8Array | FameEnvelope | FameChannelMessage;
-
-class BoundedAsyncQueue<T> {
-  private readonly queue: T[] = [];
-  private waiters: Array<{
-    resolve: (value: T) => void;
-    reject: (reason?: unknown) => void;
-  }> = [];
-  private closed = false;
-  private closeError: unknown;
-
-  constructor(private readonly capacity: number) {
-    if (!Number.isInteger(capacity) || capacity <= 0) {
-      throw new Error('Queue capacity must be a positive integer');
-    }
-  }
-
-  enqueue(item: T): void {
-    if (this.closed) {
-      return;
-    }
-
-    if (this.waiters.length > 0) {
-      const waiter = this.waiters.shift() as {
-        resolve: (value: T) => void;
-        reject: (reason?: unknown) => void;
-      };
-      waiter.resolve(item);
-      return;
-    }
-
-    if (this.queue.length >= this.capacity) {
-      throw new QueueFullError();
-    }
-
-    this.queue.push(item);
-  }
-
-  async dequeue(): Promise<T> {
-    if (this.closed) {
-      throw this.closeError ?? new Error('Queue closed');
-    }
-
-    if (this.queue.length > 0) {
-      return this.queue.shift() as T;
-    }
-
-    return await new Promise<T>((resolve, reject) => {
-      this.waiters.push({ resolve, reject });
-    });
-  }
-
-  drain(error?: unknown): void {
-    if (this.closed) {
-      return;
-    }
-
-    this.closed = true;
-    this.closeError = error ?? new Error('Queue closed');
-
-    while (this.waiters.length > 0) {
-      const waiter = this.waiters.shift() as {
-        resolve: (value: T) => void;
-        reject: (reason?: unknown) => void;
-      };
-      waiter.reject(this.closeError);
-    }
-
-    this.queue.length = 0;
-  }
-
-  get remainingCapacity(): number {
-    return Math.max(this.capacity - this.queue.length, 0);
-  }
-}
 
 export interface HttpStatelessConnectorConfig
   extends BaseAsyncConnectorConfig,

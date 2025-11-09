@@ -11,9 +11,9 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     /* Emit */
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+  "declaration": true,
+  "declarationMap": false,
+  "sourceMap": false,
     "outDir": "./dist/types",
     "rootDir": "./src",
     "removeComments": false,

@@ -23,14 +23,19 @@ const ENV_VAR_ADMISSION_TOKEN_URL = 'FAME_ADMISSION_TOKEN_URL';
 const ENV_VAR_ADMISSION_CLIENT_ID = 'FAME_ADMISSION_CLIENT_ID';
 const ENV_VAR_ADMISSION_CLIENT_SECRET = 'FAME_ADMISSION_CLIENT_SECRET';
 const ENV_VAR_DIRECT_ADMISSION_URL = 'FAME_DIRECT_ADMISSION_URL';
+const ENV_VAR_DIRECT_INPAGE_CHANNEL = 'FAME_DIRECT_INPAGE_CHANNEL';
 const ENV_VAR_ADMISSION_SERVICE_URL = 'FAME_ADMISSION_SERVICE_URL';
+
+const DEFAULT_INPAGE_CHANNEL = 'naylence-fabric';
 
 const PROFILE_NAME_WELCOME = 'welcome';
 const PROFILE_NAME_DIRECT = 'direct';
 const PROFILE_NAME_DIRECT_HTTP = 'direct-http';
+const PROFILE_NAME_DIRECT_INPAGE = 'direct-inpage';
 const PROFILE_NAME_OPEN = 'open';
 const PROFILE_NAME_NOOP = 'noop';
 const PROFILE_NAME_NONE = 'none';
+const PROFILE_NAME_DIRECT_INPAGE_ALIAS = 'direct_inpage';
 
 function createOAuthTokenProviderConfig() {
   const tokenUrl = Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL);
@@ -110,6 +115,28 @@ const DIRECT_HTTP_PROFILE: AdmissionConfig = {
   connectionGrants: directHttpGrants,
 };
 
+const directInPageGrant = {
+  type: 'InPageConnectionGrant',
+  purpose: GRANT_PURPOSE_NODE_ATTACH,
+  channelName: Expressions.env(
+    ENV_VAR_DIRECT_INPAGE_CHANNEL,
+    DEFAULT_INPAGE_CHANNEL
+  ),
+  channel_name: Expressions.env(
+    ENV_VAR_DIRECT_INPAGE_CHANNEL,
+    DEFAULT_INPAGE_CHANNEL
+  ),
+  ttl: 0,
+  durable: false,
+};
+const directInPageGrants = [directInPageGrant];
+
+const DIRECT_INPAGE_PROFILE: AdmissionConfig = {
+  type: 'DirectAdmissionClient',
+  connection_grants: directInPageGrants,
+  connectionGrants: directInPageGrants,
+};
+
 const OPEN_PROFILE: AdmissionConfig = {
   type: 'DirectAdmissionClient',
   connection_grants: [
@@ -148,6 +175,8 @@ const PROFILE_MAP: Record<string, AdmissionConfig> = {
   [PROFILE_NAME_WELCOME]: WELCOME_SERVICE_PROFILE,
   [PROFILE_NAME_DIRECT]: DIRECT_PROFILE,
   [PROFILE_NAME_DIRECT_HTTP]: DIRECT_HTTP_PROFILE,
+  [PROFILE_NAME_DIRECT_INPAGE]: DIRECT_INPAGE_PROFILE,
+  [PROFILE_NAME_DIRECT_INPAGE_ALIAS]: DIRECT_INPAGE_PROFILE,
   [PROFILE_NAME_OPEN]: OPEN_PROFILE,
   [PROFILE_NAME_NOOP]: NOOP_PROFILE,
   [PROFILE_NAME_NONE]: NOOP_PROFILE,

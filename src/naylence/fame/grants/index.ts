@@ -35,3 +35,22 @@ export {
   normalizeWebSocketConnectionGrant,
   websocketGrantToConnectorConfig,
 } from './websocket-connection-grant.js';
+
+export {
+  INPAGE_CONNECTION_GRANT_TYPE,
+  type InPageConnectionGrant,
+  type InPageConnectionGrantLike,
+  type InPageConnectorConfigLike,
+  inPageGrantToConnectorConfig,
+  isInPageConnectionGrant,
+  normalizeInPageConnectionGrant,
+} from './inpage-connection-grant.js';
+export {
+  BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+  type BroadcastChannelConnectionGrant,
+  type BroadcastChannelConnectionGrantLike,
+  type BroadcastChannelConnectorConfigLike,
+  broadcastChannelGrantToConnectorConfig,
+  isBroadcastChannelConnectionGrant,
+  normalizeBroadcastChannelConnectionGrant,
+} from './broadcast-channel-connection-grant.js';

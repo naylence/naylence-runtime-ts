@@ -37,13 +37,13 @@ export default defineConfig([
       {
         file: 'dist/browser/index.mjs',
         format: 'es',
-        sourcemap: true,
+        sourcemap: false,
         inlineDynamicImports: true,
       },
       {
         file: 'dist/browser/index.cjs',
         format: 'cjs',
-        sourcemap: true,
+        sourcemap: false,
         exports: 'named',
         inlineDynamicImports: true,
       },
@@ -57,13 +57,13 @@ export default defineConfig([
       {
         file: 'dist/node/index.mjs',
         format: 'es',
-        sourcemap: true,
+        sourcemap: false,
         inlineDynamicImports: true,
       },
       {
         file: 'dist/node/index.cjs',
         format: 'cjs',
-        sourcemap: true,
+        sourcemap: false,
         exports: 'named',
         inlineDynamicImports: true,
       },
@@ -78,13 +78,13 @@ export default defineConfig([
       {
         file: 'dist/node/node.mjs',
         format: 'es',
-        sourcemap: true,
+        sourcemap: false,
         inlineDynamicImports: true,
       },
       {
         file: 'dist/node/node.cjs',
         format: 'cjs',
-        sourcemap: true,
+        sourcemap: false,
         exports: 'named',
         inlineDynamicImports: true,
       },

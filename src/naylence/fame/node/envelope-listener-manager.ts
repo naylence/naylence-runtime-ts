@@ -187,7 +187,13 @@ export class EnvelopeListenerManager extends TaskSpawner {
 
   async stop(): Promise<void> {
     await this.listenersLock.runExclusive(async () => {
+      const systemEntry = this.listeners.get(SYSTEM_INBOX);
+
       for (const [serviceName, entry] of this.listeners.entries()) {
+        if (serviceName === SYSTEM_INBOX) {
+          continue;
+        }
+
         logger.debug('stopping_listener_for_service', {
           service_name: serviceName,
         });
@@ -206,6 +212,27 @@ export class EnvelopeListenerManager extends TaskSpawner {
           }
         }
       }
+
+      if (systemEntry) {
+        logger.debug('stopping_listener_for_service', {
+          service_name: SYSTEM_INBOX,
+        });
+        systemEntry.listener.stop();
+        try {
+          await systemEntry.listener.task.promise;
+        } catch (error) {
+          if (
+            !(error instanceof Error) ||
+            error.name !== 'TaskCancelledError'
+          ) {
+            logger.debug('listener_task_stopped', {
+              service_name: SYSTEM_INBOX,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+      }
+
       this.listeners.clear();
     });
 

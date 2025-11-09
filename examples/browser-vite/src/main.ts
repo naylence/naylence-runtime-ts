@@ -4,8 +4,8 @@ import {
   enableLogging,
   hasCryptoSupport,
   operation,
-  getNode,
   withFabric,
+  NodeLike,
   RpcMixin,
   RpcProxy,
   generateIdAsync,
@@ -18,6 +18,7 @@ class CalculatorService extends RpcMixin {
     return ['calculator', 'math'];
   }
 
+  
   async add(params: any) {
     const { a, b } = params;
     const result = a + b;
@@ -187,12 +188,13 @@ async function runSmokeTest(): Promise<StatusLine[]> {
       fabric?.constructor?.name ??
       Object.prototype.toString.call(fabric).slice(8, -1);
     lines.push(`Fabric initialized successfully: ${fabricType}`);
-    
-    const node = getNode();
-    lines.push(`Node id: ${node.id}, sid: ${node.sid}`);
-    
+
+    const node: NodeLike = (fabric as any).node;
+    lines.push(`Node id: ${node?.id}, sid: ${node?.sid}`);
+
     const calculator = new CalculatorService();
     const address = await fabric.serve(calculator, 'calculator');
+
     lines.push(`Calculator service served at: ${address}`);
     
     const calculatorProxy: any = RpcProxy.remoteByAddress(address);
@@ -212,13 +214,13 @@ async function runSmokeTest(): Promise<StatusLine[]> {
 
     
     const envelope = createFameEnvelope({
-        sid: node.sid || "unknown sid",
+        sid: node?.sid || "unknown sid",
         frame: {
             type: 'Data',
             payload: 'test'
         }
     });
-    const signed = node.securityManager?.envelopeSigner?.signEnvelope(
+    const signed = node?.securityManager?.envelopeSigner?.signEnvelope(
         envelope,
         {
             physicalPath: '/demo/path'

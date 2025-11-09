@@ -16,10 +16,51 @@ import {
   normalizeWebSocketConnectionGrant,
   websocketGrantToConnectorConfig,
 } from '../grants/websocket-connection-grant.js';
+import {
+  INPAGE_CONNECTION_GRANT_TYPE,
+  type InPageConnectionGrant,
+  type InPageConnectionGrantLike,
+  inPageGrantToConnectorConfig,
+  normalizeInPageConnectionGrant,
+} from '../grants/inpage-connection-grant.js';
+import {
+  BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+  type BroadcastChannelConnectionGrant,
+  type BroadcastChannelConnectionGrantLike,
+  type BroadcastChannelConnectorConfigLike,
+  broadcastChannelGrantToConnectorConfig,
+  normalizeBroadcastChannelConnectionGrant,
+} from '../grants/broadcast-channel-connection-grant.js';
 import type { ConnectorConfig } from './connector-config.js';
 import { getLogger } from '../util/logging.js';
+import { BROADCAST_CHANNEL_CONNECTOR_TYPE } from './broadcast-channel-connector.js';
+import { GRANT_PURPOSE_NODE_ATTACH } from '../grants/grant.js';
 
 const logger = getLogger('naylence.fame.connector.grant_selection_policy');
+
+const CALLBACK_TYPE_ALIASES: Record<string, string[]> = {
+  [BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE]: [
+    BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+    BROADCAST_CHANNEL_CONNECTOR_TYPE,
+  ],
+  [BROADCAST_CHANNEL_CONNECTOR_TYPE]: [
+    BROADCAST_CHANNEL_CONNECTOR_TYPE,
+    BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+  ],
+};
+
+function grantTypeMatches(target: string, candidate: string | undefined): boolean {
+  if (!candidate) {
+    return false;
+  }
+
+  if (candidate === target) {
+    return true;
+  }
+
+  const aliases = CALLBACK_TYPE_ALIASES[target];
+  return aliases ? aliases.includes(candidate) : false;
+}
 
 function isSerializedGrant(value: unknown): value is SerializedGrant {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -106,6 +147,16 @@ function createGrantFromRecord(serialized: SerializedGrant): TypedGrant | null {
       return createHttpGrant(serialized as HttpConnectionGrantLike);
     case WEBSOCKET_CONNECTION_GRANT_TYPE:
       return createWebSocketGrant(serialized as WebSocketConnectionGrantLike);
+    case INPAGE_CONNECTION_GRANT_TYPE:
+      return createInPageGrant(serialized as InPageConnectionGrantLike);
+    case BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE:
+      return createBroadcastChannelGrant(
+        serialized as BroadcastChannelConnectionGrantLike
+      );
+    case BROADCAST_CHANNEL_CONNECTOR_TYPE:
+      return createBroadcastChannelConnectorGrant(
+        serialized as BroadcastChannelConnectorConfigLike
+      );
     default:
       return null;
   }
@@ -151,6 +202,81 @@ function createWebSocketGrant(
   }
 }
 
+function createInPageGrant(
+  serialized: InPageConnectionGrantLike
+): TypedGrant | null {
+  try {
+    const normalized = normalizeInPageConnectionGrant(serialized);
+    const grant: InPageConnectionGrant & {
+      toConnectorConfig: () => ConnectorConfig;
+    } = {
+      ...normalized,
+      toConnectorConfig: () => inPageGrantToConnectorConfig(serialized),
+    };
+    return grant;
+  } catch (error) {
+    logger.debug('grant_selection_inpage_normalization_failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+function createBroadcastChannelGrant(
+  serialized: BroadcastChannelConnectionGrantLike
+): TypedGrant | null {
+  try {
+    const normalized = normalizeBroadcastChannelConnectionGrant(serialized);
+    const grant: BroadcastChannelConnectionGrant & {
+      toConnectorConfig: () => ConnectorConfig;
+    } = {
+      ...normalized,
+      toConnectorConfig: () =>
+        broadcastChannelGrantToConnectorConfig(serialized),
+    };
+    return grant;
+  } catch (error) {
+    logger.debug('grant_selection_broadcast_channel_normalization_failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+function createBroadcastChannelConnectorGrant(
+  serialized: BroadcastChannelConnectorConfigLike
+): TypedGrant | null {
+  try {
+    const grantCandidate: BroadcastChannelConnectionGrantLike = {
+      ...(serialized as Record<string, unknown>),
+      type: BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+      purpose:
+        typeof (serialized as Record<string, unknown>).purpose === 'string'
+          ? ((serialized as Record<string, unknown>).purpose as string)
+          : GRANT_PURPOSE_NODE_ATTACH,
+    };
+
+    const normalized = normalizeBroadcastChannelConnectionGrant(
+      grantCandidate
+    );
+
+    const grant: BroadcastChannelConnectionGrant & {
+      toConnectorConfig: () => ConnectorConfig;
+    } = {
+      ...normalized,
+      toConnectorConfig: () =>
+        broadcastChannelGrantToConnectorConfig(grantCandidate),
+    };
+
+    return grant;
+  } catch (error) {
+    logger.debug('grant_selection_broadcast_channel_connector_normalization_failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
 class PreferSameTypeStrategy implements GrantSelectionStrategy {
   selectCallbackGrant(
     context: GrantSelectionContext
@@ -158,7 +284,7 @@ class PreferSameTypeStrategy implements GrantSelectionStrategy {
     const targetType = context.callbackGrantType;
 
     for (const serialized of context.clientSupportedCallbackGrants) {
-      if (serialized.type !== targetType) {
+      if (!grantTypeMatches(targetType, serialized.type)) {
         continue;
       }
 

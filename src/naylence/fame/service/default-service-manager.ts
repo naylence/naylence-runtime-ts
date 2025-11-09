@@ -14,6 +14,8 @@ import {
 import { createResource, ExtensionManager } from '@naylence/factory';
 
 import type { ServiceManager } from './service-manager.js';
+import { isRegisterable } from './registerable.js';
+import type { NodeLike } from '../node/node-like.js';
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -30,6 +32,7 @@ interface DefaultServiceManagerOptions {
   capabilityMap?: CapabilityMapInput;
   pollTimeoutMs?: number | null;
   defaultServiceConfigs?: Array<Record<string, unknown>>;
+  node?: NodeLike | null;
 }
 
 interface RegisteredService {
@@ -44,6 +47,7 @@ export class DefaultServiceManager implements ServiceManager {
   private readonly capabilityMap: Map<string, FameAddress>;
   private readonly pollTimeoutMs: number | null;
   private readonly defaultServiceConfigs: Array<Record<string, unknown>>;
+  private readonly node: NodeLike | null;
 
   private readonly services = new Map<string, RegisteredService>();
   private started = false;
@@ -58,6 +62,7 @@ export class DefaultServiceManager implements ServiceManager {
     this.defaultServiceConfigs = options.defaultServiceConfigs
       ? [...options.defaultServiceConfigs]
       : [];
+    this.node = options.node ?? null;
   }
 
   async start(): Promise<void> {
@@ -82,6 +87,10 @@ export class DefaultServiceManager implements ServiceManager {
 
     await Promise.all(
       Array.from(this.services.values()).map(async ({ service }) => {
+        if (isRegisterable(service) && service.onUnregister) {
+          await this.resolveMaybePromise(service.onUnregister());
+        }
+
         const stopFn = (service as any)?.stop;
         if (typeof stopFn === 'function') {
           await this.resolveMaybePromise(stopFn.call(service));
@@ -103,6 +112,10 @@ export class DefaultServiceManager implements ServiceManager {
     const startFn = (service as any)?.start;
     if (typeof startFn === 'function') {
       await this.resolveMaybePromise(startFn.call(service));
+    }
+
+    if (this.node && isRegisterable(service) && service.onRegister) {
+      await this.resolveMaybePromise(service.onRegister(this.node));
     }
 
     let address: FameAddress;

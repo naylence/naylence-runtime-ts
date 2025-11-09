@@ -33,6 +33,8 @@ export {
   WebSocketListener,
   HttpListener,
   getHttpListenerInstance,
+  InPageListener,
+  getInPageListenerInstance,
 } from './naylence/fame/connector/index.js';
 
 export {

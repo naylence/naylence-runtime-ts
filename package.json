@@ -1,6 +1,6 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.3.5-test.905",
+  "version": "0.3.5-test.909",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime",
   "author": "Naylence Dev <naylencedev@gmail.com>",
@@ -48,7 +48,7 @@
       "require": "./dist/node/node.cjs"
     },
     "./browser": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./dist/types/browser.d.ts",
       "import": "./dist/browser/index.mjs",
       "require": "./dist/browser/index.cjs"
     },
@@ -63,6 +63,17 @@
       "import": "./dist/esm/naylence/fame/util/register-runtime-factories.js",
       "require": "./dist/cjs/naylence/fame/util/register-runtime-factories.js",
       "default": "./dist/esm/naylence/fame/util/register-runtime-factories.js"
+    },
+    "./naylence/fame/connector/broadcast-channel-connector": {
+      "types": "./dist/types/naylence/fame/connector/broadcast-channel-connector.browser.d.ts",
+      "import": {
+        "browser": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.browser.js",
+        "default": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.node.js"
+      },
+      "require": {
+        "browser": "./dist/cjs/naylence/fame/connector/broadcast-channel-connector.browser.js",
+        "default": "./dist/cjs/naylence/fame/connector/broadcast-channel-connector.node.js"
+      }
     },
     "./plugin": {
       "types": "./dist/types/plugin.d.ts",

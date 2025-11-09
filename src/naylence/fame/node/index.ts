@@ -17,7 +17,6 @@ export * from './envelope-listener-manager.js';
 export * from './node.js';
 export { NodeFactory } from './node-factory.js';
 export * from './node-context.js';
-export * from './node-context-stack.js';
 export * from './fame-environment-context.js';
 export * from './session-manager.js';
 export * from './upstream-session-manager.js';

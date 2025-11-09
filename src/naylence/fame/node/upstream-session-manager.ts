@@ -33,6 +33,13 @@ import type { SessionManager } from './session-manager.js';
 import { TaskCancelledError, SpawnedTask } from '../util/task-types.js';
 import type { FameAddress } from '@naylence/core';
 import { FameResponseType } from '@naylence/core';
+import { withLegacySnakeCaseKeys } from '../util/util.js';
+import {
+  BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+  normalizeBroadcastChannelConnectionGrant,
+  type BroadcastChannelConnectionGrantLike,
+} from '../grants/broadcast-channel-connection-grant.js';
+import { BROADCAST_CHANNEL_CONNECTOR_TYPE } from '../connector/broadcast-channel-connector.js';
 
 const logger = getLogger('naylence.fame.node.upstream_session_manager');
 
@@ -524,6 +531,13 @@ export class UpstreamSessionManager
     await connector.start(this.wrappedHandler);
     this.connector = connector;
     const callbackGrants = this.node.gatherSupportedCallbackGrants();
+
+    if (this.shouldAdvertiseBroadcastGrant(grant, callbackGrants)) {
+      const augmented = this.createBroadcastCallbackGrant(grant);
+      if (augmented) {
+        callbackGrants.push(augmented);
+      }
+    }
     const attachInfo = await this.attachClient.attach(
       this.node,
       this.outboundOriginType,
@@ -621,6 +635,71 @@ export class UpstreamSessionManager
 
     if (failure) {
       throw failure;
+    }
+  }
+
+  private shouldAdvertiseBroadcastGrant(
+    grant: Record<string, any>,
+    callbackGrants: Record<string, any>[]
+  ): boolean {
+    const inboundType = typeof grant.type === 'string' ? grant.type : '';
+    const connectorType = (grant as Record<string, unknown>)['connectorType'];
+
+    const matchesBroadcast =
+      inboundType === BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE ||
+      inboundType === BROADCAST_CHANNEL_CONNECTOR_TYPE ||
+      (typeof connectorType === 'string' &&
+        (connectorType === BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE ||
+          connectorType === BROADCAST_CHANNEL_CONNECTOR_TYPE));
+
+    if (!matchesBroadcast) {
+      return false;
+    }
+
+    return !callbackGrants.some((candidate) => {
+      if (!candidate || typeof candidate !== 'object') {
+        return false;
+      }
+
+      const candidateType = (candidate as Record<string, unknown>).type;
+      const candidateConnector = (candidate as Record<string, unknown>)[
+        'connectorType'
+      ];
+
+      return (
+        candidateType === BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE ||
+        candidateConnector === BROADCAST_CHANNEL_CONNECTOR_TYPE ||
+        candidateConnector === BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE ||
+        candidateType === BROADCAST_CHANNEL_CONNECTOR_TYPE
+      );
+    });
+  }
+
+  private createBroadcastCallbackGrant(
+    grant: Record<string, any>
+  ): Record<string, unknown> | null {
+    try {
+      const grantLike: BroadcastChannelConnectionGrantLike = {
+        ...(grant as Record<string, unknown>),
+        type: BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+      };
+
+      const normalized = normalizeBroadcastChannelConnectionGrant(grantLike);
+
+      return withLegacySnakeCaseKeys({
+        type: BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
+        purpose: normalized.purpose,
+        connectorType: BROADCAST_CHANNEL_CONNECTOR_TYPE,
+        channelName: normalized.channelName,
+        ...(normalized.inboxCapacity !== undefined
+          ? { inboxCapacity: normalized.inboxCapacity }
+          : {}),
+      });
+    } catch (error) {
+      logger.debug('broadcast_callback_grant_generation_failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
     }
   }
 

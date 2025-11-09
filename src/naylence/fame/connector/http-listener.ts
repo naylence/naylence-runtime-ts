@@ -37,7 +37,7 @@ import type { ConnectorConfig } from './connector-config.js';
 import { getLogger } from '../util/logging.js';
 import type { NoAuthInjectionStrategyConfig } from '../security/auth/no-auth-injection-strategy-factory.js';
 import type { RouteManager } from '../sentinel/route-manager.js';
-import { QueueFullError } from './http-stateless-connector.js';
+import { QueueFullError } from '../util/bounded-async-queue.js';
 
 const logger = getLogger('naylence.fame.connector.http_listener');
 

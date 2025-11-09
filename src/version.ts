@@ -1,8 +1,8 @@
 // This file is auto-generated during build - do not edit manually
-// Generated from package.json version: 0.3.5-test.905
+// Generated from package.json version: 0.3.5-test.909
 
 /**
  * The package version, injected at build time.
  * @internal
  */
-export const VERSION = '0.3.5-test.905';
+export const VERSION = '0.3.5-test.909';

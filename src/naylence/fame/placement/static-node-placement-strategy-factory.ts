@@ -10,7 +10,7 @@ import {
 import { StaticNodePlacementStrategy } from './static-node-placement-strategy.js';
 
 export interface StaticNodePlacementConfig extends NodePlacementConfig {
-  type: 'StaticNodePlacementStrategy' | 'WebSocketNodePlacementStrategy';
+  type: 'StaticNodePlacementStrategy';
   targetSystemId?: string;
   targetPhysicalPath?: string;
   target_system_id?: string;
@@ -20,7 +20,7 @@ export interface StaticNodePlacementConfig extends NodePlacementConfig {
 const staticNodePlacementConfigSchema = z
   .object({
     type: z
-      .enum(['StaticNodePlacementStrategy', 'WebSocketNodePlacementStrategy'])
+      .literal('StaticNodePlacementStrategy')
       .default('StaticNodePlacementStrategy'),
     targetSystemId: z
       .string({ message: 'targetSystemId must be a string' })
@@ -42,7 +42,9 @@ function normalizeConfig(
   };
 
   if (candidate.type === 'WebSocketNodePlacementStrategy') {
-    emitDeprecationWarning();
+    throw new Error(
+      'WebSocketNodePlacementStrategy has been removed; use StaticNodePlacementStrategy instead'
+    );
   }
 
   if (
@@ -68,19 +70,6 @@ function normalizeConfig(
     targetSystemId: parsed.targetSystemId,
     targetPhysicalPath: parsed.targetPhysicalPath,
   };
-}
-
-function emitDeprecationWarning(): void {
-  const message =
-    'WebSocketNodePlacementStrategy is deprecated; use StaticNodePlacementStrategy instead';
-  if (
-    typeof process !== 'undefined' &&
-    typeof process.emitWarning === 'function'
-  ) {
-    process.emitWarning(message, { type: 'DeprecationWarning' });
-  } else {
-    console.warn(message);
-  }
 }
 
 export class StaticNodePlacementStrategyFactory extends NodePlacementStrategyFactory<StaticNodePlacementConfig> {
@@ -114,10 +103,6 @@ registerNodePlacementStrategyFactory(
   {
     isDefault: true,
   }
-);
-registerNodePlacementStrategyFactory(
-  'WebSocketNodePlacementStrategy',
-  StaticNodePlacementStrategyFactory
 );
 
 export default StaticNodePlacementStrategyFactory;

@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 import type { FastifyReply } from 'fastify';
 
 import { HttpListener, getHttpListenerInstance } from '../http-listener.js';
-import { QueueFullError } from '../http-stateless-connector.js';
+import { QueueFullError } from '../../util/bounded-async-queue.js';
 import type { Authorizer } from '../../security/auth/authorizer.js';
 import type { HttpServer } from '../http-server.js';
 import type { RoutingNodeLike } from '../../node/routing-node-like.js';

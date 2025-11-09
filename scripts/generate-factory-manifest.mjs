@@ -92,10 +92,24 @@ function buildManifest(modules) {
 
   const list = JSON.stringify(modules, null, 2);
 
+  const loaderEntries = modules
+    .map(
+      (specifier) =>
+        `  ${JSON.stringify(specifier)}: () => import(${JSON.stringify(
+          specifier
+        )}),`
+    )
+    .join("\n");
+
   const body = `
 export const MODULES = ${list} as const;
 
 export type FactoryModuleSpec = (typeof MODULES)[number];
+export type FactoryModuleLoader = () => Promise<Record<string, unknown>>;
+
+export const MODULE_LOADERS: Record<FactoryModuleSpec, FactoryModuleLoader> = {
+${loaderEntries}
+};
 `;
 
   return `${header}${body}`;

@@ -6,6 +6,7 @@ import {
 } from '@naylence/factory';
 
 import { getFameConfig } from '../config/extended-fame-config.js';
+import { ensureRuntimeFactoriesRegistered } from '../util/register-runtime-factories.js';
 
 import type { NodeLike } from './node-like.js';
 
@@ -28,6 +29,8 @@ export abstract class NodeLikeFactory<
     config?: NodeLikeConfig | Record<string, unknown> | null,
     options: CreateResourceOptions = {}
   ): Promise<NodeLike> {
+    await ensureRuntimeFactoriesRegistered();
+
     let resolvedConfig = config ?? null;
 
     if (!resolvedConfig) {

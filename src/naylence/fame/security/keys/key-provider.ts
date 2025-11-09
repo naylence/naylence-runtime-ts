@@ -1,4 +1,5 @@
-import type { KeyRecord, KeyStore } from './key-store.js';
+import type { KeyRecord } from './key-store.js';
+import { getKeyStore } from './key-store.js';
 
 export interface KeyProvider {
   getKey(kid: string): Promise<KeyRecord>;
@@ -6,8 +7,5 @@ export interface KeyProvider {
 }
 
 export function getKeyProvider(): KeyProvider {
-  const { getKeyStore } = require('./key-store.js') as {
-    getKeyStore(): KeyStore;
-  };
   return getKeyStore();
 }

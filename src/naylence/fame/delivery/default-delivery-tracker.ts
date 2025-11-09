@@ -248,6 +248,13 @@ export class DefaultDeliveryTracker
   >();
   private readonly ackDoneSince = new Map<string, number>();
   private readonly replyDoneSince = new Map<string, number>();
+  private readonly pendingAckDispatches = new Set<Promise<void>>();
+  private readonly recentlyHandled = new Map<string, number>();
+  private readonly recentlyHandledOrder: string[] = [];
+  private readonly recentlyHandledTtlMs = 60_000;
+  private isPreparingToStop = false;
+  private shutdownRequestedAtMs: number | null = null;
+  private readonly shutdownRetryGraceMs = 1_000;
   private futuresSweeper: SpawnedTask<void> | null = null;
 
   private readonly streamQueues = new Map<string, AsyncQueue<unknown>>();
@@ -305,6 +312,8 @@ export class DefaultDeliveryTracker
 
   async onNodeStarted(node: NodeLike): Promise<void> {
     this.node = node;
+    this.isPreparingToStop = false;
+    this.shutdownRequestedAtMs = null;
     if (!this.futuresSweeper) {
       this.shutdownSignal = createDeferred<void>();
       this.futuresSweeper = this.spawn(
@@ -318,10 +327,15 @@ export class DefaultDeliveryTracker
   }
 
   async onNodePreparingToStop(_node: NodeLike): Promise<void> {
+    this.isPreparingToStop = true;
+    this.shutdownRequestedAtMs = Date.now();
+    await this.waitForPendingAckDispatches();
     await this.waitForPendingAcks();
   }
 
   async onNodeStopped(_node: NodeLike): Promise<void> {
+    this.isPreparingToStop = false;
+    this.shutdownRequestedAtMs = null;
     await this.cleanup();
     await this.shutdownTasks();
   }
@@ -610,6 +624,27 @@ export class DefaultDeliveryTracker
           });
         }
       } else {
+        const wasRecentlyHandled = await this.lock.runExclusive(async () =>
+          this.wasRecentlyHandled(envelope.id)
+        );
+
+        if (wasRecentlyHandled) {
+          logger.debug('tracker_duplicate_envelope_recently_handled', {
+            envp_id: envelope.id,
+          });
+
+          return new TrackedEnvelope({
+            timeoutAtMs: 0,
+            overallTimeoutAtMs: 0,
+            expectedResponseType: envelope.rtype ?? FameResponseType.NONE,
+            createdAtMs: Date.now(),
+            status: EnvelopeStatus.HANDLED,
+            mailboxType: MailboxType.INBOX,
+            originalEnvelope: envelope,
+            serviceName: inboxName,
+          });
+        }
+
         tracked = new TrackedEnvelope({
           timeoutAtMs: 0,
           overallTimeoutAtMs: 0,
@@ -635,6 +670,11 @@ export class DefaultDeliveryTracker
     const inbox = this.ensureInbox();
     envelope.status = EnvelopeStatus.HANDLED;
     await inbox.delete(envelope.originalEnvelope.id);
+    await this.lock.runExclusive(async () => {
+      this.markRecentlyHandled(envelope.originalEnvelope.id);
+    });
+    // Preserve handled envelope to prevent duplicate redelivery during shutdown drains.
+    // await inbox.set(envelope.originalEnvelope.id, envelope);
   }
 
   async onEnvelopeHandleFailed(
@@ -729,11 +769,36 @@ export class DefaultDeliveryTracker
     }
 
     const outbox = this.ensureOutbox();
-    const tracked = await outbox.get(envelope.frame.refId);
+    const refId = envelope.frame.refId;
+    const tracked = await outbox.get(refId);
     if (!tracked) {
+      let handledViaFuture = false;
+      await this.lock.runExclusive(async () => {
+        const pendingFuture = this.ackFutures.get(refId);
+        if (pendingFuture && !pendingFuture.done && pendingFuture.resolve) {
+          pendingFuture.resolve(envelope);
+          handledViaFuture = true;
+        }
+      });
+
+      if (handledViaFuture) {
+        await this.markDoneSince(
+          this.ackFutures,
+          refId,
+          this.ackDoneSince
+        );
+        await this.clearTimer(refId);
+        logger.debug('tracker_ack_resolved_without_tracked_envelope', {
+          envp_id: envelope.id,
+          ref_id: refId,
+          corr_id: envelope.corrId,
+        });
+        return;
+      }
+
       logger.debug('tracker_ack_for_unknown_envelope', {
         envp_id: envelope.id,
-        ref_id: envelope.frame.refId,
+        ref_id: refId,
         corr_id: envelope.corrId,
       });
       return;
@@ -1143,6 +1208,8 @@ export class DefaultDeliveryTracker
       this.streamDone.clear();
 
       this.correlationToEnvelope.clear();
+      this.recentlyHandled.clear();
+      this.recentlyHandledOrder.length = 0;
       return values;
     });
 
@@ -1240,19 +1307,18 @@ export class DefaultDeliveryTracker
       envelopeId: string;
       future: EnvelopeFuture<FameEnvelope>;
     } | null> = [];
+
     await this.lock.runExclusive(async () => {
       for (const [envelopeId, future] of this.ackFutures.entries()) {
-        if (future.promise && typeof future.promise.then === 'function') {
-          const isDone = await Promise.race([
-            future.promise.then(
-              () => true,
-              () => true
-            ),
-            Promise.resolve(false),
-          ]);
-          if (!isDone) {
-            pending.push({ envelopeId, future });
-          }
+        if (!future || typeof future.promise?.then !== 'function') {
+          continue;
+        }
+
+        if (!future.done) {
+          logger.debug('tracker_pending_ack_future_detected', {
+            envelope_id: envelopeId,
+          });
+          pending.push({ envelopeId, future });
         }
       }
     });
@@ -1305,6 +1371,16 @@ export class DefaultDeliveryTracker
     }
 
     logger.debug('tracker_finished_waiting_for_pending_acks');
+  }
+
+  private async waitForPendingAckDispatches(): Promise<void> {
+    while (this.pendingAckDispatches.size > 0) {
+      const pending = Array.from(this.pendingAckDispatches);
+      await Promise.allSettled(pending);
+      for (const promise of pending) {
+        this.pendingAckDispatches.delete(promise);
+      }
+    }
   }
 
   private async scheduleTimer(
@@ -1394,6 +1470,28 @@ export class DefaultDeliveryTracker
               retryPolicy &&
               currentTracked.attempt < retryPolicy.maxRetries
             ) {
+              const shutdownDeferMs = this.getShutdownRetryDeferDelay(
+                currentNowMs
+              );
+              if (shutdownDeferMs !== null) {
+                const nextTimeoutAt = Math.min(
+                  currentTracked.overallTimeoutAtMs,
+                  currentNowMs + shutdownDeferMs
+                );
+                currentTracked.timeoutAtMs = nextTimeoutAt;
+                await outbox.set(tracked.originalEnvelope.id, currentTracked);
+                await this.scheduleTimer(
+                  currentTracked,
+                  retryPolicy,
+                  retryHandler
+                );
+                logger.debug('tracker_retry_deferred_during_shutdown', {
+                  envp_id: tracked.originalEnvelope.id,
+                  defer_ms: shutdownDeferMs,
+                });
+                return;
+              }
+
               currentTracked.attempt += 1;
               const nextDelayMs = retryPolicy.nextDelayMs(
                 currentTracked.attempt
@@ -1850,6 +1948,78 @@ export class DefaultDeliveryTracker
       traceId: envelope.traceId ?? undefined,
     });
 
-    await node.send(ackEnvelope);
+    const ackDispatch = node
+      .send(ackEnvelope)
+      .then(() => undefined)
+      .catch((error: unknown) => {
+        logger.error('tracker_ack_dispatch_failed', {
+          envp_id: envelope.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      });
+
+    this.pendingAckDispatches.add(ackDispatch);
+
+    try {
+      await ackDispatch;
+    } finally {
+      this.pendingAckDispatches.delete(ackDispatch);
+    }
+  }
+
+  private markRecentlyHandled(envelopeId: string): void {
+    const now = Date.now();
+    this.recentlyHandled.set(envelopeId, now);
+    this.recentlyHandledOrder.push(envelopeId);
+    this.trimRecentlyHandled(now);
+  }
+
+  private wasRecentlyHandled(envelopeId: string): boolean {
+    const now = Date.now();
+    const timestamp = this.recentlyHandled.get(envelopeId);
+
+    if (timestamp === undefined) {
+      return false;
+    }
+
+    if (now - timestamp > this.recentlyHandledTtlMs) {
+      this.recentlyHandled.delete(envelopeId);
+      return false;
+    }
+
+    return true;
+  }
+
+  private trimRecentlyHandled(now: number): void {
+    while (this.recentlyHandledOrder.length > 0) {
+      const candidate = this.recentlyHandledOrder[0];
+      const timestamp = this.recentlyHandled.get(candidate);
+
+      if (timestamp === undefined) {
+        this.recentlyHandledOrder.shift();
+        continue;
+      }
+
+      if (now - timestamp <= this.recentlyHandledTtlMs) {
+        break;
+      }
+
+      this.recentlyHandled.delete(candidate);
+      this.recentlyHandledOrder.shift();
+    }
+  }
+
+  private getShutdownRetryDeferDelay(nowMs: number): number | null {
+    if (!this.isPreparingToStop || this.shutdownRequestedAtMs === null) {
+      return null;
+    }
+
+    const elapsed = nowMs - this.shutdownRequestedAtMs;
+    if (elapsed >= this.shutdownRetryGraceMs) {
+      return null;
+    }
+
+    return Math.max(0, this.shutdownRetryGraceMs - elapsed);
   }
 }

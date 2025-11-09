@@ -9,7 +9,12 @@
 import type { ResourceFactory } from '@naylence/factory';
 import { Registry as DefaultRegistry } from '@naylence/factory';
 
-import { MODULES, type FactoryModuleSpec } from '../factory-manifest.js';
+import {
+  MODULES,
+  MODULE_LOADERS,
+  type FactoryModuleLoader,
+  type FactoryModuleSpec,
+} from '../factory-manifest.js';
 
 export type RuntimeFactoryRegistry = typeof DefaultRegistry;
 
@@ -179,40 +184,54 @@ function resolveModuleCandidates(spec: string): string[] {
   return candidates;
 }
 
-export async function registerDefaultFactories(
-  registry: RuntimeFactoryRegistry = DefaultRegistry
+async function performRegistration(
+  registry: RuntimeFactoryRegistry
 ): Promise<void> {
   await Promise.all(
     MODULES.map(async (spec: FactoryModuleSpec) => {
       try {
-        const candidates = resolveModuleCandidates(spec);
         let mod: Record<string, unknown> | undefined;
         let lastError: unknown;
 
-        for (const [index, candidate] of candidates.entries()) {
+        const staticLoader: FactoryModuleLoader | undefined =
+          MODULE_LOADERS?.[spec];
+
+        if (staticLoader) {
           try {
-            mod = await import(/* @vite-ignore */ candidate);
-            lastError = undefined;
-            break;
+            mod = await staticLoader();
           } catch (error) {
             lastError = error;
+          }
+        }
 
-            const isLastCandidate = index === candidates.length - 1;
-            if (isLastCandidate) {
-              throw error;
-            }
+        if (!mod) {
+          const candidates = resolveModuleCandidates(spec);
 
-            const message =
-              error instanceof Error ? error.message : String(error);
-            const moduleNotFound =
-              message.includes('Cannot find module') ||
-              message.includes('ERR_MODULE_NOT_FOUND') ||
-              message.includes('Unknown file extension') ||
-              message.includes('Failed to fetch dynamically imported module') ||
-              message.includes('Importing a module script failed');
+          for (const [index, candidate] of candidates.entries()) {
+            try {
+              mod = await import(/* @vite-ignore */ candidate);
+              lastError = undefined;
+              break;
+            } catch (error) {
+              lastError = error;
 
-            if (!moduleNotFound) {
-              throw error;
+              const isLastCandidate = index === candidates.length - 1;
+              if (isLastCandidate) {
+                throw error;
+              }
+
+              const message =
+                error instanceof Error ? error.message : String(error);
+              const moduleNotFound =
+                message.includes('Cannot find module') ||
+                message.includes('ERR_MODULE_NOT_FOUND') ||
+                message.includes('Unknown file extension') ||
+                message.includes('Failed to fetch dynamically imported module') ||
+                message.includes('Importing a module script failed');
+
+              if (!moduleNotFound) {
+                throw error;
+              }
             }
           }
         }
@@ -248,6 +267,12 @@ export async function registerDefaultFactories(
   );
 }
 
+export async function registerDefaultFactories(
+  registry: RuntimeFactoryRegistry = DefaultRegistry
+): Promise<void> {
+  await performRegistration(registry);
+}
+
 /**
  * Register all default Naylence runtime factories into the supplied registry.
  *
@@ -256,5 +281,43 @@ export async function registerDefaultFactories(
 export async function registerRuntimeFactories(
   registry: RuntimeFactoryRegistry = DefaultRegistry
 ): Promise<void> {
-  await registerDefaultFactories(registry);
+  if (registry === DefaultRegistry) {
+    await ensureDefaultRegistration();
+    return;
+  }
+
+  await performRegistration(registry);
+}
+
+let defaultRegistrationPromise: Promise<void> | null = null;
+let defaultRegistrationError: unknown | null = null;
+
+async function ensureDefaultRegistration(): Promise<void> {
+  if (defaultRegistrationError) {
+    throw defaultRegistrationError;
+  }
+
+  if (!defaultRegistrationPromise) {
+    defaultRegistrationError = null;
+    defaultRegistrationPromise = performRegistration(DefaultRegistry).catch(
+      (error) => {
+        defaultRegistrationError = error;
+        defaultRegistrationPromise = null;
+        throw error;
+      }
+    );
+  }
+
+  await defaultRegistrationPromise;
+}
+
+export async function ensureRuntimeFactoriesRegistered(
+  registry: RuntimeFactoryRegistry = DefaultRegistry
+): Promise<void> {
+  if (registry !== DefaultRegistry) {
+    await performRegistration(registry);
+    return;
+  }
+
+  await ensureDefaultRegistration();
 }

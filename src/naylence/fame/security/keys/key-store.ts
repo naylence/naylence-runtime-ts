@@ -89,6 +89,14 @@ export abstract class KeyStore implements KeyProvider {
 }
 
 let instance: KeyStore | null = null;
+let defaultFactory: (() => KeyStore) | null = null;
+
+export function registerDefaultKeyStoreFactory(
+  factory: (() => KeyStore) | null
+): void {
+  defaultFactory = factory;
+  instance = null;
+}
 
 export function setKeyStore(keyStore: KeyStore | null): void {
   instance = keyStore;
@@ -96,14 +104,19 @@ export function setKeyStore(keyStore: KeyStore | null): void {
 
 export function getKeyStore(): KeyStore {
   if (!instance) {
-    // Lazy-load to avoid circular dependency
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { InMemoryKeyStore } = require('./in-memory-key-store.js');
-    instance = new InMemoryKeyStore();
+    if (!defaultFactory) {
+      throw new Error(
+        'No default key store factory registered. Ensure a key store implementation calls registerDefaultKeyStoreFactory().'
+      );
+    }
+
+    instance = defaultFactory();
   }
+
   if (!instance) {
     throw new Error('Failed to initialize key store');
   }
+
   return instance;
 }
 

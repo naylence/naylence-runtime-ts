@@ -49,6 +49,57 @@ describe('AdmissionProfileFactory', () => {
     );
   });
 
+  it('maps direct-inpage profile to in-page connection grants', async () => {
+    const spy = jest
+      .spyOn(AdmissionClientFactory, 'createAdmissionClient')
+      .mockResolvedValue(fakeClient);
+
+    const factory = new AdmissionProfileFactory();
+    await factory.create({ profile: 'direct-inpage' });
+
+    const [config] = spy.mock.calls[0];
+    expect((config as Record<string, unknown>).type).toBe(
+      'DirectAdmissionClient'
+    );
+
+    const grants =
+      (config as { connection_grants?: Array<Record<string, unknown>> })
+        .connection_grants ?? [];
+    expect(grants).toHaveLength(1);
+
+    const grant = grants[0] as Record<string, unknown>;
+    const expectedChannel = Expressions.env(
+      'FAME_DIRECT_INPAGE_CHANNEL',
+      'naylence-fabric'
+    );
+
+    expect(grant.type).toBe('InPageConnectionGrant');
+    expect(grant.channelName).toBe(expectedChannel);
+    expect(grant.channel_name).toBe(expectedChannel);
+    expect(grant.ttl).toBe(0);
+    expect(grant.durable).toBe(false);
+  });
+
+  it('supports direct_inpage profile alias', async () => {
+    const spy = jest
+      .spyOn(AdmissionClientFactory, 'createAdmissionClient')
+      .mockResolvedValue(fakeClient);
+
+    const factory = new AdmissionProfileFactory();
+    await factory.create({ profile: 'direct_inpage' });
+
+    const [config] = spy.mock.calls[0];
+    expect((config as Record<string, unknown>).type).toBe(
+      'DirectAdmissionClient'
+    );
+
+    const grants =
+      (config as { connection_grants?: Array<Record<string, unknown>> })
+        .connection_grants ?? [];
+    expect(grants).toHaveLength(1);
+    expect(grants[0]?.type).toBe('InPageConnectionGrant');
+  });
+
   it('maps welcome profile to welcome service client', async () => {
     const spy = jest
       .spyOn(AdmissionClientFactory, 'createAdmissionClient')
