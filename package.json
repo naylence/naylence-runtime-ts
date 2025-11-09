@@ -52,6 +52,12 @@
       "import": "./dist/browser/index.mjs",
       "require": "./dist/browser/index.cjs"
     },
+    "./install-env": {
+      "types": "./dist/types/install-env.d.ts",
+      "import": "./dist/esm/install-env.js",
+      "require": "./dist/cjs/install-env.js",
+      "default": "./dist/esm/install-env.js"
+    },
     "./factory-manifest": {
       "types": "./dist/types/naylence/fame/factory-manifest.d.ts",
       "import": "./dist/esm/naylence/fame/factory-manifest.js",
@@ -111,7 +117,9 @@
     "**/*-factory.ts",
     "**/*-factory.js",
     "**/storage/index.ts",
-    "**/storage/index.js"
+    "**/storage/index.js",
+    "dist/browser/index.mjs",
+    "dist/browser/index.cjs"
   ],
   "files": [
     "dist",
@@ -124,7 +132,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "npm run clean && npm run build:types && npm run build:cjs && npm run build:esm && npm run build:browser && npm run fix-source-maps",
+    "build": "rimraf dist && tsc --emitDeclarationOnly --outDir dist/types && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && rollup -c rollup.config.js && node ./scripts/fix-source-maps.js",
     "build:types": "tsc --emitDeclarationOnly --outDir dist/types",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "build:esm": "tsc -p tsconfig.esm.json",
@@ -143,9 +151,9 @@
     "dev": "tsc --watch --outDir dist/esm",
     "generate:factory-manifest": "node ./scripts/generate-factory-manifest.mjs",
     "inject-version": "node ./scripts/inject-version.js",
-    "prebuild": "npm run inject-version && npm run generate:factory-manifest",
-    "predev": "npm run inject-version && npm run generate:factory-manifest",
-    "prepublishOnly": "npm run build && npm test",
+  "prebuild": "node ./scripts/inject-version.js && node ./scripts/generate-factory-manifest.mjs",
+  "predev": "node ./scripts/inject-version.js && node ./scripts/generate-factory-manifest.mjs",
+  "prepublishOnly": "node ./scripts/run-pm.js build && node ./scripts/run-pm.js test",
     "example:docker-rpc": "make -C examples/docker-rpc up",
     "example:docker-rpc:down": "make -C examples/docker-rpc clean",
     "analyze:size": "size-limit"

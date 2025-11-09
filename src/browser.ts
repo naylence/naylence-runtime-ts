@@ -1,3 +1,7 @@
+import { installProcessEnvShim } from './_env-shim.js';
+
+installProcessEnvShim();
+
 // Browser entry point re-exporting shared runtime surface and browser-only modules.
 export * from './runtime-isomorphic.js';
 export {

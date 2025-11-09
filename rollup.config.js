@@ -32,7 +32,7 @@ const nodePlugins = [
 
 export default defineConfig([
   {
-    input: 'dist/esm/index.js',
+    input: 'dist/esm/browser.js',
     output: [
       {
         file: 'dist/browser/index.mjs',

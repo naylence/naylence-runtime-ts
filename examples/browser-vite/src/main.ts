@@ -73,6 +73,9 @@ async function runSmokeTest(): Promise<StatusLine[]> {
   const lines: StatusLine[] = [];
   lines.push('Naylence Runtime Browser Smoke Test');
 
+  lines.push(`Naylence env variables: ${JSON.stringify((globalThis as any).__ENV__)}`);
+  lines.push(`Naylence env variable FAME_TEST_1: ${process.env.FAME_TEST_1}`);
+
   const cryptoAvailable = hasCryptoSupport();
   lines.push(`WebCrypto available: ${cryptoAvailable}`);
   if (!cryptoAvailable) {

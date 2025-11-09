@@ -135,6 +135,25 @@ export class WebSocketConnector extends BaseAsyncConnector {
       url: websocket.url,
     });
 
+    if (!this._isFastApiLike) {
+      const socketAny = this._websocket as any;
+      if (
+        socketAny &&
+        typeof socketAny === 'object' &&
+        'binaryType' in socketAny &&
+        socketAny.binaryType !== 'arraybuffer'
+      ) {
+        try {
+          socketAny.binaryType = 'arraybuffer';
+        } catch (error) {
+          logger.debug('websocket_set_binary_type_failed', {
+            error: error instanceof Error ? error.message : String(error),
+            current_type: socketAny.binaryType,
+          });
+        }
+      }
+    }
+
     // For non-FastAPI WebSockets (browser/Node.js ws), attach receive handlers immediately
     // to avoid race conditions where messages arrive before the first _transportReceive() call
     if (!this._isFastApiLike) {
@@ -662,6 +681,11 @@ export class WebSocketConnector extends BaseAsyncConnector {
 
     if (typeof Buffer !== 'undefined' && Buffer.isBuffer?.(data)) {
       return new Uint8Array(data);
+    }
+
+    if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(data)) {
+      const view = data as ArrayBufferView;
+      return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
     }
 
     if (data instanceof ArrayBuffer) {
