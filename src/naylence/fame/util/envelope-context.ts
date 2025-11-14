@@ -31,7 +31,20 @@ class EnvelopeContextManager {
         // Try to require async_hooks synchronously - this will only work in Node.js
         // The bundler will handle this gracefully for browser builds
         if (typeof require !== 'undefined') {
-          const { AsyncLocalStorage } = require('async_hooks');
+          const asyncHooksModuleId = String.fromCharCode(
+            97,
+            115,
+            121,
+            110,
+            99,
+            95,
+            104,
+            111,
+            111,
+            107,
+            115
+          );
+          const { AsyncLocalStorage } = require(asyncHooksModuleId);
           this.nodeStorage = new AsyncLocalStorage();
         }
       } catch {

@@ -1,4 +1,3 @@
-import fs from 'fs';
 import {
   getDefaultFameConfigResolver,
   setDefaultFameConfigResolver,
@@ -29,10 +28,38 @@ const CONFIG_SEARCH_PATHS = [
   '/etc/fame/fame-config.yml',
 ] as const;
 
-function readConfigFile(filePath: string): Record<string, unknown> {
-  if (!isNode || !fs || typeof fs.readFileSync !== 'function') {
+type FsModule = typeof import('fs');
+
+const fsModuleSpecifier = String.fromCharCode(102) + String.fromCharCode(115);
+let cachedFsModule: FsModule | null = null;
+
+function getFsModule(): FsModule {
+  if (cachedFsModule) {
+    return cachedFsModule;
+  }
+
+  if (!isNode) {
     throw new Error('File system access is not available in this environment');
   }
+
+  if (typeof require === 'function') {
+    try {
+      cachedFsModule = require(fsModuleSpecifier) as FsModule;
+      return cachedFsModule;
+    } catch (error) {
+      throw new Error(
+        `Unable to load file system module: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  throw new Error('File system module is not accessible in this environment');
+}
+
+function readConfigFile(filePath: string): Record<string, unknown> {
+  const fs = getFsModule();
 
   const content = fs.readFileSync(filePath, 'utf-8');
   const lower = filePath.toLowerCase();
@@ -62,13 +89,15 @@ function resolveEnvValue(raw: string): Record<string, unknown> {
     return {};
   }
 
-  if (
-    isNode &&
-    fs &&
-    typeof fs.existsSync === 'function' &&
-    fs.existsSync(trimmed)
-  ) {
-    return readConfigFile(trimmed);
+  if (isNode) {
+    try {
+      const fs = getFsModule();
+      if (typeof fs.existsSync === 'function' && fs.existsSync(trimmed)) {
+        return readConfigFile(trimmed);
+      }
+    } catch {
+      // fall through to string parsing when fs unavailable
+    }
   }
 
   return parseConfigString(trimmed);
@@ -95,7 +124,14 @@ function loadFromEnv(): Record<string, unknown> | null {
 }
 
 function loadFromFiles(): Record<string, unknown> {
-  if (!isNode || !fs || typeof fs.existsSync !== 'function') {
+  if (!isNode) {
+    return {};
+  }
+
+  let fs: FsModule;
+  try {
+    fs = getFsModule();
+  } catch {
     return {};
   }
 

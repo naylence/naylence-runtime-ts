@@ -289,7 +289,8 @@ function initializePino(): void {
   try {
     // Try to require pino synchronously - this will only work in Node.js
     if (typeof require !== 'undefined') {
-      const pino = require('pino');
+  const moduleSpecifier = String.fromCharCode(112, 105, 110, 111);
+  const pino = require(moduleSpecifier);
 
       // Use pretty transport for development
       pinoLogger = pino({

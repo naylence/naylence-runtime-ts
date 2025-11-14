@@ -22,6 +22,16 @@ const ENV_VAR_JWT_AUDIENCE = 'FAME_JWT_AUDIENCE';
 const ENV_VAR_ADMISSION_TOKEN_URL = 'FAME_ADMISSION_TOKEN_URL';
 const ENV_VAR_ADMISSION_CLIENT_ID = 'FAME_ADMISSION_CLIENT_ID';
 const ENV_VAR_ADMISSION_CLIENT_SECRET = 'FAME_ADMISSION_CLIENT_SECRET';
+const ENV_VAR_ADMISSION_AUTHORIZE_URL = 'FAME_ADMISSION_AUTHORIZE_URL';
+const ENV_VAR_ADMISSION_REDIRECT_URL = 'FAME_ADMISSION_REDIRECT_URL';
+const ENV_VAR_ADMISSION_LOGIN_HINT_PARAM =
+  'FAME_ADMISSION_LOGIN_HINT_PARAM';
+const ENV_VAR_ADMISSION_CODE_CHALLENGE_METHOD =
+  'FAME_ADMISSION_CODE_CHALLENGE_METHOD';
+const ENV_VAR_ADMISSION_CODE_VERIFIER_LENGTH =
+  'FAME_ADMISSION_CODE_VERIFIER_LENGTH';
+const ENV_VAR_ADMISSION_CLOCK_SKEW_SECONDS =
+  'FAME_ADMISSION_CLOCK_SKEW_SECONDS';
 const ENV_VAR_DIRECT_ADMISSION_URL = 'FAME_DIRECT_ADMISSION_URL';
 const ENV_VAR_DIRECT_INPAGE_CHANNEL = 'FAME_DIRECT_INPAGE_CHANNEL';
 const ENV_VAR_ADMISSION_SERVICE_URL = 'FAME_ADMISSION_SERVICE_URL';
@@ -32,10 +42,12 @@ const PROFILE_NAME_WELCOME = 'welcome';
 const PROFILE_NAME_DIRECT = 'direct';
 const PROFILE_NAME_DIRECT_HTTP = 'direct-http';
 const PROFILE_NAME_DIRECT_INPAGE = 'direct-inpage';
+const PROFILE_NAME_DIRECT_PKCE = 'direct-pkce';
 const PROFILE_NAME_OPEN = 'open';
 const PROFILE_NAME_NOOP = 'noop';
 const PROFILE_NAME_NONE = 'none';
 const PROFILE_NAME_DIRECT_INPAGE_ALIAS = 'direct_inpage';
+const PROFILE_NAME_DIRECT_PKCE_ALIAS = 'direct_pkce';
 
 function createOAuthTokenProviderConfig() {
   const tokenUrl = Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL);
@@ -53,6 +65,52 @@ function createOAuthTokenProviderConfig() {
     clientSecret,
     scopes: ['node.connect'],
     audience,
+  };
+}
+
+function createOAuthPkceTokenProviderConfig() {
+  const authorizeUrl = Expressions.env(ENV_VAR_ADMISSION_AUTHORIZE_URL);
+  const tokenUrl = Expressions.env(ENV_VAR_ADMISSION_TOKEN_URL);
+  const redirectUri = Expressions.env(ENV_VAR_ADMISSION_REDIRECT_URL);
+  const clientId = Expressions.env(ENV_VAR_ADMISSION_CLIENT_ID);
+  const loginHintParam = Expressions.env(
+    ENV_VAR_ADMISSION_LOGIN_HINT_PARAM,
+    'login_hint'
+  );
+  const audience = Expressions.env(ENV_VAR_JWT_AUDIENCE);
+  const codeChallengeMethod = Expressions.env(
+    ENV_VAR_ADMISSION_CODE_CHALLENGE_METHOD,
+    'S256'
+  );
+  const codeVerifierLength = Expressions.env(
+    ENV_VAR_ADMISSION_CODE_VERIFIER_LENGTH,
+    '64'
+  );
+  const clockSkewSeconds = Expressions.env(
+    ENV_VAR_ADMISSION_CLOCK_SKEW_SECONDS,
+    '30'
+  );
+
+  return {
+    type: 'OAuth2PkceTokenProvider',
+    authorizeUrl,
+    authorize_url: authorizeUrl,
+    tokenUrl,
+    token_url: tokenUrl,
+    redirectUri,
+    redirect_uri: redirectUri,
+    clientId,
+    client_id: clientId,
+    loginHintParam,
+    login_hint_param: loginHintParam,
+    scopes: ['node.connect'],
+    audience,
+    codeChallengeMethod,
+    code_challenge_method: codeChallengeMethod,
+    codeVerifierLength,
+    code_verifier_length: codeVerifierLength,
+    clockSkewSeconds,
+    clock_skew_seconds: clockSkewSeconds,
   };
 }
 
@@ -92,6 +150,27 @@ const DIRECT_PROFILE: AdmissionConfig = {
   type: 'DirectAdmissionClient',
   connection_grants: directGrants,
   connectionGrants: directGrants,
+};
+
+const directPkceTokenProvider = createOAuthPkceTokenProviderConfig();
+const directPkceGrant = {
+  type: 'WebSocketConnectionGrant',
+  purpose: GRANT_PURPOSE_NODE_ATTACH,
+  url: Expressions.env(ENV_VAR_DIRECT_ADMISSION_URL),
+  auth: {
+    type: 'WebSocketSubprotocolAuth',
+    token_provider: directPkceTokenProvider,
+    tokenProvider: directPkceTokenProvider,
+  },
+  ttl: 0,
+  durable: false,
+};
+const directPkceGrants = [directPkceGrant];
+
+const DIRECT_PKCE_PROFILE: AdmissionConfig = {
+  type: 'DirectAdmissionClient',
+  connection_grants: directPkceGrants,
+  connectionGrants: directPkceGrants,
 };
 
 const directHttpTokenProvider = createOAuthTokenProviderConfig();
@@ -174,6 +253,8 @@ const NOOP_PROFILE: AdmissionConfig = {
 const PROFILE_MAP: Record<string, AdmissionConfig> = {
   [PROFILE_NAME_WELCOME]: WELCOME_SERVICE_PROFILE,
   [PROFILE_NAME_DIRECT]: DIRECT_PROFILE,
+  [PROFILE_NAME_DIRECT_PKCE]: DIRECT_PKCE_PROFILE,
+  [PROFILE_NAME_DIRECT_PKCE_ALIAS]: DIRECT_PKCE_PROFILE,
   [PROFILE_NAME_DIRECT_HTTP]: DIRECT_HTTP_PROFILE,
   [PROFILE_NAME_DIRECT_INPAGE]: DIRECT_INPAGE_PROFILE,
   [PROFILE_NAME_DIRECT_INPAGE_ALIAS]: DIRECT_INPAGE_PROFILE,

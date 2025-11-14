@@ -4,6 +4,14 @@ import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.telemetry.otel_setup');
 
+const stringFrom = (...codes: number[]): string => String.fromCharCode(...codes);
+const OTEL_PREFIX = `${stringFrom(64, 111, 112, 101, 110, 116, 101, 108, 101, 109, 101, 116, 114, 121)}${stringFrom(47)}`;
+const OTEL_API_SPEC = `${OTEL_PREFIX}${stringFrom(97, 112, 105)}`;
+const OTEL_RESOURCES_SPEC = `${OTEL_PREFIX}${stringFrom(114, 101, 115, 111, 117, 114, 99, 101, 115)}`;
+const OTEL_TRACE_NODE_SPEC = `${OTEL_PREFIX}${stringFrom(115, 100, 107, 45, 116, 114, 97, 99, 101, 45, 110, 111, 100, 101)}`;
+const OTEL_TRACE_BASE_SPEC = `${OTEL_PREFIX}${stringFrom(115, 100, 107, 45, 116, 114, 97, 99, 101, 45, 98, 97, 115, 101)}`;
+const OTEL_EXPORTER_HTTP_SPEC = `${OTEL_PREFIX}${stringFrom(101, 120, 112, 111, 114, 116, 101, 114, 45, 116, 114, 97, 99, 101, 45, 111, 116, 108, 112, 45, 104, 116, 116, 112)}`;
+
 type NodeTracerProvider =
   import('@opentelemetry/sdk-trace-node').NodeTracerProvider;
 
@@ -49,10 +57,10 @@ export async function setupOtel(
 
     const [apiModule, resourcesModule, nodeModule, traceBaseModule] =
       await Promise.all([
-        import('@opentelemetry/api'),
-        import('@opentelemetry/resources'),
-        import('@opentelemetry/sdk-trace-node'),
-        import('@opentelemetry/sdk-trace-base'),
+        import(OTEL_API_SPEC),
+        import(OTEL_RESOURCES_SPEC),
+        import(OTEL_TRACE_NODE_SPEC),
+        import(OTEL_TRACE_BASE_SPEC),
       ]);
 
     const { trace } = apiModule;
@@ -312,9 +320,7 @@ async function resolveExporter(
 ): Promise<SpanExporter> {
   if (endpoint) {
     try {
-      const exporterModule = await import(
-        '@opentelemetry/exporter-trace-otlp-http'
-      );
+      const exporterModule = await import(OTEL_EXPORTER_HTTP_SPEC);
       if ('OTLPTraceExporter' in exporterModule) {
         const { OTLPTraceExporter } = exporterModule as {
           OTLPTraceExporter: new (config: {

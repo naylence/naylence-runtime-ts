@@ -20,6 +20,17 @@ export type RuntimeFactoryRegistry = typeof DefaultRegistry;
 
 const FACTORY_MODULE_PREFIX = '@naylence/runtime/naylence/fame/';
 const BROWSER_DIST_SEGMENT = '/dist/browser/';
+const NODE_ONLY_FACTORY_MODULES = new Set<FactoryModuleSpec>([
+  './connector/http-listener-factory.js',
+  './connector/websocket-listener-factory.js',
+  './telemetry/open-telemetry-trace-emitter-factory.js',
+  './security/credential/prompt-credential-provider-factory.js',
+]);
+const BROWSER_ONLY_FACTORY_MODULES = new Set<FactoryModuleSpec>([
+  './security/auth/oauth2-pkce-token-provider-factory.js',
+]);
+const isNodeEnvironment =
+  typeof process !== 'undefined' && Boolean(process?.versions?.node);
 
 function detectModuleUrl(): string | null {
   // Prefer Node-friendly __filename when available.
@@ -189,6 +200,14 @@ async function performRegistration(
 ): Promise<void> {
   await Promise.all(
     MODULES.map(async (spec: FactoryModuleSpec) => {
+      if (!isNodeEnvironment && NODE_ONLY_FACTORY_MODULES.has(spec)) {
+        return;
+      }
+
+      if (isNodeEnvironment && BROWSER_ONLY_FACTORY_MODULES.has(spec)) {
+        return;
+      }
+
       try {
         let mod: Record<string, unknown> | undefined;
         let lastError: unknown;

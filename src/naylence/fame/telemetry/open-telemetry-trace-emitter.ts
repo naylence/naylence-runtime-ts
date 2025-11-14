@@ -4,9 +4,9 @@ import type {
   Link,
   Span as OtelSpan,
   SpanOptions,
+  SpanStatusCode as OtelSpanStatusCode,
   Tracer,
 } from '@opentelemetry/api';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
 
 import { BaseTraceEmitter } from './base-trace-emitter.js';
 import type {
@@ -23,8 +23,16 @@ import {
 import type { OtelLifecycleControl } from './otel-setup.js';
 import type { AuthInjectionStrategy } from '../security/auth/auth-injection-strategy.js';
 
+type OtelApiBridge = Pick<
+  typeof import('@opentelemetry/api'),
+  'trace' | 'SpanStatusCode'
+>;
+
 class OpenTelemetryTraceSpan implements TraceSpan {
-  public constructor(private readonly span: OtelSpan) {}
+  public constructor(
+    private readonly span: OtelSpan,
+    private readonly api: OtelApiBridge
+  ) {}
 
   public setAttribute(key: string, value: unknown): void {
     try {
@@ -48,8 +56,8 @@ class OpenTelemetryTraceSpan implements TraceSpan {
 
   public setStatusError(description?: string): void {
     try {
-      const status: { code: SpanStatusCode; message?: string } = {
-        code: SpanStatusCode.ERROR,
+      const status: { code: OtelSpanStatusCode; message?: string } = {
+        code: this.api.SpanStatusCode.ERROR,
       };
       if (description !== undefined) {
         status.message = description;
@@ -67,8 +75,8 @@ class OpenTelemetrySpanScope implements TraceSpanScope {
   private spanToken: string | null | undefined;
   private entered = false;
 
-  public constructor(private readonly span: OtelSpan) {
-    this.wrapper = new OpenTelemetryTraceSpan(span);
+  public constructor(private readonly span: OtelSpan, api: OtelApiBridge) {
+    this.wrapper = new OpenTelemetryTraceSpan(span, api);
   }
 
   public enter(): TraceSpan {
@@ -101,6 +109,7 @@ class OpenTelemetrySpanScope implements TraceSpanScope {
 
 export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   private readonly tracer: Tracer;
+  private readonly otelApi: OtelApiBridge;
   private lifecycle: OtelLifecycleControl | null;
   private authStrategy: AuthInjectionStrategy | null;
   private shutdownInvoked = false;
@@ -108,7 +117,9 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
   public constructor(options: OpenTelemetryTraceEmitterOptionsInput) {
     super();
     const normalized = normalizeOpenTelemetryTraceEmitterOptions(options);
-    this.tracer = normalized.tracer ?? trace.getTracer(normalized.serviceName);
+    this.otelApi = normalized.otelApi;
+    this.tracer =
+      normalized.tracer ?? this.otelApi.trace.getTracer(normalized.serviceName);
     this.lifecycle = normalized.lifecycle ?? null;
     this.authStrategy = normalized.authStrategy ?? null;
   }
@@ -130,7 +141,7 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
       this.applyEnvelopeTraceId(span, envelopeTraceId);
     }
 
-    return new OpenTelemetrySpanScope(span);
+  return new OpenTelemetrySpanScope(span, this.otelApi);
   }
 
   public override async flush(): Promise<void> {
@@ -144,7 +155,7 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
     }
 
     try {
-      const provider = trace.getTracerProvider() as unknown as {
+      const provider = this.otelApi.trace.getTracerProvider() as unknown as {
         forceFlush?: () => Promise<void>;
       };
       if (provider && typeof provider.forceFlush === 'function') {
@@ -186,7 +197,7 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
     }
 
     try {
-      const provider = trace.getTracerProvider() as unknown as {
+      const provider = this.otelApi.trace.getTracerProvider() as unknown as {
         shutdown?: () => Promise<void>;
       };
       if (provider && typeof provider.shutdown === 'function') {
@@ -231,6 +242,8 @@ type OpenTelemetryTraceEmitterOptionsInput = {
   serviceName?: string;
   service_name?: string;
   tracer?: Tracer;
+  otelApi?: OtelApiBridge;
+  otel_api?: OtelApiBridge;
   lifecycle?: OtelLifecycleControl | null;
   lifeCycle?: OtelLifecycleControl | null;
   life_cycle?: OtelLifecycleControl | null;
@@ -241,6 +254,7 @@ type OpenTelemetryTraceEmitterOptionsInput = {
 type NormalizedOpenTelemetryTraceEmitterOptions = {
   serviceName: string;
   tracer?: Tracer;
+  otelApi: OtelApiBridge;
   lifecycle?: OtelLifecycleControl | null;
   authStrategy?: AuthInjectionStrategy | null;
 };
@@ -256,6 +270,16 @@ function normalizeOpenTelemetryTraceEmitterOptions(
     ) ?? 'naylence-service';
 
   const tracer = pickFirst<Tracer | undefined>(source, ['tracer']);
+
+  const otelApi = pickFirst<OtelApiBridge | undefined>(source, [
+    'otelApi',
+    'otel_api',
+  ]);
+  if (!otelApi) {
+    throw new Error(
+      'OpenTelemetryTraceEmitter requires OpenTelemetry API bindings. Provide otelApi via options.'
+    );
+  }
 
   const lifecycle =
     pickFirst<OtelLifecycleControl | null>(source, [
@@ -273,6 +297,7 @@ function normalizeOpenTelemetryTraceEmitterOptions(
   return {
     serviceName,
     tracer,
+    otelApi,
     lifecycle,
     authStrategy,
   };

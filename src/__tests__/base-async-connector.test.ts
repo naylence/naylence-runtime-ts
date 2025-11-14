@@ -370,6 +370,35 @@ describe('BaseAsyncConnector', () => {
       await connector.start(mockHandler);
     });
 
+    test('continues receiving after handler throws', async () => {
+      const faultyHandler = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('handler failure'))
+        .mockResolvedValue(undefined);
+
+      await connector.replaceHandler(faultyHandler);
+
+      const firstEnvelope = createFameEnvelope({
+        id: 'env-1',
+        frame: { type: 'Data', payload: 'one' } as DataFrame,
+      });
+
+      connector.pushToReceiveQueue(firstEnvelope);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      expect(faultyHandler).toHaveBeenCalledTimes(1);
+
+      const secondEnvelope = createFameEnvelope({
+        id: 'env-2',
+        frame: { type: 'Data', payload: 'two' } as DataFrame,
+      });
+
+      connector.pushToReceiveQueue(secondEnvelope);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      expect(faultyHandler).toHaveBeenCalledTimes(2);
+    });
+
     test('should receive and process FameEnvelope', async () => {
       const envelope = createFameEnvelope({
         traceId: 'test-trace',

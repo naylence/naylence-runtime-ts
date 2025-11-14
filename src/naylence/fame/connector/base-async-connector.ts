@@ -563,12 +563,27 @@ export abstract class BaseAsyncConnector
             expectedResponseType: FameResponseType.NONE,
           };
 
-          await this._handler!(env, context);
-
-          // Consume credit and emit refill if needed
           const flowId = env.flowId || this._connectorFlowId;
-          this._flowCtrl.consume(flowId);
-          await this._maybeEmitCredit(flowId, env.traceId);
+
+          try {
+            await this._handler!(env, context);
+          } catch (error) {
+            if (error instanceof FameTransportClose) {
+              throw error;
+            }
+            if (error instanceof TaskCancellationError) {
+              throw error;
+            }
+
+            logger.error('handler_failed', {
+              error: error instanceof Error ? error.message : String(error),
+              envelope_id: env.id ?? null,
+              trace_id: env.traceId ?? null,
+            });
+          } finally {
+            this._flowCtrl.consume(flowId);
+            await this._maybeEmitCredit(flowId, env.traceId);
+          }
         });
       }
     } catch (error) {

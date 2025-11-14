@@ -14,14 +14,7 @@ let mockStartSpan: jest.Mock;
 let mockTracer: Tracer;
 let mockGetTracer: jest.Mock;
 let mockGetTracerProvider: jest.Mock;
-
-jest.mock('@opentelemetry/api', () => ({
-  trace: {
-    getTracer: (...args: unknown[]) => mockGetTracer(...args),
-    getTracerProvider: (...args: unknown[]) => mockGetTracerProvider(...args),
-  },
-  SpanStatusCode: { ERROR: 'ERROR' },
-}));
+let mockOtelApi: Pick<typeof import('@opentelemetry/api'), 'trace' | 'SpanStatusCode'>;
 
 describe('OpenTelemetryTraceEmitter', () => {
   beforeEach(() => {
@@ -35,6 +28,16 @@ describe('OpenTelemetryTraceEmitter', () => {
     mockTracer = { startSpan: mockStartSpan } as unknown as Tracer;
     mockGetTracer = jest.fn(() => mockTracer);
     mockGetTracerProvider = jest.fn(() => mockTracerProvider);
+
+    const traceApiMock = {
+      getTracer: (...args: unknown[]) => mockGetTracer(...args),
+      getTracerProvider: (...args: unknown[]) => mockGetTracerProvider(...args),
+    } as unknown as typeof import('@opentelemetry/api').trace;
+
+    mockOtelApi = {
+      trace: traceApiMock,
+      SpanStatusCode: { ERROR: 2 } as unknown as typeof import('@opentelemetry/api').SpanStatusCode,
+    };
   });
 
   it('accepts snake_case constructor aliases without mutating telemetry attributes', async () => {
@@ -48,6 +51,7 @@ describe('OpenTelemetryTraceEmitter', () => {
     };
 
     const emitter = new OpenTelemetryTraceEmitter({
+      otelApi: mockOtelApi,
       service_name: 'snake-service',
       auth_strategy: authStrategy,
       life_cycle: lifecycle,
@@ -79,6 +83,7 @@ describe('OpenTelemetryTraceEmitter', () => {
     const customTracer = { startSpan: customStartSpan } as unknown as Tracer;
 
     const emitter = new OpenTelemetryTraceEmitter({
+      otelApi: mockOtelApi,
       serviceName: 'custom-service',
       tracer: customTracer,
     });

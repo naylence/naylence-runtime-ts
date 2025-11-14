@@ -100,6 +100,63 @@ describe('AdmissionProfileFactory', () => {
     expect(grants[0]?.type).toBe('InPageConnectionGrant');
   });
 
+  it('maps direct-pkce profile to PKCE token provider grants', async () => {
+    const spy = jest
+      .spyOn(AdmissionClientFactory, 'createAdmissionClient')
+      .mockResolvedValue(fakeClient);
+
+    const factory = new AdmissionProfileFactory();
+    await factory.create({ profile: 'direct-pkce' });
+
+    const [config] = spy.mock.calls[0];
+    expect((config as Record<string, unknown>).type).toBe(
+      'DirectAdmissionClient'
+    );
+
+    const grants =
+      (config as { connection_grants?: Array<Record<string, unknown>> })
+        .connection_grants ?? [];
+    expect(grants).toHaveLength(1);
+
+    const grant = grants[0] as Record<string, any>;
+    expect(grant.type).toBe('WebSocketConnectionGrant');
+
+    const tokenProvider = grant.auth?.token_provider as Record<string, any>;
+    expect(tokenProvider.type).toBe('OAuth2PkceTokenProvider');
+    expect(tokenProvider.authorizeUrl).toBe(
+      Expressions.env('FAME_ADMISSION_AUTHORIZE_URL')
+    );
+    expect(tokenProvider.clientSecret).toBeUndefined();
+    expect(tokenProvider.client_secret).toBeUndefined();
+    expect(tokenProvider.loginHintParam).toBe(
+      Expressions.env('FAME_ADMISSION_LOGIN_HINT_PARAM', 'login_hint')
+    );
+  });
+
+  it('supports direct_pkce profile alias', async () => {
+    const spy = jest
+      .spyOn(AdmissionClientFactory, 'createAdmissionClient')
+      .mockResolvedValue(fakeClient);
+
+    const factory = new AdmissionProfileFactory();
+    await factory.create({ profile: 'direct_pkce' });
+
+    const [config] = spy.mock.calls[0];
+    expect((config as Record<string, unknown>).type).toBe(
+      'DirectAdmissionClient'
+    );
+
+    const grants =
+      (config as { connection_grants?: Array<Record<string, unknown>> })
+        .connection_grants ?? [];
+    expect(grants).toHaveLength(1);
+
+    const grant = grants[0] as Record<string, any>;
+    expect(grant.auth?.token_provider?.type).toBe(
+      'OAuth2PkceTokenProvider'
+    );
+  });
+
   it('maps welcome profile to welcome service client', async () => {
     const spy = jest
       .spyOn(AdmissionClientFactory, 'createAdmissionClient')

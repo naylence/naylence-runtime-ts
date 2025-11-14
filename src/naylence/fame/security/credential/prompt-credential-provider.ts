@@ -62,8 +62,9 @@ export class PromptCredentialProvider implements CredentialProvider {
 
     if (processObject?.stdin && processObject.stdout) {
       try {
+  const moduleSpecifier = String.fromCharCode(114, 101, 97, 100, 108, 105, 110, 101);
         const readlineModule = (await import(
-          'readline'
+          /* @vite-ignore */ moduleSpecifier
         )) as typeof import('readline');
         return await new Promise<string | null>((resolve) => {
           const rl = readlineModule.createInterface({

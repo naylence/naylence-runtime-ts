@@ -51,13 +51,18 @@ interface OpenTelemetryTraceEmitterFactoryOptions {
 
 type OpenTelemetryTraceEmitterModule =
   typeof import('./open-telemetry-trace-emitter.js');
+type OtelApiModule = typeof import('@opentelemetry/api');
 
 let openTelemetryTraceEmitterModulePromise: Promise<OpenTelemetryTraceEmitterModule> | null =
   null;
+let otelApiModulePromise: Promise<OtelApiModule> | null = null;
 
 const logger = getLogger(
   'naylence.fame.telemetry.open_telemetry_trace_emitter_factory'
 );
+
+const MISSING_OTEL_HELP_MESSAGE =
+  'Missing optional OpenTelemetry dependency. Install @opentelemetry/api (and related packages) to enable trace emission.';
 
 function getOpenTelemetryTraceEmitterModule(): Promise<OpenTelemetryTraceEmitterModule> {
   if (!openTelemetryTraceEmitterModulePromise) {
@@ -65,12 +70,24 @@ function getOpenTelemetryTraceEmitterModule(): Promise<OpenTelemetryTraceEmitter
       () => import('./open-telemetry-trace-emitter.js'),
       '@opentelemetry/api',
       {
-        helpMessage:
-          'Missing optional OpenTelemetry dependency. Install @opentelemetry/api (and related packages) to enable trace emission.',
+        helpMessage: MISSING_OTEL_HELP_MESSAGE,
       }
     );
   }
   return openTelemetryTraceEmitterModulePromise;
+}
+
+function getOtelApiModule(): Promise<OtelApiModule> {
+  if (!otelApiModulePromise) {
+    otelApiModulePromise = safeImport<OtelApiModule>(
+      () => import('@opentelemetry/api'),
+      '@opentelemetry/api',
+      {
+        helpMessage: MISSING_OTEL_HELP_MESSAGE,
+      }
+    );
+  }
+  return otelApiModulePromise;
 }
 
 export const FACTORY_META = {
@@ -141,16 +158,23 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
       throw error;
     }
 
-    const { OpenTelemetryTraceEmitter } =
-      await getOpenTelemetryTraceEmitterModule();
+    const [{ OpenTelemetryTraceEmitter }, otelModule] = await Promise.all([
+      getOpenTelemetryTraceEmitterModule(),
+      getOtelApiModule(),
+    ]);
 
     const emitterOptions: {
       serviceName: string;
       tracer?: Tracer;
+      otelApi: Pick<OtelApiModule, 'trace' | 'SpanStatusCode'>;
       lifecycle?: OtelLifecycleControl | null;
       authStrategy?: AuthInjectionStrategy | null;
     } = {
       serviceName: normalized.serviceName,
+      otelApi: {
+        trace: otelModule.trace,
+        SpanStatusCode: otelModule.SpanStatusCode,
+      },
     };
 
     if (options.tracer) {

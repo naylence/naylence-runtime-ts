@@ -67,9 +67,17 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
 
   it('normalizes config aliases before invoking dependencies', async () => {
     const emitterCtor = jest.fn();
-    safeImportMock.mockResolvedValue({
-      OpenTelemetryTraceEmitter: emitterCtor,
-    });
+    safeImportMock
+      .mockResolvedValueOnce({
+        OpenTelemetryTraceEmitter: emitterCtor,
+      })
+      .mockResolvedValueOnce({
+        trace: {
+          getTracer: jest.fn(),
+          getTracerProvider: jest.fn(),
+        },
+        SpanStatusCode: { ERROR: 2 },
+      });
 
     const lifecycle: OtelLifecycleControl = {
       forceFlush: jest.fn(),
@@ -111,19 +119,33 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
       },
     });
 
-    expect(emitterCtor).toHaveBeenCalledWith({
-      serviceName: 'snake-service',
-      lifecycle,
-    });
+    expect(emitterCtor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serviceName: 'snake-service',
+        lifecycle,
+        otelApi: expect.objectContaining({
+          trace: expect.any(Object),
+          SpanStatusCode: expect.any(Object),
+        }),
+      })
+    );
 
     expect(createAuthStrategyMock).not.toHaveBeenCalled();
   });
 
   it('applies auth strategies and preserves header casing', async () => {
     const emitterCtor = jest.fn();
-    safeImportMock.mockResolvedValue({
-      OpenTelemetryTraceEmitter: emitterCtor,
-    });
+    safeImportMock
+      .mockResolvedValueOnce({
+        OpenTelemetryTraceEmitter: emitterCtor,
+      })
+      .mockResolvedValueOnce({
+        trace: {
+          getTracer: jest.fn(),
+          getTracerProvider: jest.fn(),
+        },
+        SpanStatusCode: { ERROR: 2 },
+      });
 
     const lifecycle: OtelLifecycleControl = {
       forceFlush: jest.fn(),
@@ -183,11 +205,17 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
       },
     });
 
-    expect(emitterCtor).toHaveBeenCalledWith({
-      serviceName: 'auth-service',
-      lifecycle,
-      authStrategy,
-    });
+    expect(emitterCtor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serviceName: 'auth-service',
+        lifecycle,
+        authStrategy,
+        otelApi: expect.objectContaining({
+          trace: expect.any(Object),
+          SpanStatusCode: expect.any(Object),
+        }),
+      })
+    );
 
     expect(authStrategy.cleanup).not.toHaveBeenCalled();
   });
