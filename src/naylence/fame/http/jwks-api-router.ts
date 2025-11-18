@@ -1,11 +1,11 @@
 /**
- * JWKS (JSON Web Key Set) API router for Express
+ * JWKS (JSON Web Key Set) API plugin for Fastify
  *
  * Provides /.well-known/jwks.json endpoint for public key discovery
  * Used by OAuth2/JWT token verification
  */
 
-import express, { type Router } from 'express';
+import type { FastifyPluginAsync } from 'fastify';
 import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import { getLogger } from '../util/logging.js';
 
@@ -148,26 +148,24 @@ function filterKeysByType(
 }
 
 /**
- * Create an Express router that exposes JWKS at /.well-known/jwks.json
+ * Create a Fastify plugin that exposes JWKS at /.well-known/jwks.json
  *
  * @param options - Router configuration options
- * @returns Express router with JWKS endpoint
+ * @returns Fastify plugin with JWKS endpoint
  *
  * @example
  * ```typescript
- * import express from 'express';
+ * import Fastify from 'fastify';
  * import { createJwksRouter } from '@naylence/runtime';
  *
- * const app = express();
+ * const app = Fastify();
  * const cryptoProvider = new MyCryptoProvider();
- * app.use(createJwksRouter({ cryptoProvider }));
+ * app.register(createJwksRouter({ cryptoProvider }));
  * ```
  */
 export function createJwksRouter(
   options: CreateJwksRouterOptions = {}
-): Router {
-  const router = express.Router();
-
+): FastifyPluginAsync {
   const {
     getJwksJson,
     cryptoProvider,
@@ -197,17 +195,18 @@ export function createJwksRouter(
     total_keys: jwks.keys.length,
   });
 
-  // JWKS endpoint
-  router.get(`${prefix}/.well-known/jwks.json`, (_req: unknown, res: any) => {
-    const filteredJwks = filterKeysByType(jwks, allowedKeyTypes);
+  const plugin: FastifyPluginAsync = async (instance) => {
+    instance.get(`${prefix}/.well-known/jwks.json`, async (_request, reply) => {
+      const filteredJwks = filterKeysByType(jwks, allowedKeyTypes);
 
-    logger.debug('jwks_served', {
-      total_keys: jwks.keys.length,
-      filtered_keys: filteredJwks.keys.length,
+      logger.debug('jwks_served', {
+        total_keys: jwks.keys.length,
+        filtered_keys: filteredJwks.keys.length,
+      });
+
+      reply.send(filteredJwks);
     });
+  };
 
-    res.json(filteredJwks);
-  });
-
-  return router;
+  return plugin;
 }

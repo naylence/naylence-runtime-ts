@@ -33,6 +33,188 @@ type FsModule = typeof import('fs');
 const fsModuleSpecifier = String.fromCharCode(102) + String.fromCharCode(115);
 let cachedFsModule: FsModule | null = null;
 
+// Capture this module's URL without triggering TypeScript's import.meta restriction on CJS builds
+const currentModuleUrl: string | undefined = (() => {
+  try {
+    return (0, eval)('import.meta.url') as string;
+  } catch {
+    return undefined;
+  }
+})();
+
+let cachedNodeRequire: NodeRequire | null =
+  typeof require === 'function' ? require : null;
+
+function createFsShim(): FsModule | null {
+  if (!isNode) {
+    return null;
+  }
+
+  const processBinding = (process as NodeJS.Process & {
+    binding?: (name: string) => unknown;
+  }).binding;
+
+  if (typeof processBinding !== 'function') {
+    return null;
+  }
+
+  try {
+    const fsBinding = processBinding('fs') as {
+      readFileUtf8?: (path: string, flags?: number) => string;
+      existsSync?: (path: string) => boolean;
+      internalModuleStat?: (path: string) => number;
+    } | null;
+
+    if (!fsBinding || typeof fsBinding.readFileUtf8 !== 'function') {
+      return null;
+    }
+
+    const shim: any = {
+      readFileSync: (
+        ...args: Parameters<FsModule['readFileSync']>
+      ): ReturnType<FsModule['readFileSync']> => {
+        const [pathOrDescriptor, options] = args;
+
+        if (typeof pathOrDescriptor !== 'string') {
+          throw new Error('FS shim only supports string file paths');
+        }
+
+        let encoding: BufferEncoding | undefined;
+        if (typeof options === 'string') {
+          encoding = options as BufferEncoding;
+        } else if (
+          options &&
+          typeof options === 'object' &&
+          'encoding' in options &&
+          typeof (options as { encoding?: BufferEncoding | null }).encoding === 'string'
+        ) {
+          encoding = (options as { encoding: BufferEncoding }).encoding;
+        }
+
+        const data = fsBinding.readFileUtf8!(pathOrDescriptor, 0);
+
+        if (!encoding) {
+          return typeof Buffer !== 'undefined'
+            ? Buffer.from(data, 'utf-8')
+            : (data as unknown as ReturnType<FsModule['readFileSync']>);
+        }
+
+        const lowered = encoding.toLowerCase();
+        if (lowered === 'utf-8' || lowered === 'utf8') {
+          return data as unknown as ReturnType<FsModule['readFileSync']>;
+        }
+
+        if (typeof Buffer === 'undefined') {
+          throw new Error(
+            `Buffer API is not available to convert encoding ${String(encoding)}`
+          );
+        }
+
+        return Buffer.from(data, 'utf-8').toString(
+          encoding
+        ) as unknown as ReturnType<FsModule['readFileSync']>;
+      },
+      existsSync: (
+        ...args: Parameters<FsModule['existsSync']>
+      ): ReturnType<FsModule['existsSync']> => {
+        const [pathLike] = args;
+
+        if (typeof pathLike !== 'string') {
+          return false as ReturnType<FsModule['existsSync']>;
+        }
+
+        if (typeof fsBinding.existsSync === 'function') {
+          try {
+            return Boolean(
+              fsBinding.existsSync(pathLike)
+            ) as ReturnType<FsModule['existsSync']>;
+          } catch {
+            // fall through to the internal stat fallback
+          }
+        }
+
+        if (typeof fsBinding.internalModuleStat === 'function') {
+          try {
+            return (fsBinding.internalModuleStat(pathLike) >= 0) as ReturnType<
+              FsModule['existsSync']
+            >;
+          } catch {
+            return false as ReturnType<FsModule['existsSync']>;
+          }
+        }
+
+        return false as ReturnType<FsModule['existsSync']>;
+      },
+    };
+
+    return shim as FsModule;
+  } catch {
+    return null;
+  }
+}
+
+function fileUrlToPath(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'file:') {
+      return null;
+    }
+
+    let pathname = parsed.pathname;
+    if (
+      typeof process !== 'undefined' &&
+      process.platform === 'win32' &&
+      pathname.startsWith('/')
+    ) {
+      pathname = pathname.slice(1);
+    }
+
+    return decodeURIComponent(pathname);
+  } catch {
+    return null;
+  }
+}
+
+function getNodeRequire(): NodeRequire | null {
+  if (cachedNodeRequire) {
+    return cachedNodeRequire;
+  }
+
+  if (!isNode) {
+    return null;
+  }
+
+  const processBinding = (process as NodeJS.Process & {
+    binding?: (name: string) => unknown;
+  }).binding;
+
+  if (typeof processBinding !== 'function') {
+    return null;
+  }
+
+  try {
+    const moduleWrap = processBinding('module_wrap') as {
+      createRequire?: (filename: string) => NodeRequire;
+    };
+
+    if (typeof moduleWrap?.createRequire !== 'function') {
+      return null;
+    }
+
+    const modulePathFromUrl = currentModuleUrl
+      ? fileUrlToPath(currentModuleUrl)
+      : null;
+
+    const requireSource =
+      modulePathFromUrl ?? `${process.cwd()}/.naylence-require-shim.js`;
+
+    cachedNodeRequire = moduleWrap.createRequire(requireSource);
+    return cachedNodeRequire;
+  } catch {
+    return null;
+  }
+}
+
 function getFsModule(): FsModule {
   if (cachedFsModule) {
     return cachedFsModule;
@@ -42,9 +224,11 @@ function getFsModule(): FsModule {
     throw new Error('File system access is not available in this environment');
   }
 
-  if (typeof require === 'function') {
+  const nodeRequire = typeof require === 'function' ? require : getNodeRequire();
+
+  if (nodeRequire) {
     try {
-      cachedFsModule = require(fsModuleSpecifier) as FsModule;
+      cachedFsModule = nodeRequire(fsModuleSpecifier) as FsModule;
       return cachedFsModule;
     } catch (error) {
       throw new Error(
@@ -53,6 +237,12 @@ function getFsModule(): FsModule {
         }`
       );
     }
+  }
+
+  const shim = createFsShim();
+  if (shim) {
+    cachedFsModule = shim;
+    return cachedFsModule;
   }
 
   throw new Error('File system module is not accessible in this environment');

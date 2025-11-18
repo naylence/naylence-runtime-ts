@@ -197,6 +197,25 @@ describe('AdmissionProfileFactory', () => {
     expect((config as Record<string, any>).auto_accept_logicals).toBe(true);
   });
 
+  it('trims surrounding whitespace in profile names', async () => {
+    const spy = jest
+      .spyOn(AdmissionClientFactory, 'createAdmissionClient')
+      .mockResolvedValue(fakeClient);
+
+    const factory = new AdmissionProfileFactory();
+    await factory.create({ profile: '  welcome-pkce  ' });
+
+    const [config] = spy.mock.calls[0];
+    expect((config as Record<string, unknown>).type).toBe(
+      'WelcomeServiceClient'
+    );
+
+    const auth = (config as Record<string, any>).auth as
+      | Record<string, any>
+      | undefined;
+    expect(auth?.token_provider?.type).toBe('OAuth2PkceTokenProvider');
+  });
+
   it('throws for unknown profiles', async () => {
     const factory = new AdmissionProfileFactory();
     await expect(

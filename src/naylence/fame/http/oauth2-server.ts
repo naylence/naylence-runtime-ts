@@ -22,7 +22,8 @@
  *   FAME_JWT_ALGORITHM: JWT algorithm (default: EdDSA)
  */
 
-import express from 'express';
+import Fastify from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import { createOAuth2TokenRouter } from './oauth2-token-router.js';
 import { createJwksRouter } from './jwks-api-router.js';
@@ -63,27 +64,21 @@ async function getCryptoProvider(): Promise<CryptoProvider> {
 }
 
 /**
- * Create and configure the OAuth2 Express application
+ * Create and configure the OAuth2 Fastify application
  */
-export async function createApp(): Promise<express.Application> {
-  const app = express();
-
-  // Middleware
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+export async function createApp(): Promise<FastifyInstance> {
+  const app = Fastify({ logger: false });
 
   // Get crypto provider
   const cryptoProvider = await getCryptoProvider();
 
   // Add routers
-  app.use(createOAuth2TokenRouter({ cryptoProvider }));
-  app.use(createJwksRouter({ cryptoProvider }));
-  app.use(createOpenIDConfigurationRouter());
+  app.register(createOAuth2TokenRouter({ cryptoProvider }));
+  app.register(createJwksRouter({ cryptoProvider }));
+  app.register(createOpenIDConfigurationRouter());
 
   // Health check endpoint
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok' });
-  });
+  app.get('/health', async () => ({ status: 'ok' }));
 
   return app;
 }
@@ -121,29 +116,34 @@ async function main(): Promise<void> {
   const app = await createApp();
 
   // Start server
-  app.listen(port, host, () => {
-    logger.info('oauth2_server_started', {
-      host,
-      port,
-      endpoints: {
-        token: '/oauth/token',
-        jwks: '/.well-known/jwks.json',
-        openid_config: '/.well-known/openid-configuration',
-        health: '/health',
-      },
-    });
+  await app.listen({ port, host });
+
+  logger.info('oauth2_server_started', {
+    host,
+    port,
+    endpoints: {
+      token: '/oauth/token',
+      jwks: '/.well-known/jwks.json',
+      openid_config: '/.well-known/openid-configuration',
+      health: '/health',
+    },
   });
+
+  const shutdown = (signal: string) => {
+    logger.info('oauth2_server_shutting_down', { signal });
+    app
+      .close()
+      .catch((error) =>
+        logger.error('oauth2_server_shutdown_error', {
+          error: error instanceof Error ? error.message : String(error),
+        })
+      )
+      .finally(() => process.exit(0));
+  };
 
   // Graceful shutdown
-  process.on('SIGINT', () => {
-    logger.info('oauth2_server_shutting_down', { signal: 'SIGINT' });
-    process.exit(0);
-  });
-
-  process.on('SIGTERM', () => {
-    logger.info('oauth2_server_shutting_down', { signal: 'SIGTERM' });
-    process.exit(0);
-  });
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 // Export main for CLI usage

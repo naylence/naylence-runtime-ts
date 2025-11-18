@@ -39,6 +39,8 @@ const ENV_VAR_ADMISSION_SERVICE_URL = 'FAME_ADMISSION_SERVICE_URL';
 const DEFAULT_INPAGE_CHANNEL = 'naylence-fabric';
 
 const PROFILE_NAME_WELCOME = 'welcome';
+const PROFILE_NAME_WELCOME_PKCE = 'welcome-pkce';
+const PROFILE_NAME_WELCOME_PKCE_ALIAS = 'welcome_pkce';
 const PROFILE_NAME_DIRECT = 'direct';
 const PROFILE_NAME_DIRECT_HTTP = 'direct-http';
 const PROFILE_NAME_DIRECT_INPAGE = 'direct-inpage';
@@ -116,6 +118,7 @@ function createOAuthPkceTokenProviderConfig() {
 
 const welcomeIsRoot = Expressions.env(ENV_VAR_IS_ROOT, 'false');
 const welcomeTokenProvider = createOAuthTokenProviderConfig();
+const welcomePkceTokenProvider = createOAuthPkceTokenProviderConfig();
 
 const WELCOME_SERVICE_PROFILE: AdmissionConfig = {
   type: 'WelcomeServiceClient',
@@ -128,6 +131,20 @@ const WELCOME_SERVICE_PROFILE: AdmissionConfig = {
     type: 'BearerTokenHeaderAuth',
     token_provider: welcomeTokenProvider,
     tokenProvider: welcomeTokenProvider,
+  },
+};
+
+const WELCOME_SERVICE_PKCE_PROFILE: AdmissionConfig = {
+  type: 'WelcomeServiceClient',
+  is_root: welcomeIsRoot,
+  isRoot: welcomeIsRoot,
+  url: Expressions.env(ENV_VAR_ADMISSION_SERVICE_URL),
+  supported_transports: ['websocket'],
+  supportedTransports: ['websocket'],
+  auth: {
+    type: 'BearerTokenHeaderAuth',
+    token_provider: welcomePkceTokenProvider,
+    tokenProvider: welcomePkceTokenProvider,
   },
 };
 
@@ -252,6 +269,8 @@ const NOOP_PROFILE: AdmissionConfig = {
 
 const PROFILE_MAP: Record<string, AdmissionConfig> = {
   [PROFILE_NAME_WELCOME]: WELCOME_SERVICE_PROFILE,
+  [PROFILE_NAME_WELCOME_PKCE]: WELCOME_SERVICE_PKCE_PROFILE,
+  [PROFILE_NAME_WELCOME_PKCE_ALIAS]: WELCOME_SERVICE_PKCE_PROFILE,
   [PROFILE_NAME_DIRECT]: DIRECT_PROFILE,
   [PROFILE_NAME_DIRECT_PKCE]: DIRECT_PKCE_PROFILE,
   [PROFILE_NAME_DIRECT_PKCE_ALIAS]: DIRECT_PKCE_PROFILE,
@@ -306,7 +325,9 @@ function normalizeConfig(
           ? candidate.profileName
           : PROFILE_NAME_DIRECT;
 
-  return { profile: profileValue.toLowerCase() };
+  const normalizedProfile = profileValue.trim().toLowerCase();
+
+  return { profile: normalizedProfile };
 }
 
 function resolveProfileConfig(profileName: string): AdmissionConfig {

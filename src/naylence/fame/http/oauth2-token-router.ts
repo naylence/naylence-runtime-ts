@@ -1,24 +1,218 @@
 /**
- * OAuth2 client credentials and authorization code (PKCE) grant router for Express
+ * OAuth2 client credentials and authorization code (PKCE) grant router for Fastify
  *
  * Provides /oauth/token and /oauth/authorize endpoints for local development and testing.
  * Implements OAuth2 client credentials grant with JWT token issuance and
  * OAuth2 authorization code grant with PKCE verification.
  */
 
-import express, {
-  type Router,
-  type Request,
-  type Response,
-  type NextFunction,
-  type CookieOptions,
-} from 'express';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import formbody from '@fastify/formbody';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import { JWTTokenIssuer } from '../security/auth/jwt-token-issuer.js';
 import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.http.oauth2_token_router');
+
+type HttpMethod = 'GET' | 'POST';
+
+interface CookieOptions {
+  httpOnly?: boolean;
+  maxAge?: number;
+  path?: string;
+  sameSite?: 'lax' | 'strict' | 'none';
+  secure?: boolean;
+}
+
+interface Request {
+  body: any;
+  headers: Record<string, string | undefined>;
+  method: string;
+  originalUrl: string;
+  query: Record<string, any>;
+}
+
+interface Response {
+  status(code: number): Response;
+  set(field: string, value: string): Response;
+  type(contentType: string): Response;
+  json(payload: unknown): void;
+  send(payload: unknown): void;
+  redirect(url: string): void;
+  redirect(statusCode: number, url: string): void;
+  cookie(name: string, value: string, options: CookieOptions): void;
+}
+
+type RouteHandler = (req: Request, res: Response) => Promise<void> | void;
+
+interface RouteDefinition {
+  method: HttpMethod;
+  path: string;
+  handler: RouteHandler;
+}
+
+class RouterCompat {
+  private readonly routes: RouteDefinition[] = [];
+
+  get(path: string, handler: RouteHandler): void {
+    this.routes.push({ method: 'GET', path, handler });
+  }
+
+  post(path: string, handler: RouteHandler): void {
+    this.routes.push({ method: 'POST', path, handler });
+  }
+
+  toPlugin(): FastifyPluginAsync {
+    return async (fastify) => {
+      await fastify.register(formbody);
+
+      for (const route of this.routes) {
+        fastify.route({
+          method: route.method,
+          url: route.path,
+          handler: async (request, reply) => {
+            const compatRequest = toCompatRequest(request);
+            const compatResponse = new FastifyResponseAdapter(reply);
+            await route.handler(compatRequest, compatResponse);
+          },
+        });
+      }
+    };
+  }
+}
+
+class FastifyResponseAdapter implements Response {
+  constructor(private readonly reply: FastifyReply) {}
+
+  status(code: number): Response {
+    this.reply.status(code);
+    return this;
+  }
+
+  set(field: string, value: string): Response {
+    if (field.toLowerCase() === 'set-cookie') {
+      this.appendHeader(field, value);
+    } else {
+      this.reply.header(field, value);
+    }
+    return this;
+  }
+
+  type(contentType: string): Response {
+    const normalized =
+      contentType === 'html'
+        ? 'text/html'
+        : contentType === 'json'
+        ? 'application/json'
+        : contentType;
+    this.reply.type(normalized);
+    return this;
+  }
+
+  json(payload: unknown): void {
+    this.reply.send(payload);
+  }
+
+  send(payload: unknown): void {
+    this.reply.send(payload);
+  }
+
+  redirect(statusOrUrl: number | string, maybeUrl?: string): void {
+    if (typeof statusOrUrl === 'number') {
+      if (maybeUrl === undefined) {
+        throw new Error('redirect url is required when status code is provided');
+      }
+      this.reply.status(statusOrUrl);
+      this.reply.header('Location', maybeUrl);
+      this.reply.send();
+    } else {
+      this.reply.redirect(statusOrUrl);
+    }
+  }
+
+  cookie(name: string, value: string, options: CookieOptions): void {
+    const serialized = serializeCookie(name, value, options);
+    this.appendHeader('Set-Cookie', serialized);
+  }
+
+  private appendHeader(name: string, value: string): void {
+    const existing = this.reply.getHeader(name);
+    if (Array.isArray(existing)) {
+      this.reply.header(name, [...existing, value]);
+    } else if (typeof existing === 'string') {
+      this.reply.header(name, [existing, value]);
+    } else if (existing === undefined) {
+      this.reply.header(name, value);
+    } else {
+      this.reply.header(name, [String(existing), value]);
+    }
+  }
+}
+
+function toCompatRequest(request: FastifyRequest): Request {
+  const headers: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(request.headers)) {
+    if (typeof value === 'string') {
+      headers[key.toLowerCase()] = value;
+    } else if (Array.isArray(value)) {
+      headers[key.toLowerCase()] = value.join(', ');
+    } else if (value !== undefined && value !== null) {
+      headers[key.toLowerCase()] = String(value);
+    } else {
+      headers[key.toLowerCase()] = undefined;
+    }
+  }
+
+  return {
+    body: request.body,
+    headers,
+    method: request.method,
+    originalUrl: request.raw.url ?? request.url,
+    query: (request.query as Record<string, any>) ?? {},
+  };
+}
+
+function serializeCookie(
+  name: string,
+  value: string,
+  options: CookieOptions
+): string {
+  const segments: string[] = [
+    `${encodeURIComponent(name)}=${encodeURIComponent(value)}`,
+  ];
+
+  if (options.maxAge !== undefined) {
+    const maxAgeMs = options.maxAge;
+    const maxAgeSeconds = Math.floor(maxAgeMs / 1000);
+    segments.push(`Max-Age=${maxAgeSeconds}`);
+    const expires = new Date(Date.now() + maxAgeMs).toUTCString();
+    segments.push(`Expires=${expires}`);
+  }
+
+  segments.push(`Path=${options.path ?? '/'}`);
+
+  if (options.httpOnly) {
+    segments.push('HttpOnly');
+  }
+
+  if (options.secure) {
+    segments.push('Secure');
+  }
+
+  if (options.sameSite) {
+    const normalized = options.sameSite.toLowerCase();
+    const formatted =
+      normalized === 'strict'
+        ? 'Strict'
+        : normalized === 'none'
+        ? 'None'
+        : 'Lax';
+    segments.push(`SameSite=${formatted}`);
+  }
+
+  return segments.join('; ');
+}
 
 const DEFAULT_PREFIX = '/oauth';
 
@@ -732,11 +926,11 @@ function respondInvalidClient(res: Response): void {
 }
 
 /**
- * Create an Express router that implements OAuth2 token and authorization endpoints
+ * Create a Fastify plugin that implements OAuth2 token and authorization endpoints
  * with support for client credentials and authorization code (PKCE) grants.
  *
  * @param options - Router configuration options
- * @returns Express router with OAuth2 token and authorization endpoints
+ * @returns Fastify plugin with OAuth2 token and authorization endpoints
  *
  * Environment Variables:
  *   FAME_JWT_CLIENT_ID: OAuth2 client identifier
@@ -751,8 +945,8 @@ function respondInvalidClient(res: Response): void {
  */
 export function createOAuth2TokenRouter(
   options: CreateOAuth2TokenRouterOptions
-): Router {
-  const router = express.Router();
+): FastifyPluginAsync {
+  const router = new RouterCompat();
 
   const {
     cryptoProvider,
@@ -1164,7 +1358,7 @@ export function createOAuth2TokenRouter(
 
   router.post(
     `${prefix}/token`,
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response) => {
       try {
         cleanupAuthorizationCodes(authorizationCodes, Date.now());
 
@@ -1392,7 +1586,7 @@ export function createOAuth2TokenRouter(
         res.json(response);
       } catch (error) {
         logger.error('oauth2_token_error', { error: (error as Error).message });
-        next(error);
+        throw error;
       }
     }
   );
@@ -1438,5 +1632,5 @@ export function createOAuth2TokenRouter(
     return response;
   }
 
-  return router;
+  return router.toPlugin();
 }

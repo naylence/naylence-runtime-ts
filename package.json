@@ -1,6 +1,6 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.3.5-test.911",
+  "version": "0.3.5-test.918",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime",
   "author": "Naylence Dev <naylencedev@gmail.com>",
@@ -33,14 +33,14 @@
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": {
-        "browser": "./dist/browser/index.mjs",
-        "default": "./dist/node/node.mjs"
+      "browser": {
+        "import": "./dist/browser/index.mjs",
+        "require": "./dist/browser/index.cjs",
+        "default": "./dist/browser/index.mjs"
       },
-      "require": {
-        "browser": "./dist/browser/index.cjs",
-        "default": "./dist/node/node.cjs"
-      }
+      "import": "./dist/node/node.mjs",
+      "require": "./dist/node/node.cjs",
+      "default": "./dist/node/node.mjs"
     },
     "./node": {
       "types": "./dist/types/node.d.ts",
@@ -72,14 +72,14 @@
     },
     "./naylence/fame/connector/broadcast-channel-connector": {
       "types": "./dist/types/naylence/fame/connector/broadcast-channel-connector.browser.d.ts",
-      "import": {
-        "browser": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.browser.js",
-        "default": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.node.js"
+      "browser": {
+        "import": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.browser.js",
+        "require": "./dist/cjs/naylence/fame/connector/broadcast-channel-connector.browser.js",
+        "default": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.browser.js"
       },
-      "require": {
-        "browser": "./dist/cjs/naylence/fame/connector/broadcast-channel-connector.browser.js",
-        "default": "./dist/cjs/naylence/fame/connector/broadcast-channel-connector.node.js"
-      }
+      "import": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.node.js",
+      "require": "./dist/cjs/naylence/fame/connector/broadcast-channel-connector.node.js",
+      "default": "./dist/esm/naylence/fame/connector/broadcast-channel-connector.node.js"
     },
     "./plugin": {
       "types": "./dist/types/plugin.d.ts",
@@ -89,17 +89,18 @@
     },
     "./naylence/fame/config/extended-fame-config.js": {
       "types": "./dist/types/naylence/fame/config/extended-fame-config.d.ts",
-      "import": {
-        "browser": "./dist/esm/naylence/fame/config/extended-fame-config.browser.js",
-        "default": "./dist/esm/naylence/fame/config/extended-fame-config.js"
+      "browser": {
+        "import": "./dist/esm/naylence/fame/config/extended-fame-config.browser.js",
+        "require": "./dist/cjs/naylence/fame/config/extended-fame-config.browser.js",
+        "default": "./dist/esm/naylence/fame/config/extended-fame-config.browser.js"
       },
-      "require": {
-        "browser": "./dist/cjs/naylence/fame/config/extended-fame-config.browser.js",
-        "default": "./dist/cjs/naylence/fame/config/extended-fame-config.js"
-      }
+      "import": "./dist/esm/naylence/fame/config/extended-fame-config.js",
+      "require": "./dist/cjs/naylence/fame/config/extended-fame-config.js",
+      "default": "./dist/esm/naylence/fame/config/extended-fame-config.js"
     },
     "./*": {
       "types": "./dist/types/*",
+      "browser": "./dist/esm/*",
       "import": "./dist/esm/*",
       "require": "./dist/cjs/*",
       "default": "./dist/esm/*"
@@ -183,8 +184,6 @@
     "@peculiar/asn1-csr": "^2.5.0",
     "@peculiar/asn1-schema": "^2.5.0",
     "@peculiar/asn1-x509": "^2.5.0",
-    "@types/express": "^5.0.3",
-    "express": "^5.1.0",
     "fastify": "^5.6.1",
     "jose": "^6.1.0",
     "yaml": "^2.6.0",
@@ -217,7 +216,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^29.5.14",
     "@types/node": "^24.6.0",
-  "@types/supertest": "^2.0.16",
+    "@types/supertest": "^2.0.16",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
@@ -234,7 +233,7 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.52.3",
     "size-limit": "^11.1.5",
-  "supertest": "^7.1.3",
+    "supertest": "^7.1.3",
     "ts-jest": "^29.4.5",
     "tslib": "^2.6.2",
     "typescript": "^5.3.2",

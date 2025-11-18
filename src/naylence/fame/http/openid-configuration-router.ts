@@ -1,10 +1,10 @@
 /**
- * OpenID Connect Discovery configuration router for Express
+ * OpenID Connect Discovery configuration plugin for Fastify
  *
  * Provides /.well-known/openid-configuration endpoint for OAuth2/OIDC client auto-discovery
  */
 
-import express, { type Router } from 'express';
+import type { FastifyPluginAsync } from 'fastify';
 import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.http.openid_configuration_router');
@@ -175,10 +175,10 @@ function getAllowedScopes(configScopes?: string[]): string[] {
 }
 
 /**
- * Create an Express router that implements OpenID Connect Discovery
+ * Create a Fastify plugin that implements OpenID Connect Discovery
  *
  * @param options - Router configuration options
- * @returns Express router with OpenID configuration endpoint
+ * @returns Fastify plugin with OpenID configuration endpoint
  *
  * Environment Variables:
  *   FAME_JWT_ISSUER: JWT issuer claim (optional)
@@ -187,20 +187,18 @@ function getAllowedScopes(configScopes?: string[]): string[] {
  *
  * @example
  * ```typescript
- * import express from 'express';
+ * import Fastify from 'fastify';
  * import { createOpenIDConfigurationRouter } from '@naylence/runtime';
  *
- * const app = express();
- * app.use(createOpenIDConfigurationRouter({
+ * const app = Fastify();
+ * app.register(createOpenIDConfigurationRouter({
  *   issuer: 'https://auth.example.com',
  * }));
  * ```
  */
 export function createOpenIDConfigurationRouter(
   options: CreateOpenIDConfigurationRouterOptions = {}
-): Router {
-  const router = express.Router();
-
+): FastifyPluginAsync {
   const {
     prefix = DEFAULT_PREFIX,
     issuer,
@@ -229,34 +227,35 @@ export function createOpenIDConfigurationRouter(
     allowedScopes,
   });
 
-  // OpenID Connect Discovery endpoint
-  router.get(
-    `${prefix}/.well-known/openid-configuration`,
-    (_req: unknown, res: any) => {
-      // Construct absolute URLs for endpoints
-      const tokenEndpoint = `${defaultBaseUrl.replace(/\/$/, '')}${tokenEndpointPath}`;
-      const jwksUri = `${defaultBaseUrl.replace(/\/$/, '')}${jwksEndpointPath}`;
+  const plugin: FastifyPluginAsync = async (instance) => {
+    instance.get(
+      `${prefix}/.well-known/openid-configuration`,
+      async (_request, reply) => {
+        // Construct absolute URLs for endpoints
+        const tokenEndpoint = `${defaultBaseUrl.replace(/\/$/, '')}${tokenEndpointPath}`;
+        const jwksUri = `${defaultBaseUrl.replace(/\/$/, '')}${jwksEndpointPath}`;
 
-      const config: OpenIDConfiguration = {
-        issuer: defaultIssuer,
-        token_endpoint: tokenEndpoint,
-        jwks_uri: jwksUri,
-        scopes_supported: allowedScopes,
-        response_types_supported: ['token'],
-        grant_types_supported: ['client_credentials'],
-        token_endpoint_auth_methods_supported: [
-          'client_secret_basic',
-          'client_secret_post',
-        ],
-        subject_types_supported: ['public'],
-        id_token_signing_alg_values_supported: [algorithm],
-      };
+        const config: OpenIDConfiguration = {
+          issuer: defaultIssuer,
+          token_endpoint: tokenEndpoint,
+          jwks_uri: jwksUri,
+          scopes_supported: allowedScopes,
+          response_types_supported: ['token'],
+          grant_types_supported: ['client_credentials'],
+          token_endpoint_auth_methods_supported: [
+            'client_secret_basic',
+            'client_secret_post',
+          ],
+          subject_types_supported: ['public'],
+          id_token_signing_alg_values_supported: [algorithm],
+        };
 
-      logger.debug('openid_config_served', { config });
+        logger.debug('openid_config_served', { config });
 
-      res.json(config);
-    }
-  );
+        reply.send(config);
+      }
+    );
+  };
 
-  return router;
+  return plugin;
 }
