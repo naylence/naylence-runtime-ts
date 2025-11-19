@@ -16,6 +16,7 @@ import type { CertificateManager } from './cert/certificate-manager.js';
 import type { SecureChannelManager } from './encryption/secure-channel-manager.js';
 import type { NodeEventListener } from '../node/node-event-listener.js';
 import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
+import type { TrustStoreProvider } from './trust-store/trust-store-provider.js';
 
 export const SECURITY_MANAGER_FACTORY_BASE_TYPE = 'SecurityManagerFactory';
 
@@ -31,6 +32,7 @@ export interface SecurityManagerComponentOverrides {
   secureChannelManager?: SecureChannelManager | null;
   eventListeners?: NodeEventListener[] | null;
   cryptoProvider?: CryptoProvider | null;
+  trustStoreProvider?: TrustStoreProvider | null;
 }
 
 export abstract class SecurityManagerFactory<

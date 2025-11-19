@@ -36,6 +36,13 @@ export {
   CertificateManagerFactory,
 } from './cert/certificate-manager-factory.js';
 export type * from './cert/certificate-manager-factory.js';
+export * from './trust-store/trust-store-provider.js';
+export {
+  TRUST_STORE_PROVIDER_FACTORY_BASE_TYPE,
+  TrustStoreProviderFactory,
+  NoopTrustStoreProvider,
+} from './trust-store/trust-store-provider-factory.js';
+export type * from './trust-store/trust-store-provider-factory.js';
 export * from './encryption/encryption-manager.js';
 export { ENCRYPTION_MANAGER_FACTORY_BASE_TYPE } from './encryption/encryption-manager-factory.js';
 export * from './encryption/encryption-manager-factory.js';

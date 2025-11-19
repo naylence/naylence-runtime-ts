@@ -33,6 +33,8 @@ import type { SecurityManagerConfig } from './security-manager-config.js';
 import type { NodeEventListener } from '../node/node-event-listener.js';
 import { getLogger } from '../util/logging.js';
 import type { CryptoProvider } from './crypto/providers/crypto-provider.js';
+import { TrustStoreProviderFactory } from './trust-store/trust-store-provider-factory.js';
+import type { TrustStoreProvider } from './trust-store/trust-store-provider.js';
 
 const logger = getLogger(
   'naylence.fame.security.default_security_manager_factory'
@@ -64,6 +66,8 @@ export interface DefaultSecurityManagerConfig extends SecurityManagerConfig {
   event_listeners?: NodeEventListener[] | null;
   cryptoProvider?: CryptoProvider | null;
   crypto_provider?: CryptoProvider | null;
+  trustStoreProvider?: TrustStoreProvider | null;
+  trust_store_provider?: TrustStoreProvider | null;
   [key: string]: unknown;
 }
 
@@ -111,6 +115,7 @@ function normalizeDefaultSecurityManagerConfig(
   ensureAlias('keyValidator', 'key_validator');
   ensureAlias('eventListeners', 'event_listeners');
   ensureAlias('cryptoProvider', 'crypto_provider');
+  ensureAlias('trustStoreProvider', 'trust_store_provider');
 
   return normalized;
 }
@@ -128,6 +133,7 @@ interface ResolvedComponents {
   secureChannelManager: SecureChannelManager | null;
   eventListeners: NodeEventListener[] | null;
   cryptoProvider: CryptoProvider | null;
+  trustStoreProvider: TrustStoreProvider | null;
 }
 
 interface BuildSecurityManagerOptions extends ResolvedComponents {
@@ -250,6 +256,12 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
         'cryptoProvider',
         'crypto_provider'
       );
+    const trustStoreProvider =
+      DefaultSecurityManagerFactory.extractInstance<TrustStoreProvider>(
+        config,
+        'trustStoreProvider',
+        'trust_store_provider'
+      );
 
     const listenersSource =
       overrides?.eventListeners ??
@@ -272,6 +284,7 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
       secureChannelManager,
       eventListeners,
       cryptoProvider: cryptoProvider ?? null,
+      trustStoreProvider: trustStoreProvider ?? null,
     };
   }
 
@@ -293,6 +306,7 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
       secureChannelManager,
       eventListeners,
       cryptoProvider,
+      trustStoreProvider,
     } = options;
 
     if (!keyStore) {
@@ -320,6 +334,11 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
       );
     }
 
+    if (!trustStoreProvider) {
+      trustStoreProvider =
+        await TrustStoreProviderFactory.createTrustStoreProvider();
+    }
+
     if (!keyManager) {
       keyManager =
         await DefaultSecurityManagerFactory.createKeyManagerFromConfig(
@@ -344,7 +363,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
         await DefaultSecurityManagerFactory.createEnvelopeVerifierFromConfig(
           config,
           policy,
-          keyManager
+          keyManager,
+          trustStoreProvider
         );
     }
 
@@ -383,7 +403,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
       certificateManager =
         await DefaultSecurityManagerFactory.createCertificateManagerFromConfig(
           config,
-          policy
+          policy,
+          trustStoreProvider
         );
     }
 
@@ -520,7 +541,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
   private static async createEnvelopeVerifierFromConfig(
     config: Record<string, unknown>,
     policy: SecurityPolicy,
-    keyManager: KeyManager | null
+    keyManager: KeyManager | null,
+    trustStoreProvider: TrustStoreProvider | null
   ): Promise<EnvelopeVerifier | null> {
     const verifierConfig =
       config.envelope_verifier ?? config.envelopeVerifier ?? null;
@@ -555,7 +577,7 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
         (policy as { signing?: SigningConfig | null }).signing ?? null;
 
       return await EnvelopeVerifierFactory.createEnvelopeVerifier(null, {
-        factoryArgs: [keyManager, signing ?? null],
+        factoryArgs: [keyManager, signing ?? null, { trustStoreProvider }],
       });
     } catch (error) {
       logger.error('failed_to_auto_create_envelope_verifier', {
@@ -776,7 +798,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
 
   private static async createCertificateManagerFromConfig(
     config: Record<string, unknown>,
-    policy: SecurityPolicy
+    policy: SecurityPolicy,
+    trustStoreProvider: TrustStoreProvider | null
   ): Promise<CertificateManager | null> {
     const certificateConfig = config.certificate_manager ?? null;
     if (
@@ -797,8 +820,14 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
 
       const signing =
         (policy as { signing?: SigningConfig | null }).signing ?? null;
+      
+      const trustStorePem = trustStoreProvider
+        ? async () => await trustStoreProvider.getTrustStorePem()
+        : null;
+      
       return await CertificateManagerFactory.createCertificateManager(null, {
         signing: signing ?? null,
+        factoryArgs: trustStorePem ? [trustStorePem] : [],
       });
     } catch (error) {
       logger.error('failed_to_auto_create_certificate_manager', {
