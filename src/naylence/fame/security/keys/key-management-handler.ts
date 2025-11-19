@@ -194,7 +194,6 @@ export class KeyManagementHandler extends TaskSpawner {
 
   public async stop(): Promise<void> {
     this.isStarted = false;
-    await delay(100);
     await this.shutdownTasks({
       gracePeriod: 10,
       cancelHanging: true,

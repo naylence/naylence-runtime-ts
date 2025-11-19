@@ -454,22 +454,23 @@ export class TaskSpawner {
 
     const tasks = Array.from(this._tasks.values());
 
-    // 1. Python-style wait with immediate timeout check
+    // 1. Signal all tasks to stop immediately (abort signal)
+    // This allows long-running loops to break out of waits/sleeps
+    tasks.forEach((task) => task.cancel());
+
+    // 2. Wait gracefully for tasks to complete their cleanup
     const completed = await this._waitWithGracePeriod(tasks, gracePeriod);
 
-    // 2. Cancel stragglers if requested
+    // 3. Check for stragglers that didn't respond to cancellation
     if (cancelHanging) {
       const stillRunning = tasks.filter(
         (task) => task.getState() === TaskState.RUNNING && !completed.has(task)
       );
 
       if (stillRunning.length > 0) {
-        logger.debug('cancelling_hanging_tasks', {
+        logger.debug('tasks_did_not_complete_within_grace_period', {
           hanging_count: stillRunning.length,
         });
-
-        // Cancel all hanging tasks
-        stillRunning.forEach((task) => task.cancel());
 
         // Wait for them to finish with individual timeouts
         await Promise.allSettled(

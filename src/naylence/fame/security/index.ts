@@ -78,6 +78,19 @@ export {
   SigningConfig as SigningConfigClass,
   type SigningConfigOptions,
 } from './signing/signing-config.js';
+export {
+  canonicalJson,
+  decodeBase64Url,
+  frameDigest,
+  immutableHeaders,
+} from './signing/eddsa-signer-verifier.js';
+export {
+  encodeUtf8,
+} from './signing/eddsa-utils.js';
+export {
+  EdDSAEnvelopeSigner,
+  type EdDSAEnvelopeSignerOptions,
+} from './signing/eddsa-envelope-signer.js';
 export * from './crypto/providers/crypto-provider.js';
 export * from './crypto/providers/default-crypto-provider.js';
 export * from './credential/credential-provider.js';

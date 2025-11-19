@@ -344,15 +344,23 @@ function getInitialLogLevel(): LogLevel {
   }
 
   // Check FAME_LOG_LEVEL environment variable
-  if (isNode && typeof process !== 'undefined' && process.env.FAME_LOG_LEVEL) {
+  let envLevel: string | undefined;
+  
+  if (isNode && typeof process !== 'undefined') {
+    envLevel = process.env.FAME_LOG_LEVEL;
+  } else if (typeof window !== 'undefined' && (window as any).__ENV__) {
+    envLevel = (window as any).__ENV__.FAME_LOG_LEVEL;
+  }
+
+  if (envLevel) {
     try {
-      const envLevel = process.env.FAME_LOG_LEVEL.trim().toUpperCase();
+      const normalized = envLevel.trim().toUpperCase();
       // Direct enum name match (e.g., "DEBUG", "INFO")
-      if (envLevel in LogLevel) {
-        return LogLevel[envLevel as keyof typeof LogLevel];
+      if (normalized in LogLevel) {
+        return LogLevel[normalized as keyof typeof LogLevel];
       }
       // Try alternative mappings
-      if (envLevel === 'WARN') return LogLevel.WARNING;
+      if (normalized === 'WARN') return LogLevel.WARNING;
     } catch {
       // Fall through to default
     }
