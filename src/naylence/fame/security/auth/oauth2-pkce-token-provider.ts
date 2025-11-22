@@ -270,8 +270,16 @@ function ensureFinitePositive(value: number, label: string): number {
   return Math.max(1, Math.floor(value));
 }
 
+/**
+ * In-memory token cache for PKCE tokens.
+ * 
+ * Tokens are intentionally NOT persisted to localStorage or sessionStorage to avoid
+ * stale-token issues when the OAuth2 server restarts and generates new signing keys.
+ * Each fresh page load triggers a new PKCE flow when a token is needed.
+ */
+let inMemoryTokenCache: Map<string, PersistedTokenRecord> = new Map();
+
 const STORAGE_NAMESPACE = 'naylence.oauth2_pkce.';
-const TOKEN_STORAGE_SUFFIX = '.token';
 
 type PendingAuthorization = {
   state: string;
@@ -303,10 +311,6 @@ type RedirectOutcome = {
 
 function getStorageKey(clientId: string): string {
   return `${STORAGE_NAMESPACE}${clientId}`;
-}
-
-function getTokenStorageKey(clientId: string): string {
-  return `${STORAGE_NAMESPACE}${clientId}${TOKEN_STORAGE_SUFFIX}`;
 }
 
 function isBrowserEnvironment(): boolean {
@@ -370,68 +374,28 @@ function stableScopeKey(scopes?: string[]): string {
   return [...scopes].sort().join(' ');
 }
 
+/**
+ * Read token from in-memory cache.
+ * Returns null if no cached token exists for the given clientId.
+ */
 function readPersistedToken(clientId: string): PersistedTokenRecord | null {
-  if (!isBrowserEnvironment()) {
-    return null;
-  }
-
-  try {
-    const raw = window.sessionStorage.getItem(getTokenStorageKey(clientId));
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const value = coerceString(parsed.value);
-    if (!value) {
-      return null;
-    }
-
-    const expiresAt = coerceNumber(parsed.expiresAt);
-    const scopes = normalizeScopes(parsed.scopes);
-    const audience = coerceString(parsed.audience);
-
-    const record: PersistedTokenRecord = {
-      value,
-      scopes,
-      audience,
-    };
-
-    if (typeof expiresAt === 'number') {
-      record.expiresAt = expiresAt;
-    }
-
-    return record;
-  } catch (error) {
-    logger.debug('pkce_token_storage_read_failed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return null;
-  }
+  return inMemoryTokenCache.get(clientId) ?? null;
 }
 
+/**
+ * Write token to in-memory cache.
+ * If token is null, removes the cached token for the given clientId.
+ */
 function writePersistedToken(
   clientId: string,
   token: PersistedTokenRecord | null
 ): void {
-  if (!isBrowserEnvironment()) {
+  if (!token) {
+    inMemoryTokenCache.delete(clientId);
     return;
   }
 
-  const key = getTokenStorageKey(clientId);
-
-  try {
-    if (!token) {
-      window.sessionStorage.removeItem(key);
-      return;
-    }
-
-    window.sessionStorage.setItem(key, JSON.stringify(token));
-  } catch (error) {
-    logger.debug('pkce_token_storage_write_failed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
+  inMemoryTokenCache.set(clientId, token);
 }
 
 function clearOAuthParamsFromUrl(url: URL): void {
@@ -847,5 +811,17 @@ export class OAuth2PkceTokenProvider implements TokenProvider {
     });
 
     return token;
+  }
+
+  /**
+   * Clear the cached token for this provider instance.
+   * This clears both the instance cache and the in-memory module cache.
+   */
+  public clearToken(): void {
+    this.cachedToken = undefined;
+    writePersistedToken(this.options.clientId, null);
+    logger.debug('oauth2_pkce_token_cleared', {
+      authorize_url: this.options.authorizeUrl,
+    });
   }
 }
