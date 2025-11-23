@@ -532,6 +532,22 @@ export class UpstreamSessionManager
     this.connector = connector;
     const callbackGrants = this.node.gatherSupportedCallbackGrants();
 
+    // Include admission client's connection grants as callback grants
+    // This ensures DirectAdmissionClient grants are available for grant selection
+    if (welcome.frame.connectionGrants && Array.isArray(welcome.frame.connectionGrants)) {
+      for (const grant of welcome.frame.connectionGrants) {
+        if (grant && typeof grant === 'object') {
+          // Avoid duplicates by checking if grant already exists
+          const isDuplicate = callbackGrants.some(
+            existing => JSON.stringify(existing) === JSON.stringify(grant)
+          );
+          if (!isDuplicate) {
+            callbackGrants.push(grant);
+          }
+        }
+      }
+    }
+
     if (this.shouldAdvertiseBroadcastGrant(grant, callbackGrants)) {
       const augmented = this.createBroadcastCallbackGrant(grant);
       if (augmented) {

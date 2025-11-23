@@ -417,12 +417,27 @@ export class TaskSpawner {
       return;
     }
 
-    // All other exceptions are considered real failures
-    logger.error('background_task_failed', {
-      task_name: taskName,
-      error: error.message,
-      stack: error.stack,
-    });
+    // Check if this is a retriable connection error (will be logged and retried by FSM)
+    const isRetriableError =
+      error.name === 'FameConnectError' ||
+      error.message.includes('missed heartbeat') ||
+      error.message.includes('Timeout waiting for');
+
+    // Log retriable errors as warnings (they'll be retried by upstream logic)
+    // Log non-retriable errors as errors (fatal failures)
+    if (isRetriableError) {
+      logger.warning('background_task_failed', {
+        task_name: taskName,
+        error: error.message,
+        retriable: true,
+      });
+    } else {
+      logger.error('background_task_failed', {
+        task_name: taskName,
+        error: error.message,
+        stack: error.stack,
+      });
+    }
 
     if (this._lastSpawnerError === null) {
       this._lastSpawnerError = error;
