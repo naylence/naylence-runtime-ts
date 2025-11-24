@@ -3,6 +3,7 @@ import { TaskSpawner } from '../util/task-spawner.js';
 import { AsyncEvent } from '../util/async-event.js';
 import { getLogger } from '../util/logging.js';
 import {
+  ConnectorState,
   DeliveryAckFrame,
   DeliveryOriginType,
   FameConnector,
@@ -277,6 +278,7 @@ export class UpstreamSessionManager
   private lastHeartbeatAckTime: number | null = null;
   private lastSeenEpoch: string | null = null;
   private hadSuccessfulAttach = false;
+  private lastConnectorState: ConnectorState | null = null;
   private connectEpoch = 0;
 
   constructor(optionsInput: UpstreamSessionManagerOptionsInput) {
@@ -644,7 +646,22 @@ export class UpstreamSessionManager
       this.currentStopSubtasks = null;
       await Promise.allSettled(tasks.map((task) => task.promise));
       if (this.connector) {
-        await this.connector.stop().catch(() => undefined);
+        logger.info('upstream_stopping_old_connector', {
+          connect_epoch: this.connectEpoch,
+          target_system_id: this.targetSystemId,
+          timestamp: new Date().toISOString(),
+        });
+        await this.connector.stop().catch((err) => {
+          logger.warning('upstream_connector_stop_error', {
+            connect_epoch: this.connectEpoch,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+        logger.info('upstream_old_connector_stopped', {
+          connect_epoch: this.connectEpoch,
+          target_system_id: this.targetSystemId,
+          timestamp: new Date().toISOString(),
+        });
         this.connector = null;
       }
     }
@@ -819,6 +836,29 @@ export class UpstreamSessionManager
         break;
       }
 
+      const currentState = connector.state;
+      const previousState = this.lastConnectorState;
+      this.lastConnectorState = currentState;
+
+      // Skip heartbeat if connector is paused (e.g., tab is hidden)
+      // Keep ack time current so we don't timeout immediately after resuming
+      if (currentState === ConnectorState.PAUSED) {
+        logger.debug('skipping_heartbeat_connector_paused', {
+          connector_state: currentState,
+        });
+        this.lastHeartbeatAckTime = Date.now();
+        continue;
+      }
+
+      // Reset ack time if just resumed from pause (prevents immediate timeout)
+      if (previousState === ConnectorState.PAUSED && currentState === ConnectorState.STARTED) {
+        logger.debug('connector_just_resumed_resetting_ack_time', {
+          previous_state: previousState,
+          current_state: currentState,
+        });
+        this.lastHeartbeatAckTime = Date.now();
+      }
+
       const envelope = await this.makeHeartbeatEnvelope();
       logger.debug('sending_heartbeat', {
         hb_corr_id: envelope.corrId,
@@ -862,6 +902,7 @@ export class UpstreamSessionManager
 
       await this.node.dispatchEvent('onHeartbeatSent', this.node, envelope);
 
+      // Don't check heartbeat timeout when paused
       if (
         this.lastHeartbeatAckTime !== null &&
         Date.now() - this.lastHeartbeatAckTime > graceMs

@@ -13,7 +13,9 @@ import type {
   DeliveryAckFrame,
   FameEnvelope,
   FameChannelMessage,
+  FameEnvelopeHandler,
 } from '@naylence/core';
+import { ConnectorState } from '@naylence/core';
 
 const logger = getLogger('naylence.fame.connector.broadcast_channel_connector');
 
@@ -63,6 +65,8 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
   private readonly ackDedupTtlMs = 30_000;
   private readonly ackDedupMaxEntries = 4096;
   private readonly textDecoder = new TextDecoder();
+  private visibilityChangeListenerRegistered = false;
+  private visibilityChangeHandler?: () => void;
 
   private static generateConnectorId(): string {
     const globalCrypto = (globalThis as typeof globalThis & { crypto?: Crypto }).crypto;
@@ -130,13 +134,24 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     this.connectorId = BroadcastChannelConnector.generateConnectorId();
     this.channel = new BroadcastChannel(this.channelName);
 
-    logger.debug('broadcast_channel_connector_initialized', {
+    logger.debug('broadcast_channel_connector_created', {
       channel: this.channelName,
       connector_id: this.connectorId,
       inbox_capacity: preferredCapacity,
+      timestamp: new Date().toISOString(),
     });
 
     this.onMsg = (event: MessageEvent<unknown>): void => {
+      // Guard: Don't process if listener was unregistered
+      if (!this.listenerRegistered) {
+        logger.warning('broadcast_channel_message_after_unregister', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       const message = event.data;
 
       logger.debug('broadcast_channel_raw_event', {
@@ -209,6 +224,48 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
 
     this.channel.addEventListener('message', this.onMsg as EventListener);
     this.listenerRegistered = true;
+
+    // Setup visibility change monitoring
+    this.visibilityChangeHandler = (): void => {
+      const isHidden = document.hidden;
+      logger.debug('broadcast_channel_visibility_changed', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        visibility: isHidden ? 'hidden' : 'visible',
+        timestamp: new Date().toISOString(),
+      });
+
+      // Pause/resume connector based on visibility
+      if (isHidden && this.state === ConnectorState.STARTED) {
+        this.pause().catch((err) => {
+          logger.warning('broadcast_channel_pause_failed', {
+            channel: this.channelName,
+            connector_id: this.connectorId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      } else if (!isHidden && this.state === ConnectorState.PAUSED) {
+        this.resume().catch((err) => {
+          logger.warning('broadcast_channel_resume_failed', {
+            channel: this.channelName,
+            connector_id: this.connectorId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeListenerRegistered = true;
+      
+      // Log initial state
+      logger.debug('broadcast_channel_initial_visibility', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        visibility: document.hidden ? 'hidden' : 'visible',
+      });
+    }
   }
 
   async pushToReceive(
@@ -263,12 +320,47 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
   }
 
   protected async _transportClose(code: number, reason: string): Promise<void> {
+    logger.debug('broadcast_channel_transport_closing', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      code,
+      reason,
+      listener_registered: this.listenerRegistered,
+      timestamp: new Date().toISOString(),
+    });
+
     if (this.listenerRegistered) {
+      logger.debug('broadcast_channel_removing_listener', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        timestamp: new Date().toISOString(),
+      });
       this.channel.removeEventListener('message', this.onMsg as EventListener);
       this.listenerRegistered = false;
+      logger.debug('broadcast_channel_listener_removed', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        timestamp: new Date().toISOString(),
+      });
     }
 
+    if (this.visibilityChangeListenerRegistered && this.visibilityChangeHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeListenerRegistered = false;
+      this.visibilityChangeHandler = undefined;
+    }
+
+    logger.debug('broadcast_channel_closing', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      timestamp: new Date().toISOString(),
+    });
     this.channel.close();
+    logger.debug('broadcast_channel_closed', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      timestamp: new Date().toISOString(),
+    });
 
     const closeCode = typeof code === 'number' ? code : 1000;
     const closeReason =
@@ -393,6 +485,31 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     }
 
     return undefined;
+  }
+
+  /**
+   * Override start() to check initial visibility state
+   */
+  async start(inboundHandler: FameEnvelopeHandler): Promise<void> {
+    await super.start(inboundHandler);
+    
+    // After transitioning to STARTED, check if tab is already hidden
+    if (typeof document !== 'undefined' && document.hidden) {
+      logger.debug('broadcast_channel_start_in_hidden_tab', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // Immediately pause if tab is hidden at start time
+      await this.pause().catch((err) => {
+        logger.warning('broadcast_channel_initial_pause_failed', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
   }
 
   private _trimSeenAcks(now: number): void {

@@ -42,7 +42,7 @@ export abstract class TraceEmitterFactory<
   }
 }
 
-// Ensure default factories are registered lazily to avoid circular ESM initialization issues
-void import('./noop-trace-emitter-factory.js');
-void import('./open-telemetry-trace-emitter-factory.js');
-void import('./trace-emitter-profile-factory.js');
+// // Ensure default factories are registered lazily to avoid circular ESM initialization issues
+// void import('./noop-trace-emitter-factory.js');
+// void import('./open-telemetry-trace-emitter-factory.js');
+// void import('./trace-emitter-profile-factory.js');

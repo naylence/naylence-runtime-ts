@@ -92,13 +92,21 @@ function buildManifest(modules) {
 
   const list = JSON.stringify(modules, null, 2);
 
+  // Node-only factories that should not be bundled in browser builds
+  const nodeOnlyModules = new Set([
+    "./telemetry/open-telemetry-trace-emitter-factory.js",
+    "./connector/http-listener-factory.js",
+    "./connector/websocket-listener-factory.js",
+    "./security/credential/prompt-credential-provider-factory.js",
+  ]);
+
   const loaderEntries = modules
-    .map(
-      (specifier) =>
-        `  ${JSON.stringify(specifier)}: () => import(${JSON.stringify(
-          specifier
-        )}),`
-    )
+    .map((specifier) => {
+      const importCall = nodeOnlyModules.has(specifier)
+        ? `import(/* webpackIgnore: true */ /* @vite-ignore */ ${JSON.stringify(specifier)})`
+        : `import(${JSON.stringify(specifier)})`;
+      return `  ${JSON.stringify(specifier)}: () => ${importCall},`;
+    })
     .join("\n");
 
   const body = `

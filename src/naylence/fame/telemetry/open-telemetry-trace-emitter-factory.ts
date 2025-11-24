@@ -5,7 +5,6 @@ import {
   type AuthInjectionStrategyConfig,
 } from '../security/auth/auth-injection-strategy-factory.js';
 import type { AuthInjectionStrategy } from '../security/auth/auth-injection-strategy.js';
-import { setupOtel } from './otel-setup.js';
 import type { OtelLifecycleControl } from './otel-setup.js';
 import { safeImport } from '../util/lazy-import.js';
 import type { TraceEmitter } from './trace-emitter.js';
@@ -52,10 +51,12 @@ interface OpenTelemetryTraceEmitterFactoryOptions {
 type OpenTelemetryTraceEmitterModule =
   typeof import('./open-telemetry-trace-emitter.js');
 type OtelApiModule = typeof import('@opentelemetry/api');
+type OtelSetupModule = typeof import('./otel-setup.js');
 
 let openTelemetryTraceEmitterModulePromise: Promise<OpenTelemetryTraceEmitterModule> | null =
   null;
 let otelApiModulePromise: Promise<OtelApiModule> | null = null;
+let otelSetupModulePromise: Promise<OtelSetupModule> | null = null;
 
 const logger = getLogger(
   'naylence.fame.telemetry.open_telemetry_trace_emitter_factory'
@@ -88,6 +89,19 @@ function getOtelApiModule(): Promise<OtelApiModule> {
     );
   }
   return otelApiModulePromise;
+}
+
+function getOtelSetupModule(): Promise<OtelSetupModule> {
+  if (!otelSetupModulePromise) {
+    otelSetupModulePromise = safeImport<OtelSetupModule>(
+      () => import('./otel-setup.js'),
+      '@opentelemetry/api',
+      {
+        helpMessage: MISSING_OTEL_HELP_MESSAGE,
+      }
+    );
+  }
+  return otelSetupModulePromise;
 }
 
 export const FACTORY_META = {
@@ -135,6 +149,7 @@ export class OpenTelemetryTraceEmitterFactory extends TraceEmitterFactory<OpenTe
 
     let lifecycle: OtelLifecycleControl | null = null;
     try {
+      const { setupOtel } = await getOtelSetupModule();
       lifecycle = await setupOtel({
         serviceName: normalized.serviceName,
         endpoint: normalized.endpoint,

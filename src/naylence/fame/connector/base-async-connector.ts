@@ -253,6 +253,10 @@ export abstract class BaseAsyncConnector
    * Stop the connector gracefully
    */
   async stop(): Promise<void> {
+    logger.debug('stopping_connector', {
+      current_state: this._state,
+      connector_id: this._connectorFlowId,
+    });
     if (!ConnectorStateUtils.canStop(this._state)) {
       logger.debug('connector_stop_already_stopped', {
         current_state: this._state,
@@ -267,6 +271,60 @@ export abstract class BaseAsyncConnector
     if (this._lastError) {
       throw this._lastError;
     }
+    logger.debug('connector_stopped', {
+      current_state: this._state,
+      connector_id: this._connectorFlowId,
+    });
+  }
+
+  /**
+   * Pause the connector (suspends heartbeat and housekeeping, but keeps connection alive)
+   */
+  async pause(): Promise<void> {
+    logger.debug('pausing_connector', {
+      current_state: this._state,
+      connector_id: this._connectorFlowId,
+    });
+
+    if (this._state !== ConnectorState.STARTED) {
+      logger.debug('connector_pause_invalid_state', {
+        current_state: this._state,
+        connector_id: this._connectorFlowId,
+      });
+      return;
+    }
+
+    this._setState(ConnectorState.PAUSED);
+
+    logger.debug('connector_paused', {
+      current_state: this._state,
+      connector_id: this._connectorFlowId,
+    });
+  }
+
+  /**
+   * Resume the connector from paused state
+   */
+  async resume(): Promise<void> {
+    logger.debug('resuming_connector', {
+      current_state: this._state,
+      connector_id: this._connectorFlowId,
+    });
+
+    if (this._state !== ConnectorState.PAUSED) {
+      logger.debug('connector_resume_invalid_state', {
+        current_state: this._state,
+        connector_id: this._connectorFlowId,
+      });
+      return;
+    }
+
+    this._setState(ConnectorState.STARTED);
+
+    logger.debug('connector_resumed', {
+      current_state: this._state,
+      connector_id: this._connectorFlowId,
+    });
   }
 
   /**
@@ -666,8 +724,22 @@ export abstract class BaseAsyncConnector
     exc?: Error
   ): Promise<void> {
     if (this._closed) {
+      logger.debug('shutdown_already_closed', {
+        connector_id: this._connectorFlowId,
+        current_state: this._state,
+      });
       return;
     }
+
+    logger.debug('connector_shutdown_starting', {
+      connector_id: this._connectorFlowId,
+      connector_type: this.constructor.name,
+      code,
+      reason,
+      current_state: this._state,
+      has_error: !!exc,
+      timestamp: new Date().toISOString(),
+    });
 
     this._closed = true;
     this._closeCode = code;
@@ -697,16 +769,39 @@ export abstract class BaseAsyncConnector
     }
 
     // Close transport
+    logger.debug('connector_closing_transport', {
+      connector_id: this._connectorFlowId,
+      connector_type: this.constructor.name,
+      timestamp: new Date().toISOString(),
+    });
     await this._transportClose(code, reason);
+    logger.debug('connector_transport_closed', {
+      connector_id: this._connectorFlowId,
+      connector_type: this.constructor.name,
+      timestamp: new Date().toISOString(),
+    });
 
     // Shutdown spawned tasks
+    logger.debug('connector_shutting_down_tasks', {
+      connector_id: this._connectorFlowId,
+      connector_type: this.constructor.name,
+      grace_period_ms: effectiveGracePeriod * 1000,
+      join_timeout_ms: this._shutdownJoinTimeout,
+      timestamp: new Date().toISOString(),
+    });
     try {
       await this.shutdownTasks({
         gracePeriod: effectiveGracePeriod * 1000, // Convert to milliseconds
         joinTimeout: this._shutdownJoinTimeout,
       });
+      logger.debug('connector_tasks_shutdown_complete', {
+        connector_id: this._connectorFlowId,
+        connector_type: this.constructor.name,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
       logger.warning('task_shutdown_error', {
+        connector_id: this._connectorFlowId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -720,6 +815,13 @@ export abstract class BaseAsyncConnector
     if (this._closeResolver) {
       this._closeResolver();
     }
+
+    logger.debug('connector_shutdown_complete', {
+      connector_id: this._connectorFlowId,
+      connector_type: this.constructor.name,
+      final_state: this._state,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   // ---------------------------------------------------------------------

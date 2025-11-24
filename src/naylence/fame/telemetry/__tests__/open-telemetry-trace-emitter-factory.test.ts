@@ -67,7 +67,15 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
 
   it('normalizes config aliases before invoking dependencies', async () => {
     const emitterCtor = jest.fn();
+    const lifecycle: OtelLifecycleControl = {
+      forceFlush: jest.fn(),
+      shutdown: jest.fn(),
+    };
+    
     safeImportMock
+      .mockResolvedValueOnce({
+        setupOtel: setupOtelMock,
+      })
       .mockResolvedValueOnce({
         OpenTelemetryTraceEmitter: emitterCtor,
       })
@@ -79,10 +87,6 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
         SpanStatusCode: { ERROR: 2 },
       });
 
-    const lifecycle: OtelLifecycleControl = {
-      forceFlush: jest.fn(),
-      shutdown: jest.fn(),
-    };
     setupOtelMock.mockResolvedValue(lifecycle);
 
     const { OpenTelemetryTraceEmitterFactory } = await import(
@@ -135,7 +139,15 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
 
   it('applies auth strategies and preserves header casing', async () => {
     const emitterCtor = jest.fn();
+    const lifecycle: OtelLifecycleControl = {
+      forceFlush: jest.fn(),
+      shutdown: jest.fn(),
+    };
+    
     safeImportMock
+      .mockResolvedValueOnce({
+        setupOtel: setupOtelMock,
+      })
       .mockResolvedValueOnce({
         OpenTelemetryTraceEmitter: emitterCtor,
       })
@@ -147,10 +159,6 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
         SpanStatusCode: { ERROR: 2 },
       });
 
-    const lifecycle: OtelLifecycleControl = {
-      forceFlush: jest.fn(),
-      shutdown: jest.fn(),
-    };
     setupOtelMock.mockResolvedValue(lifecycle);
 
     const authStrategy: AuthInjectionStrategy = {

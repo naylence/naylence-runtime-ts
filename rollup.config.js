@@ -18,6 +18,19 @@ const markExternal = (id) => {
   return true;
 };
 
+const markBrowserExternal = (id) => {
+  // Mark OpenTelemetry packages as external for browser builds
+  // The OpenTelemetry trace emitter factory is included in the browser bundle via
+  // factory-manifest (it has FACTORY_META and export default), unlike SQLite which
+  // is excluded from the manifest. The factory contains import('@opentelemetry/api')
+  // which downstream bundlers (Vite) will try to resolve. This tells them to leave
+  // it unresolved. The factory is conditionally skipped at runtime in browsers.
+  if (id.startsWith('@opentelemetry/')) {
+    return true;
+  }
+  return markExternal(id);
+};
+
 const browserPlugins = [
   resolve({ browser: true, preferBuiltins: false }),
   json(),
@@ -48,7 +61,7 @@ export default defineConfig([
         inlineDynamicImports: true,
       },
     ],
-    external: markExternal,
+    external: markBrowserExternal,
     plugins: browserPlugins,
   },
   {
