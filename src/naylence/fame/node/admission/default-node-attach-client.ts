@@ -322,7 +322,8 @@ export class DefaultNodeAttachClient implements NodeAttachClient {
     const deadline = Date.now() + this.timeoutMs;
 
     while (Date.now() < deadline) {
-      if (connector.state !== ConnectorState.STARTED) {
+      // Allow both STARTED and PAUSED states (PAUSED = tab hidden but connection alive)
+      if (connector.state !== ConnectorState.STARTED && connector.state !== ConnectorState.PAUSED) {
         let errorMessage = 'Connector closed while waiting for NodeAttachAck';
 
         if (connector.closeCode !== undefined) {

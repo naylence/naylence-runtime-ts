@@ -259,11 +259,14 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       document.addEventListener('visibilitychange', this.visibilityChangeHandler);
       this.visibilityChangeListenerRegistered = true;
       
-      // Log initial state
+      // Log initial state with detailed visibility info
       logger.debug('broadcast_channel_initial_visibility', {
         channel: this.channelName,
         connector_id: this.connectorId,
         visibility: document.hidden ? 'hidden' : 'visible',
+        document_hidden: document.hidden,
+        visibility_state: document.visibilityState,
+        has_focus: document.hasFocus(),
       });
     }
   }
@@ -498,6 +501,9 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       logger.debug('broadcast_channel_start_in_hidden_tab', {
         channel: this.channelName,
         connector_id: this.connectorId,
+        document_hidden: document.hidden,
+        visibility_state: document.visibilityState,
+        has_focus: document.hasFocus(),
         timestamp: new Date().toISOString(),
       });
       
