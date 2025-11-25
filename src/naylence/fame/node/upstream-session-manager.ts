@@ -646,7 +646,7 @@ export class UpstreamSessionManager
       this.currentStopSubtasks = null;
       await Promise.allSettled(tasks.map((task) => task.promise));
       if (this.connector) {
-        logger.info('upstream_stopping_old_connector', {
+        logger.debug('upstream_stopping_old_connector', {
           connect_epoch: this.connectEpoch,
           target_system_id: this.targetSystemId,
           timestamp: new Date().toISOString(),
@@ -657,7 +657,7 @@ export class UpstreamSessionManager
             error: err instanceof Error ? err.message : String(err),
           });
         });
-        logger.info('upstream_old_connector_stopped', {
+        logger.debug('upstream_old_connector_stopped', {
           connect_epoch: this.connectEpoch,
           target_system_id: this.targetSystemId,
           timestamp: new Date().toISOString(),

@@ -259,6 +259,26 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       document.addEventListener('visibilitychange', this.visibilityChangeHandler);
       this.visibilityChangeListenerRegistered = true;
       
+      // Track page lifecycle events to detect browser unload/discard
+      if (typeof window !== 'undefined') {
+        const lifecycleLogger = (event: Event): void => {
+          logger.info('broadcast_channel_page_lifecycle', {
+            channel: this.channelName,
+            connector_id: this.connectorId,
+            event_type: event.type,
+            visibility_state: document.visibilityState,
+            timestamp: new Date().toISOString(),
+          });
+        };
+        
+        window.addEventListener('beforeunload', lifecycleLogger);
+        window.addEventListener('unload', lifecycleLogger);
+        window.addEventListener('pagehide', lifecycleLogger);
+        window.addEventListener('pageshow', lifecycleLogger);
+        document.addEventListener('freeze', lifecycleLogger);
+        document.addEventListener('resume', lifecycleLogger);
+      }
+      
       // Log initial state with detailed visibility info
       logger.debug('broadcast_channel_initial_visibility', {
         channel: this.channelName,
@@ -267,6 +287,7 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
         document_hidden: document.hidden,
         visibility_state: document.visibilityState,
         has_focus: document.hasFocus(),
+        timestamp: new Date().toISOString(),
       });
     }
   }

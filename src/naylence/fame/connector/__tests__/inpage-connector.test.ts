@@ -10,8 +10,21 @@ describe('InPageConnector', () => {
   const originalMessageEvent = (globalThis as Record<string, unknown>).MessageEvent;
 
   beforeAll(() => {
-    (globalThis as Record<string, unknown>).window = globalThis;
-    (globalThis as Record<string, unknown>).document = {};
+    // Create a mock window with necessary event listener methods
+    const mockWindow = {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+    (globalThis as Record<string, unknown>).window = mockWindow;
+    
+    // Create a mock document with necessary properties and methods
+    (globalThis as Record<string, unknown>).document = {
+      hidden: false,
+      visibilityState: 'visible',
+      hasFocus: () => true,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
 
     if (typeof globalThis.MessageEvent === 'undefined') {
       class PolyfillMessageEvent<T> extends Event {
