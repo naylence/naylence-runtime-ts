@@ -44,6 +44,7 @@ class BroadcastChannelConnectionGrantImpl
   public purpose = 'connection';
   public channelName?: string;
   public inboxCapacity?: number;
+  public initialWindow?: number;
   [key: string]: unknown;
 }
 
@@ -82,6 +83,7 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
         type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
         channelName: connectorConfig.channelName,
         inboxCapacity: connectorConfig.inboxCapacity,
+        initialWindow: connectorConfig.initialWindow,
       } satisfies BroadcastChannelConnectorFactoryConfig;
     }
 
@@ -115,6 +117,7 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
       purpose: 'connection',
       channelName: normalizedConfig.channelName,
       inboxCapacity: normalizedConfig.inboxCapacity,
+      initialWindow: normalizedConfig.initialWindow,
     });
 
     return grant;

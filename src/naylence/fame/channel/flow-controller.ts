@@ -23,6 +23,9 @@
  */
 
 import { FlowFlags } from '@naylence/core';
+import { getLogger } from '../util/logging.js';
+
+const logger = getLogger('naylence.fame.flow.flow_controller');
 
 /**
  * Simple condition variable implementation for TypeScript/Node.js
@@ -129,8 +132,14 @@ export class FlowController {
     // Create a notifier promise
     const notifierPromise = (async (): Promise<void> => {
       try {
-        // Use setImmediate to defer to next tick (similar to asyncio scheduling)
-        await new Promise<void>((resolve) => setImmediate(resolve));
+        // Use setImmediate/setTimeout to defer to next tick (similar to asyncio scheduling)
+        await new Promise<void>((resolve) => {
+          if (typeof setImmediate === 'function') {
+            setImmediate(resolve);
+          } else {
+            setTimeout(resolve, 0);
+          }
+        });
         condition.notifyAll();
       } finally {
         // Always clear the reference, even on error
@@ -166,9 +175,19 @@ export class FlowController {
     // clamp into [0, initialWindow]
     const newBalance = Math.max(0, Math.min(this.initialWindow, prev + delta));
     this.credits.set(flowId, newBalance);
+    const crossedZero = prev <= 0 && newBalance > 0;
+
+    logger.debug('flow_controller_add_credits', {
+      flow_id: flowId,
+      delta,
+      prev_balance: prev,
+      new_balance: newBalance,
+      initial_window: this.initialWindow,
+      crossed_zero: crossedZero,
+    });
 
     // wake waiters only if we crossed the zero boundary
-    if (prev <= 0 && newBalance > 0) {
+    if (crossedZero) {
       this.wakeWaiters(flowId);
     }
     return newBalance;
@@ -180,13 +199,33 @@ export class FlowController {
   async acquire(flowId: string): Promise<void> {
     this.ensureFlow(flowId);
     const condition = this.conditions.get(flowId)!;
+    logger.debug('flow_controller_acquire_attempt', {
+      flow_id: flowId,
+      current_balance: this.credits.get(flowId)!,
+    });
 
     while (this.credits.get(flowId)! <= 0) {
+      logger.debug('flow_controller_waiting_for_credits', {
+        flow_id: flowId,
+        current_balance: this.credits.get(flowId)!,
+      });
       await condition.wait();
     }
 
-    const current = this.credits.get(flowId)!;
-    this.credits.set(flowId, current - 1);
+    const newBalance = this.credits.get(flowId)! - 1;
+    this.credits.set(flowId, newBalance);
+
+    logger.debug('flow_controller_acquire_success', {
+      flow_id: flowId,
+      new_balance: newBalance,
+    });
+
+    if (newBalance <= this.lowWatermark) {
+      logger.debug('flow_controller_acquire_below_low_watermark', {
+        flow_id: flowId,
+        low_watermark: this.lowWatermark,
+      });
+    }
   }
 
   /**
@@ -209,6 +248,12 @@ export class FlowController {
     const current = this.credits.get(flowId)!;
     const remaining = Math.max(current - credits, 0);
     this.credits.set(flowId, remaining);
+    logger.debug('flow_controller_consume', {
+      flow_id: flowId,
+      requested: credits,
+      prev_balance: current,
+      remaining_balance: remaining,
+    });
     return remaining;
   }
 
@@ -232,6 +277,10 @@ export class FlowController {
     this.windowIds.delete(flowId);
     this.credits.set(flowId, this.initialWindow);
     this.wakeWaiters(flowId);
+    logger.debug('flow_controller_flow_reset', {
+      flow_id: flowId,
+      reset_balance: this.initialWindow,
+    });
   }
 
   /**

@@ -934,8 +934,16 @@ export class UpstreamSessionManager
         continue;
       }
 
+      logger.debug('upstream_pump_sending_envelope', {
+        envelopeId: envelope.id,
+        type: envelope.frame?.type,
+      });
+
       try {
         await connector.send(envelope);
+        logger.debug('upstream_pump_sent_envelope', {
+          envelopeId: envelope.id,
+        });
       } catch (error) {
         if (error instanceof FameMessageTooLarge) {
           logger.error('failed_to_send_message', { error: error.message });

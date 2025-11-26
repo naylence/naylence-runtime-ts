@@ -18,6 +18,7 @@ export interface BroadcastChannelConnectionGrant extends ConnectionGrant {
   type: typeof BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE;
   channelName?: string;
   inboxCapacity?: number;
+  initialWindow?: number;
 }
 
 export type BroadcastChannelConnectionGrantLike = ConnectionGrantLike & {
@@ -26,6 +27,8 @@ export type BroadcastChannelConnectionGrantLike = ConnectionGrantLike & {
   channel_name?: unknown;
   inboxCapacity?: unknown;
   inbox_capacity?: unknown;
+  initialWindow?: unknown;
+  initial_window?: unknown;
 };
 
 export type BroadcastChannelConnectorConfigLike = ConnectorConfig &
@@ -54,6 +57,14 @@ export function isBroadcastChannelConnectionGrant(
     record.inboxCapacity !== undefined &&
     (!Number.isFinite(record.inboxCapacity) ||
       (record.inboxCapacity as number) <= 0)
+  ) {
+    return false;
+  }
+
+  if (
+    record.initialWindow !== undefined &&
+    (!Number.isFinite(record.initialWindow) ||
+      (record.initialWindow as number) <= 0)
   ) {
     return false;
   }
@@ -115,6 +126,21 @@ export function normalizeBroadcastChannelConnectionGrant(
     result.inboxCapacity = Math.floor(inboxValue);
   }
 
+  const windowValue =
+    candidate.initialWindow ?? (candidate as Record<string, unknown>)['initial_window'];
+  if (windowValue !== undefined) {
+    if (
+      typeof windowValue !== 'number' ||
+      !Number.isFinite(windowValue) ||
+      windowValue <= 0
+    ) {
+      throw new TypeError(
+        'BroadcastChannelConnectionGrant "initialWindow" must be a positive number when provided'
+      );
+    }
+    result.initialWindow = Math.floor(windowValue);
+  }
+
   return result;
 }
 
@@ -132,6 +158,10 @@ export function broadcastChannelGrantToConnectorConfig(
 
   if (normalized.inboxCapacity !== undefined) {
     config.inboxCapacity = normalized.inboxCapacity;
+  }
+
+  if (normalized.initialWindow !== undefined) {
+    config.initialWindow = normalized.initialWindow;
   }
 
   return config;

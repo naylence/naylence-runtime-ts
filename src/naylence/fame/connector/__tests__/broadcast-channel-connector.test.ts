@@ -93,7 +93,7 @@ describe('BroadcastChannelConnector', () => {
     FakeBroadcastChannel.reset();
   });
 
-  it('suppresses duplicate delivery acknowledgements', async () => {
+  it('allows duplicate delivery acknowledgements from other senders', async () => {
     const connector = new BroadcastChannelConnector({
       type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
       channelName: 'dup-test',
@@ -124,9 +124,43 @@ describe('BroadcastChannelConnector', () => {
     remote.postMessage({ senderId: 'remote-sender', payload });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(received).toHaveLength(1);
+    expect(received).toHaveLength(2);
 
     await connector.stop();
     remote.close();
+  });
+
+  it('suppresses duplicate delivery acknowledgements pushed internally', async () => {
+    const connector = new BroadcastChannelConnector({
+      type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
+      channelName: 'internal-dup-test',
+    });
+
+    const received: FameEnvelope[] = [];
+    await connector.start(async (envelope) => {
+      received.push(envelope);
+      return null;
+    });
+
+    const payload = new TextEncoder().encode(
+      JSON.stringify({
+        id: 'ack-envelope',
+        frame: {
+          type: 'DeliveryAck',
+          ok: true,
+          refId: 'original-envelope',
+        },
+        corrId: 'original-envelope',
+      })
+    );
+
+    await connector.pushToReceive(payload);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await connector.pushToReceive(payload);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(received).toHaveLength(1);
+
+    await connector.stop();
   });
 });

@@ -387,14 +387,15 @@ export abstract class BaseAsyncConnector
     }
 
     // Apply flow control if enabled and not a credit update
-    if (
-      this._fcEnabled &&
-      !(
-        envelope.frame &&
-        'flow_id' in envelope.frame &&
-        'credits' in envelope.frame
-      )
-    ) {
+    const isCreditUpdateFrame = Boolean(
+      envelope.frame &&
+        ((envelope.frame as CreditUpdateFrame).type === 'CreditUpdate' ||
+          (envelope.frame as { type?: string }).type === 'credit_update' ||
+          ('flowId' in envelope.frame && 'credits' in envelope.frame) ||
+          ('flow_id' in envelope.frame && 'credits' in envelope.frame))
+    );
+
+    if (this._fcEnabled && !isCreditUpdateFrame) {
       const flowId = envelope.flowId || this._connectorFlowId;
       envelope.flowId = flowId;
 
@@ -676,12 +677,36 @@ export abstract class BaseAsyncConnector
     flowId: string,
     traceId?: string
   ): Promise<void> {
-    if (!this._flowCtrl.needsRefill(flowId)) {
+    const remainingCredits = this._flowCtrl.getCredits(flowId);
+    const needsRefill = this._flowCtrl.needsRefill(flowId);
+
+    logger.debug('maybe_emit_credit_check', {
+      connector_id: this._connectorFlowId,
+      flow_id: flowId,
+      trace_id: traceId ?? null,
+      remaining_credits: remainingCredits,
+      low_watermark:
+        this._flowCtrl instanceof FlowController
+          ? this._flowCtrl.lowWatermark
+          : null,
+      initial_window: this._initialWindow,
+      needs_refill: needsRefill,
+    });
+
+    if (!needsRefill) {
       return;
     }
 
     const delta = this._initialWindow;
     this._flowCtrl.addCredits(flowId, delta);
+
+    logger.debug('maybe_emit_credit_emit', {
+      connector_id: this._connectorFlowId,
+      flow_id: flowId,
+      trace_id: traceId ?? null,
+      emitted_credits: delta,
+      post_emit_balance: this._flowCtrl.getCredits(flowId),
+    });
 
     const ackEnv = createFameEnvelope({
       ...(traceId && { traceId }),
@@ -695,7 +720,24 @@ export abstract class BaseAsyncConnector
       flags: FlowFlags.ACK,
     });
 
-    await this.send(ackEnv);
+    try {
+      await this.send(ackEnv);
+      logger.debug('maybe_emit_credit_sent', {
+        connector_id: this._connectorFlowId,
+        flow_id: flowId,
+        trace_id: traceId ?? null,
+        credits_acknowledged: delta,
+      });
+    } catch (error) {
+      logger.error('maybe_emit_credit_send_failed', {
+        connector_id: this._connectorFlowId,
+        flow_id: flowId,
+        trace_id: traceId ?? null,
+        credits_attempted: delta,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   // ---------------------------------------------------------------------

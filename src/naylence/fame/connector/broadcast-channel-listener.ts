@@ -483,6 +483,7 @@ export class BroadcastChannelListener extends TransportListener {
           type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
           channelName: this._channelName,
           inboxCapacity: this._inboxCapacity,
+          passive: true,
         } satisfies BroadcastChannelConnectorConfig);
     }
 
@@ -562,6 +563,7 @@ export class BroadcastChannelListener extends TransportListener {
       type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
       channelName: this._channelName,
       inboxCapacity: this._inboxCapacity,
+      passive: true,
     };
 
     const channelCandidate = candidate.channelName ?? candidate['channel_name'];

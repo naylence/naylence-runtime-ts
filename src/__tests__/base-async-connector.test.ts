@@ -363,6 +363,42 @@ describe('BaseAsyncConnector', () => {
         FameTransportClose
       );
     });
+
+    test('credit update envelopes bypass flow control', async () => {
+      // Recreate connector with tiny window to ensure credits run out quickly
+      await connector.close();
+      connector = new TestAsyncConnector({
+        ...fastTestConfig,
+        initialWindow: 1,
+      });
+      await connector.start(mockHandler);
+
+      const flowCtrl = (connector as any)._flowCtrl;
+      const acquireSpy = jest.spyOn(flowCtrl, 'acquire');
+
+      const dataEnvelope = createFameEnvelope({
+        flowId: 'flow-x',
+        frame: { type: 'Data', payload: 'ping' } as DataFrame,
+      });
+
+      await connector.send(dataEnvelope);
+      expect(acquireSpy).toHaveBeenCalled();
+      acquireSpy.mockClear();
+
+      const creditUpdateEnvelope = createFameEnvelope({
+        flowId: 'flow-x',
+        frame: {
+          type: 'CreditUpdate',
+          flowId: 'flow-x',
+          credits: 5,
+        } as CreditUpdateFrame,
+      });
+
+      await connector.send(creditUpdateEnvelope);
+      expect(acquireSpy).not.toHaveBeenCalled();
+
+      acquireSpy.mockRestore();
+    });
   });
 
   describe('Message Receiving', () => {
