@@ -93,10 +93,12 @@ describe('BroadcastChannelConnector', () => {
     FakeBroadcastChannel.reset();
   });
 
-  it('allows duplicate delivery acknowledgements from other senders', async () => {
+  it('accepts targeted messages while operating in wildcard mode when addressed to itself', async () => {
     const connector = new BroadcastChannelConnector({
       type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
-      channelName: 'dup-test',
+      channelName: 'wildcard-accept-test',
+      localNodeId: 'test-node',
+      initialTargetNodeId: '*',
     });
 
     const received: FameEnvelope[] = [];
@@ -105,62 +107,71 @@ describe('BroadcastChannelConnector', () => {
       return null;
     });
 
-    const remote = new FakeBroadcastChannel('dup-test');
-    const ackEnvelope = {
-      id: 'ack-envelope',
-      frame: {
-        type: 'DeliveryAck',
-        ok: true,
-        refId: 'original-envelope',
-      },
-      corrId: 'original-envelope',
-    };
-
-    const payload = new TextEncoder().encode(JSON.stringify(ackEnvelope));
-
-    remote.postMessage({ senderId: 'remote-sender', payload });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    remote.postMessage({ senderId: 'remote-sender', payload });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(received).toHaveLength(2);
-
-    await connector.stop();
-    remote.close();
-  });
-
-  it('suppresses duplicate delivery acknowledgements pushed internally', async () => {
-    const connector = new BroadcastChannelConnector({
-      type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
-      channelName: 'internal-dup-test',
-    });
-
-    const received: FameEnvelope[] = [];
-    await connector.start(async (envelope) => {
-      received.push(envelope);
-      return null;
-    });
-
+    const remote = new FakeBroadcastChannel('wildcard-accept-test');
     const payload = new TextEncoder().encode(
       JSON.stringify({
         id: 'ack-envelope',
         frame: {
           type: 'DeliveryAck',
           ok: true,
-          refId: 'original-envelope',
+          refId: 'origin',
         },
-        corrId: 'original-envelope',
+        corrId: 'origin',
       })
     );
 
-    await connector.pushToReceive(payload);
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await connector.pushToReceive(payload);
+    remote.postMessage({
+      senderId: 'remote-sender',
+      senderNodeId: 'sentinel',
+      targetNodeId: 'test-node',
+      payload,
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(received).toHaveLength(1);
 
     await connector.stop();
+    remote.close();
+  });
+
+  it('rejects targeted messages in wildcard mode if addressed to a different node', async () => {
+    const connector = new BroadcastChannelConnector({
+      type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
+      channelName: 'wildcard-reject-test',
+      localNodeId: 'test-node',
+      initialTargetNodeId: '*',
+    });
+
+    const received: FameEnvelope[] = [];
+    await connector.start(async (envelope) => {
+      received.push(envelope);
+      return null;
+    });
+
+    const remote = new FakeBroadcastChannel('wildcard-reject-test');
+    const payload = new TextEncoder().encode(
+      JSON.stringify({
+        id: 'ack-envelope',
+        frame: {
+          type: 'DeliveryAck',
+          ok: true,
+          refId: 'origin',
+        },
+        corrId: 'origin',
+      })
+    );
+
+    remote.postMessage({
+      senderId: 'remote-sender',
+      senderNodeId: 'sentinel',
+      targetNodeId: 'other-node',
+      payload,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(received).toHaveLength(0);
+
+    await connector.stop();
+    remote.close();
   });
 });

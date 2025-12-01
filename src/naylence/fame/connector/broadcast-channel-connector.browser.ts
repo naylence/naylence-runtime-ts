@@ -10,7 +10,6 @@ import {
   QueueFullError,
 } from '../util/bounded-async-queue.js';
 import type {
-  DeliveryAckFrame,
   FameEnvelope,
   FameChannelMessage,
   FameEnvelopeHandler,
@@ -28,6 +27,8 @@ export interface BroadcastChannelConnectorConfig extends ConnectorConfig {
   inboxCapacity?: number;
   initialWindow?: number;
   passive?: boolean;
+  localNodeId: string;
+  initialTargetNodeId?: string | '*';
 }
 
 type QueueLike<T> = BoundedAsyncQueue<T> & {
@@ -55,19 +56,23 @@ type BroadcastChannelInboxItem =
   | FameEnvelope
   | FameChannelMessage;
 
+type BroadcastBusMessage = {
+  senderId?: unknown;
+  senderNodeId?: unknown;
+  targetNodeId?: unknown;
+  payload?: unknown;
+};
+
 export class BroadcastChannelConnector extends BaseAsyncConnector {
   private readonly channelName: string;
   private readonly inbox: QueueLike<BroadcastChannelInboxItem>;
   private readonly inboxCapacity: number;
   private listenerRegistered = false;
   private readonly connectorId: string;
+  private readonly localNodeId: string;
+  private targetNodeId?: string | '*';
   private readonly onMsg: (event: MessageEvent<unknown>) => void;
   private readonly channel: BroadcastChannel;
-  private readonly seenAckKeys = new Map<string, number>();
-  private readonly seenAckOrder: string[] = [];
-  private readonly ackDedupTtlMs = 30_000;
-  private readonly ackDedupMaxEntries = 4096;
-  private readonly textDecoder = new TextDecoder();
   private visibilityChangeListenerRegistered = false;
   private visibilityChangeHandler?: () => void;
 
@@ -112,6 +117,34 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     return null;
   }
 
+  private static normalizeNodeId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private static normalizeTargetNodeId(
+    value: unknown
+  ): string | '*' | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return undefined;
+    }
+
+    if (trimmed === '*') {
+      return '*';
+    }
+
+    return trimmed;
+  }
+
   constructor(
     config: BroadcastChannelConnectorConfig,
     baseConfig: BaseAsyncConnectorConfig = {}
@@ -136,11 +169,26 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     ) as QueueLike<BroadcastChannelInboxItem>;
     this.inboxCapacity = preferredCapacity;
     this.connectorId = BroadcastChannelConnector.generateConnectorId();
+    const normalizedLocalNodeId =
+      BroadcastChannelConnector.normalizeNodeId(config.localNodeId);
+
+    if (!normalizedLocalNodeId) {
+      throw new Error(
+        'BroadcastChannelConnector requires a non-empty localNodeId'
+      );
+    }
+
+    this.localNodeId = normalizedLocalNodeId;
+    this.targetNodeId = BroadcastChannelConnector.normalizeTargetNodeId(
+      config.initialTargetNodeId
+    );
     this.channel = new BroadcastChannel(this.channelName);
 
     logger.debug('broadcast_channel_connector_created', {
       channel: this.channelName,
       connector_id: this.connectorId,
+      local_node_id: this.localNodeId,
+      target_node_id: this.targetNodeId ?? null,
       inbox_capacity: preferredCapacity,
       timestamp: new Date().toISOString(),
     });
@@ -166,19 +214,44 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
             ? (message as { constructor?: { name?: string } }).constructor?.name ?? typeof message
             : typeof message,
         has_sender_id: Boolean((message as { senderId?: unknown })?.senderId),
+        has_sender_node_id: Boolean(
+          (message as { senderNodeId?: unknown })?.senderNodeId
+        ),
       });
 
       if (!message || typeof message !== 'object') {
         return;
       }
 
-      const busMessage = message as { senderId?: unknown; payload?: unknown };
+      const busMessage = message as BroadcastBusMessage;
 
-      if (typeof busMessage.senderId !== 'string' || busMessage.senderId.length === 0) {
+      const senderNodeId =
+        BroadcastChannelConnector.normalizeNodeId(busMessage.senderNodeId);
+      if (!senderNodeId) {
+        logger.debug('broadcast_channel_message_rejected', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          reason: 'missing_sender_node_id',
+        });
         return;
       }
 
-      if (busMessage.senderId === this.connectorId) {
+      if (senderNodeId === this.localNodeId) {
+        logger.debug('broadcast_channel_message_rejected', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          reason: 'self_echo',
+          sender_node_id: senderNodeId,
+        });
+        return;
+      }
+
+      const incomingTargetNodeId =
+        BroadcastChannelConnector.normalizeTargetNodeId(
+          busMessage.targetNodeId
+        );
+
+      if (!this._shouldAcceptMessageFromBus(senderNodeId, incomingTargetNodeId)) {
         return;
       }
 
@@ -194,14 +267,12 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
 
       logger.debug('broadcast_channel_message_received', {
         channel: this.channelName,
-        sender_id: busMessage.senderId,
+        sender_id: (message as { senderId?: unknown })?.senderId,
+        sender_node_id: senderNodeId,
+        target_node_id: incomingTargetNodeId ?? null,
         connector_id: this.connectorId,
         payload_length: payload.byteLength,
       });
-
-  if (this._shouldSkipDuplicateAck(busMessage.senderId, payload)) {
-        return;
-      }
 
       try {
         if (typeof this.inbox.tryEnqueue === 'function') {
@@ -315,10 +386,6 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
   ): Promise<void> {
     const item = this._normalizeInboxItem(rawOrEnvelope);
 
-    if (this._shouldSkipDuplicateAckFromInboxItem(item)) {
-      return;
-    }
-
     try {
       if (typeof this.inbox.tryEnqueue === 'function') {
         const accepted = this.inbox.tryEnqueue(item);
@@ -356,13 +423,18 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
 
   protected async _transportSendBytes(data: Uint8Array): Promise<void> {
     ensureBroadcastEnvironment();
+    const targetNodeId = this.targetNodeId ?? '*';
     logger.debug('broadcast_channel_message_sending', {
       channel: this.channelName,
       sender_id: this.connectorId,
+      sender_node_id: this.localNodeId,
+      target_node_id: targetNodeId,
     });
 
     this.channel.postMessage({
       senderId: this.connectorId,
+      senderNodeId: this.localNodeId,
+      targetNodeId,
       payload: data,
     });
   }
@@ -424,8 +496,6 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     const shutdownError = new FameTransportClose(closeReason, closeCode);
     this.inbox.drain(shutdownError);
 
-    this.seenAckKeys.clear();
-    this.seenAckOrder.length = 0;
   }
 
   private _normalizeInboxItem(
@@ -436,6 +506,66 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     }
 
     return rawOrEnvelope;
+  }
+
+  private _isWildcardTarget(): boolean {
+    return this.targetNodeId === '*' || typeof this.targetNodeId === 'undefined';
+  }
+
+  private _shouldAcceptMessageFromBus(
+    senderNodeId: string,
+    targetNodeId: string | '*' | undefined
+  ): boolean {
+    if (this._isWildcardTarget()) {
+      if (
+        targetNodeId &&
+        targetNodeId !== '*' &&
+        targetNodeId !== this.localNodeId
+      ) {
+        logger.debug('broadcast_channel_message_rejected', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          reason: 'wildcard_target_mismatch',
+          sender_node_id: senderNodeId,
+          target_node_id: targetNodeId,
+          local_node_id: this.localNodeId,
+        });
+        return false;
+      }
+
+      return true;
+    }
+
+    const expectedSender = this.targetNodeId;
+    if (expectedSender && expectedSender !== '*' && senderNodeId !== expectedSender) {
+      logger.debug('broadcast_channel_message_rejected', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        reason: 'unexpected_sender',
+        expected_sender_node_id: expectedSender,
+        sender_node_id: senderNodeId,
+        local_node_id: this.localNodeId,
+      });
+      return false;
+    }
+
+    if (
+      targetNodeId &&
+      targetNodeId !== '*' &&
+      targetNodeId !== this.localNodeId
+    ) {
+      logger.debug('broadcast_channel_message_rejected', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        reason: 'unexpected_target',
+        sender_node_id: senderNodeId,
+        target_node_id: targetNodeId,
+        local_node_id: this.localNodeId,
+      });
+      return false;
+    }
+
+    return true;
   }
 
   private _describeInboxItem(item: BroadcastChannelInboxItem): string {
@@ -468,161 +598,6 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     });
   }
 
-  private _shouldSkipDuplicateAck(
-    senderId: unknown,
-    payload: Uint8Array
-  ): boolean {
-    const dedupKey = this._extractAckDedupKey(payload);
-    if (!dedupKey) {
-      return false;
-    }
-
-    const normalizedSenderId =
-      typeof senderId === 'string' && senderId.length > 0
-        ? senderId
-        : undefined;
-
-    if (normalizedSenderId && normalizedSenderId !== this.connectorId) {
-      logger.debug('broadcast_channel_duplicate_ack_bypass_non_self', {
-        channel: this.channelName,
-        connector_id: this.connectorId,
-        sender_id: normalizedSenderId,
-        dedup_key: dedupKey,
-        source: 'listener',
-      });
-      return false;
-    }
-
-    logger.debug('broadcast_channel_duplicate_ack_check', {
-      channel: this.channelName,
-      connector_id: this.connectorId,
-      sender_id: normalizedSenderId ?? null,
-      dedup_key: dedupKey,
-      source: 'listener',
-      cache_entries: this.seenAckKeys.size,
-    });
-
-    return this._checkDuplicateAck(dedupKey, normalizedSenderId);
-  }
-
-  private _shouldSkipDuplicateAckFromInboxItem(
-    item: BroadcastChannelInboxItem
-  ): boolean {
-    if (item instanceof Uint8Array) {
-      return this._shouldSkipDuplicateAck(undefined, item);
-    }
-
-    const envelope = this._extractEnvelopeFromInboxItem(item);
-    if (!envelope) {
-      return false;
-    }
-
-    const frame = envelope.frame as Partial<DeliveryAckFrame> | undefined;
-    if (!frame || frame.type !== 'DeliveryAck') {
-      return false;
-    }
-
-    const refId =
-      typeof frame.refId === 'string' && frame.refId.length > 0
-        ? frame.refId
-        : null;
-    const dedupKey = refId ?? envelope.id ?? null;
-    if (!dedupKey) {
-      return false;
-    }
-
-    const senderId = this._extractSenderIdFromInboxItem(item);
-
-    if (senderId && senderId !== this.connectorId) {
-      logger.debug('broadcast_channel_duplicate_ack_bypass_non_self', {
-        channel: this.channelName,
-        connector_id: this.connectorId,
-        sender_id: senderId,
-        dedup_key: dedupKey,
-        source: 'inbox_item',
-      });
-      return false;
-    }
-
-      logger.debug('broadcast_channel_duplicate_ack_check', {
-        channel: this.channelName,
-        connector_id: this.connectorId,
-        sender_id: senderId ?? null,
-        dedup_key: dedupKey,
-        source: 'inbox_item',
-        cache_entries: this.seenAckKeys.size,
-      });
-
-    return this._checkDuplicateAck(dedupKey, senderId);
-  }
-
-  private _checkDuplicateAck(
-    dedupKey: string,
-    senderId?: string
-  ): boolean {
-    const now = Date.now();
-
-    const lastSeen = this.seenAckKeys.get(dedupKey);
-    if (lastSeen && now - lastSeen < this.ackDedupTtlMs) {
-      logger.debug('broadcast_channel_duplicate_ack_suppressed', {
-        channel: this.channelName,
-        connector_id: this.connectorId,
-        sender_id: senderId ?? null,
-          dedup_key: dedupKey,
-          age_ms: now - lastSeen,
-          ttl_ms: this.ackDedupTtlMs,
-          cache_entries: this.seenAckKeys.size,
-      });
-      return true;
-    }
-
-    this.seenAckKeys.set(dedupKey, now);
-    this.seenAckOrder.push(dedupKey);
-      logger.debug('broadcast_channel_duplicate_ack_recorded', {
-        channel: this.channelName,
-        connector_id: this.connectorId,
-        sender_id: senderId ?? null,
-        dedup_key: dedupKey,
-        cache_entries: this.seenAckKeys.size,
-      });
-    this._trimSeenAcks(now);
-    return false;
-  }
-
-  private _extractEnvelopeFromInboxItem(
-    item: BroadcastChannelInboxItem
-  ): FameEnvelope | null {
-    if (!item || typeof item !== 'object') {
-      return null;
-    }
-
-    if ('envelope' in (item as FameChannelMessage)) {
-      return (item as FameChannelMessage).envelope;
-    }
-
-    if ('frame' in (item as FameEnvelope)) {
-      return item as FameEnvelope;
-    }
-
-    return null;
-  }
-
-  private _extractSenderIdFromInboxItem(
-    item: BroadcastChannelInboxItem
-  ): string | undefined {
-    if (!item || typeof item !== 'object') {
-      return undefined;
-    }
-
-    if ('context' in (item as FameChannelMessage)) {
-      const context = (item as FameChannelMessage).context;
-      if (context && typeof context.fromSystemId === 'string') {
-        return context.fromSystemId;
-      }
-    }
-
-    return undefined;
-  }
 
   /**
    * Override start() to check initial visibility state
@@ -652,56 +627,36 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     }
   }
 
-  private _trimSeenAcks(now: number): void {
-    while (this.seenAckOrder.length > 0) {
-      const candidate = this.seenAckOrder[0];
-      const timestamp = this.seenAckKeys.get(candidate);
-
-      if (timestamp === undefined) {
-        this.seenAckOrder.shift();
-        continue;
-      }
-
-      if (
-        this.seenAckKeys.size > this.ackDedupMaxEntries ||
-        now - timestamp > this.ackDedupTtlMs
-      ) {
-        this.seenAckKeys.delete(candidate);
-        this.seenAckOrder.shift();
-        continue;
-      }
-
-      break;
+  setTargetNodeId(nodeId: string): void {
+    const normalized = BroadcastChannelConnector.normalizeNodeId(nodeId);
+    if (!normalized) {
+      throw new Error('BroadcastChannelConnector target node id must be a non-empty string');
     }
+
+    if (normalized === '*') {
+      this.setWildcardTarget();
+      return;
+    }
+
+    this.targetNodeId = normalized;
+    logger.debug('broadcast_channel_target_updated', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      local_node_id: this.localNodeId,
+      target_node_id: this.targetNodeId,
+      target_mode: 'direct',
+    });
   }
 
-  private _extractAckDedupKey(payload: Uint8Array): string | null {
-    try {
-      const decoded = this.textDecoder.decode(payload);
-      const parsed = JSON.parse(decoded) as {
-        id?: unknown;
-        frame?: Partial<DeliveryAckFrame> & { type?: unknown };
-      };
-      const envelopeId = typeof parsed?.id === 'string' ? parsed.id : null;
-
-      const frameType = parsed?.frame?.type;
-      if (typeof frameType !== 'string' || frameType !== 'DeliveryAck') {
-        return null;
-      }
-
-      const refId = parsed.frame?.refId;
-      if (typeof refId === 'string' && refId.length > 0) {
-        return refId;
-      }
-
-      return envelopeId;
-    } catch (error) {
-      logger.debug('broadcast_channel_ack_dedup_parse_failed', {
-        channel: this.channelName,
-        connector_id: this.connectorId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return null;
-    }
+  setWildcardTarget(): void {
+    this.targetNodeId = '*';
+    logger.debug('broadcast_channel_target_updated', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      local_node_id: this.localNodeId,
+      target_node_id: this.targetNodeId,
+      target_mode: 'wildcard',
+    });
   }
+
 }

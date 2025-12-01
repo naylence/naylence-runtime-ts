@@ -2,17 +2,11 @@ import {
   BaseAsyncConnector,
   type BaseAsyncConnectorConfig,
 } from './base-async-connector.js';
-import type { ConnectorConfig } from './connector-config.js';
 import type { FameEnvelope, FameChannelMessage } from '@naylence/core';
+import type { BroadcastChannelConnectorConfig } from './broadcast-channel-connector.browser.js';
 
 export const BROADCAST_CHANNEL_CONNECTOR_TYPE =
   'broadcast-channel-connector' as const;
-
-export interface BroadcastChannelConnectorConfig extends ConnectorConfig {
-  type: typeof BROADCAST_CHANNEL_CONNECTOR_TYPE;
-  channelName?: string;
-  inboxCapacity?: number;
-}
 
 const ERROR_MESSAGE =
   'BroadcastChannelConnector is browser-only and requires BroadcastChannel support';

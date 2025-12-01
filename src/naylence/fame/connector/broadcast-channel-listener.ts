@@ -29,6 +29,7 @@ import { QueueFullError } from '../util/bounded-async-queue.js';
 import {
   BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE,
   broadcastChannelGrantToConnectorConfig,
+  type BroadcastChannelConnectorConfigLike,
   type BroadcastChannelConnectionGrantLike,
 } from '../grants/broadcast-channel-connection-grant.js';
 
@@ -457,7 +458,7 @@ export class BroadcastChannelListener extends TransportListener {
     const { frame, originType } = params;
     const systemId = frame.systemId;
 
-    let connectorConfig: ConnectorConfig | null = null;
+    let connectorConfig: BroadcastChannelConnectorConfig | null = null;
 
     try {
       const selectionContext = new GrantSelectionContext({
@@ -469,7 +470,7 @@ export class BroadcastChannelListener extends TransportListener {
 
       const selection =
         defaultGrantSelectionPolicy.selectCallbackGrant(selectionContext);
-      connectorConfig = this._grantToConnectorConfig(selection.grant);
+      connectorConfig = this._grantToConnectorConfig(selection.grant, systemId);
     } catch (error) {
       logger.debug('broadcast_channel_listener_grant_selection_failed', {
         sender_id: params.senderId,
@@ -478,13 +479,21 @@ export class BroadcastChannelListener extends TransportListener {
       });
 
       connectorConfig =
-        this._extractBroadcastConnectorConfig(frame) ??
-        ({
+        this._extractBroadcastConnectorConfig(frame, systemId) ??
+        this._buildConnectorConfigForSystem(systemId, {
           type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
           channelName: this._channelName,
           inboxCapacity: this._inboxCapacity,
           passive: true,
-        } satisfies BroadcastChannelConnectorConfig);
+        });
+    }
+
+    if (!connectorConfig) {
+      logger.error('broadcast_channel_listener_missing_connector_config', {
+        sender_id: params.senderId,
+        system_id: systemId,
+      });
+      return null;
     }
 
     try {
@@ -515,8 +524,9 @@ export class BroadcastChannelListener extends TransportListener {
   }
 
   private _extractBroadcastConnectorConfig(
-    frame: NodeAttachFrame
-  ): ConnectorConfig | null {
+    frame: NodeAttachFrame,
+    systemId: string
+  ): BroadcastChannelConnectorConfig | null {
     const rawGrants = frame.callbackGrants as
       | Array<Record<string, unknown>>
       | undefined;
@@ -532,7 +542,19 @@ export class BroadcastChannelListener extends TransportListener {
           grant.type === BROADCAST_CHANNEL_CONNECTOR_TYPE)
       ) {
         try {
-          return this._grantToConnectorConfig(grant as ConnectionGrant);
+          if (grant.type === BROADCAST_CHANNEL_CONNECTOR_TYPE) {
+            return this._buildConnectorConfigForSystem(
+              systemId,
+              grant as BroadcastChannelConnectorConfigLike
+            );
+          }
+
+          return this._buildConnectorConfigForSystem(
+            systemId,
+            broadcastChannelGrantToConnectorConfig(
+              grant as BroadcastChannelConnectionGrantLike
+            )
+          );
         } catch (error) {
           logger.debug('broadcast_channel_listener_grant_normalization_failed', {
             error: error instanceof Error ? error.message : String(error),
@@ -544,43 +566,135 @@ export class BroadcastChannelListener extends TransportListener {
     return null;
   }
 
-  private _grantToConnectorConfig(grant: ConnectionGrant): ConnectorConfig {
-    if (grant.type !== BROADCAST_CHANNEL_CONNECTOR_TYPE) {
-      if (grant.type === BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE) {
-        return broadcastChannelGrantToConnectorConfig(
+  private _grantToConnectorConfig(
+    grant: ConnectionGrant,
+    systemId: string
+  ): BroadcastChannelConnectorConfig {
+    if (grant.type === BROADCAST_CHANNEL_CONNECTOR_TYPE) {
+      return this._buildConnectorConfigForSystem(
+        systemId,
+        grant as BroadcastChannelConnectorConfigLike
+      );
+    }
+
+    if (grant.type === BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE) {
+      return this._buildConnectorConfigForSystem(
+        systemId,
+        broadcastChannelGrantToConnectorConfig(
           grant as BroadcastChannelConnectionGrantLike
+        )
+      );
+    }
+
+    if (
+      'toConnectorConfig' in grant &&
+      typeof (grant as { toConnectorConfig?: unknown }).toConnectorConfig ===
+        'function'
+    ) {
+      const normalized = (grant as { toConnectorConfig: () => ConnectorConfig }).toConnectorConfig();
+      if (normalized.type !== BROADCAST_CHANNEL_CONNECTOR_TYPE) {
+        throw new Error(
+          `Unsupported grant connector type: ${normalized.type}`
         );
       }
 
-      throw new Error(`Unsupported grant type: ${grant.type}`);
+      return this._buildConnectorConfigForSystem(
+        systemId,
+        normalized as BroadcastChannelConnectorConfigLike
+      );
     }
 
-    const candidate = grant as
-      | BroadcastChannelConnectorConfig
-      | (ConnectionGrant & Record<string, unknown>);
+    throw new Error(`Unsupported grant type: ${grant.type}`);
+  }
 
-    const config: BroadcastChannelConnectorConfig = {
-      type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
-      channelName: this._channelName,
-      inboxCapacity: this._inboxCapacity,
-      passive: true,
-    };
-
-    const channelCandidate = candidate.channelName ?? candidate['channel_name'];
-    if (typeof channelCandidate === 'string' && channelCandidate.trim().length > 0) {
-      config.channelName = channelCandidate.trim();
+  private _buildConnectorConfigForSystem(
+    systemId: string,
+    baseConfig?: BroadcastChannelConnectorConfigLike | ConnectorConfig | null
+  ): BroadcastChannelConnectorConfig {
+    const localNodeId = this._requireLocalNodeId();
+    const targetSystemId = this._normalizeNodeId(systemId);
+    if (!targetSystemId) {
+      throw new Error('BroadcastChannelListener requires a valid system id');
     }
 
-    const inboxCandidate = candidate.inboxCapacity ?? candidate['inbox_capacity'];
-    if (
+    const candidate = baseConfig ?? null;
+    const channelCandidate =
+      candidate && 'channelName' in candidate
+        ? (candidate as { channelName?: unknown }).channelName
+        : undefined;
+    const inboxCandidate =
+      candidate && 'inboxCapacity' in candidate
+        ? (candidate as { inboxCapacity?: unknown }).inboxCapacity
+        : undefined;
+    const initialWindowCandidate =
+      candidate && 'initialWindow' in candidate
+        ? (candidate as { initialWindow?: unknown }).initialWindow
+        : undefined;
+    const passiveCandidate =
+      candidate && 'passive' in candidate
+        ? (candidate as { passive?: unknown }).passive
+        : undefined;
+    const targetCandidate =
+      candidate && 'initialTargetNodeId' in candidate
+        ? (candidate as { initialTargetNodeId?: unknown }).initialTargetNodeId
+        : undefined;
+
+    const channelName =
+      typeof channelCandidate === 'string' && channelCandidate.trim().length > 0
+        ? channelCandidate.trim()
+        : this._channelName;
+
+    const inboxCapacity =
       typeof inboxCandidate === 'number' &&
       Number.isFinite(inboxCandidate) &&
       inboxCandidate > 0
-    ) {
-      config.inboxCapacity = Math.floor(inboxCandidate);
+        ? Math.floor(inboxCandidate)
+        : this._inboxCapacity;
+
+    const initialWindow =
+      typeof initialWindowCandidate === 'number' &&
+      Number.isFinite(initialWindowCandidate) &&
+      initialWindowCandidate > 0
+        ? Math.floor(initialWindowCandidate)
+        : undefined;
+
+    const initialTargetNodeId =
+      this._normalizeNodeId(targetCandidate) ?? targetSystemId;
+
+    return {
+      type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
+      channelName,
+      inboxCapacity,
+      passive: typeof passiveCandidate === 'boolean' ? passiveCandidate : true,
+      initialWindow,
+      localNodeId,
+      initialTargetNodeId,
+    } satisfies BroadcastChannelConnectorConfig;
+  }
+
+  private _requireLocalNodeId(): string {
+    if (!this._routingNode) {
+      throw new Error('BroadcastChannelListener requires routing node context');
     }
 
-    return config;
+    const normalized = this._normalizeNodeId(this._routingNode.id);
+
+    if (!normalized) {
+      throw new Error(
+        'BroadcastChannelListener requires routing node with a stable identifier'
+      );
+    }
+
+    return normalized;
+  }
+
+  private _normalizeNodeId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
   }
 
   private _monitorConnectorLifecycle(

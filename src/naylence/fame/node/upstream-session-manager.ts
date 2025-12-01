@@ -487,6 +487,27 @@ export class UpstreamSessionManager
     return signal ? event.wait({ signal }) : event.wait();
   }
 
+  private _getLocalNodeId(): string {
+    const normalized = this._normalizeNodeId(this.node.id);
+
+    if (!normalized) {
+      throw new Error(
+        'UpstreamSessionManager requires node with a stable identifier'
+      );
+    }
+
+    return normalized;
+  }
+
+  private _normalizeNodeId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
   private async connectCycle(): Promise<void> {
     if (!this.admissionClient) {
       throw new FameConnectError(
@@ -528,6 +549,8 @@ export class UpstreamSessionManager
 
     const connector = await ConnectorFactory.createConnector(grant, {
       systemId: welcome.frame.systemId,
+      localNodeId: this._getLocalNodeId(),
+      initialTargetNodeId: '*',
     });
 
     await connector.start(this.wrappedHandler);
@@ -567,6 +590,22 @@ export class UpstreamSessionManager
     );
 
     this.targetSystemId = attachInfo.targetSystemId ?? null;
+
+    if (this.targetSystemId) {
+      const targetAware = connector as {
+        setTargetNodeId?: (nodeId: string) => void;
+      };
+      if (typeof targetAware.setTargetNodeId === 'function') {
+        try {
+          targetAware.setTargetNodeId(this.targetSystemId);
+        } catch (error) {
+          logger.warning('broadcast_channel_target_apply_failed', {
+            error: error instanceof Error ? error.message : String(error),
+            target_node_id: this.targetSystemId,
+          });
+        }
+      }
+    }
 
     await this.onAttach(attachInfo, connector);
 

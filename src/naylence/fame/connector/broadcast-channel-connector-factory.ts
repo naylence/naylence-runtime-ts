@@ -31,10 +31,14 @@ export interface BroadcastChannelConnectorFactoryConfig
   type: typeof BROADCAST_CHANNEL_CONNECTOR_TYPE;
   channelName?: string;
   inboxCapacity?: number;
+  localNodeId?: string;
+  initialTargetNodeId?: string | '*';
 }
 
 export interface CreateBroadcastChannelConnectorOptions {
   authorization?: AuthorizationContext;
+  localNodeId?: string;
+  initialTargetNodeId?: string | '*';
 }
 
 class BroadcastChannelConnectionGrantImpl
@@ -133,9 +137,26 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
 
     const normalized = this._normalizeConfig(config);
     const options = (factoryArgs[0] ?? {}) as CreateBroadcastChannelConnectorOptions;
+    const normalizedLocalNodeFromConfig = this._normalizeNodeId(
+      normalized.localNodeId
+    );
+    const localNodeId =
+      this._normalizeNodeId(options.localNodeId) ?? normalizedLocalNodeFromConfig;
+    if (!localNodeId) {
+      throw new Error(
+        'BroadcastChannelConnectorFactory requires a localNodeId from config or create() options'
+      );
+    }
 
     const channelName = normalized.channelName ?? DEFAULT_CHANNEL;
     const inboxCapacity = normalized.inboxCapacity ?? DEFAULT_INBOX_CAPACITY;
+    const targetFromOptions = this._normalizeTargetNodeId(
+      options.initialTargetNodeId
+    );
+    const targetFromConfig = this._normalizeTargetNodeId(
+      normalized.initialTargetNodeId
+    );
+    const resolvedTarget = targetFromOptions ?? targetFromConfig ?? '*';
 
     const baseConfig: BaseAsyncConnectorConfig = {
       drainTimeout: normalized.drainTimeout,
@@ -152,6 +173,8 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
       type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
       channelName,
       inboxCapacity,
+      localNodeId,
+      initialTargetNodeId: resolvedTarget,
     };
 
     const connector = new BroadcastChannelConnector(connectorConfig, baseConfig);
@@ -189,12 +212,24 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
     }
 
     const capacity = candidate.inboxCapacity ?? candidate['inbox_capacity'];
+    const initialTargetNodeId =
+      candidate.initialTargetNodeId ?? candidate['initial_target_node_id'];
+    const normalizedTarget = this._normalizeTargetNodeId(initialTargetNodeId);
+    if (normalizedTarget) {
+      normalized.initialTargetNodeId = normalizedTarget;
+    }
     if (
       typeof capacity === 'number' &&
       Number.isFinite(capacity) &&
       capacity > 0
     ) {
       normalized.inboxCapacity = Math.floor(capacity);
+    }
+
+    const localNodeId = candidate.localNodeId ?? candidate['local_node_id'];
+    const normalizedLocalNodeId = this._normalizeNodeId(localNodeId);
+    if (normalizedLocalNodeId) {
+      normalized.localNodeId = normalizedLocalNodeId;
     }
 
     if (typeof candidate.flowControl === 'boolean') {
@@ -257,6 +292,27 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
       normalized.inboxCapacity ?? DEFAULT_INBOX_CAPACITY;
 
     return normalized as NormalizedConfig;
+  }
+
+  private _normalizeNodeId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private _normalizeTargetNodeId(value: unknown): string | '*' | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    if (value === '*') {
+      return '*';
+    }
+
+    return this._normalizeNodeId(value) ?? undefined;
   }
 }
 

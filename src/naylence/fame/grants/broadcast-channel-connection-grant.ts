@@ -32,7 +32,7 @@ export type BroadcastChannelConnectionGrantLike = ConnectionGrantLike & {
 };
 
 export type BroadcastChannelConnectorConfigLike = ConnectorConfig &
-  BroadcastChannelConnectorConfig;
+  Partial<BroadcastChannelConnectorConfig>;
 
 export function isBroadcastChannelConnectionGrant(
   candidate: unknown

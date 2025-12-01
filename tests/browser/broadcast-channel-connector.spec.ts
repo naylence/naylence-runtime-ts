@@ -93,6 +93,8 @@ describe('BroadcastChannelConnector', () => {
     const connector = new BroadcastChannelConnector({
       type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
       channelName: 'dup-test',
+      localNodeId: 'test-node',
+      initialTargetNodeId: '*',
     });
 
     const received: FameEnvelope[] = [];
@@ -114,10 +116,20 @@ describe('BroadcastChannelConnector', () => {
 
     const payload = new TextEncoder().encode(JSON.stringify(ackEnvelope));
 
-    remote.postMessage({ senderId: 'remote-sender', payload });
+    remote.postMessage({
+      senderId: 'remote-sender',
+      senderNodeId: 'remote-node',
+      targetNodeId: '*',
+      payload,
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    remote.postMessage({ senderId: 'remote-sender', payload });
+    remote.postMessage({
+      senderId: 'remote-sender',
+      senderNodeId: 'remote-node',
+      targetNodeId: '*',
+      payload,
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(received).toHaveLength(1);
