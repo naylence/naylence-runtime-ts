@@ -48,4 +48,12 @@ describe('InPageConnectorFactory', () => {
       inboxCapacity: 256,
     });
   });
+
+  it('requires a local node id when creating connectors', async () => {
+    await expect(
+      factory.create({
+        type: 'inpage-connector',
+      })
+    ).rejects.toThrow(/localNodeId/);
+  });
 });

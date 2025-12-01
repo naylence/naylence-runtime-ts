@@ -134,6 +134,7 @@ describe('InPageListener', () => {
     };
 
     const routingNode = {
+      id: 'sentinel-node',
       createOriginConnector: jest
         .fn()
         .mockImplementation(async (options: Record<string, unknown>) => {
@@ -193,6 +194,8 @@ describe('InPageListener', () => {
         type: 'inpage-connector',
         channelName: 'child-channel',
         inboxCapacity: 256,
+        localNodeId: 'sentinel-node',
+        initialTargetNodeId: 'child-1',
       },
     });
 
@@ -216,6 +219,7 @@ describe('InPageListener', () => {
     };
 
     const routingNode = {
+      id: 'sentinel-node',
       createOriginConnector: jest.fn().mockResolvedValue(connector),
       routeManager: {
         downstreamRoutes: new Map(),
@@ -289,6 +293,7 @@ describe('InPageListener', () => {
     };
 
     const routingNode = {
+      id: 'sentinel-node',
       createOriginConnector: jest.fn().mockResolvedValue(connector),
       routeManager: {
         downstreamRoutes: new Map(),

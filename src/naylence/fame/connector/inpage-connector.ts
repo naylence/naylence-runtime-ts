@@ -24,6 +24,8 @@ export interface InPageConnectorConfig extends ConnectorConfig {
   type: typeof INPAGE_CONNECTOR_TYPE;
   channelName?: string;
   inboxCapacity?: number;
+  localNodeId: string;
+  initialTargetNodeId?: string | '*';
 }
 
 type QueueLike<T> = BoundedAsyncQueue<T> & {
@@ -62,11 +64,21 @@ const getSharedBus = (): EventTarget => {
 
 type InPageInboxItem = Uint8Array | FameEnvelope | FameChannelMessage;
 
+type InPageBusMessage = {
+  senderId?: unknown;
+  senderNodeId?: unknown;
+  targetNodeId?: unknown;
+  payload?: unknown;
+};
+
 export class InPageConnector extends BaseAsyncConnector {
   private readonly channelName: string;
   private readonly inbox: QueueLike<InPageInboxItem>;
+  private readonly inboxCapacity: number;
   private listenerRegistered = false;
   private readonly connectorId: string;
+  private readonly localNodeId: string;
+  private targetNodeId?: string | '*';
   private readonly onMsg: (event: Event) => void;
   private visibilityChangeListenerRegistered = false;
   private visibilityChangeHandler?: () => void;
@@ -113,6 +125,34 @@ export class InPageConnector extends BaseAsyncConnector {
     return null;
   }
 
+  private static normalizeNodeId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private static normalizeTargetNodeId(
+    value: unknown
+  ): string | '*' | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return undefined;
+    }
+
+    if (trimmed === '*') {
+      return '*';
+    }
+
+    return trimmed;
+  }
+
   constructor(
     config: InPageConnectorConfig,
     baseConfig: BaseAsyncConnectorConfig = {}
@@ -132,52 +172,93 @@ export class InPageConnector extends BaseAsyncConnector {
         ? Math.floor(config.inboxCapacity)
         : DEFAULT_INBOX_CAPACITY;
 
-  this.inbox = new BoundedAsyncQueue<InPageInboxItem>(preferredCapacity) as QueueLike<InPageInboxItem>;
+    this.inbox = new BoundedAsyncQueue<InPageInboxItem>(preferredCapacity) as QueueLike<InPageInboxItem>;
+    this.inboxCapacity = preferredCapacity;
     this.connectorId = InPageConnector.generateConnectorId();
+    const normalizedLocalNodeId =
+      InPageConnector.normalizeNodeId(config.localNodeId);
+
+    if (!normalizedLocalNodeId) {
+      throw new Error('InPageConnector requires a non-empty localNodeId');
+    }
+
+    this.localNodeId = normalizedLocalNodeId;
+    this.targetNodeId = InPageConnector.normalizeTargetNodeId(
+      config.initialTargetNodeId
+    );
 
     logger.debug('inpage_connector_initialized', {
       channel: this.channelName,
       connector_id: this.connectorId,
+      local_node_id: this.localNodeId,
+      target_node_id: this.targetNodeId ?? null,
+      inbox_capacity: preferredCapacity,
     });
 
     this.onMsg = (event: Event): void => {
+      if (!this.listenerRegistered) {
+        logger.warning('inpage_message_after_unregister', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
       const messageEvent = event as MessageEvent<unknown>;
       const message = messageEvent.data;
 
       logger.debug('inpage_raw_event', {
         channel: this.channelName,
         connector_id: this.connectorId,
-        message_type: message && typeof message === 'object' ? (message as { constructor?: { name?: string } }).constructor?.name ?? typeof message : typeof message,
-        has_sender_id: Boolean((message as { senderId?: unknown })?.senderId),
-        payload_type:
+        message_type:
           message && typeof message === 'object'
-            ? (message as { payload?: unknown })?.payload instanceof Uint8Array
-              ? 'Uint8Array'
-              : (message as { payload?: unknown })?.payload instanceof ArrayBuffer
-                ? 'ArrayBuffer'
-                : typeof (message as { payload?: unknown })?.payload
+            ? (message as { constructor?: { name?: string } }).constructor?.name ?? typeof message
             : typeof message,
-        payload_constructor:
-          message && typeof message === 'object'
-            ? (message as { payload?: { constructor?: { name?: string } } })?.payload?.constructor?.name
-            : undefined,
-        payload_keys:
-          message && typeof message === 'object' && (message as { payload?: unknown })?.payload && typeof (message as { payload?: unknown })?.payload === 'object'
-            ? Object.keys((message as { payload?: Record<string, unknown> }).payload as Record<string, unknown>).slice(0, 5)
-            : undefined,
+        has_sender_id: Boolean((message as { senderId?: unknown })?.senderId),
+        has_sender_node_id: Boolean(
+          (message as { senderNodeId?: unknown })?.senderNodeId
+        ),
       });
 
       if (!message || typeof message !== 'object') {
         return;
       }
 
-      const busMessage = message as { senderId?: unknown; payload?: unknown };
+      const busMessage = message as InPageBusMessage;
 
-      if (typeof busMessage.senderId !== 'string' || busMessage.senderId.length === 0) {
+      const senderId =
+        typeof busMessage.senderId === 'string' && busMessage.senderId.length > 0
+          ? busMessage.senderId
+          : null;
+      const senderNodeId = InPageConnector.normalizeNodeId(
+        busMessage.senderNodeId
+      );
+
+      if (!senderId || !senderNodeId) {
+        logger.debug('inpage_message_rejected', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          reason: 'missing_sender_metadata',
+        });
         return;
       }
 
-      if (busMessage.senderId === this.connectorId) {
+      if (senderId === this.connectorId || senderNodeId === this.localNodeId) {
+        logger.debug('inpage_message_rejected', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          reason: 'self_echo',
+          sender_node_id: senderNodeId,
+        });
+        return;
+      }
+
+      const incomingTargetNodeId = InPageConnector.normalizeTargetNodeId(
+        busMessage.targetNodeId
+      );
+
+      if (!this._shouldAcceptMessageFromBus(senderNodeId, incomingTargetNodeId)) {
         return;
       }
 
@@ -193,7 +274,9 @@ export class InPageConnector extends BaseAsyncConnector {
 
       logger.debug('inpage_message_received', {
         channel: this.channelName,
-        sender_id: busMessage.senderId,
+        sender_id: senderId,
+        sender_node_id: senderNodeId,
+        target_node_id: incomingTargetNodeId ?? null,
         connector_id: this.connectorId,
         payload_length: payload.byteLength,
       });
@@ -202,15 +285,27 @@ export class InPageConnector extends BaseAsyncConnector {
         if (typeof this.inbox.tryEnqueue === 'function') {
           const accepted = this.inbox.tryEnqueue(payload);
           if (accepted) {
+            this.logInboxSnapshot('inpage_inbox_enqueued', {
+              source: 'listener',
+              enqueue_strategy: 'try',
+              payload_length: payload.byteLength,
+            });
             return;
           }
         }
 
         this.inbox.enqueue(payload);
+        this.logInboxSnapshot('inpage_inbox_enqueued', {
+          source: 'listener',
+          enqueue_strategy: 'enqueue',
+          payload_length: payload.byteLength,
+        });
       } catch (error) {
         if (error instanceof QueueFullError) {
           logger.warning('inpage_receive_queue_full', {
             channel: this.channelName,
+            inbox_capacity: this.inboxCapacity,
+            inbox_remaining_capacity: this.inbox.remainingCapacity,
           });
         } else {
           logger.error('inpage_receive_error', {
@@ -329,15 +424,25 @@ export class InPageConnector extends BaseAsyncConnector {
       if (typeof this.inbox.tryEnqueue === 'function') {
         const accepted = this.inbox.tryEnqueue(item);
         if (accepted) {
+          this.logInboxSnapshot('inpage_push_enqueued', {
+            enqueue_strategy: 'try',
+            item_type: this._describeInboxItem(item),
+          });
           return;
         }
       }
 
       this.inbox.enqueue(item);
+      this.logInboxSnapshot('inpage_push_enqueued', {
+        enqueue_strategy: 'enqueue',
+        item_type: this._describeInboxItem(item),
+      });
     } catch (error) {
       if (error instanceof QueueFullError) {
         logger.warning('inpage_push_queue_full', {
           channel: this.channelName,
+          inbox_capacity: this.inboxCapacity,
+          inbox_remaining_capacity: this.inbox.remainingCapacity,
         });
         throw error;
       }
@@ -352,13 +457,18 @@ export class InPageConnector extends BaseAsyncConnector {
 
   protected async _transportSendBytes(data: Uint8Array): Promise<void> {
     ensureBrowserEnvironment();
+    const targetNodeId = this.targetNodeId ?? '*';
     logger.debug('inpage_message_sending', {
       channel: this.channelName,
       sender_id: this.connectorId,
+      sender_node_id: this.localNodeId,
+      target_node_id: targetNodeId,
     });
     const event = new MessageEvent(this.channelName, {
       data: {
         senderId: this.connectorId,
+        senderNodeId: this.localNodeId,
+        targetNodeId,
         payload: data,
       },
     });
@@ -366,16 +476,39 @@ export class InPageConnector extends BaseAsyncConnector {
   }
 
   protected async _transportReceive(): Promise<InPageInboxItem> {
-    return await this.inbox.dequeue();
+    const item = await this.inbox.dequeue();
+    this.logInboxSnapshot('inpage_inbox_dequeued', {
+      item_type: this._describeInboxItem(item),
+    });
+    return item;
   }
 
   protected async _transportClose(code: number, reason: string): Promise<void> {
+    logger.debug('inpage_transport_closing', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      code,
+      reason,
+      listener_registered: this.listenerRegistered,
+      timestamp: new Date().toISOString(),
+    });
+
     if (this.listenerRegistered) {
+      logger.debug('inpage_removing_listener', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        timestamp: new Date().toISOString(),
+      });
       getSharedBus().removeEventListener(
         this.channelName,
         this.onMsg as EventListener
       );
       this.listenerRegistered = false;
+      logger.debug('inpage_listener_removed', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     if (this.visibilityChangeListenerRegistered && this.visibilityChangeHandler && typeof document !== 'undefined') {
@@ -398,5 +531,127 @@ export class InPageConnector extends BaseAsyncConnector {
     }
 
     return rawOrEnvelope;
+  }
+
+  private _isWildcardTarget(): boolean {
+    return this.targetNodeId === '*' || typeof this.targetNodeId === 'undefined';
+  }
+
+  private _shouldAcceptMessageFromBus(
+    senderNodeId: string,
+    targetNodeId: string | '*' | undefined
+  ): boolean {
+    if (this._isWildcardTarget()) {
+      if (
+        targetNodeId &&
+        targetNodeId !== '*' &&
+        targetNodeId !== this.localNodeId
+      ) {
+        logger.debug('inpage_message_rejected', {
+          channel: this.channelName,
+          connector_id: this.connectorId,
+          reason: 'wildcard_target_mismatch',
+          sender_node_id: senderNodeId,
+          target_node_id: targetNodeId,
+          local_node_id: this.localNodeId,
+        });
+        return false;
+      }
+
+      return true;
+    }
+
+    const expectedSender = this.targetNodeId;
+    if (expectedSender && expectedSender !== '*' && senderNodeId !== expectedSender) {
+      logger.debug('inpage_message_rejected', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        reason: 'unexpected_sender',
+        expected_sender_node_id: expectedSender,
+        sender_node_id: senderNodeId,
+        local_node_id: this.localNodeId,
+      });
+      return false;
+    }
+
+    if (
+      targetNodeId &&
+      targetNodeId !== '*' &&
+      targetNodeId !== this.localNodeId
+    ) {
+      logger.debug('inpage_message_rejected', {
+        channel: this.channelName,
+        connector_id: this.connectorId,
+        reason: 'unexpected_target',
+        sender_node_id: senderNodeId,
+        target_node_id: targetNodeId,
+        local_node_id: this.localNodeId,
+      });
+      return false;
+    }
+
+    return true;
+  }
+
+  private _describeInboxItem(item: InPageInboxItem): string {
+    if (item instanceof Uint8Array) {
+      return 'bytes';
+    }
+
+    if ((item as FameChannelMessage).envelope) {
+      return 'channel_message';
+    }
+
+    if ((item as FameEnvelope).frame) {
+      return 'envelope';
+    }
+
+    return 'unknown';
+  }
+
+  private logInboxSnapshot(
+    event: string,
+    extra: Record<string, unknown> = {}
+  ): void {
+    logger.debug(event, {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      connector_state: this.state,
+      inbox_capacity: this.inboxCapacity,
+      inbox_remaining_capacity: this.inbox.remainingCapacity,
+      ...extra,
+    });
+  }
+
+  setTargetNodeId(nodeId: string): void {
+    const normalized = InPageConnector.normalizeNodeId(nodeId);
+    if (!normalized) {
+      throw new Error('InPageConnector target node id must be a non-empty string');
+    }
+
+    if (normalized === '*') {
+      this.setWildcardTarget();
+      return;
+    }
+
+    this.targetNodeId = normalized;
+    logger.debug('inpage_target_updated', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      local_node_id: this.localNodeId,
+      target_node_id: this.targetNodeId,
+      target_mode: 'direct',
+    });
+  }
+
+  setWildcardTarget(): void {
+    this.targetNodeId = '*';
+    logger.debug('inpage_target_updated', {
+      channel: this.channelName,
+      connector_id: this.connectorId,
+      local_node_id: this.localNodeId,
+      target_node_id: this.targetNodeId,
+      target_mode: 'wildcard',
+    });
   }
 }

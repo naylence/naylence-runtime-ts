@@ -28,6 +28,8 @@ export type InPageConnectorConfigLike = ConnectorConfig & {
   type: typeof INPAGE_CONNECTOR_TYPE;
   channelName?: string;
   inboxCapacity?: number;
+  initialTargetNodeId?: string | '*';
+  localNodeId?: string;
 };
 
 export function isInPageConnectionGrant(

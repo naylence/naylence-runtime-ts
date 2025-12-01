@@ -406,7 +406,10 @@ export class InPageListener extends TransportListener {
 
       const selection =
         defaultGrantSelectionPolicy.selectCallbackGrant(selectionContext);
-      connectorConfig = this._grantToConnectorConfig(selection.grant);
+      connectorConfig = this._buildConnectorConfigForSystem(
+        systemId,
+        this._grantToConnectorConfig(selection.grant)
+      );
     } catch (error) {
       logger.debug('inpage_listener_grant_selection_failed', {
         sender_id: params.senderId,
@@ -414,13 +417,17 @@ export class InPageListener extends TransportListener {
         error: error instanceof Error ? error.message : String(error),
       });
 
-      connectorConfig =
+      const fallbackConfig =
         this._extractInPageConnectorConfig(frame) ??
         ({
           type: INPAGE_CONNECTOR_TYPE,
           channelName: this._channelName,
           inboxCapacity: this._inboxCapacity,
         } satisfies ConnectorConfig);
+      connectorConfig = this._buildConnectorConfigForSystem(
+        systemId,
+        fallbackConfig
+      );
     }
 
     try {
@@ -578,6 +585,91 @@ export class InPageListener extends TransportListener {
         typeof frame === 'object' &&
         (frame as { type?: string }).type === 'NodeAttach'
     );
+  }
+
+  private _buildConnectorConfigForSystem(
+    systemId: string,
+    baseConfig?: ConnectorConfig | null
+  ): ConnectorConfig {
+    const localNodeId = this._requireLocalNodeId();
+    const targetSystemId = this._normalizeNodeId(systemId);
+    if (!targetSystemId) {
+      throw new Error('InPageListener requires a valid system id for connector creation');
+    }
+
+    const candidate = baseConfig ?? null;
+    const channelCandidate =
+      candidate && 'channelName' in candidate
+        ? (candidate as { channelName?: unknown }).channelName
+        : undefined;
+    const inboxCandidate =
+      candidate && 'inboxCapacity' in candidate
+        ? (candidate as { inboxCapacity?: unknown }).inboxCapacity
+        : undefined;
+    const targetCandidate =
+      candidate && 'initialTargetNodeId' in candidate
+        ? (candidate as { initialTargetNodeId?: unknown }).initialTargetNodeId
+        : undefined;
+
+    const channelName =
+      typeof channelCandidate === 'string' && channelCandidate.trim().length > 0
+        ? channelCandidate.trim()
+        : this._channelName;
+
+    const inboxCapacity =
+      typeof inboxCandidate === 'number' &&
+      Number.isFinite(inboxCandidate) &&
+      inboxCandidate > 0
+        ? Math.floor(inboxCandidate)
+        : this._inboxCapacity;
+
+    const normalizedTarget = this._normalizeTargetNodeId(targetCandidate);
+
+    return {
+      type: INPAGE_CONNECTOR_TYPE,
+      channelName,
+      inboxCapacity,
+      localNodeId,
+      initialTargetNodeId: normalizedTarget ?? targetSystemId,
+    } satisfies ConnectorConfig;
+  }
+
+  private _requireLocalNodeId(): string {
+    if (!this._routingNode) {
+      throw new Error('InPageListener requires routing node context');
+    }
+
+    const normalized = this._normalizeNodeId(this._routingNode.id);
+    if (!normalized) {
+      throw new Error(
+        'InPageListener requires routing node with a stable identifier'
+      );
+    }
+
+    return normalized;
+  }
+
+  private _normalizeNodeId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private _normalizeTargetNodeId(
+    value: unknown
+  ): string | '*' | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    if (value === '*') {
+      return '*';
+    }
+
+    return this._normalizeNodeId(value) ?? undefined;
   }
 }
 
