@@ -1,21 +1,13 @@
-import {
-  basicConfig,
-  LogLevel,
-  RpcProxy,
-  withFabric
-} from "@naylence/runtime";
+import { basicConfig, LogLevel, RpcProxy, withFabric } from '@naylence/runtime';
 
-
-const sentinelAddress = process.env.RPC_TARGET_ADDRESS || "calculator@/test-sentinel";
+const sentinelAddress =
+  process.env.RPC_TARGET_ADDRESS || 'calculator@/test-sentinel';
 
 basicConfig({ level: LogLevel.INFO });
 
-
 async function main() {
-
   await withFabric(async (fabric) => {
-
-    await fabric.sendMessage("__sys__@/test-sentinel", "ping");
+    await fabric.sendMessage('__sys__@/test-sentinel', 'ping');
 
     const calculator = RpcProxy.remoteByAddress(sentinelAddress);
 
@@ -27,9 +19,13 @@ async function main() {
     for await (const value of stream) {
       fibNumbers.push(value);
     }
-    console.log(fibNumbers.join(", "));
+    console.log(fibNumbers.join(', '));
   });
 }
 
-try { await main(); }
-catch (e) { console.error("RPC failed:", e); process.exitCode = 1; }
+try {
+  await main();
+} catch (e) {
+  console.error('RPC failed:', e);
+  process.exitCode = 1;
+}

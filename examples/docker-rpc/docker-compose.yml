@@ -4,7 +4,7 @@ services:
       context: ../../..
       dockerfile: naylence-runtime-ts/examples/docker-rpc/Dockerfile
     ports:
-      - "28000:8000"
+      - '28000:8000'
     env_file:
       - ./config/.env
     environment:
@@ -18,7 +18,13 @@ services:
       - --enable-source-maps
       - local-sentinel/sentinel-calculator.mjs
     healthcheck:
-      test: ["CMD", "node", "-e", "const http=require('http');const req=http.request({host:'127.0.0.1',port:8000,path:'/'},res=>res.resume());req.on('error',()=>process.exit(1));req.end();"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('http');const req=http.request({host:'127.0.0.1',port:8000,path:'/'},res=>res.resume());req.on('error',()=>process.exit(1));req.end();",
+        ]
       interval: 5s
       timeout: 3s
       retries: 6

@@ -50,14 +50,14 @@ support extension-less imports emitted by the TypeScript build.
 
 The included `Makefile` streamlines common workflows:
 
-| Target | Description |
-| ------ | ----------- |
-| `make build` | Compile the Naylence Runtime TypeScript sources into `dist/`. |
-| `make up` | Compile (if needed) and run the sentinel in the foreground. |
-| `make up-detached` | Same as `up`, but keeps containers running in the background. |
-| `make docker-build` | Rebuild the Docker image after compiling the framework locally. |
-| `make logs` | Tail logs from the sentinel container. |
-| `make clean` | Tear down containers, networks, and volumes created by the example. |
+| Target              | Description                                                         |
+| ------------------- | ------------------------------------------------------------------- |
+| `make build`        | Compile the Naylence Runtime TypeScript sources into `dist/`.       |
+| `make up`           | Compile (if needed) and run the sentinel in the foreground.         |
+| `make up-detached`  | Same as `up`, but keeps containers running in the background.       |
+| `make docker-build` | Rebuild the Docker image after compiling the framework locally.     |
+| `make logs`         | Tail logs from the sentinel container.                              |
+| `make clean`        | Tear down containers, networks, and volumes created by the example. |
 
 The sentinel source code and the compiled `dist/` directory are mounted into the
 container so you can iterate after running `make build` without rebuilding the
@@ -83,15 +83,15 @@ The client connects to the sentinel over WebSocket, performs a few calculator
 operations, and prints the results. You can override its defaults with
 environment variables before running `make run`:
 
-| Variable | Description | Default |
-| -------- | ----------- | ------- |
-| `RPC_CLIENT_ID` | Node identifier used during attach handshake | `ts-rpc-client` |
-| `RPC_DOWNSTREAM_WS_URL` | WebSocket URL exposed by the sentinel | `ws://127.0.0.1:28000/fame/v1/attach/ws/downstream` |
-| `RPC_TARGET_ADDRESS` | Fame address of the calculator service | `calculator@/test-sentinel` |
-| `RPC_REQUESTED_LOGICAL` | Logical name requested during attach | `calculator` |
-| `RPC_SENTINEL_HTTP_URL` | HTTP URL used to wait for sentinel readiness | `http://127.0.0.1:28000/` |
-| `RPC_FIB_COUNT` | Number of Fibonacci values to stream | `10` |
-| `RPC_CLIENT_LOG_LEVEL` | Log level (`DEBUG`, `INFO`, etc.) | `INFO` |
+| Variable                | Description                                  | Default                                             |
+| ----------------------- | -------------------------------------------- | --------------------------------------------------- |
+| `RPC_CLIENT_ID`         | Node identifier used during attach handshake | `ts-rpc-client`                                     |
+| `RPC_DOWNSTREAM_WS_URL` | WebSocket URL exposed by the sentinel        | `ws://127.0.0.1:28000/fame/v1/attach/ws/downstream` |
+| `RPC_TARGET_ADDRESS`    | Fame address of the calculator service       | `calculator@/test-sentinel`                         |
+| `RPC_REQUESTED_LOGICAL` | Logical name requested during attach         | `calculator`                                        |
+| `RPC_SENTINEL_HTTP_URL` | HTTP URL used to wait for sentinel readiness | `http://127.0.0.1:28000/`                           |
+| `RPC_FIB_COUNT`         | Number of Fibonacci values to stream         | `10`                                                |
+| `RPC_CLIENT_LOG_LEVEL`  | Log level (`DEBUG`, `INFO`, etc.)            | `INFO`                                              |
 
 All requests go through the runtime's `RpcProxy.remoteByAddress` helper. The
 example is designed for manual exploration and is not exercised by the

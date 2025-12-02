@@ -24,30 +24,30 @@ const port = Number.parseInt(process.env.APP_PORT ?? '8099', 10);
 try {
   const app = await createApp();
 
-  app.listen(port, host, () => {
-    const origin = `http://${host}:${port}`;
-    const authorizeParams = new URLSearchParams({
-      response_type: 'code',
-      client_id: process.env.FAME_JWT_CLIENT_ID,
-      redirect_uri: `${origin}/callback`,
-      scope: 'node.connect',
-      state: 'demo-state',
-      code_challenge_method: 'S256',
-      code_challenge: 'replace-with-real-challenge',
-    });
+  await app.listen({ port, host });
 
-    console.log('');
-    console.log('[ready] OAuth dev server listening at %s', origin);
-    console.log('  Client ID:     %s', process.env.FAME_JWT_CLIENT_ID);
-    console.log('  Client Secret: %s', process.env.FAME_JWT_CLIENT_SECRET);
-    console.log('  Allowed scope: %s', process.env.FAME_JWT_ALLOWED_SCOPES);
-    console.log('  Login user:    %s', process.env.FAME_OAUTH_DEV_USERNAME);
-    console.log('  Login pass:    %s', process.env.FAME_OAUTH_DEV_PASSWORD);
-    console.log('');
-    console.log('Sample authorize URL (replace challenge/state as needed):');
-    console.log('  %s/oauth/authorize?%s', origin, authorizeParams.toString());
-    console.log('');
+  const origin = `http://${host}:${port}`;
+  const authorizeParams = new URLSearchParams({
+    response_type: 'code',
+    client_id: process.env.FAME_JWT_CLIENT_ID,
+    redirect_uri: `${origin}/callback`,
+    scope: 'node.connect',
+    state: 'demo-state',
+    code_challenge_method: 'S256',
+    code_challenge: 'replace-with-real-challenge',
   });
+
+  console.log('');
+  console.log('[ready] OAuth dev server listening at %s', origin);
+  console.log('  Client ID:     %s', process.env.FAME_JWT_CLIENT_ID);
+  console.log('  Client Secret: %s', process.env.FAME_JWT_CLIENT_SECRET);
+  console.log('  Allowed scope: %s', process.env.FAME_JWT_ALLOWED_SCOPES);
+  console.log('  Login user:    %s', process.env.FAME_OAUTH_DEV_USERNAME);
+  console.log('  Login pass:    %s', process.env.FAME_OAUTH_DEV_PASSWORD);
+  console.log('');
+  console.log('Sample authorize URL (replace challenge/state as needed):');
+  console.log('  %s/oauth/authorize?%s', origin, authorizeParams.toString());
+  console.log('');
 } catch (error) {
   console.error('[error] Failed to start OAuth dev server:', error);
   process.exitCode = 1;
