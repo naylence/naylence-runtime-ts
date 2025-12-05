@@ -1,13 +1,11 @@
 import { FameTransportClose } from '../../errors/errors.js';
-import {
-  InPageConnector,
-  INPAGE_CONNECTOR_TYPE,
-} from '../inpage-connector.js';
+import { InPageConnector, INPAGE_CONNECTOR_TYPE } from '../inpage-connector.js';
 
 describe('InPageConnector', () => {
   const originalWindow = (globalThis as Record<string, unknown>).window;
   const originalDocument = (globalThis as Record<string, unknown>).document;
-  const originalMessageEvent = (globalThis as Record<string, unknown>).MessageEvent;
+  const originalMessageEvent = (globalThis as Record<string, unknown>)
+    .MessageEvent;
 
   beforeAll(() => {
     // Create a mock window with necessary event listener methods
@@ -16,7 +14,7 @@ describe('InPageConnector', () => {
       removeEventListener: () => {},
     };
     (globalThis as Record<string, unknown>).window = mockWindow;
-    
+
     // Create a mock document with necessary properties and methods
     (globalThis as Record<string, unknown>).document = {
       hidden: false,
@@ -35,7 +33,8 @@ describe('InPageConnector', () => {
         }
       }
 
-      (globalThis as Record<string, unknown>).MessageEvent = PolyfillMessageEvent;
+      (globalThis as Record<string, unknown>).MessageEvent =
+        PolyfillMessageEvent;
     }
   });
 
@@ -55,7 +54,8 @@ describe('InPageConnector', () => {
     if (originalMessageEvent === undefined) {
       delete (globalThis as Record<string, unknown>).MessageEvent;
     } else {
-      (globalThis as Record<string, unknown>).MessageEvent = originalMessageEvent;
+      (globalThis as Record<string, unknown>).MessageEvent =
+        originalMessageEvent;
     }
   });
 
@@ -75,8 +75,14 @@ describe('InPageConnector', () => {
 
     const payload = new Uint8Array([1, 2, 3, 4]);
 
-    await (sender as unknown as { _transportSendBytes(data: Uint8Array): Promise<void> })._transportSendBytes(payload);
-    const received = await (receiver as unknown as { _transportReceive(): Promise<Uint8Array> })._transportReceive();
+    await (
+      sender as unknown as {
+        _transportSendBytes(data: Uint8Array): Promise<void>;
+      }
+    )._transportSendBytes(payload);
+    const received = await (
+      receiver as unknown as { _transportReceive(): Promise<Uint8Array> }
+    )._transportReceive();
 
     expect(Array.from(received)).toEqual(Array.from(payload));
 
@@ -94,7 +100,9 @@ describe('InPageConnector', () => {
 
     const receivePromise = (async () => {
       try {
-        return await (connector as unknown as { _transportReceive(): Promise<Uint8Array> })._transportReceive();
+        return await (
+          connector as unknown as { _transportReceive(): Promise<Uint8Array> }
+        )._transportReceive();
       } catch (error) {
         return error as unknown;
       }
@@ -125,12 +133,16 @@ describe('InPageConnector', () => {
 
     const payload = new Uint8Array([9, 8, 7]);
 
-    const receivePromise = (receiver as unknown as {
-      _transportReceive(): Promise<Uint8Array>;
-    })._transportReceive();
-    await (sender as unknown as {
-      _transportSendBytes(data: Uint8Array): Promise<void>;
-    })._transportSendBytes(payload);
+    const receivePromise = (
+      receiver as unknown as {
+        _transportReceive(): Promise<Uint8Array>;
+      }
+    )._transportReceive();
+    await (
+      sender as unknown as {
+        _transportSendBytes(data: Uint8Array): Promise<void>;
+      }
+    )._transportSendBytes(payload);
 
     const received = await receivePromise;
     expect(Array.from(received)).toEqual(Array.from(payload));
@@ -154,9 +166,11 @@ describe('InPageConnector', () => {
     });
 
     const payload = new Uint8Array([5, 4, 3]);
-    const receivePromise = (receiver as unknown as {
-      _transportReceive(): Promise<Uint8Array>;
-    })._transportReceive();
+    const receivePromise = (
+      receiver as unknown as {
+        _transportReceive(): Promise<Uint8Array>;
+      }
+    )._transportReceive();
 
     const expectNoDelivery = async (): Promise<void> => {
       const outcome = await Promise.race([
@@ -171,9 +185,11 @@ describe('InPageConnector', () => {
 
     await expectNoDelivery();
 
-    await (sender as unknown as {
-      _transportSendBytes(data: Uint8Array): Promise<void>;
-    })._transportSendBytes(payload);
+    await (
+      sender as unknown as {
+        _transportSendBytes(data: Uint8Array): Promise<void>;
+      }
+    )._transportSendBytes(payload);
 
     await expectNoDelivery();
 

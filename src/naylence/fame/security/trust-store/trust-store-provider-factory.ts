@@ -1,11 +1,14 @@
-import type { CreateResourceOptions, ResourceConfig } from "@naylence/factory";
+import type { CreateResourceOptions, ResourceConfig } from '@naylence/factory';
 import {
   AbstractResourceFactory,
   createDefaultResource,
   createResource,
-} from "@naylence/factory";
+} from '@naylence/factory';
 
-import type { TrustAnchor, TrustStoreProvider } from "./trust-store-provider.js";
+import type {
+  TrustAnchor,
+  TrustStoreProvider,
+} from './trust-store-provider.js';
 
 export interface TrustStoreProviderConfig extends ResourceConfig {
   readonly type: string;
@@ -17,15 +20,16 @@ export interface TrustStoreProviderDependencies {
 }
 
 export interface CreateTrustStoreProviderOptions
-  extends Omit<CreateResourceOptions, "factoryArgs"> {
+  extends Omit<CreateResourceOptions, 'factoryArgs'> {
   readonly factoryArgs?: unknown[];
   readonly dependencies?: TrustStoreProviderDependencies;
 }
 
 const DEFAULT_UNCONFIGURED_MESSAGE =
-  "Trust store is not configured. Set FAME_CA_CERTS to a PEM value, a file path, a data URI, or an HTTPS bundle URL.";
+  'Trust store is not configured. Set FAME_CA_CERTS to a PEM value, a file path, a data URI, or an HTTPS bundle URL.';
 
-export const TRUST_STORE_PROVIDER_FACTORY_BASE_TYPE = "TrustStoreProviderFactory";
+export const TRUST_STORE_PROVIDER_FACTORY_BASE_TYPE =
+  'TrustStoreProviderFactory';
 
 export abstract class TrustStoreProviderFactory<
   C extends TrustStoreProviderConfig = TrustStoreProviderConfig,
@@ -43,7 +47,7 @@ export abstract class TrustStoreProviderFactory<
     C extends TrustStoreProviderConfig = TrustStoreProviderConfig,
   >(
     config?: C | Record<string, unknown> | null,
-    options: CreateTrustStoreProviderOptions = {},
+    options: CreateTrustStoreProviderOptions = {}
   ): Promise<TrustStoreProvider> {
     const { dependencies, factoryArgs, ...restOptions } = options;
     const mergedFactoryArgs = [
@@ -60,7 +64,7 @@ export abstract class TrustStoreProviderFactory<
       const instance = await createResource<TrustStoreProvider>(
         TRUST_STORE_PROVIDER_FACTORY_BASE_TYPE,
         config,
-        creationOptions,
+        creationOptions
       );
       return instance ?? new NoopTrustStoreProvider();
     }
@@ -68,7 +72,7 @@ export abstract class TrustStoreProviderFactory<
     const instance = await createDefaultResource<TrustStoreProvider>(
       TRUST_STORE_PROVIDER_FACTORY_BASE_TYPE,
       null,
-      creationOptions,
+      creationOptions
     );
 
     return instance ?? new NoopTrustStoreProvider();

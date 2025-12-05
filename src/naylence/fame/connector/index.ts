@@ -63,8 +63,11 @@ export { _NoopFlowController } from './noop-flow-controller.js';
 
 // Transport listener
 export { TransportListener } from './transport-listener.js';
-export { TRANSPORT_LISTENER_FACTORY_BASE_TYPE } from './transport-listener-factory.js';
-export type { TransportListenerFactory } from './transport-listener-factory.js';
+export {
+  TransportListenerFactory,
+  TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
+} from './transport-listener-factory.js';
+export type { TransportListenerFactory as TransportListenerFactoryType } from './transport-listener-factory.js';
 export type { TransportListenerConfig } from './transport-listener-config.js';
 export type { HttpServer, HttpRouter } from './http-server.js';
 export { DefaultHttpServer } from './default-http-server.js';
@@ -73,7 +76,10 @@ export {
   getWebsocketListenerInstance,
 } from './websocket-listener.js';
 export { HttpListener, getHttpListenerInstance } from './http-listener.js';
-export { InPageListener, getInPageListenerInstance } from './inpage-listener.js';
+export {
+  InPageListener,
+  getInPageListenerInstance,
+} from './inpage-listener.js';
 export {
   BroadcastChannelListener,
   getBroadcastChannelListenerInstance,

@@ -820,11 +820,11 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
 
       const signing =
         (policy as { signing?: SigningConfig | null }).signing ?? null;
-      
+
       const trustStorePem = trustStoreProvider
         ? async () => await trustStoreProvider.getTrustStorePem()
         : null;
-      
+
       return await CertificateManagerFactory.createCertificateManager(null, {
         signing: signing ?? null,
         factoryArgs: trustStorePem ? [trustStorePem] : [],

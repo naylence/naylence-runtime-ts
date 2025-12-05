@@ -6,8 +6,13 @@ import {
 import type { FameEnvelope } from '@naylence/core';
 
 class FakeBroadcastChannel {
-  private static registry = new Map<string, Set<(event: MessageEvent<unknown>) => void>>();
-  private readonly listeners = new Set<(event: MessageEvent<unknown>) => void>();
+  private static registry = new Map<
+    string,
+    Set<(event: MessageEvent<unknown>) => void>
+  >();
+  private readonly listeners = new Set<
+    (event: MessageEvent<unknown>) => void
+  >();
 
   constructor(private readonly name: string) {}
 
@@ -19,7 +24,8 @@ class FakeBroadcastChannel {
       return;
     }
 
-    const handler = typeof listener === 'function' ? listener : listener.handleEvent;
+    const handler =
+      typeof listener === 'function' ? listener : listener.handleEvent;
     if (typeof handler !== 'function') {
       return;
     }
@@ -27,7 +33,8 @@ class FakeBroadcastChannel {
     const wrapped = handler as (event: MessageEvent<unknown>) => void;
     this.listeners.add(wrapped);
     const channelListeners =
-      FakeBroadcastChannel.registry.get(this.name) ?? new Set<(event: MessageEvent<unknown>) => void>();
+      FakeBroadcastChannel.registry.get(this.name) ??
+      new Set<(event: MessageEvent<unknown>) => void>();
     channelListeners.add(wrapped);
     FakeBroadcastChannel.registry.set(this.name, channelListeners);
   }
@@ -40,7 +47,8 @@ class FakeBroadcastChannel {
       return;
     }
 
-    const handler = typeof listener === 'function' ? listener : listener.handleEvent;
+    const handler =
+      typeof listener === 'function' ? listener : listener.handleEvent;
     if (typeof handler !== 'function') {
       return;
     }
@@ -80,16 +88,23 @@ describe('BroadcastChannelConnector', () => {
   let originalWindow: unknown;
 
   beforeEach(() => {
-    originalBroadcastChannel = (globalThis as { BroadcastChannel?: typeof BroadcastChannel }).BroadcastChannel;
+    originalBroadcastChannel = (
+      globalThis as { BroadcastChannel?: typeof BroadcastChannel }
+    ).BroadcastChannel;
     originalWindow = (globalThis as { window?: unknown }).window;
     (globalThis as { window?: unknown }).window = globalThis;
-    (globalThis as { BroadcastChannel?: typeof BroadcastChannel }).BroadcastChannel = FakeBroadcastChannel as unknown as typeof BroadcastChannel;
+    (
+      globalThis as { BroadcastChannel?: typeof BroadcastChannel }
+    ).BroadcastChannel =
+      FakeBroadcastChannel as unknown as typeof BroadcastChannel;
     FakeBroadcastChannel.reset();
   });
 
   afterEach(() => {
     (globalThis as { window?: unknown }).window = originalWindow;
-    (globalThis as { BroadcastChannel?: typeof BroadcastChannel }).BroadcastChannel = originalBroadcastChannel;
+    (
+      globalThis as { BroadcastChannel?: typeof BroadcastChannel }
+    ).BroadcastChannel = originalBroadcastChannel;
     FakeBroadcastChannel.reset();
   });
 

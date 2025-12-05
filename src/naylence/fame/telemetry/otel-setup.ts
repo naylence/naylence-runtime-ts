@@ -4,7 +4,8 @@ import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.telemetry.otel_setup');
 
-const stringFrom = (...codes: number[]): string => String.fromCharCode(...codes);
+const stringFrom = (...codes: number[]): string =>
+  String.fromCharCode(...codes);
 const OTEL_PREFIX = `${stringFrom(64, 111, 112, 101, 110, 116, 101, 108, 101, 109, 101, 116, 114, 121)}${stringFrom(47)}`;
 const OTEL_API_SPEC = `${OTEL_PREFIX}${stringFrom(97, 112, 105)}`;
 const OTEL_RESOURCES_SPEC = `${OTEL_PREFIX}${stringFrom(114, 101, 115, 111, 117, 114, 99, 101, 115)}`;

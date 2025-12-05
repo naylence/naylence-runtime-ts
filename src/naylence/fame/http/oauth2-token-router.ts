@@ -104,8 +104,8 @@ class FastifyResponseAdapter implements Response {
       contentType === 'html'
         ? 'text/html'
         : contentType === 'json'
-        ? 'application/json'
-        : contentType;
+          ? 'application/json'
+          : contentType;
     this.reply.type(normalized);
     return this;
   }
@@ -121,7 +121,9 @@ class FastifyResponseAdapter implements Response {
   redirect(statusOrUrl: number | string, maybeUrl?: string): void {
     if (typeof statusOrUrl === 'number') {
       if (maybeUrl === undefined) {
-        throw new Error('redirect url is required when status code is provided');
+        throw new Error(
+          'redirect url is required when status code is provided'
+        );
       }
       this.reply.status(statusOrUrl);
       this.reply.header('Location', maybeUrl);
@@ -206,8 +208,8 @@ function serializeCookie(
       normalized === 'strict'
         ? 'Strict'
         : normalized === 'none'
-        ? 'None'
-        : 'Lax';
+          ? 'None'
+          : 'Lax';
     segments.push(`SameSite=${formatted}`);
   }
 
@@ -741,28 +743,32 @@ function ensurePositiveInteger(value: number | undefined): number | undefined {
   return undefined;
 }
 
-function parseCookies(cookieHeader: string | undefined): Record<string, string> {
+function parseCookies(
+  cookieHeader: string | undefined
+): Record<string, string> {
   if (!cookieHeader) {
     return {};
   }
 
-  return cookieHeader.split(';').reduce<Record<string, string>>((acc, entry) => {
-    const [rawName, ...rawValueParts] = entry.split('=');
-    const name = rawName?.trim();
-    if (!name) {
+  return cookieHeader
+    .split(';')
+    .reduce<Record<string, string>>((acc, entry) => {
+      const [rawName, ...rawValueParts] = entry.split('=');
+      const name = rawName?.trim();
+      if (!name) {
+        return acc;
+      }
+      const rawValue = rawValueParts.join('=').trim();
+      if (rawValue.length === 0) {
+        return acc;
+      }
+      try {
+        acc[name] = decodeURIComponent(rawValue);
+      } catch {
+        acc[name] = rawValue;
+      }
       return acc;
-    }
-    const rawValue = rawValueParts.join('=').trim();
-    if (rawValue.length === 0) {
-      return acc;
-    }
-    try {
-      acc[name] = decodeURIComponent(rawValue);
-    } catch {
-      acc[name] = rawValue;
-    }
-    return acc;
-  }, {});
+    }, {});
 }
 
 function sanitizeReturnTo(
@@ -916,13 +922,10 @@ function setNoCacheHeaders(res: Response): void {
 }
 
 function respondInvalidClient(res: Response): void {
-  res
-    .status(401)
-    .set('WWW-Authenticate', 'Basic')
-    .json({
-      error: 'invalid_client',
-      error_description: 'Invalid client credentials',
-    });
+  res.status(401).set('WWW-Authenticate', 'Basic').json({
+    error: 'invalid_client',
+    error_description: 'Invalid client credentials',
+  });
 }
 
 /**
@@ -985,11 +988,11 @@ export function createOAuth2TokenRouter(
   const allowedScopes = getAllowedScopes(configAllowedScopes);
   const resolvedTokenTtlSec = tokenTtlSec ?? 3600;
   const enablePkce =
-    coerceBoolean(process.env[ENV_VAR_ENABLE_PKCE]) ??
-    (configEnablePkce ?? true);
+    coerceBoolean(process.env[ENV_VAR_ENABLE_PKCE]) ?? configEnablePkce ?? true;
   const allowPublicClients =
     coerceBoolean(process.env[ENV_VAR_ALLOW_PUBLIC_CLIENTS]) ??
-    (configAllowPublicClients ?? true);
+    configAllowPublicClients ??
+    true;
   const authorizationCodeTtlSec =
     ensurePositiveInteger(
       coerceNumber(process.env[ENV_VAR_AUTHORIZATION_CODE_TTL]) ??
@@ -1016,7 +1019,8 @@ export function createOAuth2TokenRouter(
     DEFAULT_SESSION_COOKIE_NAME;
   const devLoginSecureCookie =
     coerceBoolean(process.env[ENV_VAR_SESSION_SECURE_COOKIE]) ??
-    (configDevLoginSecureCookie ?? false);
+    configDevLoginSecureCookie ??
+    false;
   const devLoginTitle =
     coerceString(process.env[ENV_VAR_LOGIN_TITLE]) ??
     configDevLoginTitle ??
@@ -1356,213 +1360,93 @@ export function createOAuth2TokenRouter(
   router.post(`${prefix}/logout`, logoutHandler);
   router.get(`${prefix}/logout`, logoutHandler);
 
-  router.post(
-    `${prefix}/token`,
-    async (req: Request, res: Response) => {
+  router.post(`${prefix}/token`, async (req: Request, res: Response) => {
+    try {
+      cleanupAuthorizationCodes(authorizationCodes, Date.now());
+
+      const {
+        grant_type,
+        client_id,
+        client_secret,
+        scope,
+        audience: reqAudience,
+        code,
+        redirect_uri,
+        code_verifier,
+      } = req.body ?? {};
+
+      if (
+        grant_type !== 'client_credentials' &&
+        grant_type !== 'authorization_code'
+      ) {
+        res.status(400).json({
+          error: 'unsupported_grant_type',
+          error_description:
+            'Only client_credentials and authorization_code grant types are supported',
+        });
+        return;
+      }
+
+      let configuredCreds: ClientCredentials;
       try {
-        cleanupAuthorizationCodes(authorizationCodes, Date.now());
+        configuredCreds = getConfiguredClientCredentials();
+      } catch (error) {
+        logger.error('oauth2_config_error', {
+          error: (error as Error).message,
+        });
+        res.status(500).json({
+          error: 'server_error',
+          error_description: 'Server configuration error',
+        });
+        return;
+      }
 
-        const {
-          grant_type,
-          client_id,
-          client_secret,
-          scope,
-          audience: reqAudience,
-          code,
-          redirect_uri,
-          code_verifier,
-        } = req.body ?? {};
+      const authHeader = req.headers.authorization;
+      const basicAuthCreds = parseBasicAuth(authHeader);
+      const bodyClientId = coerceString(client_id);
+      const bodyClientSecret = coerceString(client_secret);
 
-        if (
-          grant_type !== 'client_credentials' &&
-          grant_type !== 'authorization_code'
-        ) {
-          res.status(400).json({
-            error: 'unsupported_grant_type',
-            error_description:
-              'Only client_credentials and authorization_code grant types are supported',
-          });
-          return;
-        }
+      const resolvedClientId = basicAuthCreds?.clientId ?? bodyClientId;
 
-        let configuredCreds: ClientCredentials;
-        try {
-          configuredCreds = getConfiguredClientCredentials();
-        } catch (error) {
-          logger.error('oauth2_config_error', {
-            error: (error as Error).message,
-          });
-          res.status(500).json({
-            error: 'server_error',
-            error_description: 'Server configuration error',
-          });
-          return;
-        }
+      if (!resolvedClientId) {
+        res.status(400).json({
+          error: 'invalid_request',
+          error_description: 'client_id is required',
+        });
+        return;
+      }
 
-        const authHeader = req.headers.authorization;
-        const basicAuthCreds = parseBasicAuth(authHeader);
-        const bodyClientId = coerceString(client_id);
-        const bodyClientSecret = coerceString(client_secret);
+      if (resolvedClientId !== configuredCreds.clientId) {
+        logger.warning('oauth2_invalid_client_id', {
+          clientId: resolvedClientId,
+        });
+        respondInvalidClient(res);
+        return;
+      }
 
-        const resolvedClientId = basicAuthCreds?.clientId ?? bodyClientId;
+      const providedSecret =
+        basicAuthCreds?.clientSecret ?? bodyClientSecret ?? undefined;
 
-        if (!resolvedClientId) {
-          res.status(400).json({
-            error: 'invalid_request',
-            error_description: 'client_id is required',
-          });
-          return;
-        }
-
-        if (resolvedClientId !== configuredCreds.clientId) {
-          logger.warning('oauth2_invalid_client_id', {
+      let clientAuthenticated = false;
+      if (providedSecret !== undefined) {
+        clientAuthenticated = verifyClientCredentials(
+          { clientId: resolvedClientId, clientSecret: providedSecret },
+          configuredCreds
+        );
+        if (!clientAuthenticated) {
+          logger.warning('oauth2_invalid_credentials', {
             clientId: resolvedClientId,
           });
           respondInvalidClient(res);
           return;
         }
+      }
 
-        const providedSecret =
-          basicAuthCreds?.clientSecret ?? bodyClientSecret ?? undefined;
-
-        let clientAuthenticated = false;
-        if (providedSecret !== undefined) {
-          clientAuthenticated = verifyClientCredentials(
-            { clientId: resolvedClientId, clientSecret: providedSecret },
-            configuredCreds
-          );
-          if (!clientAuthenticated) {
-            logger.warning('oauth2_invalid_credentials', {
-              clientId: resolvedClientId,
-            });
-            respondInvalidClient(res);
-            return;
-          }
-        }
-
-        if (grant_type === 'client_credentials') {
-          if (!clientAuthenticated) {
-            respondInvalidClient(res);
-            return;
-          }
-
-          if (!provider.signingPrivatePem || !provider.signatureKeyId) {
-            logger.error('oauth2_missing_keys', {
-              hasPrivateKey: !!provider.signingPrivatePem,
-              hasKeyId: !!provider.signatureKeyId,
-            });
-            res.status(500).json({
-              error: 'server_error',
-              error_description: 'Server cryptographic configuration error',
-            });
-            return;
-          }
-
-          const grantedScopes = validateScope(scope, allowedScopes);
-          const response = await issueTokenResponse({
-            clientId: resolvedClientId,
-            scopes: grantedScopes,
-            audience: coerceString(reqAudience),
-          });
-
-          setNoCacheHeaders(res);
-          res.json(response);
-          return;
-        }
-
-        if (!enablePkce) {
-          res.status(400).json({
-            error: 'unsupported_grant_type',
-            error_description: 'PKCE support is disabled',
-          });
-          return;
-        }
-
-        if (!clientAuthenticated && !allowPublicClients) {
+      if (grant_type === 'client_credentials') {
+        if (!clientAuthenticated) {
           respondInvalidClient(res);
           return;
         }
-
-        const authorizationCode = coerceString(code);
-        const redirectUriText = coerceString(redirect_uri);
-        const verifier = coerceString(code_verifier);
-
-        if (
-          !authorizationCode ||
-          !redirectUriText ||
-          !isValidCodeVerifier(verifier)
-        ) {
-          res.status(400).json({
-            error: 'invalid_request',
-            error_description:
-              'code, redirect_uri, and a valid code_verifier are required for PKCE',
-          });
-          return;
-        }
-
-        let redirectUrl: URL;
-        try {
-          redirectUrl = new URL(redirectUriText);
-        } catch {
-          res.status(400).json({
-            error: 'invalid_request',
-            error_description: 'redirect_uri must be a valid absolute URL',
-          });
-          return;
-        }
-
-        const record = authorizationCodes.get(authorizationCode);
-        if (!record) {
-          res.status(400).json({
-            error: 'invalid_grant',
-            error_description: 'Authorization code is invalid or expired',
-          });
-          return;
-        }
-
-        if (record.expiresAt <= Date.now()) {
-          authorizationCodes.delete(authorizationCode);
-          res.status(400).json({
-            error: 'invalid_grant',
-            error_description: 'Authorization code has expired',
-          });
-          return;
-        }
-
-        if (record.clientId !== resolvedClientId) {
-          authorizationCodes.delete(authorizationCode);
-          respondInvalidClient(res);
-          return;
-        }
-
-        if (record.redirectUri !== redirectUrl.toString()) {
-          authorizationCodes.delete(authorizationCode);
-          res.status(400).json({
-            error: 'invalid_grant',
-            error_description: 'redirect_uri does not match authorization request',
-          });
-          return;
-        }
-
-        let pkceValid = false;
-        if (record.codeChallengeMethod === 'S256') {
-          const expected = record.codeChallenge;
-          const actual = computeS256Challenge(verifier);
-          pkceValid = safeTimingEqual(expected, actual);
-        } else {
-          pkceValid = safeTimingEqual(record.codeChallenge, verifier);
-        }
-
-        if (!pkceValid) {
-          authorizationCodes.delete(authorizationCode);
-          res.status(400).json({
-            error: 'invalid_grant',
-            error_description: 'code_verifier does not match code_challenge',
-          });
-          return;
-        }
-
-        authorizationCodes.delete(authorizationCode);
 
         if (!provider.signingPrivatePem || !provider.signatureKeyId) {
           logger.error('oauth2_missing_keys', {
@@ -1576,20 +1460,138 @@ export function createOAuth2TokenRouter(
           return;
         }
 
+        const grantedScopes = validateScope(scope, allowedScopes);
         const response = await issueTokenResponse({
           clientId: resolvedClientId,
-          scopes: record.scope,
+          scopes: grantedScopes,
           audience: coerceString(reqAudience),
         });
 
         setNoCacheHeaders(res);
         res.json(response);
-      } catch (error) {
-        logger.error('oauth2_token_error', { error: (error as Error).message });
-        throw error;
+        return;
       }
+
+      if (!enablePkce) {
+        res.status(400).json({
+          error: 'unsupported_grant_type',
+          error_description: 'PKCE support is disabled',
+        });
+        return;
+      }
+
+      if (!clientAuthenticated && !allowPublicClients) {
+        respondInvalidClient(res);
+        return;
+      }
+
+      const authorizationCode = coerceString(code);
+      const redirectUriText = coerceString(redirect_uri);
+      const verifier = coerceString(code_verifier);
+
+      if (
+        !authorizationCode ||
+        !redirectUriText ||
+        !isValidCodeVerifier(verifier)
+      ) {
+        res.status(400).json({
+          error: 'invalid_request',
+          error_description:
+            'code, redirect_uri, and a valid code_verifier are required for PKCE',
+        });
+        return;
+      }
+
+      let redirectUrl: URL;
+      try {
+        redirectUrl = new URL(redirectUriText);
+      } catch {
+        res.status(400).json({
+          error: 'invalid_request',
+          error_description: 'redirect_uri must be a valid absolute URL',
+        });
+        return;
+      }
+
+      const record = authorizationCodes.get(authorizationCode);
+      if (!record) {
+        res.status(400).json({
+          error: 'invalid_grant',
+          error_description: 'Authorization code is invalid or expired',
+        });
+        return;
+      }
+
+      if (record.expiresAt <= Date.now()) {
+        authorizationCodes.delete(authorizationCode);
+        res.status(400).json({
+          error: 'invalid_grant',
+          error_description: 'Authorization code has expired',
+        });
+        return;
+      }
+
+      if (record.clientId !== resolvedClientId) {
+        authorizationCodes.delete(authorizationCode);
+        respondInvalidClient(res);
+        return;
+      }
+
+      if (record.redirectUri !== redirectUrl.toString()) {
+        authorizationCodes.delete(authorizationCode);
+        res.status(400).json({
+          error: 'invalid_grant',
+          error_description:
+            'redirect_uri does not match authorization request',
+        });
+        return;
+      }
+
+      let pkceValid = false;
+      if (record.codeChallengeMethod === 'S256') {
+        const expected = record.codeChallenge;
+        const actual = computeS256Challenge(verifier);
+        pkceValid = safeTimingEqual(expected, actual);
+      } else {
+        pkceValid = safeTimingEqual(record.codeChallenge, verifier);
+      }
+
+      if (!pkceValid) {
+        authorizationCodes.delete(authorizationCode);
+        res.status(400).json({
+          error: 'invalid_grant',
+          error_description: 'code_verifier does not match code_challenge',
+        });
+        return;
+      }
+
+      authorizationCodes.delete(authorizationCode);
+
+      if (!provider.signingPrivatePem || !provider.signatureKeyId) {
+        logger.error('oauth2_missing_keys', {
+          hasPrivateKey: !!provider.signingPrivatePem,
+          hasKeyId: !!provider.signatureKeyId,
+        });
+        res.status(500).json({
+          error: 'server_error',
+          error_description: 'Server cryptographic configuration error',
+        });
+        return;
+      }
+
+      const response = await issueTokenResponse({
+        clientId: resolvedClientId,
+        scopes: record.scope,
+        audience: coerceString(reqAudience),
+      });
+
+      setNoCacheHeaders(res);
+      res.json(response);
+    } catch (error) {
+      logger.error('oauth2_token_error', { error: (error as Error).message });
+      throw error;
     }
-  );
+  });
 
   async function issueTokenResponse(params: {
     clientId: string;

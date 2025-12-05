@@ -111,7 +111,10 @@ function computeBrowserFactoryBase(rawUrl: string | null): string | null {
   }
 
   if (sanitized.includes(browserMarker)) {
-    const base = sanitized.slice(0, sanitized.indexOf(browserMarker) + browserMarker.length);
+    const base = sanitized.slice(
+      0,
+      sanitized.indexOf(browserMarker) + browserMarker.length
+    );
     return `${base.replace(/browser\/?$/u, '')}esm/naylence/fame/`;
   }
 
@@ -152,7 +155,8 @@ function resolveFactoryModuleSpecifier(specifier: string): string | null {
 function resolveModuleCandidates(spec: string): string[] {
   const packageSpecifier = resolveFactoryModuleSpecifier(spec);
   const candidates: string[] = [];
-  const preferSource = typeof moduleUrl === 'string' && moduleUrl.includes('/src/');
+  const preferSource =
+    typeof moduleUrl === 'string' && moduleUrl.includes('/src/');
 
   const addCandidate = (candidate: string | null): void => {
     if (!candidate) {
@@ -172,7 +176,10 @@ function resolveModuleCandidates(spec: string): string[] {
   }
 
   if (browserFactoryBase && spec.startsWith('./')) {
-    const browserCandidate = new URL(spec.slice('./'.length), browserFactoryBase).href;
+    const browserCandidate = new URL(
+      spec.slice('./'.length),
+      browserFactoryBase
+    ).href;
     addCandidate(browserCandidate);
     if (browserCandidate.endsWith('.js')) {
       addCandidate(browserCandidate.replace(/\.js$/u, '.ts'));
@@ -245,7 +252,9 @@ async function performRegistration(
                 message.includes('Cannot find module') ||
                 message.includes('ERR_MODULE_NOT_FOUND') ||
                 message.includes('Unknown file extension') ||
-                message.includes('Failed to fetch dynamically imported module') ||
+                message.includes(
+                  'Failed to fetch dynamically imported module'
+                ) ||
                 message.includes('Importing a module script failed');
 
               if (!moduleNotFound) {

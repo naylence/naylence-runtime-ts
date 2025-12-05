@@ -59,6 +59,7 @@ export * from './metrics-emitter.js';
 export * from './util.js';
 export * from './logicals.js';
 export * from './ttl-validation.js';
+export { safeImport } from './lazy-import.js';
 
 export { normalizeEnvelopeSnapshot } from './logging-types.js';
 

@@ -51,10 +51,7 @@ const ensureBroadcastEnvironment = (): void => {
   }
 };
 
-type BroadcastChannelInboxItem =
-  | Uint8Array
-  | FameEnvelope
-  | FameChannelMessage;
+type BroadcastChannelInboxItem = Uint8Array | FameEnvelope | FameChannelMessage;
 
 type BroadcastBusMessage = {
   senderId?: unknown;
@@ -77,7 +74,8 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
   private visibilityChangeHandler?: () => void;
 
   private static generateConnectorId(): string {
-    const globalCrypto = (globalThis as typeof globalThis & { crypto?: Crypto }).crypto;
+    const globalCrypto = (globalThis as typeof globalThis & { crypto?: Crypto })
+      .crypto;
 
     if (globalCrypto?.randomUUID) {
       return globalCrypto.randomUUID();
@@ -153,7 +151,8 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     super(baseConfig);
 
     this.channelName =
-      typeof config.channelName === 'string' && config.channelName.trim().length > 0
+      typeof config.channelName === 'string' &&
+      config.channelName.trim().length > 0
         ? config.channelName.trim()
         : DEFAULT_CHANNEL;
 
@@ -169,8 +168,9 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     ) as QueueLike<BroadcastChannelInboxItem>;
     this.inboxCapacity = preferredCapacity;
     this.connectorId = BroadcastChannelConnector.generateConnectorId();
-    const normalizedLocalNodeId =
-      BroadcastChannelConnector.normalizeNodeId(config.localNodeId);
+    const normalizedLocalNodeId = BroadcastChannelConnector.normalizeNodeId(
+      config.localNodeId
+    );
 
     if (!normalizedLocalNodeId) {
       throw new Error(
@@ -190,6 +190,7 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       local_node_id: this.localNodeId,
       target_node_id: this.targetNodeId ?? null,
       inbox_capacity: preferredCapacity,
+      passive: config.passive ?? false,
       timestamp: new Date().toISOString(),
     });
 
@@ -211,7 +212,8 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
         connector_id: this.connectorId,
         message_type:
           message && typeof message === 'object'
-            ? (message as { constructor?: { name?: string } }).constructor?.name ?? typeof message
+            ? ((message as { constructor?: { name?: string } }).constructor
+                ?.name ?? typeof message)
             : typeof message,
         has_sender_id: Boolean((message as { senderId?: unknown })?.senderId),
         has_sender_node_id: Boolean(
@@ -225,8 +227,9 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
 
       const busMessage = message as BroadcastBusMessage;
 
-      const senderNodeId =
-        BroadcastChannelConnector.normalizeNodeId(busMessage.senderNodeId);
+      const senderNodeId = BroadcastChannelConnector.normalizeNodeId(
+        busMessage.senderNodeId
+      );
       if (!senderNodeId) {
         logger.debug('broadcast_channel_message_rejected', {
           channel: this.channelName,
@@ -251,11 +254,15 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
           busMessage.targetNodeId
         );
 
-      if (!this._shouldAcceptMessageFromBus(senderNodeId, incomingTargetNodeId)) {
+      if (
+        !this._shouldAcceptMessageFromBus(senderNodeId, incomingTargetNodeId)
+      ) {
         return;
       }
 
-      const payload = BroadcastChannelConnector.coercePayload(busMessage.payload);
+      const payload = BroadcastChannelConnector.coercePayload(
+        busMessage.payload
+      );
       if (!payload) {
         logger.debug('broadcast_channel_payload_rejected', {
           channel: this.channelName,
@@ -345,9 +352,12 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     };
 
     if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+      document.addEventListener(
+        'visibilitychange',
+        this.visibilityChangeHandler
+      );
       this.visibilityChangeListenerRegistered = true;
-      
+
       // Track page lifecycle events to detect browser unload/discard
       if (typeof window !== 'undefined') {
         const lifecycleLogger = (event: Event): void => {
@@ -359,7 +369,7 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
             timestamp: new Date().toISOString(),
           });
         };
-        
+
         window.addEventListener('beforeunload', lifecycleLogger);
         window.addEventListener('unload', lifecycleLogger);
         window.addEventListener('pagehide', lifecycleLogger);
@@ -367,7 +377,7 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
         document.addEventListener('freeze', lifecycleLogger);
         document.addEventListener('resume', lifecycleLogger);
       }
-      
+
       // Log initial state with detailed visibility info
       logger.debug('broadcast_channel_initial_visibility', {
         channel: this.channelName,
@@ -472,8 +482,15 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       });
     }
 
-    if (this.visibilityChangeListenerRegistered && this.visibilityChangeHandler && typeof document !== 'undefined') {
-      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+    if (
+      this.visibilityChangeListenerRegistered &&
+      this.visibilityChangeHandler &&
+      typeof document !== 'undefined'
+    ) {
+      document.removeEventListener(
+        'visibilitychange',
+        this.visibilityChangeHandler
+      );
       this.visibilityChangeListenerRegistered = false;
       this.visibilityChangeHandler = undefined;
     }
@@ -495,7 +512,6 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       typeof reason === 'string' && reason.length > 0 ? reason : 'closed';
     const shutdownError = new FameTransportClose(closeReason, closeCode);
     this.inbox.drain(shutdownError);
-
   }
 
   private _normalizeInboxItem(
@@ -509,7 +525,9 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
   }
 
   private _isWildcardTarget(): boolean {
-    return this.targetNodeId === '*' || typeof this.targetNodeId === 'undefined';
+    return (
+      this.targetNodeId === '*' || typeof this.targetNodeId === 'undefined'
+    );
   }
 
   private _shouldAcceptMessageFromBus(
@@ -537,7 +555,11 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     }
 
     const expectedSender = this.targetNodeId;
-    if (expectedSender && expectedSender !== '*' && senderNodeId !== expectedSender) {
+    if (
+      expectedSender &&
+      expectedSender !== '*' &&
+      senderNodeId !== expectedSender
+    ) {
       logger.debug('broadcast_channel_message_rejected', {
         channel: this.channelName,
         connector_id: this.connectorId,
@@ -598,13 +620,12 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     });
   }
 
-
   /**
    * Override start() to check initial visibility state
    */
   async start(inboundHandler: FameEnvelopeHandler): Promise<void> {
     await super.start(inboundHandler);
-    
+
     // After transitioning to STARTED, check if tab is already hidden
     if (typeof document !== 'undefined' && document.hidden) {
       logger.debug('broadcast_channel_start_in_hidden_tab', {
@@ -615,7 +636,7 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
         has_focus: document.hasFocus(),
         timestamp: new Date().toISOString(),
       });
-      
+
       // Immediately pause if tab is hidden at start time
       await this.pause().catch((err) => {
         logger.warning('broadcast_channel_initial_pause_failed', {
@@ -630,7 +651,9 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
   setTargetNodeId(nodeId: string): void {
     const normalized = BroadcastChannelConnector.normalizeNodeId(nodeId);
     if (!normalized) {
-      throw new Error('BroadcastChannelConnector target node id must be a non-empty string');
+      throw new Error(
+        'BroadcastChannelConnector target node id must be a non-empty string'
+      );
     }
 
     if (normalized === '*') {
@@ -658,5 +681,4 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       target_mode: 'wildcard',
     });
   }
-
 }

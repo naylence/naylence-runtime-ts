@@ -52,7 +52,11 @@ function normalizeConfig(
   const rawInbox = record.inboxCapacity ?? record['inbox_capacity'];
   let inboxCapacity = DEFAULT_INBOX_CAPACITY;
 
-  if (typeof rawInbox === 'number' && Number.isFinite(rawInbox) && rawInbox > 0) {
+  if (
+    typeof rawInbox === 'number' &&
+    Number.isFinite(rawInbox) &&
+    rawInbox > 0
+  ) {
     inboxCapacity = Math.floor(rawInbox);
   } else if (typeof rawInbox === 'string') {
     const parsed = Number.parseInt(rawInbox.trim(), 10);
@@ -84,9 +88,7 @@ export class InPageListenerFactory extends TransportListenerFactory<InPageListen
   ): Promise<TransportListener> {
     const normalized = normalizeConfig(config);
 
-    const [{ InPageListener }] = await Promise.all([
-      getInPageListenerModule(),
-    ]);
+    const [{ InPageListener }] = await Promise.all([getInPageListenerModule()]);
 
     void factoryArgs;
 

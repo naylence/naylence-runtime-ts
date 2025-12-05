@@ -1,4 +1,7 @@
-import { resolveRuntimeVersion, resetCachedRuntimeVersionForTesting } from '../runtime-version.js';
+import {
+  resolveRuntimeVersion,
+  resetCachedRuntimeVersionForTesting,
+} from '../runtime-version.js';
 import { VERSION } from '../../../../version.js';
 
 describe('resolveRuntimeVersion', () => {
@@ -12,11 +15,13 @@ describe('resolveRuntimeVersion', () => {
     jest.doMock('../../../../version.js', () => ({
       VERSION: '',
     }));
-    
+
     jest.resetModules();
-    const { resolveRuntimeVersion: resolve } = await import('../runtime-version.js');
+    const { resolveRuntimeVersion: resolve } = await import(
+      '../runtime-version.js'
+    );
     const version = await resolve();
-    
+
     expect(version).toBeNull();
     jest.dontMock('../../../../version.js');
   });
@@ -24,7 +29,7 @@ describe('resolveRuntimeVersion', () => {
   it('maintains backward compatibility with async API', async () => {
     const result = resolveRuntimeVersion();
     expect(result).toBeInstanceOf(Promise);
-    
+
     const version = await result;
     expect(typeof version).toBe('string');
   });
@@ -37,4 +42,3 @@ describe('resetCachedRuntimeVersionForTesting', () => {
     expect(() => resetCachedRuntimeVersionForTesting()).not.toThrow();
   });
 });
-

@@ -71,12 +71,14 @@ function createMockBrowser(initialHref = 'http://localhost/app') {
     forward: jest.fn(),
     go: jest.fn(),
     pushState: jest.fn(),
-    replaceState: jest.fn((state: unknown, _title: string, url?: string | URL | null) => {
-      historyState.value = state;
-      if (url !== undefined && url !== null) {
-        urlState.current = new URL(url.toString(), urlState.current);
+    replaceState: jest.fn(
+      (state: unknown, _title: string, url?: string | URL | null) => {
+        historyState.value = state;
+        if (url !== undefined && url !== null) {
+          urlState.current = new URL(url.toString(), urlState.current);
+        }
       }
-    }),
+    ),
   };
 
   return {
@@ -185,23 +187,25 @@ describe('OAuth2PkceTokenProvider (browser)', () => {
     } as OAuth2PkceTokenProviderOptions);
 
   it('redirects the browser and exchanges tokens after the callback returns', async () => {
-    const fetchImpl = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const body = typeof init?.body === 'string' ? init.body : '';
-      expect(input).toBe(tokenUrl);
-      const params = new URLSearchParams(body);
-      expect(params.get('grant_type')).toBe('authorization_code');
-      expect(params.get('redirect_uri')).toBe(redirectUri);
-      expect(params.get('client_id')).toBe(clientId);
-      expect(params.get('code')).toBe('auth-code');
-      expect(params.get('code_verifier')).toBeTruthy();
-      return new Response(
-        JSON.stringify({ access_token: 'pkce-token', expires_in: 60 }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    });
+    const fetchImpl = jest.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const body = typeof init?.body === 'string' ? init.body : '';
+        expect(input).toBe(tokenUrl);
+        const params = new URLSearchParams(body);
+        expect(params.get('grant_type')).toBe('authorization_code');
+        expect(params.get('redirect_uri')).toBe(redirectUri);
+        expect(params.get('client_id')).toBe(clientId);
+        expect(params.get('code')).toBe('auth-code');
+        expect(params.get('code_verifier')).toBeTruthy();
+        return new Response(
+          JSON.stringify({ access_token: 'pkce-token', expires_in: 60 }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    );
 
     const provider = buildProvider({
       fetchImpl,

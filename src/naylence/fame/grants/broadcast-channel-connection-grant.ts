@@ -101,7 +101,8 @@ export function normalizeBroadcastChannelConnectionGrant(
   };
 
   const channelValue =
-    candidate.channelName ?? (candidate as Record<string, unknown>)['channel_name'];
+    candidate.channelName ??
+    (candidate as Record<string, unknown>)['channel_name'];
   if (channelValue !== undefined) {
     if (typeof channelValue !== 'string' || channelValue.trim().length === 0) {
       throw new TypeError(
@@ -112,7 +113,8 @@ export function normalizeBroadcastChannelConnectionGrant(
   }
 
   const inboxValue =
-    candidate.inboxCapacity ?? (candidate as Record<string, unknown>)['inbox_capacity'];
+    candidate.inboxCapacity ??
+    (candidate as Record<string, unknown>)['inbox_capacity'];
   if (inboxValue !== undefined) {
     if (
       typeof inboxValue !== 'number' ||
@@ -127,7 +129,8 @@ export function normalizeBroadcastChannelConnectionGrant(
   }
 
   const windowValue =
-    candidate.initialWindow ?? (candidate as Record<string, unknown>)['initial_window'];
+    candidate.initialWindow ??
+    (candidate as Record<string, unknown>)['initial_window'];
   if (windowValue !== undefined) {
     if (
       typeof windowValue !== 'number' ||

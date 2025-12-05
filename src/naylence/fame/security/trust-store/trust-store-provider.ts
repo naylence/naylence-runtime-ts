@@ -19,10 +19,10 @@ export interface TrustStoreProvider {
 }
 
 export type TrustBundleSourceType =
-  | "INLINE_PEM"
-  | "DATA_PEM"
-  | "FILE"
-  | "HTTPS_BUNDLE";
+  | 'INLINE_PEM'
+  | 'DATA_PEM'
+  | 'FILE'
+  | 'HTTPS_BUNDLE';
 
 export interface TrustBundlePins {
   readonly hashPins?: readonly string[];
@@ -32,22 +32,22 @@ export interface TrustBundlePins {
 }
 
 export interface InlinePemSource {
-  readonly type: "INLINE_PEM";
+  readonly type: 'INLINE_PEM';
   readonly pem: string;
 }
 
 export interface DataPemSource {
-  readonly type: "DATA_PEM";
+  readonly type: 'DATA_PEM';
   readonly dataUri: string;
 }
 
 export interface FilePemSource {
-  readonly type: "FILE";
+  readonly type: 'FILE';
   readonly path: string;
 }
 
 export interface HttpsBundleSource extends TrustBundlePins {
-  readonly type: "HTTPS_BUNDLE";
+  readonly type: 'HTTPS_BUNDLE';
   readonly url: string;
 }
 

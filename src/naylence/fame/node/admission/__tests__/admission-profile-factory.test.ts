@@ -152,9 +152,7 @@ describe('AdmissionProfileFactory', () => {
     expect(grants).toHaveLength(1);
 
     const grant = grants[0] as Record<string, any>;
-    expect(grant.auth?.token_provider?.type).toBe(
-      'OAuth2PkceTokenProvider'
-    );
+    expect(grant.auth?.token_provider?.type).toBe('OAuth2PkceTokenProvider');
   });
 
   it('maps welcome profile to welcome service client', async () => {

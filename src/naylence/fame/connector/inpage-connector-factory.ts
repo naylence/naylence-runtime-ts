@@ -138,7 +138,8 @@ export class InPageConnectorFactory extends ConnectorFactory<
       normalized.localNodeId
     );
     const localNodeId =
-      this._normalizeNodeId(options.localNodeId) ?? normalizedLocalNodeFromConfig;
+      this._normalizeNodeId(options.localNodeId) ??
+      normalizedLocalNodeFromConfig;
     if (!localNodeId) {
       throw new Error(
         'InPageConnectorFactory requires a localNodeId from config or create() options'
@@ -310,9 +311,7 @@ export class InPageConnectorFactory extends ConnectorFactory<
     return trimmed.length > 0 ? trimmed : null;
   }
 
-  private _normalizeTargetNodeId(
-    value: unknown
-  ): string | '*' | undefined {
+  private _normalizeTargetNodeId(value: unknown): string | '*' | undefined {
     if (value === undefined || value === null) {
       return undefined;
     }

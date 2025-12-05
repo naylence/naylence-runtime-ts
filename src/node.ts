@@ -4,7 +4,7 @@ import './naylence/fame/connector/websocket-connector-node-ssl.js';
 // the isomorphic exports are evaluated. Some factories (SQLite) must be
 // registered early so configuration parsing that happens during runtime
 // initialization can resolve the requested storage profiles.
-import './naylence/fame/storage/node-index.js';  // Side-effect: registers SQLite profiles
+import './naylence/fame/storage/node-index.js'; // Side-effect: registers SQLite profiles
 export * from './naylence/fame/storage/node-index.js';
 
 export * from './runtime-isomorphic.js';
@@ -25,8 +25,8 @@ export {
   DefaultHttpServer,
   getWebsocketListenerInstance,
   TransportListener,
+  TransportListenerFactory,
   TRANSPORT_LISTENER_FACTORY_BASE_TYPE,
-  type TransportListenerFactory,
   type TransportListenerConfig,
   type HttpServer,
   type HttpRouter,
@@ -36,6 +36,7 @@ export {
   InPageListener,
   getInPageListenerInstance,
 } from './naylence/fame/connector/index.js';
+export { safeImport } from './naylence/fame/util/lazy-import.js';
 
 export {
   InProcessFameFabric,

@@ -14,7 +14,10 @@ let mockStartSpan: jest.Mock;
 let mockTracer: Tracer;
 let mockGetTracer: jest.Mock;
 let mockGetTracerProvider: jest.Mock;
-let mockOtelApi: Pick<typeof import('@opentelemetry/api'), 'trace' | 'SpanStatusCode'>;
+let mockOtelApi: Pick<
+  typeof import('@opentelemetry/api'),
+  'trace' | 'SpanStatusCode'
+>;
 
 describe('OpenTelemetryTraceEmitter', () => {
   beforeEach(() => {
@@ -36,7 +39,9 @@ describe('OpenTelemetryTraceEmitter', () => {
 
     mockOtelApi = {
       trace: traceApiMock,
-      SpanStatusCode: { ERROR: 2 } as unknown as typeof import('@opentelemetry/api').SpanStatusCode,
+      SpanStatusCode: {
+        ERROR: 2,
+      } as unknown as typeof import('@opentelemetry/api').SpanStatusCode,
     };
   });
 

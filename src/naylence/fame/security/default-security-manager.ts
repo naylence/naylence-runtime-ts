@@ -770,7 +770,8 @@ export class DefaultSecurityManager implements SecurityManager {
       const hasSignature = Boolean(envelope.sec?.sig);
       if (!hasSignature) {
         const nodeSid = (node as { sid?: string | null | undefined }).sid;
-        const envelopeSid = (envelope as { sid?: string | null | undefined }).sid;
+        const envelopeSid = (envelope as { sid?: string | null | undefined })
+          .sid;
         const isLocalUnsignedSelfEnvelope =
           localContext.originType === DeliveryOriginType.LOCAL &&
           typeof nodeSid === 'string' &&

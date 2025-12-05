@@ -39,9 +39,7 @@ const DEFAULT_CHANNEL = 'naylence-fabric';
 const DEFAULT_INBOX_CAPACITY = 2048;
 
 const RESPONSE_TYPE_MASK =
-  FameResponseType.ACK |
-  FameResponseType.REPLY |
-  FameResponseType.STREAM;
+  FameResponseType.ACK | FameResponseType.REPLY | FameResponseType.STREAM;
 
 const isBrowserEnvironment = (): boolean =>
   typeof window !== 'undefined' &&
@@ -266,7 +264,9 @@ export class BroadcastChannelListener extends TransportListener {
     this._channelHandler = null;
   }
 
-  private async _handleChannelEvent(event: MessageEvent<unknown>): Promise<void> {
+  private async _handleChannelEvent(
+    event: MessageEvent<unknown>
+  ): Promise<void> {
     if (!this._routingNode) {
       return;
     }
@@ -307,7 +307,10 @@ export class BroadcastChannelListener extends TransportListener {
       return null;
     }
 
-    const record = payloadContainer as { senderId?: unknown; payload?: unknown };
+    const record = payloadContainer as {
+      senderId?: unknown;
+      payload?: unknown;
+    };
     const senderId = record.senderId;
     if (typeof senderId !== 'string' || senderId.length === 0) {
       return null;
@@ -335,11 +338,7 @@ export class BroadcastChannelListener extends TransportListener {
         }
       })();
 
-      if (
-        error instanceof ZodError &&
-        decoded &&
-        decoded.length > 0
-      ) {
+      if (error instanceof ZodError && decoded && decoded.length > 0) {
         try {
           const reparsed = JSON.parse(decoded) as Record<string, unknown>;
           const candidate = reparsed.rtype;
@@ -556,9 +555,12 @@ export class BroadcastChannelListener extends TransportListener {
             )
           );
         } catch (error) {
-          logger.debug('broadcast_channel_listener_grant_normalization_failed', {
-            error: error instanceof Error ? error.message : String(error),
-          });
+          logger.debug(
+            'broadcast_channel_listener_grant_normalization_failed',
+            {
+              error: error instanceof Error ? error.message : String(error),
+            }
+          );
         }
       }
     }
@@ -591,11 +593,11 @@ export class BroadcastChannelListener extends TransportListener {
       typeof (grant as { toConnectorConfig?: unknown }).toConnectorConfig ===
         'function'
     ) {
-      const normalized = (grant as { toConnectorConfig: () => ConnectorConfig }).toConnectorConfig();
+      const normalized = (
+        grant as { toConnectorConfig: () => ConnectorConfig }
+      ).toConnectorConfig();
       if (normalized.type !== BROADCAST_CHANNEL_CONNECTOR_TYPE) {
-        throw new Error(
-          `Unsupported grant connector type: ${normalized.type}`
-        );
+        throw new Error(`Unsupported grant connector type: ${normalized.type}`);
       }
 
       return this._buildConnectorConfigForSystem(
@@ -661,11 +663,22 @@ export class BroadcastChannelListener extends TransportListener {
     const initialTargetNodeId =
       this._normalizeNodeId(targetCandidate) ?? targetSystemId;
 
+    const passive =
+      typeof passiveCandidate === 'boolean' ? passiveCandidate : true;
+
+    logger.debug('broadcast_channel_listener_building_connector_config', {
+      system_id: systemId,
+      channel_name: channelName,
+      passive,
+      has_base_config: !!baseConfig,
+      passive_candidate: passiveCandidate,
+    });
+
     return {
       type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
       channelName,
       inboxCapacity,
-      passive: typeof passiveCandidate === 'boolean' ? passiveCandidate : true,
+      passive,
       initialWindow,
       localNodeId,
       initialTargetNodeId,

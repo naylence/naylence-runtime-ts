@@ -32,7 +32,7 @@ describe('NodeLikeFactory.createNode', () => {
       },
     } as any);
 
-  const node = await NodeLikeFactory.createNode();
+    const node = await NodeLikeFactory.createNode();
 
     expect(node).toBe(mockNode);
     expect(createResourceSpy).toHaveBeenCalledTimes(1);

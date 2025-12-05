@@ -289,8 +289,8 @@ function initializePino(): void {
   try {
     // Try to require pino synchronously - this will only work in Node.js
     if (typeof require !== 'undefined') {
-  const moduleSpecifier = String.fromCharCode(112, 105, 110, 111);
-  const pino = require(moduleSpecifier);
+      const moduleSpecifier = String.fromCharCode(112, 105, 110, 111);
+      const pino = require(moduleSpecifier);
 
       // Use pretty transport for development
       pinoLogger = pino({
@@ -345,7 +345,7 @@ function getInitialLogLevel(): LogLevel {
 
   // Check FAME_LOG_LEVEL environment variable
   let envLevel: string | undefined;
-  
+
   if (isNode && typeof process !== 'undefined') {
     envLevel = process.env.FAME_LOG_LEVEL;
   } else if (typeof window !== 'undefined' && (window as any).__ENV__) {

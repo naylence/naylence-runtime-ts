@@ -49,7 +49,10 @@ const CALLBACK_TYPE_ALIASES: Record<string, string[]> = {
   ],
 };
 
-function grantTypeMatches(target: string, candidate: string | undefined): boolean {
+function grantTypeMatches(
+  target: string,
+  candidate: string | undefined
+): boolean {
   if (!candidate) {
     return false;
   }
@@ -256,9 +259,7 @@ function createBroadcastChannelConnectorGrant(
           : GRANT_PURPOSE_NODE_ATTACH,
     };
 
-    const normalized = normalizeBroadcastChannelConnectionGrant(
-      grantCandidate
-    );
+    const normalized = normalizeBroadcastChannelConnectionGrant(grantCandidate);
 
     const grant: BroadcastChannelConnectionGrant & {
       toConnectorConfig: () => ConnectorConfig;
@@ -270,9 +271,12 @@ function createBroadcastChannelConnectorGrant(
 
     return grant;
   } catch (error) {
-    logger.debug('grant_selection_broadcast_channel_connector_normalization_failed', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.debug(
+      'grant_selection_broadcast_channel_connector_normalization_failed',
+      {
+        error: error instanceof Error ? error.message : String(error),
+      }
+    );
     return null;
   }
 }

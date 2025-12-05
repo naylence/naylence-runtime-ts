@@ -41,7 +41,9 @@ const isBrowserEnvironment = (): boolean =>
 
 const ensureBrowserEnvironment = (): void => {
   if (!isBrowserEnvironment()) {
-    throw new Error('InPageListener is browser-only and requires DOM EventTarget support');
+    throw new Error(
+      'InPageListener is browser-only and requires DOM EventTarget support'
+    );
   }
 };
 
@@ -134,7 +136,9 @@ export class InPageListener extends TransportListener {
         : DEFAULT_CHANNEL;
 
     const normalizedCapacity =
-      typeof inboxCandidate === 'number' && Number.isFinite(inboxCandidate) && inboxCandidate > 0
+      typeof inboxCandidate === 'number' &&
+      Number.isFinite(inboxCandidate) &&
+      inboxCandidate > 0
         ? Math.floor(inboxCandidate)
         : DEFAULT_INBOX_CAPACITY;
 
@@ -165,7 +169,7 @@ export class InPageListener extends TransportListener {
       return;
     }
 
-  this._routingNode = isRoutingNodeLike(node) ? node : null;
+    this._routingNode = isRoutingNodeLike(node) ? node : null;
     this._initialized = true;
 
     logger.debug('inpage_listener_initialized', {
@@ -302,7 +306,10 @@ export class InPageListener extends TransportListener {
       return null;
     }
 
-    const record = payloadContainer as { senderId?: unknown; payload?: unknown };
+    const record = payloadContainer as {
+      senderId?: unknown;
+      payload?: unknown;
+    };
     const senderId = record.senderId;
     if (typeof senderId !== 'string' || senderId.length === 0) {
       return null;
@@ -492,8 +499,13 @@ export class InPageListener extends TransportListener {
       return inPageGrantToConnectorConfig(grant as InPageConnectionGrantLike);
     }
 
-    if (typeof (grant as { toConnectorConfig?: () => ConnectorConfig })?.toConnectorConfig === 'function') {
-      return (grant as { toConnectorConfig: () => ConnectorConfig }).toConnectorConfig();
+    if (
+      typeof (grant as { toConnectorConfig?: () => ConnectorConfig })
+        ?.toConnectorConfig === 'function'
+    ) {
+      return (
+        grant as { toConnectorConfig: () => ConnectorConfig }
+      ).toConnectorConfig();
     }
 
     throw new Error(`Unsupported grant type: ${grant.type}`);
@@ -594,7 +606,9 @@ export class InPageListener extends TransportListener {
     const localNodeId = this._requireLocalNodeId();
     const targetSystemId = this._normalizeNodeId(systemId);
     if (!targetSystemId) {
-      throw new Error('InPageListener requires a valid system id for connector creation');
+      throw new Error(
+        'InPageListener requires a valid system id for connector creation'
+      );
     }
 
     const candidate = baseConfig ?? null;
@@ -658,9 +672,7 @@ export class InPageListener extends TransportListener {
     return trimmed.length > 0 ? trimmed : null;
   }
 
-  private _normalizeTargetNodeId(
-    value: unknown
-  ): string | '*' | undefined {
+  private _normalizeTargetNodeId(value: unknown): string | '*' | undefined {
     if (value === undefined || value === null) {
       return undefined;
     }

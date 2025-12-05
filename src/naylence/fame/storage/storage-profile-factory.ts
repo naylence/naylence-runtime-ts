@@ -28,7 +28,9 @@ const storageProfileSchema = z
     profile: z
       .string()
       .optional()
-      .describe('Storage profile name (memory | indexeddb | sqlite | encrypted-sqlite)'),
+      .describe(
+        'Storage profile name (memory | indexeddb | sqlite | encrypted-sqlite)'
+      ),
   })
   .passthrough();
 

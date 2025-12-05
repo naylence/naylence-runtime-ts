@@ -33,6 +33,7 @@ export interface BroadcastChannelConnectorFactoryConfig
   inboxCapacity?: number;
   localNodeId?: string;
   initialTargetNodeId?: string | '*';
+  passive?: boolean;
 }
 
 export interface CreateBroadcastChannelConnectorOptions {
@@ -72,7 +73,8 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
 
   public supportedGrants(): Record<string, new () => ConnectionGrant> {
     return {
-      [BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE]: BroadcastChannelConnectionGrantImpl,
+      [BROADCAST_CHANNEL_CONNECTION_GRANT_TYPE]:
+        BroadcastChannelConnectionGrantImpl,
     };
   }
 
@@ -95,12 +97,18 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
       type: BROADCAST_CHANNEL_CONNECTOR_TYPE,
     };
 
-    const channelCandidate = record.channelName ?? (record as Record<string, unknown>)['channel_name'];
-    if (typeof channelCandidate === 'string' && channelCandidate.trim().length > 0) {
+    const channelCandidate =
+      record.channelName ?? (record as Record<string, unknown>)['channel_name'];
+    if (
+      typeof channelCandidate === 'string' &&
+      channelCandidate.trim().length > 0
+    ) {
       config.channelName = channelCandidate.trim();
     }
 
-    const inboxCandidate = record.inboxCapacity ?? (record as Record<string, unknown>)['inbox_capacity'];
+    const inboxCandidate =
+      record.inboxCapacity ??
+      (record as Record<string, unknown>)['inbox_capacity'];
     if (
       typeof inboxCandidate === 'number' &&
       Number.isFinite(inboxCandidate) &&
@@ -128,20 +136,27 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
   }
 
   public async create(
-    config?: BroadcastChannelConnectorFactoryConfig | Record<string, unknown> | null,
+    config?:
+      | BroadcastChannelConnectorFactoryConfig
+      | Record<string, unknown>
+      | null,
     ...factoryArgs: unknown[]
   ): Promise<BroadcastChannelConnector> {
     if (!config) {
-      throw new Error('BroadcastChannelConnectorFactory requires a configuration');
+      throw new Error(
+        'BroadcastChannelConnectorFactory requires a configuration'
+      );
     }
 
     const normalized = this._normalizeConfig(config);
-    const options = (factoryArgs[0] ?? {}) as CreateBroadcastChannelConnectorOptions;
+    const options = (factoryArgs[0] ??
+      {}) as CreateBroadcastChannelConnectorOptions;
     const normalizedLocalNodeFromConfig = this._normalizeNodeId(
       normalized.localNodeId
     );
     const localNodeId =
-      this._normalizeNodeId(options.localNodeId) ?? normalizedLocalNodeFromConfig;
+      this._normalizeNodeId(options.localNodeId) ??
+      normalizedLocalNodeFromConfig;
     if (!localNodeId) {
       throw new Error(
         'BroadcastChannelConnectorFactory requires a localNodeId from config or create() options'
@@ -175,9 +190,13 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
       inboxCapacity,
       localNodeId,
       initialTargetNodeId: resolvedTarget,
+      passive: normalized.passive,
     };
 
-    const connector = new BroadcastChannelConnector(connectorConfig, baseConfig);
+    const connector = new BroadcastChannelConnector(
+      connectorConfig,
+      baseConfig
+    );
 
     if (options.authorization) {
       connector.authorizationContext = options.authorization;
@@ -232,6 +251,10 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
       normalized.localNodeId = normalizedLocalNodeId;
     }
 
+    if (typeof candidate.passive === 'boolean') {
+      normalized.passive = candidate.passive;
+    }
+
     if (typeof candidate.flowControl === 'boolean') {
       normalized.flowControl = candidate.flowControl;
     }
@@ -245,7 +268,8 @@ export class BroadcastChannelConnectorFactory extends ConnectorFactory<
       normalized.maxQueueSize = Math.floor(maxQueueSize);
     }
 
-    const initialWindow = candidate.initialWindow ?? candidate['initial_window'];
+    const initialWindow =
+      candidate.initialWindow ?? candidate['initial_window'];
     if (
       typeof initialWindow === 'number' &&
       Number.isFinite(initialWindow) &&

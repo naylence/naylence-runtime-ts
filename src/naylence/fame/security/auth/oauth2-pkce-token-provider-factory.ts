@@ -15,7 +15,8 @@ import {
 } from './token-provider-factory.js';
 import type { OAuth2PkceTokenProviderOptions } from './oauth2-pkce-token-provider.js';
 
-type OAuth2PkceTokenProviderModule = typeof import('./oauth2-pkce-token-provider.js');
+type OAuth2PkceTokenProviderModule =
+  typeof import('./oauth2-pkce-token-provider.js');
 
 let oauth2PkceTokenProviderModulePromise: Promise<OAuth2PkceTokenProviderModule> | null =
   null;
@@ -63,7 +64,9 @@ interface NormalizedPkceConfig {
 
 function ensureNonEmptyString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`OAuth2PkceTokenProvider ${field} must be a non-empty string`);
+    throw new Error(
+      `OAuth2PkceTokenProvider ${field} must be a non-empty string`
+    );
   }
   return value.trim();
 }
@@ -154,22 +157,37 @@ function normalizeConfig(
 
   const audienceCandidate =
     candidate.audience ?? (candidate as Record<string, unknown>).aud;
-  if (typeof audienceCandidate === 'string' && audienceCandidate.trim().length > 0) {
+  if (
+    typeof audienceCandidate === 'string' &&
+    audienceCandidate.trim().length > 0
+  ) {
     normalized.audience = audienceCandidate.trim();
   }
 
-  const codeChallengeMethod = candidate.codeChallengeMethod ?? candidate.code_challenge_method;
-  if (typeof codeChallengeMethod === 'string' && codeChallengeMethod.trim().length > 0) {
+  const codeChallengeMethod =
+    candidate.codeChallengeMethod ?? candidate.code_challenge_method;
+  if (
+    typeof codeChallengeMethod === 'string' &&
+    codeChallengeMethod.trim().length > 0
+  ) {
     normalized.codeChallengeMethod = codeChallengeMethod.trim();
   }
 
-  const codeVerifierLength = candidate.codeVerifierLength ?? candidate.code_verifier_length;
-  if (typeof codeVerifierLength === 'number' && Number.isFinite(codeVerifierLength)) {
+  const codeVerifierLength =
+    candidate.codeVerifierLength ?? candidate.code_verifier_length;
+  if (
+    typeof codeVerifierLength === 'number' &&
+    Number.isFinite(codeVerifierLength)
+  ) {
     normalized.codeVerifierLength = codeVerifierLength;
   }
 
-  const clockSkewSeconds = candidate.clockSkewSeconds ?? candidate.clock_skew_seconds;
-  if (typeof clockSkewSeconds === 'number' && Number.isFinite(clockSkewSeconds)) {
+  const clockSkewSeconds =
+    candidate.clockSkewSeconds ?? candidate.clock_skew_seconds;
+  if (
+    typeof clockSkewSeconds === 'number' &&
+    Number.isFinite(clockSkewSeconds)
+  ) {
     normalized.clockSkewSeconds = clockSkewSeconds;
   }
 
@@ -196,10 +214,14 @@ export class OAuth2PkceTokenProviderFactory extends TokenProviderFactory<OAuth2P
 
     const [usernameProvider, clientSecretProvider] = await Promise.all([
       normalized.usernameConfig
-        ? CredentialProviderFactory.createCredentialProvider(normalized.usernameConfig)
+        ? CredentialProviderFactory.createCredentialProvider(
+            normalized.usernameConfig
+          )
         : Promise.resolve(undefined),
       normalized.clientSecretConfig
-        ? CredentialProviderFactory.createCredentialProvider(normalized.clientSecretConfig)
+        ? CredentialProviderFactory.createCredentialProvider(
+            normalized.clientSecretConfig
+          )
         : Promise.resolve(undefined),
     ]);
 
@@ -221,8 +243,8 @@ export class OAuth2PkceTokenProviderFactory extends TokenProviderFactory<OAuth2P
       options.audience = normalized.audience;
     }
     if (normalized.codeChallengeMethod) {
-      options.codeChallengeMethod = normalized.codeChallengeMethod
-        .toUpperCase() as 'S256' | 'PLAIN';
+      options.codeChallengeMethod =
+        normalized.codeChallengeMethod.toUpperCase() as 'S256' | 'PLAIN';
     }
     if (normalized.codeVerifierLength) {
       options.codeVerifierLength = normalized.codeVerifierLength;
@@ -234,7 +256,8 @@ export class OAuth2PkceTokenProviderFactory extends TokenProviderFactory<OAuth2P
       options.loginHintParam = normalized.loginHintParam;
     }
 
-    const { OAuth2PkceTokenProvider } = await getOAuth2PkceTokenProviderModule();
+    const { OAuth2PkceTokenProvider } =
+      await getOAuth2PkceTokenProviderModule();
 
     return new OAuth2PkceTokenProvider(options);
   }

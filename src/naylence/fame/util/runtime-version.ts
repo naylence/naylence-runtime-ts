@@ -2,10 +2,10 @@ import { VERSION } from '../../../version.js';
 
 /**
  * Resolves the runtime version.
- * 
+ *
  * The version is now injected at build time from package.json into version.ts.
  * This function maintains backward compatibility by returning a Promise.
- * 
+ *
  * @returns The runtime version string, or null if not available.
  */
 export async function resolveRuntimeVersion(): Promise<string | null> {

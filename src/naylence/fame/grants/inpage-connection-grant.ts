@@ -91,7 +91,8 @@ export function normalizeInPageConnectionGrant(
   };
 
   const channelValue =
-    candidate.channelName ?? (candidate as Record<string, unknown>)['channel_name'];
+    candidate.channelName ??
+    (candidate as Record<string, unknown>)['channel_name'];
   if (channelValue !== undefined) {
     if (typeof channelValue !== 'string' || channelValue.trim().length === 0) {
       throw new TypeError(
@@ -102,7 +103,8 @@ export function normalizeInPageConnectionGrant(
   }
 
   const inboxValue =
-    candidate.inboxCapacity ?? (candidate as Record<string, unknown>)['inbox_capacity'];
+    candidate.inboxCapacity ??
+    (candidate as Record<string, unknown>)['inbox_capacity'];
   if (inboxValue !== undefined) {
     if (
       typeof inboxValue !== 'number' ||

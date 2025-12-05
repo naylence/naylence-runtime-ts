@@ -50,9 +50,11 @@ function createFsShim(): FsModule | null {
     return null;
   }
 
-  const processBinding = (process as NodeJS.Process & {
-    binding?: (name: string) => unknown;
-  }).binding;
+  const processBinding = (
+    process as NodeJS.Process & {
+      binding?: (name: string) => unknown;
+    }
+  ).binding;
 
   if (typeof processBinding !== 'function') {
     return null;
@@ -86,7 +88,8 @@ function createFsShim(): FsModule | null {
           options &&
           typeof options === 'object' &&
           'encoding' in options &&
-          typeof (options as { encoding?: BufferEncoding | null }).encoding === 'string'
+          typeof (options as { encoding?: BufferEncoding | null }).encoding ===
+            'string'
         ) {
           encoding = (options as { encoding: BufferEncoding }).encoding;
         }
@@ -125,9 +128,9 @@ function createFsShim(): FsModule | null {
 
         if (typeof fsBinding.existsSync === 'function') {
           try {
-            return Boolean(
-              fsBinding.existsSync(pathLike)
-            ) as ReturnType<FsModule['existsSync']>;
+            return Boolean(fsBinding.existsSync(pathLike)) as ReturnType<
+              FsModule['existsSync']
+            >;
           } catch {
             // fall through to the internal stat fallback
           }
@@ -184,9 +187,11 @@ function getNodeRequire(): NodeRequire | null {
     return null;
   }
 
-  const processBinding = (process as NodeJS.Process & {
-    binding?: (name: string) => unknown;
-  }).binding;
+  const processBinding = (
+    process as NodeJS.Process & {
+      binding?: (name: string) => unknown;
+    }
+  ).binding;
 
   if (typeof processBinding !== 'function') {
     return null;
@@ -224,7 +229,8 @@ function getFsModule(): FsModule {
     throw new Error('File system access is not available in this environment');
   }
 
-  const nodeRequire = typeof require === 'function' ? require : getNodeRequire();
+  const nodeRequire =
+    typeof require === 'function' ? require : getNodeRequire();
 
   if (nodeRequire) {
     try {

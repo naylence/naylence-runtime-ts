@@ -426,7 +426,6 @@ export class DefaultCryptoProvider implements CryptoProvider {
       has_chain: Boolean(certificateChainPem),
     });
   }
-
 }
 
 async function buildProviderArtifacts(

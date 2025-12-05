@@ -106,18 +106,12 @@ function normalizeOptions(
 ): Required<
   Pick<
     OAuth2PkceTokenProviderOptions,
-    | 'authorizeUrl'
-    | 'tokenUrl'
-    | 'redirectUri'
-    | 'clientId'
+    'authorizeUrl' | 'tokenUrl' | 'redirectUri' | 'clientId'
   >
 > &
   Omit<
     OAuth2PkceTokenProviderOptions,
-    | 'authorizeUrl'
-    | 'tokenUrl'
-    | 'redirectUri'
-    | 'clientId'
+    'authorizeUrl' | 'tokenUrl' | 'redirectUri' | 'clientId'
   > {
   const camel = raw as OAuth2PkceTokenProviderOptions;
   const snake = raw as SnakeCaseOAuth2PkceOptions;
@@ -160,11 +154,11 @@ function normalizeOptions(
     DEFAULT_SCOPES.slice();
 
   const audience =
-    coerceString(camel.audience) ??
-    coerceString(snake.audience ?? snake.aud);
+    coerceString(camel.audience) ?? coerceString(snake.audience ?? snake.aud);
 
-  const fetchImpl =
-    (camel.fetchImpl ?? snake.fetch_impl) as FetchLike | undefined;
+  const fetchImpl = (camel.fetchImpl ?? snake.fetch_impl) as
+    | FetchLike
+    | undefined;
 
   const clockSkewSeconds =
     coerceNumber(camel.clockSkewSeconds) ??
@@ -272,7 +266,7 @@ function ensureFinitePositive(value: number, label: string): number {
 
 /**
  * In-memory token cache for PKCE tokens.
- * 
+ *
  * Tokens are intentionally NOT persisted to localStorage or sessionStorage to avoid
  * stale-token issues when the OAuth2 server restarts and generates new signing keys.
  * Each fresh page load triggers a new PKCE flow when a token is needed.
@@ -321,7 +315,9 @@ function isBrowserEnvironment(): boolean {
   );
 }
 
-function readPendingAuthorization(clientId: string): StoredAuthorization | null {
+function readPendingAuthorization(
+  clientId: string
+): StoredAuthorization | null {
   if (!isBrowserEnvironment()) {
     return null;
   }
@@ -422,7 +418,9 @@ function clearOAuthParamsFromUrl(url: URL): void {
   }
 }
 
-function collectRedirectOutcome(currentLocation: Location): RedirectOutcome | null {
+function collectRedirectOutcome(
+  currentLocation: Location
+): RedirectOutcome | null {
   const url = new URL(currentLocation.href);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
@@ -603,9 +601,7 @@ export class OAuth2PkceTokenProvider implements TokenProvider {
       const suffix = outcome.errorDescription
         ? ` - ${outcome.errorDescription}`
         : '';
-      throw new Error(
-        `OAuth2 authorization failed: ${outcome.error}${suffix}`
-      );
+      throw new Error(`OAuth2 authorization failed: ${outcome.error}${suffix}`);
     }
 
     if (!outcome.code) {
@@ -638,10 +634,7 @@ export class OAuth2PkceTokenProvider implements TokenProvider {
     return token;
   }
 
-  private isTokenCompatible(
-    scopes?: string[],
-    audience?: string
-  ): boolean {
+  private isTokenCompatible(scopes?: string[], audience?: string): boolean {
     const expectedScopeKey = stableScopeKey(this.options.scopes);
     const tokenScopeKey = stableScopeKey(scopes);
     if (expectedScopeKey !== tokenScopeKey) {
@@ -653,7 +646,10 @@ export class OAuth2PkceTokenProvider implements TokenProvider {
     return expectedAudience === tokenAudience;
   }
 
-  private persistToken(token: Token, metadata: { scopes?: string[]; audience?: string }): void {
+  private persistToken(
+    token: Token,
+    metadata: { scopes?: string[]; audience?: string }
+  ): void {
     writePersistedToken(this.options.clientId, {
       value: token.value,
       expiresAt: token.expiresAt,

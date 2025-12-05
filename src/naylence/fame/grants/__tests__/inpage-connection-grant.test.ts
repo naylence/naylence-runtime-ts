@@ -33,7 +33,9 @@ describe('normalizeInPageConnectionGrant', () => {
         type: INPAGE_CONNECTION_GRANT_TYPE,
         channelName: '',
       })
-    ).toThrow('InPageConnectionGrant "channelName" must be a non-empty string when provided');
+    ).toThrow(
+      'InPageConnectionGrant "channelName" must be a non-empty string when provided'
+    );
   });
 
   it('rejects non-positive inbox capacity', () => {
@@ -42,7 +44,9 @@ describe('normalizeInPageConnectionGrant', () => {
         type: INPAGE_CONNECTION_GRANT_TYPE,
         inboxCapacity: 0,
       })
-    ).toThrow('InPageConnectionGrant "inboxCapacity" must be a positive number when provided');
+    ).toThrow(
+      'InPageConnectionGrant "inboxCapacity" must be a positive number when provided'
+    );
   });
 });
 

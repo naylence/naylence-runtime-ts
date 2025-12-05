@@ -155,4 +155,3 @@ describe('NodePlacementStrategyFactory defaults', () => {
     ).rejects.toThrow('Failed to create default node placement strategy');
   });
 });
-

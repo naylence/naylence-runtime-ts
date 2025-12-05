@@ -143,7 +143,7 @@ const ensureRuntimePluginLoader = (): PluginModuleLoader => {
       return runtimePluginModulePromise;
     }
 
-  const remapped = resolveFactoryModuleSpecifier(specifier);
+    const remapped = resolveFactoryModuleSpecifier(specifier);
     if (remapped) {
       return import(/* @vite-ignore */ remapped) as Promise<
         Record<string, unknown>

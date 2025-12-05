@@ -557,28 +557,68 @@ export class UpstreamSessionManager
     this.connector = connector;
     const callbackGrants = this.node.gatherSupportedCallbackGrants();
 
+    logger.debug('callback_grants_before_augmentation', {
+      count: callbackGrants.length,
+      types: callbackGrants.map((g) => g.type),
+    });
+
+    // Check if we should create a broadcast callback grant before processing connection grants
+    // This prevents adding duplicate broadcast grants
+    const shouldAddBroadcastGrant = this.shouldAdvertiseBroadcastGrant(
+      grant,
+      callbackGrants
+    );
+    const broadcastCallbackGrant = shouldAddBroadcastGrant
+      ? this.createBroadcastCallbackGrant(grant)
+      : null;
+
+    logger.debug('broadcast_callback_grant_check', {
+      should_add: shouldAddBroadcastGrant,
+      grant_created: !!broadcastCallbackGrant,
+    });
+
     // Include admission client's connection grants as callback grants
     // This ensures DirectAdmissionClient grants are available for grant selection
-    if (welcome.frame.connectionGrants && Array.isArray(welcome.frame.connectionGrants)) {
+    if (
+      welcome.frame.connectionGrants &&
+      Array.isArray(welcome.frame.connectionGrants)
+    ) {
       for (const grant of welcome.frame.connectionGrants) {
         if (grant && typeof grant === 'object') {
           // Avoid duplicates by checking if grant already exists
           const isDuplicate = callbackGrants.some(
-            existing => JSON.stringify(existing) === JSON.stringify(grant)
+            (existing) => JSON.stringify(existing) === JSON.stringify(grant)
           );
           if (!isDuplicate) {
             callbackGrants.push(grant);
+            logger.debug('added_connection_grant_as_callback', {
+              type: (grant as Record<string, unknown>).type,
+            });
+          } else {
+            logger.debug('skipped_duplicate_connection_grant', {
+              type: (grant as Record<string, unknown>).type,
+            });
           }
         }
       }
     }
 
-    if (this.shouldAdvertiseBroadcastGrant(grant, callbackGrants)) {
-      const augmented = this.createBroadcastCallbackGrant(grant);
-      if (augmented) {
-        callbackGrants.push(augmented);
-      }
+    // Add broadcast grant after connection grants to ensure we don't duplicate
+    // any broadcast grants that may have been in connectionGrants
+    if (
+      broadcastCallbackGrant &&
+      this.shouldAdvertiseBroadcastGrant(grant, callbackGrants)
+    ) {
+      callbackGrants.push(broadcastCallbackGrant);
+      logger.debug('added_broadcast_callback_grant');
+    } else if (broadcastCallbackGrant) {
+      logger.debug('skipped_duplicate_broadcast_callback_grant');
     }
+
+    logger.debug('callback_grants_after_augmentation', {
+      count: callbackGrants.length,
+      types: callbackGrants.map((g) => g.type),
+    });
     const attachInfo = await this.attachClient.attach(
       this.node,
       this.outboundOriginType,
@@ -890,7 +930,10 @@ export class UpstreamSessionManager
       }
 
       // Reset ack time if just resumed from pause (prevents immediate timeout)
-      if (previousState === ConnectorState.PAUSED && currentState === ConnectorState.STARTED) {
+      if (
+        previousState === ConnectorState.PAUSED &&
+        currentState === ConnectorState.STARTED
+      ) {
         logger.debug('connector_just_resumed_resetting_ack_time', {
           previous_state: previousState,
           current_state: currentState,

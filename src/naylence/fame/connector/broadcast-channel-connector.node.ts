@@ -37,7 +37,10 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
     throw new Error(ERROR_MESSAGE);
   }
 
-  protected async _transportClose(_code: number, _reason: string): Promise<void> {
+  protected async _transportClose(
+    _code: number,
+    _reason: string
+  ): Promise<void> {
     throw new Error(ERROR_MESSAGE);
   }
 }

@@ -249,9 +249,6 @@ export class DefaultDeliveryTracker
   private readonly ackDoneSince = new Map<string, number>();
   private readonly replyDoneSince = new Map<string, number>();
   private readonly pendingAckDispatches = new Set<Promise<void>>();
-  private readonly recentlyHandled = new Map<string, number>();
-  private readonly recentlyHandledOrder: string[] = [];
-  private readonly recentlyHandledTtlMs = 60_000;
   private isPreparingToStop = false;
   private shutdownRequestedAtMs: number | null = null;
   private readonly shutdownRetryGraceMs = 1_000;
@@ -624,27 +621,6 @@ export class DefaultDeliveryTracker
           });
         }
       } else {
-        const wasRecentlyHandled = await this.lock.runExclusive(async () =>
-          this.wasRecentlyHandled(envelope.id)
-        );
-
-        if (wasRecentlyHandled) {
-          logger.debug('tracker_duplicate_envelope_recently_handled', {
-            envp_id: envelope.id,
-          });
-
-          return new TrackedEnvelope({
-            timeoutAtMs: 0,
-            overallTimeoutAtMs: 0,
-            expectedResponseType: envelope.rtype ?? FameResponseType.NONE,
-            createdAtMs: Date.now(),
-            status: EnvelopeStatus.HANDLED,
-            mailboxType: MailboxType.INBOX,
-            originalEnvelope: envelope,
-            serviceName: inboxName,
-          });
-        }
-
         tracked = new TrackedEnvelope({
           timeoutAtMs: 0,
           overallTimeoutAtMs: 0,
@@ -669,12 +645,8 @@ export class DefaultDeliveryTracker
   async onEnvelopeHandled(envelope: TrackedEnvelope): Promise<void> {
     const inbox = this.ensureInbox();
     envelope.status = EnvelopeStatus.HANDLED;
+    // Delete the envelope from inbox to prevent growth
     await inbox.delete(envelope.originalEnvelope.id);
-    await this.lock.runExclusive(async () => {
-      this.markRecentlyHandled(envelope.originalEnvelope.id);
-    });
-    // Preserve handled envelope to prevent duplicate redelivery during shutdown drains.
-    // await inbox.set(envelope.originalEnvelope.id, envelope);
   }
 
   async onEnvelopeHandleFailed(
@@ -782,11 +754,7 @@ export class DefaultDeliveryTracker
       });
 
       if (handledViaFuture) {
-        await this.markDoneSince(
-          this.ackFutures,
-          refId,
-          this.ackDoneSince
-        );
+        await this.markDoneSince(this.ackFutures, refId, this.ackDoneSince);
         await this.clearTimer(refId);
         logger.debug('tracker_ack_resolved_without_tracked_envelope', {
           envp_id: envelope.id,
@@ -1003,9 +971,9 @@ export class DefaultDeliveryTracker
       this.ackDoneSince
     );
 
-    if (envelope.rtype && Boolean(envelope.rtype & FameResponseType.ACK)) {
-      await this.sendAck(envelope);
-    }
+    // Note: ACK is already sent in onCorrelatedMessage (lines 655-657)
+    // when the reply envelope is first delivered. No need to send it again here.
+    // Removing this duplicate sendAck call fixes the duplicate DeliveryAck bug.
 
     for (const handler of this.eventHandlers) {
       await handler.onEnvelopeReplied?.(trackedEnvelope, envelope);
@@ -1208,8 +1176,6 @@ export class DefaultDeliveryTracker
       this.streamDone.clear();
 
       this.correlationToEnvelope.clear();
-      this.recentlyHandled.clear();
-      this.recentlyHandledOrder.length = 0;
       return values;
     });
 
@@ -1470,9 +1436,8 @@ export class DefaultDeliveryTracker
               retryPolicy &&
               currentTracked.attempt < retryPolicy.maxRetries
             ) {
-              const shutdownDeferMs = this.getShutdownRetryDeferDelay(
-                currentNowMs
-              );
+              const shutdownDeferMs =
+                this.getShutdownRetryDeferDelay(currentNowMs);
               if (shutdownDeferMs !== null) {
                 const nextTimeoutAt = Math.min(
                   currentTracked.overallTimeoutAtMs,
@@ -1965,48 +1930,6 @@ export class DefaultDeliveryTracker
       await ackDispatch;
     } finally {
       this.pendingAckDispatches.delete(ackDispatch);
-    }
-  }
-
-  private markRecentlyHandled(envelopeId: string): void {
-    const now = Date.now();
-    this.recentlyHandled.set(envelopeId, now);
-    this.recentlyHandledOrder.push(envelopeId);
-    this.trimRecentlyHandled(now);
-  }
-
-  private wasRecentlyHandled(envelopeId: string): boolean {
-    const now = Date.now();
-    const timestamp = this.recentlyHandled.get(envelopeId);
-
-    if (timestamp === undefined) {
-      return false;
-    }
-
-    if (now - timestamp > this.recentlyHandledTtlMs) {
-      this.recentlyHandled.delete(envelopeId);
-      return false;
-    }
-
-    return true;
-  }
-
-  private trimRecentlyHandled(now: number): void {
-    while (this.recentlyHandledOrder.length > 0) {
-      const candidate = this.recentlyHandledOrder[0];
-      const timestamp = this.recentlyHandled.get(candidate);
-
-      if (timestamp === undefined) {
-        this.recentlyHandledOrder.shift();
-        continue;
-      }
-
-      if (now - timestamp <= this.recentlyHandledTtlMs) {
-        break;
-      }
-
-      this.recentlyHandled.delete(candidate);
-      this.recentlyHandledOrder.shift();
     }
   }
 

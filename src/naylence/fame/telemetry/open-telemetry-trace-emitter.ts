@@ -75,7 +75,10 @@ class OpenTelemetrySpanScope implements TraceSpanScope {
   private spanToken: string | null | undefined;
   private entered = false;
 
-  public constructor(private readonly span: OtelSpan, api: OtelApiBridge) {
+  public constructor(
+    private readonly span: OtelSpan,
+    api: OtelApiBridge
+  ) {
     this.wrapper = new OpenTelemetryTraceSpan(span, api);
   }
 
@@ -141,7 +144,7 @@ export class OpenTelemetryTraceEmitter extends BaseTraceEmitter {
       this.applyEnvelopeTraceId(span, envelopeTraceId);
     }
 
-  return new OpenTelemetrySpanScope(span, this.otelApi);
+    return new OpenTelemetrySpanScope(span, this.otelApi);
   }
 
   public override async flush(): Promise<void> {

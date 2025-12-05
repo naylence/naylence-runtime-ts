@@ -184,7 +184,7 @@ describe('InPageListener', () => {
       })
     );
 
-  await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(routingNode.createOriginConnector).toHaveBeenCalledTimes(1);
     expect(routingNode.createOriginConnector.mock.calls[0][0]).toMatchObject({
@@ -261,7 +261,7 @@ describe('InPageListener', () => {
       })
     );
 
-  await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     const followUpEnvelope = createFameEnvelope({
       frame: { type: 'Data', payload: { note: 'follow-up' } },
@@ -271,19 +271,17 @@ describe('InPageListener', () => {
       new (globals.MessageEvent as typeof MessageEvent)('attach-channel', {
         data: {
           senderId: 'sender-1',
-          payload: new TextEncoder().encode(
-            JSON.stringify(followUpEnvelope)
-          ),
+          payload: new TextEncoder().encode(JSON.stringify(followUpEnvelope)),
         },
       })
     );
 
-  await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(routingNode.createOriginConnector).toHaveBeenCalledTimes(1);
     expect(connector.pushToReceive).toHaveBeenCalledTimes(2);
     const secondCall = connector.pushToReceive.mock.calls[1][0];
-  expect(secondCall.envelope.frame).toMatchObject({ type: 'Data' });
+    expect(secondCall.envelope.frame).toMatchObject({ type: 'Data' });
   });
 
   it('ignores non-attach frames when no connector exists', async () => {
@@ -327,7 +325,7 @@ describe('InPageListener', () => {
       })
     );
 
-  await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(routingNode.createOriginConnector).not.toHaveBeenCalled();
     expect(connector.pushToReceive).not.toHaveBeenCalled();

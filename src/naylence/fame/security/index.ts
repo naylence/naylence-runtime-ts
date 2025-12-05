@@ -91,9 +91,7 @@ export {
   frameDigest,
   immutableHeaders,
 } from './signing/eddsa-signer-verifier.js';
-export {
-  encodeUtf8,
-} from './signing/eddsa-utils.js';
+export { encodeUtf8 } from './signing/eddsa-utils.js';
 export {
   EdDSAEnvelopeSigner,
   type EdDSAEnvelopeSignerOptions,

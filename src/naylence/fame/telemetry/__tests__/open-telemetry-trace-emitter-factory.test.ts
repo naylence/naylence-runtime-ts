@@ -71,7 +71,7 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
       forceFlush: jest.fn(),
       shutdown: jest.fn(),
     };
-    
+
     safeImportMock
       .mockResolvedValueOnce({
         setupOtel: setupOtelMock,
@@ -143,7 +143,7 @@ describe('OpenTelemetryTraceEmitterFactory', () => {
       forceFlush: jest.fn(),
       shutdown: jest.fn(),
     };
-    
+
     safeImportMock
       .mockResolvedValueOnce({
         setupOtel: setupOtelMock,

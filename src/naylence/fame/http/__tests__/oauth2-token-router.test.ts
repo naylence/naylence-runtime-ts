@@ -59,7 +59,10 @@ async function createApp(
 }
 
 async function withApp(
-  handler: (app: FastifyInstance, client: request.SuperTest<request.Test>) => Promise<void>,
+  handler: (
+    app: FastifyInstance,
+    client: request.SuperTest<request.Test>
+  ) => Promise<void>,
   extraOptions?: Partial<CreateOAuth2TokenRouterOptions>
 ): Promise<void> {
   const app = await createApp(extraOptions);
@@ -180,9 +183,9 @@ describe('createOAuth2TokenRouter', () => {
         })
         .expect(302);
 
-      const code = new URL(authorizeResponse.headers.location as string).searchParams.get(
-        'code'
-      );
+      const code = new URL(
+        authorizeResponse.headers.location as string
+      ).searchParams.get('code');
       expect(code).toBeTruthy();
 
       const response = await client
@@ -221,9 +224,9 @@ describe('createOAuth2TokenRouter', () => {
         })
         .expect(302);
 
-      const code = new URL(authorizeResponse.headers.location as string).searchParams.get(
-        'code'
-      );
+      const code = new URL(
+        authorizeResponse.headers.location as string
+      ).searchParams.get('code');
       expect(code).toBeTruthy();
 
       const response = await client

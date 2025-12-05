@@ -6,11 +6,11 @@ import type { TransportListener } from './transport-listener.js';
 import type { TransportListenerConfig } from './transport-listener-config.js';
 import { safeImport } from '../util/lazy-import.js';
 
-type BroadcastChannelListenerModule = typeof import('./broadcast-channel-listener.js');
+type BroadcastChannelListenerModule =
+  typeof import('./broadcast-channel-listener.js');
 
-let broadcastChannelListenerModulePromise:
-  | Promise<BroadcastChannelListenerModule>
-  | null = null;
+let broadcastChannelListenerModulePromise: Promise<BroadcastChannelListenerModule> | null =
+  null;
 
 function getBroadcastChannelListenerModule(): Promise<BroadcastChannelListenerModule> {
   if (!broadcastChannelListenerModulePromise) {
@@ -42,7 +42,10 @@ interface NormalizedConfig {
 }
 
 function normalizeConfig(
-  config?: BroadcastChannelListenerFactoryConfig | Record<string, unknown> | null
+  config?:
+    | BroadcastChannelListenerFactoryConfig
+    | Record<string, unknown>
+    | null
 ): NormalizedConfig {
   const record = (config ?? {}) as Record<string, unknown>;
 
@@ -55,7 +58,11 @@ function normalizeConfig(
   const rawInbox = record.inboxCapacity ?? record['inbox_capacity'];
   let inboxCapacity = DEFAULT_INBOX_CAPACITY;
 
-  if (typeof rawInbox === 'number' && Number.isFinite(rawInbox) && rawInbox > 0) {
+  if (
+    typeof rawInbox === 'number' &&
+    Number.isFinite(rawInbox) &&
+    rawInbox > 0
+  ) {
     inboxCapacity = Math.floor(rawInbox);
   } else if (typeof rawInbox === 'string') {
     const parsed = Number.parseInt(rawInbox.trim(), 10);
@@ -82,7 +89,10 @@ export class BroadcastChannelListenerFactory extends TransportListenerFactory<Br
   public readonly isDefault = false;
 
   public async create(
-    config?: BroadcastChannelListenerFactoryConfig | Record<string, unknown> | null,
+    config?:
+      | BroadcastChannelListenerFactoryConfig
+      | Record<string, unknown>
+      | null,
     ...factoryArgs: unknown[]
   ): Promise<TransportListener> {
     const normalized = normalizeConfig(config);

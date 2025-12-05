@@ -42,6 +42,7 @@ export class DefaultNodeAttachClient implements NodeAttachClient {
 
   private readonly buffer: FameEnvelope[] = [];
   private inHandshake = false;
+  private expectedSystemId: string | null = null;
 
   constructor(options: DefaultNodeAttachClientOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? 10_000;
@@ -59,13 +60,26 @@ export class DefaultNodeAttachClient implements NodeAttachClient {
     callbackGrants?: Array<Record<string, unknown>>
   ): Promise<AttachInfo> {
     this.inHandshake = true;
+    this.expectedSystemId = welcomeFrame.systemId;
 
     const interimHandler: FameEnvelopeHandler = async (
       envelope: FameEnvelope,
       context?: FameDeliveryContext
     ) => {
       if (this.inHandshake) {
-        this.buffer.push(envelope);
+        // Filter: only buffer frames related to our systemId or frames without systemId info
+        const frameSystemId = (envelope.frame as Record<string, unknown>)
+          ?.systemId;
+        if (!frameSystemId || frameSystemId === this.expectedSystemId) {
+          this.buffer.push(envelope);
+        } else {
+          // Silently ignore frames from other agents during concurrent handshakes
+          logger.debug('handshake_ignoring_frame_from_different_system', {
+            frame_type: envelope.frame.type,
+            frame_system_id: frameSystemId,
+            expected_system_id: this.expectedSystemId,
+          });
+        }
         return null;
       }
 
@@ -248,6 +262,7 @@ export class DefaultNodeAttachClient implements NodeAttachClient {
     });
 
     this.inHandshake = false;
+    this.expectedSystemId = null;
     await connector.replaceHandler(finalHandler);
 
     while (this.buffer.length > 0) {
@@ -323,7 +338,10 @@ export class DefaultNodeAttachClient implements NodeAttachClient {
 
     while (Date.now() < deadline) {
       // Allow both STARTED and PAUSED states (PAUSED = tab hidden but connection alive)
-      if (connector.state !== ConnectorState.STARTED && connector.state !== ConnectorState.PAUSED) {
+      if (
+        connector.state !== ConnectorState.STARTED &&
+        connector.state !== ConnectorState.PAUSED
+      ) {
         let errorMessage = 'Connector closed while waiting for NodeAttachAck';
 
         if (connector.closeCode !== undefined) {
@@ -347,9 +365,21 @@ export class DefaultNodeAttachClient implements NodeAttachClient {
           return envelope as FameEnvelopeWith<NodeAttachAckFrame>;
         }
 
-        logger.error('unexpected_frame_during_handshake', {
-          frame_type: envelope.frame.type,
-        });
+        // NodeAttach frames during handshake are expected in multi-agent scenarios
+        // where multiple agents attach concurrently to the same channel
+        if (envelope.frame.type === 'NodeAttach') {
+          logger.debug('handshake_ignoring_concurrent_attach', {
+            frame_type: envelope.frame.type,
+            frame_system_id:
+              (envelope.frame as Record<string, unknown>)?.systemId ??
+              'unknown',
+          });
+        } else {
+          // Other unexpected frames are still logged as errors
+          logger.error('unexpected_frame_during_handshake', {
+            frame_type: envelope.frame.type,
+          });
+        }
       }
 
       await delay(HANDSHAKE_POLL_INTERVAL_MS);

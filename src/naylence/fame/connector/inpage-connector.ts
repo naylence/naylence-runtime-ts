@@ -13,7 +13,11 @@ import {
   BoundedAsyncQueue,
   QueueFullError,
 } from '../util/bounded-async-queue.js';
-import type { FameEnvelope, FameChannelMessage, FameEnvelopeHandler } from '@naylence/core';
+import type {
+  FameEnvelope,
+  FameChannelMessage,
+  FameEnvelopeHandler,
+} from '@naylence/core';
 import { ConnectorState } from '@naylence/core';
 
 const logger = getLogger('naylence.fame.connector.inpage_connector');
@@ -43,7 +47,9 @@ const isBrowserEnvironment = (): boolean =>
 
 const ensureBrowserEnvironment = (): void => {
   if (!isBrowserEnvironment()) {
-    throw new Error('InPageConnector is browser-only and requires DOM EventTarget support');
+    throw new Error(
+      'InPageConnector is browser-only and requires DOM EventTarget support'
+    );
   }
 };
 
@@ -84,9 +90,11 @@ export class InPageConnector extends BaseAsyncConnector {
   private visibilityChangeHandler?: () => void;
 
   private static generateConnectorId(): string {
-    const globalCrypto = (globalThis as typeof globalThis & {
-      crypto?: Crypto;
-    }).crypto;
+    const globalCrypto = (
+      globalThis as typeof globalThis & {
+        crypto?: Crypto;
+      }
+    ).crypto;
 
     if (globalCrypto?.randomUUID) {
       return globalCrypto.randomUUID();
@@ -114,7 +122,9 @@ export class InPageConnector extends BaseAsyncConnector {
       const candidate = raw as { constructor?: { name?: string } };
       if (candidate.constructor?.name === 'Uint8Array') {
         const view = raw as ArrayBufferView & { buffer: ArrayBuffer };
-        return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+        return new Uint8Array(
+          view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength)
+        );
       }
     }
 
@@ -161,7 +171,8 @@ export class InPageConnector extends BaseAsyncConnector {
     super(baseConfig);
 
     this.channelName =
-      typeof config.channelName === 'string' && config.channelName.trim().length > 0
+      typeof config.channelName === 'string' &&
+      config.channelName.trim().length > 0
         ? config.channelName.trim()
         : DEFAULT_CHANNEL;
 
@@ -172,11 +183,14 @@ export class InPageConnector extends BaseAsyncConnector {
         ? Math.floor(config.inboxCapacity)
         : DEFAULT_INBOX_CAPACITY;
 
-    this.inbox = new BoundedAsyncQueue<InPageInboxItem>(preferredCapacity) as QueueLike<InPageInboxItem>;
+    this.inbox = new BoundedAsyncQueue<InPageInboxItem>(
+      preferredCapacity
+    ) as QueueLike<InPageInboxItem>;
     this.inboxCapacity = preferredCapacity;
     this.connectorId = InPageConnector.generateConnectorId();
-    const normalizedLocalNodeId =
-      InPageConnector.normalizeNodeId(config.localNodeId);
+    const normalizedLocalNodeId = InPageConnector.normalizeNodeId(
+      config.localNodeId
+    );
 
     if (!normalizedLocalNodeId) {
       throw new Error('InPageConnector requires a non-empty localNodeId');
@@ -213,7 +227,8 @@ export class InPageConnector extends BaseAsyncConnector {
         connector_id: this.connectorId,
         message_type:
           message && typeof message === 'object'
-            ? (message as { constructor?: { name?: string } }).constructor?.name ?? typeof message
+            ? ((message as { constructor?: { name?: string } }).constructor
+                ?.name ?? typeof message)
             : typeof message,
         has_sender_id: Boolean((message as { senderId?: unknown })?.senderId),
         has_sender_node_id: Boolean(
@@ -228,7 +243,8 @@ export class InPageConnector extends BaseAsyncConnector {
       const busMessage = message as InPageBusMessage;
 
       const senderId =
-        typeof busMessage.senderId === 'string' && busMessage.senderId.length > 0
+        typeof busMessage.senderId === 'string' &&
+        busMessage.senderId.length > 0
           ? busMessage.senderId
           : null;
       const senderNodeId = InPageConnector.normalizeNodeId(
@@ -258,7 +274,9 @@ export class InPageConnector extends BaseAsyncConnector {
         busMessage.targetNodeId
       );
 
-      if (!this._shouldAcceptMessageFromBus(senderNodeId, incomingTargetNodeId)) {
+      if (
+        !this._shouldAcceptMessageFromBus(senderNodeId, incomingTargetNodeId)
+      ) {
         return;
       }
 
@@ -316,7 +334,10 @@ export class InPageConnector extends BaseAsyncConnector {
       }
     };
 
-    getSharedBus().addEventListener(this.channelName, this.onMsg as EventListener);
+    getSharedBus().addEventListener(
+      this.channelName,
+      this.onMsg as EventListener
+    );
     this.listenerRegistered = true;
 
     // Setup visibility change monitoring
@@ -350,9 +371,12 @@ export class InPageConnector extends BaseAsyncConnector {
     };
 
     if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+      document.addEventListener(
+        'visibilitychange',
+        this.visibilityChangeHandler
+      );
       this.visibilityChangeListenerRegistered = true;
-      
+
       // Track page lifecycle events to detect browser unload/discard
       if (typeof window !== 'undefined') {
         const lifecycleLogger = (event: Event): void => {
@@ -364,7 +388,7 @@ export class InPageConnector extends BaseAsyncConnector {
             timestamp: new Date().toISOString(),
           });
         };
-        
+
         window.addEventListener('beforeunload', lifecycleLogger);
         window.addEventListener('unload', lifecycleLogger);
         window.addEventListener('pagehide', lifecycleLogger);
@@ -372,7 +396,7 @@ export class InPageConnector extends BaseAsyncConnector {
         document.addEventListener('freeze', lifecycleLogger);
         document.addEventListener('resume', lifecycleLogger);
       }
-      
+
       // Log initial state with detailed visibility info
       logger.debug('inpage_initial_visibility', {
         channel: this.channelName,
@@ -391,7 +415,7 @@ export class InPageConnector extends BaseAsyncConnector {
    */
   async start(inboundHandler: FameEnvelopeHandler): Promise<void> {
     await super.start(inboundHandler);
-    
+
     // After transitioning to STARTED, check if tab is already hidden
     if (typeof document !== 'undefined' && document.hidden) {
       logger.debug('inpage_start_in_hidden_tab', {
@@ -402,7 +426,7 @@ export class InPageConnector extends BaseAsyncConnector {
         has_focus: document.hasFocus(),
         timestamp: new Date().toISOString(),
       });
-      
+
       // Immediately pause if tab is hidden at start time
       await this.pause().catch((err) => {
         logger.warning('inpage_initial_pause_failed', {
@@ -511,14 +535,22 @@ export class InPageConnector extends BaseAsyncConnector {
       });
     }
 
-    if (this.visibilityChangeListenerRegistered && this.visibilityChangeHandler && typeof document !== 'undefined') {
-      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+    if (
+      this.visibilityChangeListenerRegistered &&
+      this.visibilityChangeHandler &&
+      typeof document !== 'undefined'
+    ) {
+      document.removeEventListener(
+        'visibilitychange',
+        this.visibilityChangeHandler
+      );
       this.visibilityChangeListenerRegistered = false;
       this.visibilityChangeHandler = undefined;
     }
 
     const closeCode = typeof code === 'number' ? code : 1000;
-    const closeReason = typeof reason === 'string' && reason.length > 0 ? reason : 'closed';
+    const closeReason =
+      typeof reason === 'string' && reason.length > 0 ? reason : 'closed';
     const shutdownError = new FameTransportClose(closeReason, closeCode);
     this.inbox.drain(shutdownError);
   }
@@ -534,7 +566,9 @@ export class InPageConnector extends BaseAsyncConnector {
   }
 
   private _isWildcardTarget(): boolean {
-    return this.targetNodeId === '*' || typeof this.targetNodeId === 'undefined';
+    return (
+      this.targetNodeId === '*' || typeof this.targetNodeId === 'undefined'
+    );
   }
 
   private _shouldAcceptMessageFromBus(
@@ -562,7 +596,11 @@ export class InPageConnector extends BaseAsyncConnector {
     }
 
     const expectedSender = this.targetNodeId;
-    if (expectedSender && expectedSender !== '*' && senderNodeId !== expectedSender) {
+    if (
+      expectedSender &&
+      expectedSender !== '*' &&
+      senderNodeId !== expectedSender
+    ) {
       logger.debug('inpage_message_rejected', {
         channel: this.channelName,
         connector_id: this.connectorId,
@@ -626,7 +664,9 @@ export class InPageConnector extends BaseAsyncConnector {
   setTargetNodeId(nodeId: string): void {
     const normalized = InPageConnector.normalizeNodeId(nodeId);
     if (!normalized) {
-      throw new Error('InPageConnector target node id must be a non-empty string');
+      throw new Error(
+        'InPageConnector target node id must be a non-empty string'
+      );
     }
 
     if (normalized === '*') {
