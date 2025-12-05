@@ -3,3 +3,4 @@ export {
   InProcessFameFabricFactory,
   FAME_FABRIC_FACTORY_BASE_TYPE,
 } from './in-process-fame-fabric-factory.js';
+export { getFabricForNode } from './fabric-registry.js';

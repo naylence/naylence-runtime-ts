@@ -19,7 +19,9 @@ export function installProcessEnvShim(): void {
     try {
       // import.meta is only available in ESM builds
       // @ts-ignore
-      const ie = (typeof import.meta !== 'undefined' && (import.meta as any).env) || undefined;
+      const ie =
+        (typeof import.meta !== 'undefined' && (import.meta as any).env) ||
+        undefined;
       if (ie && typeof ie === 'object') Object.assign(out, ie);
     } catch {}
     if (preservedEnvSource && preservedEnvSource !== envProxy) {

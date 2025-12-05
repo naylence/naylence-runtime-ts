@@ -29,6 +29,7 @@ import {
   normalizeExtendedFameConfig,
   type ExtendedFameConfig,
 } from '../config/extended-fame-config-base.js';
+import { _setFabricForNode } from './fabric-registry.js';
 
 const logger = getLogger('naylence.fame.fabric.in_process');
 
@@ -111,6 +112,9 @@ export class InProcessFameFabric extends FameFabric {
       this._currentNode = await NodeLikeFactory.createNode(nodeConfig);
       this._ownsNode = true;
     }
+
+    // Register this fabric in the registry so agents can look it up
+    _setFabricForNode(this._currentNode, this);
 
     if (this._ownsNode && !this._nodeStarted) {
       await this.getRequiredNode().start();

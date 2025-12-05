@@ -94,6 +94,9 @@ export * from './naylence/fame/transport/transport-provisioner.js';
 // Welcome service (isomorphic)
 export * from './naylence/fame/welcome/index.js';
 
+// Fabric registry (for looking up fabric from node)
+export { getFabricForNode } from './naylence/fame/fabric/fabric-registry.js';
+
 type PluginModuleLoader = (
   specifier: string
 ) => Promise<Record<string, unknown>>;
