@@ -14,6 +14,7 @@ export class NodeEnvelopeFactory implements EnvelopeFactory {
   createEnvelope(options: {
     frame: AllFramesUnion;
     id?: string;
+    sid?: string | null;
     traceId?: string;
     to?: FameEnvelope['to'] | string | null;
     capabilities?: string[] | null;
@@ -28,6 +29,7 @@ export class NodeEnvelopeFactory implements EnvelopeFactory {
     const {
       frame,
       id,
+      sid,
       traceId,
       to,
       capabilities,
@@ -47,8 +49,22 @@ export class NodeEnvelopeFactory implements EnvelopeFactory {
     validateFrame(frame);
 
     const sidValue = this.sidFn();
-    const sanitizedSid =
+    let sanitizedSid =
       typeof sidValue === 'string' ? sidValue.trim() : sidValue;
+
+    const sidInput = pickAlias<string | null | undefined>(
+      sid ?? null,
+      optionsRecord,
+      'sid',
+      'source_id'
+    );
+
+    if (
+      (!sanitizedSid || sanitizedSid.length === 0) &&
+      typeof sidInput === 'string'
+    ) {
+      sanitizedSid = sidInput.trim();
+    }
     const idInput = pickAlias<string | null | undefined>(
       id ?? null,
       optionsRecord,
