@@ -649,7 +649,7 @@ describe('WebSocketConnector', () => {
 
       const receivePromise = (fastApiConnector as any)._transportReceive();
 
-      jest.advanceTimersByTime(30000);
+      jest.advanceTimersByTime(3600000);
       await Promise.resolve();
 
       await expect(receivePromise).rejects.toMatchObject({
@@ -778,7 +778,7 @@ describe('WebSocketConnector', () => {
 
       const receivePromise = (connector as any)._transportReceive();
 
-      jest.advanceTimersByTime(30000);
+      jest.advanceTimersByTime(3600000);
       await Promise.resolve();
 
       await expect(receivePromise).rejects.toMatchObject({
