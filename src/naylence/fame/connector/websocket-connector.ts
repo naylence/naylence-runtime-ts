@@ -254,7 +254,7 @@ export class WebSocketConnector extends BaseAsyncConnector {
 
       // Use a timeout to prevent hanging during shutdown scenarios
       // Increased to 1 hour to match server-side keep-alive and prevent idle disconnects
-      const receiveTimeout = 3600000; // 1 hour
+      const receiveTimeout = 30000; // 30 seconds
 
       if (this._isFastApiLike && this._websocket.receive_bytes) {
         // FastAPI-style server WebSocket
