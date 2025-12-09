@@ -6,6 +6,7 @@ import {
   type AdmissionConfig,
 } from './admission-client-factory.js';
 import type { AdmissionClient } from './admission-client.js';
+import type { NodeIdentityPolicy } from '../node-identity-policy.js';
 
 export interface DirectAdmissionClientConfig extends AdmissionConfig {
   type: 'DirectAdmissionClient';
@@ -27,7 +28,8 @@ export class DirectAdmissionClientFactory extends AdmissionClientFactory<DirectA
   public readonly type = 'DirectAdmissionClient';
 
   public async create(
-    config?: DirectAdmissionClientConfig | Record<string, unknown> | null
+    config?: DirectAdmissionClientConfig | Record<string, unknown> | null,
+    ...factoryArgs: unknown[]
   ): Promise<AdmissionClient> {
     if (!config) {
       throw new Error('DirectAdmissionClient configuration is required');
@@ -42,9 +44,15 @@ export class DirectAdmissionClientFactory extends AdmissionClientFactory<DirectA
       return JSON.parse(JSON.stringify(evaluated));
     });
 
+    const identityPolicy = factoryArgs.find(
+      (arg): arg is { identityPolicy: NodeIdentityPolicy } =>
+        Boolean(arg && typeof arg === 'object' && 'identityPolicy' in arg)
+    )?.identityPolicy;
+
     return new DirectAdmissionClient({
       connectionGrants: evaluatedGrants,
       ttlSec: normalized.ttlSec ?? null,
+      nodeIdentityPolicy: identityPolicy,
     });
   }
 }

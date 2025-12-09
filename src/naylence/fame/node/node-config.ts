@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AdmissionConfig } from './admission/admission-client-factory.js';
+import type { NodeIdentityPolicyConfig } from './node-identity-policy-factory.js';
 import type { NodeLikeConfig } from './node-like-factory.js';
 import type { DeliveryPolicyConfig } from '../delivery/delivery-policy-config.js';
 import type { TransportListenerConfig } from '../connector/transport-listener-config.js';
@@ -35,6 +36,7 @@ const FameNodeConfigSchemaInternal = z
     attachmentKeyValidator: z.unknown().optional().nullable(),
     telemetry: z.unknown().optional().nullable(),
     requestedCapabilities: z.array(z.string()).optional(),
+    identityPolicy: z.unknown().optional().nullable(),
   })
   .passthrough();
 
@@ -60,6 +62,7 @@ export type FameNodeConfig = NodeLikeConfig & {
     | null;
   telemetry?: TraceEmitterConfig | Record<string, unknown> | null;
   requestedCapabilities?: string[];
+  identityPolicy?: NodeIdentityPolicyConfig | Record<string, unknown> | null;
 };
 
 export function normalizeFameNodeConfig(
@@ -124,6 +127,13 @@ export function normalizeFameNodeConfig(
         ? null
         : (parsed.telemetry as
             | TraceEmitterConfig
+            | Record<string, unknown>
+            | null),
+    identityPolicy:
+      parsed.identityPolicy === undefined
+        ? null
+        : (parsed.identityPolicy as
+            | NodeIdentityPolicyConfig
             | Record<string, unknown>
             | null),
   };

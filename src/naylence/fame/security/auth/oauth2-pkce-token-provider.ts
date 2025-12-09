@@ -4,7 +4,8 @@ import {
   type CredentialProvider,
 } from '../credential/credential-provider.js';
 import type { Token } from './token.js';
-import type { TokenProvider } from './token-provider.js';
+import type { TokenProviderConfig } from './token-provider-factory.js';
+import type { MaterializableTokenProvider } from './materializable-token-provider.js';
 
 const logger = getLogger(
   'naylence.fame.security.auth.oauth2_pkce_token_provider'
@@ -448,7 +449,7 @@ export class OAuth2PkceRedirectInitiatedError extends Error {
   }
 }
 
-export class OAuth2PkceTokenProvider implements TokenProvider {
+export class OAuth2PkceTokenProvider implements MaterializableTokenProvider {
   private cachedToken: Token | undefined;
   private readonly options: ReturnType<typeof normalizeOptions>;
 
@@ -456,6 +457,16 @@ export class OAuth2PkceTokenProvider implements TokenProvider {
     rawOptions: OAuth2PkceTokenProviderOptions | Record<string, unknown>
   ) {
     this.options = normalizeOptions(rawOptions);
+  }
+
+  public async materialize(): Promise<TokenProviderConfig | undefined> {
+    const token = await this.getToken();
+    return {
+      type: 'StaticTokenProvider',
+      token: token.value,
+      expiresAt: token.expiresAt,
+      expires_at: token.expiresAt,
+    };
   }
 
   public async getToken(): Promise<Token> {

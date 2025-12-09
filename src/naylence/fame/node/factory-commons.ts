@@ -1,9 +1,14 @@
-import { generateIdAsync } from '@naylence/core';
 import type { CreateResourceOptions } from '@naylence/factory';
 import { createResource } from '@naylence/factory';
 
 import type { AdmissionClient } from './admission/admission-client.js';
 import { AdmissionClientFactory } from './admission/admission-client-factory.js';
+import type { NodeIdentityPolicy } from './node-identity-policy.js';
+import { DefaultNodeIdentityPolicy } from './default-node-identity-policy.js';
+import {
+  NodeIdentityPolicyFactory,
+  type NodeIdentityPolicyConfig,
+} from './node-identity-policy-factory.js';
 import { DefaultNodeAttachClient } from './admission/default-node-attach-client.js';
 import type { DefaultNodeAttachClientOptions } from './admission/default-node-attach-client.js';
 import type { FameNodeConfig } from './node-config.js';
@@ -70,6 +75,7 @@ export interface CommonNodeComponents {
   eventListeners: NodeEventListener[];
   transportListeners: TransportListener[];
   traceEmitter: TraceEmitter | null;
+  identityPolicy?: NodeIdentityPolicy;
 }
 
 interface SecurityManagerOverrides {
@@ -286,6 +292,13 @@ export async function makeCommonOptions(
     'security_profile'
   );
 
+  const identityPolicyConfig = pickOption(
+    config.identityPolicy ?? null,
+    aliasRecord,
+    'identity_policy',
+    'node_identity_policy'
+  );
+
   const publicUrl =
     pickString(config.publicUrl ?? null, aliasRecord, 'public_url') ?? null;
 
@@ -318,9 +331,15 @@ export async function makeCommonOptions(
   );
   const nodeMeta = await nodeMetaStore.get('self');
 
+  const identityPolicy = await resolveNodeIdentityPolicy(
+    identityPolicyConfig ?? null,
+    expressionOptions
+  );
+
   const admissionClient = await resolveAdmissionClient(
     admissionConfig ?? null,
-    expressionOptions
+    expressionOptions,
+    identityPolicy ?? undefined
   );
   const hasParent = determineHasParent(
     hasParentFlag,
@@ -403,10 +422,13 @@ export async function makeCommonOptions(
       BINDING_STORE_NAMESPACE
     );
 
-  const systemId =
-    systemIdOverride ??
-    nodeMeta?.id ??
-    (await generateIdAsync({ mode: 'fingerprint' }));
+  const effectiveIdentityPolicy =
+    identityPolicy ?? new DefaultNodeIdentityPolicy();
+
+  const systemId = await effectiveIdentityPolicy.resolveInitialNodeId({
+    configuredId: systemIdOverride,
+    persistedId: nodeMeta?.id,
+  });
 
   const attachClientOptions: DefaultNodeAttachClientOptions = {
     ...(attachmentKeyValidator ? { attachmentKeyValidator } : {}),
@@ -440,7 +462,25 @@ export async function makeCommonOptions(
     eventListeners,
     transportListeners,
     traceEmitter,
+    identityPolicy: identityPolicy ?? undefined,
   };
+}
+
+async function resolveNodeIdentityPolicy(
+  config: NodeIdentityPolicyConfig | Record<string, unknown> | null,
+  options: CreateResourceOptions
+): Promise<NodeIdentityPolicy | null> {
+  try {
+    return await NodeIdentityPolicyFactory.createNodeIdentityPolicy(
+      config ?? undefined,
+      cloneCreateOptions(options)
+    );
+  } catch (error) {
+    logger.warning('node_identity_policy_creation_failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
 }
 
 async function resolveStorageProvider(
@@ -464,16 +504,25 @@ async function resolveStorageProvider(
 
 async function resolveAdmissionClient(
   config: Record<string, unknown> | AdmissionClient | null,
-  options: CreateResourceOptions
+  options: CreateResourceOptions,
+  identityPolicy?: NodeIdentityPolicy
 ): Promise<AdmissionClient | null> {
   if (config && typeof (config as AdmissionClient).hello === 'function') {
     return config as AdmissionClient;
   }
 
   try {
+    const createOptions = cloneCreateOptions(options);
+    if (identityPolicy) {
+      createOptions.factoryArgs = [
+        ...(createOptions.factoryArgs ?? []),
+        { identityPolicy },
+      ];
+    }
+
     return await AdmissionClientFactory.createAdmissionClient(
       (config ?? null) as Record<string, unknown> | null,
-      cloneCreateOptions(options)
+      createOptions
     );
   } catch (error) {
     logger.warning('admission_client_creation_failed', {

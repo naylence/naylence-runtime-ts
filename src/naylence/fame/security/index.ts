@@ -1,4 +1,5 @@
 export * from './auth/authorizer.js';
+export * from './auth/auth-identity.js';
 export {
   AUTHORIZER_FACTORY_BASE_TYPE,
   AuthorizerFactory,

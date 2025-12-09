@@ -1,6 +1,5 @@
 import {
   createFameEnvelope,
-  generateIdAsync,
   type FameEnvelopeWith,
   type NodeWelcomeFrame,
 } from '@naylence/core';
@@ -11,6 +10,9 @@ import {
 import { getLogger } from '../../util/logging.js';
 import { validateTtlSec } from '../../util/ttl-validation.js';
 import type { AdmissionClient } from './admission-client.js';
+import { GrantMaterializer } from '../../grants/grant-materializer.js';
+import type { NodeIdentityPolicy } from '../node-identity-policy.js';
+import type { AuthIdentity } from '../../security/auth/auth-identity.js';
 
 const logger = getLogger(
   'naylence.fame.node.admission.direct_admission_client'
@@ -21,6 +23,7 @@ export interface DirectAdmissionClientOptions {
   readonly connection_grants?: Array<Record<string, unknown>>;
   readonly ttlSec?: number | null;
   readonly ttl_sec?: number | null;
+  readonly nodeIdentityPolicy?: NodeIdentityPolicy;
 }
 
 export class DirectAdmissionClient implements AdmissionClient {
@@ -28,6 +31,7 @@ export class DirectAdmissionClient implements AdmissionClient {
 
   private readonly connectionGrants: Array<Record<string, unknown>>;
   private readonly ttlSec: number | null | undefined;
+  private readonly nodeIdentityPolicy?: NodeIdentityPolicy;
 
   constructor(options: DirectAdmissionClientOptions) {
     const connectionGrantsSource =
@@ -59,6 +63,8 @@ export class DirectAdmissionClient implements AdmissionClient {
     } else {
       this.ttlSec = ttlCandidate;
     }
+
+    this.nodeIdentityPolicy = options.nodeIdentityPolicy;
   }
 
   public async hello(
@@ -72,15 +78,7 @@ export class DirectAdmissionClient implements AdmissionClient {
       requestedLogicals,
     });
 
-    const effectiveSystemId =
-      systemId && systemId.trim().length > 0
-        ? systemId
-        : await generateIdAsync({ mode: 'fingerprint' }).catch(async () => {
-            logger.debug('direct_admission_fingerprint_generation_failed', {
-              reason: 'falling back to random id',
-            });
-            return generateIdAsync({ mode: 'random' });
-          });
+    const initialSystemId = systemId;
 
     const acceptedLogicals =
       requestedLogicals && requestedLogicals.length > 0
@@ -91,12 +89,30 @@ export class DirectAdmissionClient implements AdmissionClient {
     const ttlSeconds = this.resolveTtlSeconds();
     const expiresAt = new Date(now + ttlSeconds * 1000);
 
+    const materializedResults = await Promise.all(
+      this.connectionGrants.map((grant) => GrantMaterializer.materialize(grant))
+    );
+
+    const materializedGrants = materializedResults.map((r) => r.grant);
+    const identities = materializedResults
+      .map((r) => r.identity)
+      .filter((id): id is AuthIdentity => !!id);
+
+    const effectiveSystemId = this.nodeIdentityPolicy
+      ? await this.nodeIdentityPolicy.resolveAdmissionNodeId({
+          currentNodeId: initialSystemId,
+          identities,
+        })
+      : initialSystemId;
+
     const welcomeFrame: NodeWelcomeFrame = {
       type: 'NodeWelcome',
       systemId: effectiveSystemId,
       instanceId,
       acceptedLogicals,
-      connectionGrants: this.connectionGrants.map((grant) => cloneGrant(grant)),
+      connectionGrants: materializedGrants.map((grant) =>
+        cloneGrant(grant as Record<string, unknown>)
+      ),
       expiresAt: expiresAt.toISOString(),
     };
 
