@@ -634,13 +634,13 @@ export class FameNode extends TaskSpawner implements NodeLike {
     this._confirmedId = systemId;
 
     if (isReassignment) {
-      logger.info('node_identity_reassigned', {
+      logger.debug('node_identity_reassigned', {
         system_id: systemId,
         previous_id: this._provisionalId,
         source,
       });
     } else {
-      logger.info('node_identity_confirmed', {
+      logger.debug('node_identity_confirmed', {
         system_id: systemId,
         source,
       });

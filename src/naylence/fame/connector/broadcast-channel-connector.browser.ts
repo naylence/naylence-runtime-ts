@@ -361,7 +361,7 @@ export class BroadcastChannelConnector extends BaseAsyncConnector {
       // Track page lifecycle events to detect browser unload/discard
       if (typeof window !== 'undefined') {
         const lifecycleLogger = (event: Event): void => {
-          logger.info('broadcast_channel_page_lifecycle', {
+          logger.debug('broadcast_channel_page_lifecycle', {
             channel: this.channelName,
             connector_id: this.connectorId,
             event_type: event.type,
