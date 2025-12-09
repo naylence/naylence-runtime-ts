@@ -593,6 +593,14 @@ export class UpstreamSessionManager
     ) {
       for (const grant of welcome.frame.connectionGrants) {
         if (grant && typeof grant === 'object') {
+          const grantType = (grant as Record<string, unknown>).type;
+          if (
+            grantType === 'WebSocketConnectionGrant' ||
+            grantType === 'HttpConnectionGrant'
+          ) {
+            continue;
+          }
+
           // Avoid duplicates by checking if grant already exists
           const isDuplicate = callbackGrants.some(
             (existing) => JSON.stringify(existing) === JSON.stringify(grant)
