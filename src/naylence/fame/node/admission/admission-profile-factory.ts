@@ -290,14 +290,17 @@ export class AdmissionProfileFactory extends AdmissionClientFactory<AdmissionPro
   public readonly type = 'AdmissionProfile';
 
   public async create(
-    config?: AdmissionProfileConfig | Record<string, unknown> | null
+    config?: AdmissionProfileConfig | Record<string, unknown> | null,
+    ...factoryArgs: unknown[]
   ): Promise<AdmissionClient> {
     const normalized = normalizeConfig(config);
     const profileConfig = resolveProfileConfig(normalized.profile);
 
     logger.debug('enabling_admission_profile', { profile: normalized.profile });
 
-    return AdmissionClientFactory.createAdmissionClient(profileConfig);
+    return AdmissionClientFactory.createAdmissionClient(profileConfig, {
+      factoryArgs,
+    });
   }
 }
 

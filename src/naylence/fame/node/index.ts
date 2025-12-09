@@ -21,3 +21,19 @@ export * from './fame-environment-context.js';
 export * from './session-manager.js';
 export * from './upstream-session-manager.js';
 export * from './root-session-manager.js';
+export * from './node-identity-policy.js';
+export * from './node-identity-policy-factory.js';
+export * from './default-node-identity-policy.js';
+export {
+  DefaultNodeIdentityPolicyFactory,
+  DefaultNodeIdentityPolicyConfig,
+} from './default-node-identity-policy-factory.js';
+export * from './token-subject-node-identity-policy.js';
+export {
+  TokenSubjectNodeIdentityPolicyFactory,
+  TokenSubjectNodeIdentityPolicyConfig,
+} from './token-subject-node-identity-policy-factory.js';
+export {
+  NodeIdentityPolicyProfileFactory,
+  NodeIdentityPolicyProfileConfig,
+} from './node-identity-policy-profile-factory.js';
