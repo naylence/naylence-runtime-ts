@@ -245,7 +245,8 @@ function sortListeners(listeners: NodeEventListener[]): NodeEventListener[] {
 }
 
 export class FameNode extends TaskSpawner implements NodeLike {
-  private _id: string;
+  private _provisionalId: string;
+  private _confirmedId: string | null = null;
   private _sid: string | null;
   private _physicalPath: string;
   private _acceptedLogicals: Set<string>;
@@ -285,14 +286,14 @@ export class FameNode extends TaskSpawner implements NodeLike {
       'systemId',
       'system_id'
     );
-    this._id = systemIdOption ?? generateId();
+    this._provisionalId = systemIdOption ?? generateId();
 
     const physicalPathOption = resolveStringOption(
       options,
       'physicalPath',
       'physical_path'
     );
-    this._physicalPath = physicalPathOption ?? `/${this._id}`;
+    this._physicalPath = physicalPathOption ?? `/${this._provisionalId}`;
 
     const hasParentOption = resolveBooleanOption(
       options,
@@ -442,7 +443,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
     const bindingManagerOptions: BindingManagerOptions = {
       hasUpstream: this._hasParent,
-      getId: () => this._id,
+      getId: () => this.id,
       getPhysicalPath: () => this._physicalPath,
       getAcceptedLogicals: () => this._acceptedLogicals,
       forwardUpstream: (
@@ -564,7 +565,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
 
   private async initializeRootSessionManager(): Promise<void> {
     const admissionClient =
-      this._admissionClient ?? new NoopAdmissionClient({ systemId: this._id });
+      this._admissionClient ??
+      new NoopAdmissionClient({ systemId: this._provisionalId });
 
     const manager = new RootSessionManager({
       node: this,
@@ -613,9 +615,41 @@ export class FameNode extends TaskSpawner implements NodeLike {
     return null;
   }
 
+  private confirmIdentity(systemId: string, source: string): void {
+    if (this._confirmedId) {
+      if (this._confirmedId !== systemId) {
+        logger.error('node_identity_mismatch', {
+          current_id: this._confirmedId,
+          new_id: systemId,
+          source,
+        });
+        throw new Error(
+          `Node identity mismatch in ${source}: expected ${this._confirmedId}, got ${systemId}`
+        );
+      }
+      return;
+    }
+
+    const isReassignment = this._provisionalId !== systemId;
+    this._confirmedId = systemId;
+
+    if (isReassignment) {
+      logger.info('node_identity_reassigned', {
+        system_id: systemId,
+        previous_id: this._provisionalId,
+        source,
+      });
+    } else {
+      logger.info('node_identity_confirmed', {
+        system_id: systemId,
+        source,
+      });
+    }
+  }
+
   private async handleWelcome(welcome: NodeWelcomeFrame): Promise<void> {
     if (welcome.systemId) {
-      this._id = welcome.systemId;
+      this.confirmIdentity(welcome.systemId, 'handleWelcome');
     }
 
     if (welcome.acceptedLogicals) {
@@ -644,7 +678,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
     info: AttachInfo,
     connector: FameConnector
   ): Promise<void> {
-    this._id = info.systemId;
+    this.confirmIdentity(info.systemId, 'handleAttach');
     this._physicalPath =
       info.assignedPath ?? info.targetPhysicalPath ?? this._physicalPath;
     this._upstreamConnector = connector;
@@ -761,7 +795,16 @@ export class FameNode extends TaskSpawner implements NodeLike {
   }
 
   get id(): string {
-    return this._id;
+    if (!this._confirmedId) {
+      throw new Error(
+        'Node ID has not been confirmed yet. Use provisionalId for bootstrapping.'
+      );
+    }
+    return this._confirmedId;
+  }
+
+  get provisionalId(): string {
+    return this._provisionalId;
   }
 
   get sid(): string | null {
@@ -1488,8 +1531,8 @@ export class FameNode extends TaskSpawner implements NodeLike {
       const store = await this._nodeMetaStorePromise;
       const existing = await store.get('self');
       const record = existing
-        ? Object.assign(existing, { id: this._id })
-        : new NodeMetaRecord(this._id);
+        ? Object.assign(existing, { id: this.id })
+        : new NodeMetaRecord(this.id);
       await store.set('self', record);
     } catch (error) {
       logger.warning('node_meta_persist_failed', {

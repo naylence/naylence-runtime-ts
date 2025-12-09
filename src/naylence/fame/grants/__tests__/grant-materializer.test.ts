@@ -72,30 +72,5 @@ describe('GrantMaterializer', () => {
     expect(result.grant).toEqual(grant);
   });
 
-  it('should extract identity if provider exposes it', async () => {
-    const mockIdentity = { subject: 'user123' };
-    const mockGetIdentity = jest.fn().mockResolvedValue(mockIdentity);
 
-    const mockProvider = {
-      getToken: jest.fn(),
-      getIdentity: mockGetIdentity,
-    };
-
-    (TokenProviderFactory.createTokenProvider as jest.Mock).mockResolvedValue(
-      mockProvider
-    );
-
-    const grant = {
-      type: 'TestGrant',
-      auth: {
-        type: 'SomeAuth',
-        tokenProvider: { type: 'IdentityExposingProvider' },
-      },
-    };
-
-    const result = await GrantMaterializer.materialize(grant);
-
-    expect(mockGetIdentity).toHaveBeenCalled();
-    expect(result.identity).toEqual(mockIdentity);
-  });
 });

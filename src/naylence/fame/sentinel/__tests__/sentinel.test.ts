@@ -28,6 +28,10 @@ import type { LoadBalancerStickinessManager } from '../../stickiness/load-balanc
 import type { NodeAttachClient } from '../../node/admission/node-attach-client.js';
 import type { OriginConnectorOptions } from '../../node/routing-node-like.js';
 
+function confirmNode(node: Sentinel, id: string = 'test-sentinel') {
+  (node as any)._confirmedId = id;
+}
+
 jest.mock('../../connector/connector-factory.js', () => ({
   createResource: jest.fn(),
 }));
@@ -156,6 +160,7 @@ describe('Sentinel', () => {
     const securityManager =
       options.securityManager ?? createMockSecurityManager();
     const sentinel = new Sentinel({ ...options, securityManager });
+    confirmNode(sentinel, options.systemId ?? 'sentinel-test');
     createdSentinels.push(sentinel);
     return sentinel;
   }

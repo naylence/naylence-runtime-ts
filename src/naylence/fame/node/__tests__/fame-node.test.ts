@@ -22,6 +22,10 @@ import { TransportListener } from '../../connector/transport-listener.js';
 import type { AttachInfo } from '../admission/node-attach-client.js';
 import type { AdmissionClient } from '../admission/admission-client.js';
 
+function confirmNode(node: FameNode, id: string = 'test-node') {
+  (node as any)._confirmedId = id;
+}
+
 class TestDeliveryPolicy extends DeliveryPolicy {
   constructor(private readonly ackRequired: boolean) {
     super();
@@ -146,7 +150,7 @@ describe('FameNode', () => {
       service_manager: serviceManager,
     });
 
-    expect(node.id).toBe('snake-node');
+    expect(node.provisionalId).toBe('snake-node');
     expect(node.physicalPath).toBe('/snake-node');
     expect(node.hasParent).toBe(true);
     expect(node.publicUrl).toBe('https://example.test');
@@ -351,6 +355,7 @@ describe('FameNode', () => {
       physicalPath: '/no-ack-node',
       deliveryPolicy: policy,
     });
+    confirmNode(node, 'no-ack-node');
 
     const tracker = (node as any)._deliveryTracker;
     const trackSpy = jest.spyOn(tracker, 'track');
@@ -815,6 +820,7 @@ describe('FameNode', () => {
       physicalPath: '/bad-ack-node',
       deliveryPolicy: new TestDeliveryPolicy(true),
     });
+    confirmNode(node, 'bad-ack-node');
 
     const stubTracker = {
       priority: 100,
@@ -1211,6 +1217,7 @@ describe('FameNode', () => {
       physicalPath: '/trace-node',
       deliveryPolicy: policy,
     });
+    confirmNode(node, 'trace-node');
 
     const stubTracker = {
       priority: 10,
@@ -1289,6 +1296,7 @@ describe('FameNode', () => {
       physicalPath: '/retry-handler-node',
       deliveryPolicy: policy,
     });
+    confirmNode(node, 'retry-handler-node');
 
     const deliverFn = jest.fn().mockResolvedValue(undefined);
     const stubTracker = {
@@ -1342,6 +1350,7 @@ describe('FameNode', () => {
       securityManager: securityManager as any,
       admissionClient: admissionClient as any,
     });
+    confirmNode(node, 'getter-node');
 
     expect(node.id).toBe('getter-node');
     expect(node.sid).toBeTruthy();

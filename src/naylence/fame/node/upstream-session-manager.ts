@@ -429,11 +429,19 @@ export class UpstreamSessionManager
             throw error;
           }
         } else {
-          logger.warning('upstream_link_closed', {
-            error: (error as Error).message,
-            will_retry: true,
-            exc_info: true,
-          });
+          const err = error as Error;
+          if (err.name === 'OAuth2PkceRedirectInitiatedError') {
+            logger.info('upstream_link_redirecting', {
+              error: err.message,
+              will_retry: true,
+            });
+          } else {
+            logger.warning('upstream_link_closed', {
+              error: err.message,
+              will_retry: true,
+              exc_info: true,
+            });
+          }
           if (!this.hadSuccessfulAttach) {
             throw error;
           }
@@ -488,7 +496,7 @@ export class UpstreamSessionManager
   }
 
   private _getLocalNodeId(): string {
-    const normalized = this._normalizeNodeId(this.node.id);
+    const normalized = this._normalizeNodeId(this.node.provisionalId);
 
     if (!normalized) {
       throw new Error(
@@ -518,7 +526,7 @@ export class UpstreamSessionManager
     this.connectEpoch += 1;
 
     const welcome = await this.admissionClient.hello(
-      this.node.id,
+      this.node.provisionalId,
       generateId(),
       this.requestedLogicals
     );

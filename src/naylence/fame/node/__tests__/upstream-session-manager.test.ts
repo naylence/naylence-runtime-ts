@@ -50,6 +50,7 @@ function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
 
   const node: Partial<NodeLike> = {
     id: 'node-1',
+    provisionalId: 'node-1',
     sid: null,
     physicalPath: '/node-1',
     acceptedLogicals: new Set<string>(),

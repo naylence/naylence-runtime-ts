@@ -7,6 +7,7 @@ export interface NodeIdentityPolicyContext {
    */
   currentNodeId: string;
   identities: AuthIdentity[];
+  grants?: Record<string, any>[];
 }
 
 export interface InitialIdentityContext {

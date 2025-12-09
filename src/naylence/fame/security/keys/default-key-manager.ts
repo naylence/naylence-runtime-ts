@@ -144,7 +144,7 @@ export class DefaultKeyManager implements KeyManager {
     this.routingNode = isRoutingNode(node) ? node : null;
 
     logger.debug('key_manager_started', {
-      node_id: this.nodeId,
+      node_id: node.provisionalId,
       physical_path: this.physicalPath,
       has_upstream: this.hasUpstream,
     });

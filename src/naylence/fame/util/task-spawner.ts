@@ -417,6 +417,15 @@ export class TaskSpawner {
       return;
     }
 
+    // Handle PKCE redirect "errors" as info
+    if (error.name === 'OAuth2PkceRedirectInitiatedError') {
+      logger.debug('background_task_redirecting', {
+        task_name: taskName,
+        note: 'Task interrupted for PKCE redirect',
+      });
+      return;
+    }
+
     // Check if this is a retriable connection error (will be logged and retried by FSM)
     const isRetriableError =
       error.name === 'FameConnectError' ||

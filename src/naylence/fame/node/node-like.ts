@@ -32,8 +32,11 @@ import { CryptoProvider } from '../security/index.js';
  * routing, and service invocation.
  */
 export interface NodeLike {
-  /** Unique node identifier */
+  /** Unique node identifier (confirmed) */
   readonly id: string;
+
+  /** Provisional node identifier (used during bootstrapping) */
+  readonly provisionalId: string;
 
   /** System identifier (may be null for standalone nodes) */
   readonly sid: string | null;

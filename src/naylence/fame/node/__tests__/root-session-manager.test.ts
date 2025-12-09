@@ -770,22 +770,6 @@ describe('RootSessionManager', () => {
   });
 
   describe('identity and task utilities', () => {
-    it('generates identity when node id missing', () => {
-      const node: any = { id: '' };
-      const manager = createManager({ node });
-      const generated = 'generated-id';
-      const idSpy = jest
-        .spyOn(core, 'generateId')
-        .mockReturnValueOnce(generated);
-
-      (
-        manager as unknown as { initializeRootIdentityIfNeeded: () => void }
-      ).initializeRootIdentityIfNeeded();
-
-      expect(node._id).toBe(generated);
-      expect(idSpy).toHaveBeenCalled();
-    });
-
     it('ignores TaskCancelledError when consuming task', async () => {
       const manager = createManager();
       const task = createTaskStub(
@@ -800,19 +784,6 @@ describe('RootSessionManager', () => {
           }
         ).consumeTask(task)
       ).resolves.toBeUndefined();
-    });
-
-    it('leaves identity untouched when node already identified', () => {
-      const node: any = { id: 'existing-node' };
-      const manager = createManager({ node });
-      const idSpy = jest.spyOn(core, 'generateId');
-
-      (
-        manager as unknown as { initializeRootIdentityIfNeeded: () => void }
-      ).initializeRootIdentityIfNeeded();
-
-      expect(node._id).toBeUndefined();
-      expect(idSpy).not.toHaveBeenCalled();
     });
 
     it('logs unexpected errors when consuming task', async () => {

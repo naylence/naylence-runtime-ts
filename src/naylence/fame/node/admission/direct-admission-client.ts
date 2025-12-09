@@ -12,7 +12,6 @@ import { validateTtlSec } from '../../util/ttl-validation.js';
 import type { AdmissionClient } from './admission-client.js';
 import { GrantMaterializer } from '../../grants/grant-materializer.js';
 import type { NodeIdentityPolicy } from '../node-identity-policy.js';
-import type { AuthIdentity } from '../../security/auth/auth-identity.js';
 
 const logger = getLogger(
   'naylence.fame.node.admission.direct_admission_client'
@@ -94,14 +93,12 @@ export class DirectAdmissionClient implements AdmissionClient {
     );
 
     const materializedGrants = materializedResults.map((r) => r.grant);
-    const identities = materializedResults
-      .map((r) => r.identity)
-      .filter((id): id is AuthIdentity => !!id);
 
     const effectiveSystemId = this.nodeIdentityPolicy
       ? await this.nodeIdentityPolicy.resolveAdmissionNodeId({
           currentNodeId: initialSystemId,
-          identities,
+          identities: [],
+          grants: materializedGrants,
         })
       : initialSystemId;
 

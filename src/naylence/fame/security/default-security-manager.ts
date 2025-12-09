@@ -596,7 +596,7 @@ export class DefaultSecurityManager implements SecurityManager {
   public async onNodeInitialized(node: NodeLike): Promise<void> {
     this._node = node;
     logger.debug('security_manager_node_initialized', {
-      node_id: node.id,
+      node_id: node.provisionalId,
       has_node_crypto_provider: Boolean(node.cryptoProvider),
       provider_type: node.cryptoProvider
         ? (node.cryptoProvider.constructor?.name ?? 'unknown')
@@ -628,7 +628,9 @@ export class DefaultSecurityManager implements SecurityManager {
       await encryption.onNodeInitialized(node);
     }
 
-    logger.debug('node_security_initialization_complete', { node_id: node.id });
+    logger.debug('node_security_initialization_complete', {
+      node_id: node.provisionalId,
+    });
   }
 
   public async onNodeAttachToPeer(

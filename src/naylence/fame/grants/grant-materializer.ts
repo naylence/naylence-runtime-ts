@@ -1,7 +1,5 @@
 import { TokenProviderFactory } from '../security/auth/token-provider-factory.js';
 import { isMaterializableTokenProvider } from '../security/auth/materializable-token-provider.js';
-import { isIdentityExposingTokenProvider } from '../security/auth/token-provider.js';
-import type { AuthIdentity } from '../security/auth/auth-identity.js';
 import type { ConnectionGrantLike } from './connection-grant.js';
 import { getLogger } from '../util/logging.js';
 
@@ -9,7 +7,6 @@ const logger = getLogger('naylence.fame.grants.grant_materializer');
 
 export interface GrantMaterializationResult {
   grant: ConnectionGrantLike;
-  identity?: AuthIdentity;
 }
 
 export class GrantMaterializer {
@@ -36,18 +33,12 @@ export class GrantMaterializer {
         tokenProviderConfig
       );
 
-      let identity: AuthIdentity | undefined;
-      if (isIdentityExposingTokenProvider(provider)) {
-        identity = await provider.getIdentity();
-      }
-
       if (isMaterializableTokenProvider(provider)) {
         const materializedConfig = await provider.materialize();
         if (materializedConfig) {
           logger.debug('grant_materialized', {
             grantType: candidate.type,
             providerType: tokenProviderConfig.type,
-            hasIdentity: !!identity,
           });
 
           const newAuth = { ...auth };
@@ -63,30 +54,24 @@ export class GrantMaterializer {
               ...grant,
               auth: newAuth,
             },
-            identity,
           };
         }
       }
-      
-      // If not materializable but has identity, we should still return identity?
-      // The original code only returned modified grant if materialization happened.
-      // But if we want identity from a static provider, we should return it.
-      if (identity) {
-         return { grant, identity };
-      }
-
     } catch (error) {
-      logger.warning('grant_materialization_failed', {
-        error: error instanceof Error ? error.message : String(error),
-        grantType: candidate.type,
-      });
-
       if (
         error &&
         (error as { name?: string }).name === 'OAuth2PkceRedirectInitiatedError'
       ) {
+        logger.info('grant_materialization_redirecting', {
+          grantType: candidate.type,
+        });
         throw error;
       }
+
+      logger.warning('grant_materialization_failed', {
+        error: error instanceof Error ? error.message : String(error),
+        grantType: candidate.type,
+      });
     }
 
     return { grant };

@@ -290,10 +290,9 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
 
   public async performAdmission(): Promise<NodeWelcomeFrame> {
     this.admissionEpoch += 1;
-    this.initializeRootIdentityIfNeeded();
 
     const welcome = await this.admissionClient.hello(
-      this.node.id,
+      this.node.provisionalId,
       generateId(),
       this.requestedLogicals
     );
@@ -568,16 +567,6 @@ export class RootSessionManager extends TaskSpawner implements SessionManager {
       current_time: new Date().toISOString(),
       seconds_before_expiry: RootSessionManager.JWT_REFRESH_SAFETY,
     });
-  }
-
-  private initializeRootIdentityIfNeeded(): void {
-    const nodeAny = this.node as any;
-    if (!this.node.id) {
-      nodeAny._id = generateId();
-      logger.debug('root_identity_generated_id_for_admission', {
-        system_id: this.node.id,
-      });
-    }
   }
 
   private async consumeTask(task: SpawnedTask<void>): Promise<void> {
