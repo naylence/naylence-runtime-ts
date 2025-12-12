@@ -273,7 +273,7 @@ function getPinoLevel(level: LogLevel): string {
     case LogLevel.CRITICAL:
       return 'fatal';
     default:
-      return 'info';
+      return 'warn';
   }
 }
 
@@ -367,7 +367,7 @@ function getInitialLogLevel(): LogLevel {
   }
 
   // Default to INFO - balanced verbosity for most use cases
-  return LogLevel.INFO;
+  return LogLevel.WARNING;
 }
 
 const defaultConfig: LoggerConfig = {

@@ -5,6 +5,19 @@ import './naylence/fame/connector/websocket-connector-node-ssl.js';
 // registered early so configuration parsing that happens during runtime
 // initialization can resolve the requested storage profiles.
 import './naylence/fame/storage/node-index.js'; // Side-effect: registers SQLite profiles
+
+// Auto-register the runtime plugin if we are in a Node.js environment
+if (typeof process !== 'undefined' && process.env) {
+  const pluginName = '@naylence/runtime';
+  const current = process.env.FAME_PLUGINS || '';
+  const plugins = current.split(',').map((p) => p.trim());
+  if (!plugins.includes(pluginName)) {
+    process.env.FAME_PLUGINS = current
+      ? `${current},${pluginName}`
+      : pluginName;
+  }
+}
+
 export * from './naylence/fame/storage/node-index.js';
 
 export * from './runtime-isomorphic.js';
