@@ -267,6 +267,7 @@ export class UpstreamSessionManager
 
   private readonly readyEvent = new AsyncEvent();
   private readonly stopEvent = new AsyncEvent();
+  private readonly wakeEvent = new AsyncEvent();
   private readonly queueEvent = new AsyncEvent();
   private currentStopSubtasks: AsyncEvent | null = null;
 
@@ -280,6 +281,7 @@ export class UpstreamSessionManager
   private hadSuccessfulAttach = false;
   private lastConnectorState: ConnectorState | null = null;
   private connectEpoch = 0;
+  private _visibilityHandler: (() => void) | null = null;
 
   constructor(optionsInput: UpstreamSessionManagerOptionsInput) {
     super();
@@ -307,6 +309,37 @@ export class UpstreamSessionManager
     return this.targetSystemId;
   }
 
+  private setupVisibilityListener(): void {
+    logger.debug('setup_visibility_listener_called', {
+      has_document: typeof document !== 'undefined',
+    });
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      this._visibilityHandler = () => {
+        logger.debug('visibility_change_event_fired', {
+          state: document.visibilityState,
+        });
+        if (document.visibilityState === 'visible') {
+          logger.debug('visibility_change_detected_waking_up');
+          this.wakeEvent.set();
+        }
+      };
+      document.addEventListener('visibilitychange', this._visibilityHandler);
+    } else {
+      logger.debug('setup_visibility_listener_skipped_no_document');
+    }
+  }
+
+  private teardownVisibilityListener(): void {
+    if (
+      this._visibilityHandler &&
+      typeof document !== 'undefined' &&
+      document.removeEventListener
+    ) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
+  }
+
   async start(options: { waitUntilReady?: boolean } = {}): Promise<void> {
     const { waitUntilReady = true } = options;
     if (this.fsmTask) {
@@ -315,6 +348,8 @@ export class UpstreamSessionManager
 
     this.stopEvent.clear();
     this.readyEvent.clear();
+    this.wakeEvent.clear();
+    this.setupVisibilityListener();
 
     const taskName = `upstream-fsm-${this.connectEpoch}`;
     this.fsmTask = this.spawn(() => this.fsmLoop(), { name: taskName });
@@ -342,6 +377,7 @@ export class UpstreamSessionManager
 
   async stop(): Promise<void> {
     logger.debug('upstream_session_manager_stopping');
+    this.teardownVisibilityListener();
     this.stopEvent.set();
     this.currentStopSubtasks?.set();
 
@@ -409,10 +445,16 @@ export class UpstreamSessionManager
     let delay = UpstreamSessionManager.BACKOFF_INITIAL;
 
     while (!this.stopEvent.isSet()) {
+      const startTime = Date.now();
       try {
         await this.connectCycle();
         delay = UpstreamSessionManager.BACKOFF_INITIAL;
       } catch (error) {
+        // Reset backoff if the connection was alive for more than 10 seconds
+        if (Date.now() - startTime > 10000) {
+          delay = UpstreamSessionManager.BACKOFF_INITIAL;
+        }
+
         if (error instanceof TaskCancelledError) {
           throw error;
         }
@@ -462,15 +504,47 @@ export class UpstreamSessionManager
     if (delaySeconds <= 0) {
       return;
     }
+
+    // If the document is visible, cap the backoff delay to improve UX
+    // This ensures that if the user is watching, we retry quickly (e.g. 1s)
+    // instead of waiting for the full exponential backoff (up to 30s).
+    let effectiveDelay = delaySeconds;
+    if (
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'visible'
+    ) {
+      effectiveDelay = Math.min(delaySeconds, 1.0);
+      if (effectiveDelay < delaySeconds) {
+        logger.debug('sleep_reduced_document_visible', {
+          original: delaySeconds,
+          new: effectiveDelay,
+        });
+      }
+    }
+
+    if (this.wakeEvent.isSet()) {
+      this.wakeEvent.clear();
+      return;
+    }
+
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const sleepPromise = new Promise<void>((resolve) => {
       timeout = setTimeout(() => {
         timeout = undefined;
         resolve();
-      }, delaySeconds * 1000);
+      }, effectiveDelay * 1000);
     });
 
-    await Promise.race([sleepPromise, this.stopEvent.wait()]);
+    await Promise.race([
+      sleepPromise,
+      this.stopEvent.wait(),
+      this.wakeEvent.wait(),
+    ]);
+
+    if (this.wakeEvent.isSet()) {
+      logger.debug('sleep_interrupted_by_wake_event');
+      this.wakeEvent.clear();
+    }
 
     if (timeout !== undefined) {
       clearTimeout(timeout);

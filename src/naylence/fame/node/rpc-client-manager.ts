@@ -214,6 +214,8 @@ export class RPCClientManager {
   private rpcBound = false;
   private trackerEventHandler: DeliveryTrackerEventHandler | null = null;
   private trackerWithEvents: DeliveryTrackerWithEvents | null = null;
+  private boundPhysicalPath: string | null = null;
+  private rpcRecipient: string | null = null;
 
   constructor(
     private readonly getPhysicalPath: () => string,
@@ -433,6 +435,8 @@ export class RPCClientManager {
     this.rpcBound = false;
     this.rpcReplyAddress = null;
     this.rpcListenerAddress = null;
+    this.boundPhysicalPath = null;
+    this.rpcRecipient = null;
 
     for (const [requestId, pending] of Array.from(this.pending.entries())) {
       if (pending.timer) {
@@ -452,12 +456,15 @@ export class RPCClientManager {
   }
 
   private async ensureReplyListener(): Promise<void> {
-    if (this.rpcBound) {
+    const currentPhysicalPath = this.getPhysicalPath();
+
+    if (this.rpcBound && this.boundPhysicalPath === currentPhysicalPath) {
       return;
     }
 
-    const recipient = `__rpc__${generateId()}`;
-    this.rpcReplyAddress = formatAddress(recipient, this.getPhysicalPath());
+    const recipient = this.rpcRecipient || `__rpc__${generateId()}`;
+    this.rpcRecipient = recipient;
+    this.rpcReplyAddress = formatAddress(recipient, currentPhysicalPath);
 
     const handler: FameEnvelopeHandler = async (
       envelope: FameEnvelope,
@@ -469,6 +476,7 @@ export class RPCClientManager {
 
     this.rpcListenerAddress = await this.listenCallback(recipient, handler);
     this.rpcBound = true;
+    this.boundPhysicalPath = currentPhysicalPath;
 
     logger.debug('rpc_reply_listener_bound', {
       reply_recipient: recipient,
