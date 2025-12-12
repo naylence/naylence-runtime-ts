@@ -26,8 +26,7 @@ describe('DirectAdmissionClient Identity Adjustment', () => {
         
         // Setup default behavior for materialize
         (GrantMaterializer.materialize as jest.Mock).mockResolvedValue({
-            grant: { type: 'materialized-grant' },
-            identity: { subject: 'user-123', claims: { role: 'admin' } } as AuthIdentity
+            type: 'materialized-grant'
         });
 
         client = new DirectAdmissionClient({
@@ -45,8 +44,7 @@ describe('DirectAdmissionClient Identity Adjustment', () => {
             // Verify context has initial ID
             expect(ctx.currentNodeId).toBe(initialId);
             // Verify context has identities
-            expect(ctx.identities).toHaveLength(1);
-            expect(ctx.identities[0].subject).toBe('user-123');
+            expect(ctx.identities).toHaveLength(0);
             
             return adjustedId;
         });

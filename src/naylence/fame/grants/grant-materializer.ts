@@ -5,27 +5,23 @@ import { getLogger } from '../util/logging.js';
 
 const logger = getLogger('naylence.fame.grants.grant_materializer');
 
-export interface GrantMaterializationResult {
-  grant: ConnectionGrantLike;
-}
-
 export class GrantMaterializer {
 
   public static async materialize(
     grant: ConnectionGrantLike
-  ): Promise<GrantMaterializationResult> {
+  ): Promise<ConnectionGrantLike> {
     const candidate = grant as Record<string, unknown>;
     const auth = candidate.auth as Record<string, unknown> | undefined;
 
     if (!auth) {
-      return { grant };
+      return grant;
     }
 
     const tokenProviderConfig = (auth.tokenProvider ??
       auth.token_provider) as Record<string, unknown>;
 
     if (!tokenProviderConfig || typeof tokenProviderConfig.type !== 'string') {
-      return { grant };
+      return grant;
     }
 
     try {
@@ -50,10 +46,8 @@ export class GrantMaterializer {
           }
 
           return {
-            grant: {
-              ...grant,
-              auth: newAuth,
-            },
+            ...grant,
+            auth: newAuth,
           };
         }
       }
@@ -74,6 +68,6 @@ export class GrantMaterializer {
       });
     }
 
-    return { grant };
+    return grant;
   }
 }

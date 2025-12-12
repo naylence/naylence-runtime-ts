@@ -88,11 +88,9 @@ export class DirectAdmissionClient implements AdmissionClient {
     const ttlSeconds = this.resolveTtlSeconds();
     const expiresAt = new Date(now + ttlSeconds * 1000);
 
-    const materializedResults = await Promise.all(
+    const materializedGrants = await Promise.all(
       this.connectionGrants.map((grant) => GrantMaterializer.materialize(grant))
     );
-
-    const materializedGrants = materializedResults.map((r) => r.grant);
 
     const effectiveSystemId = this.nodeIdentityPolicy
       ? await this.nodeIdentityPolicy.resolveAdmissionNodeId({

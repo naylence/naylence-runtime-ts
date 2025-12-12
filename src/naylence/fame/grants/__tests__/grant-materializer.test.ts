@@ -9,13 +9,13 @@ describe('GrantMaterializer', () => {
   it('should return grant as-is if no auth', async () => {
     const grant = { type: 'TestGrant' };
     const result = await GrantMaterializer.materialize(grant);
-    expect(result.grant).toEqual(grant);
+    expect(result).toEqual(grant);
   });
 
   it('should return grant as-is if no token provider', async () => {
     const grant = { type: 'TestGrant', auth: { type: 'NoAuth' } };
     const result = await GrantMaterializer.materialize(grant);
-    expect(result.grant).toEqual(grant);
+    expect(result).toEqual(grant);
   });
 
   it('should materialize if provider is materializable', async () => {
@@ -44,7 +44,7 @@ describe('GrantMaterializer', () => {
     const result = await GrantMaterializer.materialize(grant);
 
     expect(mockMaterialize).toHaveBeenCalled();
-    expect((result.grant as any).auth.tokenProvider).toEqual({
+    expect((result as any).auth.tokenProvider).toEqual({
       type: 'StaticTokenProvider',
       token: 'materialized-token',
     });
@@ -69,7 +69,7 @@ describe('GrantMaterializer', () => {
 
     const result = await GrantMaterializer.materialize(grant);
 
-    expect(result.grant).toEqual(grant);
+    expect(result).toEqual(grant);
   });
 
 
