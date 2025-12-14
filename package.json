@@ -1,6 +1,6 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.3.14",
+  "version": "0.3.15",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime",
   "author": "Naylence Dev <naylencedev@gmail.com>",

@@ -1,6 +1,22 @@
 import { installProcessEnvShim } from './_env-shim.js';
+import plugin from './plugin.js';
 
 installProcessEnvShim();
+
+// Always register the plugin directly in the browser.
+// This bypasses the need for dynamic imports of bare specifiers, which often fail in bundlers.
+(async () => {
+  try {
+    await plugin.register();
+  } catch (err) {
+    console.error('[naylence-runtime] Failed to auto-register plugin:', err);
+  }
+})();
+
+// Auto-register the runtime plugin in browser environment
+// We use globalThis to access the shimmed process object safely
+// We don't need to set FAME_PLUGINS in the browser anymore because we register directly above.
+// However, we keep the shim installation as it might be used by other code.
 
 // Browser entry point re-exporting shared runtime surface and browser-only modules.
 export * from './runtime-isomorphic.js';

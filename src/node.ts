@@ -1,4 +1,5 @@
 import './naylence/fame/connector/websocket-connector-node-ssl.js';
+import plugin from './plugin.js';
 
 // Ensure Node-specific registrations (storage, sqlite, etc.) happen before
 // the isomorphic exports are evaluated. Some factories (SQLite) must be
@@ -6,7 +7,17 @@ import './naylence/fame/connector/websocket-connector-node-ssl.js';
 // initialization can resolve the requested storage profiles.
 import './naylence/fame/storage/node-index.js'; // Side-effect: registers SQLite profiles
 
-// Auto-register the runtime plugin if we are in a Node.js environment
+// Always register the plugin directly. This ensures it is initialized even if
+// the dynamic import mechanism (used by FAME_PLUGINS) fails or is not used.
+(async () => {
+  try {
+    await plugin.register();
+  } catch (err) {
+    console.error('[naylence-runtime] Failed to auto-register plugin:', err);
+  }
+})();
+
+// Auto-register the runtime plugin in FAME_PLUGINS for child processes
 if (typeof process !== 'undefined' && process.env) {
   const pluginName = '@naylence/runtime';
   const current = process.env.FAME_PLUGINS || '';
