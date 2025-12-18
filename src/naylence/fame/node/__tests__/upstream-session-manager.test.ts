@@ -644,7 +644,8 @@ describe('UpstreamSessionManager', () => {
 
   test('sleepWithStop returns immediately for non-positive delay', async () => {
     const manager = createManager();
-    await expect((manager as any).sleepWithStop(0)).resolves.toBeUndefined();
+    // Returns false (not woken by visibility change) for non-positive delay
+    await expect((manager as any).sleepWithStop(0)).resolves.toBe(false);
   });
 
   test('sleepWithStop aborts early when stop event triggers', async () => {
@@ -653,7 +654,8 @@ describe('UpstreamSessionManager', () => {
     setTimeout(() => (manager as any).stopEvent.set(), 10);
     const promise = (manager as any).sleepWithStop(1);
     jest.advanceTimersByTime(10);
-    await expect(promise).resolves.toBeUndefined();
+    // Returns false because stopped, not woken by visibility change
+    await expect(promise).resolves.toBe(false);
     jest.runOnlyPendingTimers();
     jest.clearAllTimers();
     jest.useRealTimers();

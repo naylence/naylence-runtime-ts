@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AdmissionConfig } from './admission/admission-client-factory.js';
+import type { ConnectionRetryPolicyConfig } from './connection-retry-policy-factory.js';
 import type { NodeIdentityPolicyConfig } from './node-identity-policy-factory.js';
 import type { NodeLikeConfig } from './node-like-factory.js';
 import type { DeliveryPolicyConfig } from '../delivery/delivery-policy-config.js';
@@ -37,6 +38,7 @@ const FameNodeConfigSchemaInternal = z
     telemetry: z.unknown().optional().nullable(),
     requestedCapabilities: z.array(z.string()).optional(),
     identityPolicy: z.unknown().optional().nullable(),
+    connectionRetryPolicy: z.unknown().optional().nullable(),
   })
   .passthrough();
 
@@ -63,6 +65,7 @@ export type FameNodeConfig = NodeLikeConfig & {
   telemetry?: TraceEmitterConfig | Record<string, unknown> | null;
   requestedCapabilities?: string[];
   identityPolicy?: NodeIdentityPolicyConfig | Record<string, unknown> | null;
+  connectionRetryPolicy?: ConnectionRetryPolicyConfig | Record<string, unknown> | null;
 };
 
 export function normalizeFameNodeConfig(
@@ -134,6 +137,13 @@ export function normalizeFameNodeConfig(
         ? null
         : (parsed.identityPolicy as
             | NodeIdentityPolicyConfig
+            | Record<string, unknown>
+            | null),
+    connectionRetryPolicy:
+      parsed.connectionRetryPolicy === undefined
+        ? null
+        : (parsed.connectionRetryPolicy as
+            | ConnectionRetryPolicyConfig
             | Record<string, unknown>
             | null),
   };

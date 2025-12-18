@@ -25,6 +25,7 @@ import {
   FameTransportClose,
 } from '../errors/errors.js';
 import type { AdmissionClient } from './admission/admission-client.js';
+import type { ConnectionRetryPolicy } from './connection-retry-policy.js';
 import type {
   NodeAttachClient,
   AttachInfo,
@@ -67,6 +68,7 @@ interface UpstreamSessionManagerOptions {
   onAttach: AttachCallback;
   onEpochChange?: EpochCallback;
   admissionClient?: AdmissionClient | null;
+  retryPolicy?: ConnectionRetryPolicy | null;
 }
 
 type UpstreamSessionManagerOptionsInput = UpstreamSessionManagerOptions & {
@@ -229,6 +231,12 @@ function normalizeOptions(
     'admission_client'
   );
 
+  const retryPolicy = pickOption<ConnectionRetryPolicy | null>(
+    record,
+    'retryPolicy',
+    'retry_policy'
+  );
+
   return {
     node,
     attachClient,
@@ -240,6 +248,7 @@ function normalizeOptions(
     onAttach: validatedOnAttach,
     onEpochChange,
     admissionClient: admissionClient ?? undefined,
+    retryPolicy: retryPolicy ?? undefined,
   };
 }
 
@@ -281,6 +290,8 @@ export class UpstreamSessionManager
   private hadSuccessfulAttach = false;
   private lastConnectorState: ConnectorState | null = null;
   private connectEpoch = 0;
+  private initialAttempts = 0;
+  private readonly connectionRetryPolicy: ConnectionRetryPolicy | null;
   private _visibilityHandler: (() => void) | null = null;
 
   constructor(optionsInput: UpstreamSessionManagerOptionsInput) {
@@ -300,8 +311,12 @@ export class UpstreamSessionManager
       options.inboundHandler
     );
 
+    // Store the connection retry policy (can be null, in which case default behavior applies)
+    this.connectionRetryPolicy = options.retryPolicy ?? null;
+
     logger.debug('created_upstream_session_manager', {
       target_system_id: this.targetSystemId,
+      has_retry_policy: this.connectionRetryPolicy !== null,
     });
   }
 
@@ -443,12 +458,16 @@ export class UpstreamSessionManager
 
   private async fsmLoop(): Promise<void> {
     let delay = UpstreamSessionManager.BACKOFF_INITIAL;
+    this.initialAttempts = 0;
 
     while (!this.stopEvent.isSet()) {
       const startTime = Date.now();
+      this.initialAttempts += 1;
+
       try {
         await this.connectCycle();
         delay = UpstreamSessionManager.BACKOFF_INITIAL;
+        this.initialAttempts = 0; // Reset on success
       } catch (error) {
         // Reset backoff if the connection was alive for more than 10 seconds
         if (Date.now() - startTime > 10000) {
@@ -459,15 +478,20 @@ export class UpstreamSessionManager
           throw error;
         }
 
+        // Determine if we should fail-fast or retry
+        const shouldFailFast = this.shouldFailFastOnError(error);
+
         if (
           error instanceof FameTransportClose ||
           error instanceof FameConnectError
         ) {
           logger.warning('upstream_link_closed', {
             error: error.message,
-            will_retry: true,
+            will_retry: !shouldFailFast,
+            attempt: this.initialAttempts,
+            has_retry_policy: this.connectionRetryPolicy !== null,
           });
-          if (!this.hadSuccessfulAttach && error instanceof FameConnectError) {
+          if (shouldFailFast && error instanceof FameConnectError) {
             throw error;
           }
         } else {
@@ -480,11 +504,13 @@ export class UpstreamSessionManager
           } else {
             logger.warning('upstream_link_closed', {
               error: err.message,
-              will_retry: true,
+              will_retry: !shouldFailFast,
+              attempt: this.initialAttempts,
+              has_retry_policy: this.connectionRetryPolicy !== null,
               exc_info: true,
             });
           }
-          if (!this.hadSuccessfulAttach) {
+          if (shouldFailFast) {
             throw error;
           }
         }
@@ -494,37 +520,62 @@ export class UpstreamSessionManager
     }
   }
 
+  /**
+   * Determine whether to fail immediately or continue retrying.
+   * Returns true if we should throw the error instead of retrying.
+   */
+  private shouldFailFastOnError(error: unknown): boolean {
+    // If no policy is configured, use legacy behavior (fail-fast after first attempt)
+    if (!this.connectionRetryPolicy) {
+      // After first successful attach, always retry (existing behavior)
+      if (this.hadSuccessfulAttach) {
+        return false;
+      }
+      // Without a policy, fail on first error
+      return true;
+    }
+
+    // Delegate decision to the policy
+    const shouldRetry = this.connectionRetryPolicy.shouldRetry({
+      hadSuccessfulAttach: this.hadSuccessfulAttach,
+      attemptNumber: this.initialAttempts,
+      error,
+    });
+
+    return !shouldRetry;
+  }
+
   private async applyBackoff(delay: number): Promise<number> {
     const jitter = Math.random() * delay;
-    await this.sleepWithStop(delay + jitter);
+    const wasWoken = await this.sleepWithStop(delay + jitter);
+
+    // If sleep was interrupted by visibility change (user returned to tab),
+    // reset backoff to initial delay for immediate retry with fresh backoff
+    if (wasWoken) {
+      logger.debug('backoff_reset_on_visibility_change', {
+        previous_delay: delay,
+        new_delay: UpstreamSessionManager.BACKOFF_INITIAL,
+      });
+      return UpstreamSessionManager.BACKOFF_INITIAL;
+    }
+
     return Math.min(delay * 2, UpstreamSessionManager.BACKOFF_CAP);
   }
 
-  private async sleepWithStop(delaySeconds: number): Promise<void> {
+  /**
+   * Sleep for the specified duration, but can be interrupted by stop or wake events.
+   * @returns true if interrupted by wake event (e.g., visibility change), false otherwise
+   */
+  private async sleepWithStop(delaySeconds: number): Promise<boolean> {
     if (delaySeconds <= 0) {
-      return;
+      return false;
     }
 
-    // If the document is visible, cap the backoff delay to improve UX
-    // This ensures that if the user is watching, we retry quickly (e.g. 1s)
-    // instead of waiting for the full exponential backoff (up to 30s).
-    let effectiveDelay = delaySeconds;
-    if (
-      typeof document !== 'undefined' &&
-      document.visibilityState === 'visible'
-    ) {
-      effectiveDelay = Math.min(delaySeconds, 1.0);
-      if (effectiveDelay < delaySeconds) {
-        logger.debug('sleep_reduced_document_visible', {
-          original: delaySeconds,
-          new: effectiveDelay,
-        });
-      }
-    }
-
+    // Check if wake event is already set (e.g., visibility just changed)
     if (this.wakeEvent.isSet()) {
       this.wakeEvent.clear();
-      return;
+      logger.debug('sleep_skipped_wake_event_pending');
+      return true;
     }
 
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -532,7 +583,7 @@ export class UpstreamSessionManager
       timeout = setTimeout(() => {
         timeout = undefined;
         resolve();
-      }, effectiveDelay * 1000);
+      }, delaySeconds * 1000);
     });
 
     await Promise.race([
@@ -541,7 +592,8 @@ export class UpstreamSessionManager
       this.wakeEvent.wait(),
     ]);
 
-    if (this.wakeEvent.isSet()) {
+    const wasWoken = this.wakeEvent.isSet();
+    if (wasWoken) {
       logger.debug('sleep_interrupted_by_wake_event');
       this.wakeEvent.clear();
     }
@@ -549,6 +601,8 @@ export class UpstreamSessionManager
     if (timeout !== undefined) {
       clearTimeout(timeout);
     }
+
+    return wasWoken;
   }
 
   private getNodeAttachGrant(

@@ -37,3 +37,10 @@ export {
   NodeIdentityPolicyProfileFactory,
   NodeIdentityPolicyProfileConfig,
 } from './node-identity-policy-profile-factory.js';
+export * from './connection-retry-policy.js';
+export * from './connection-retry-policy-factory.js';
+export * from './default-connection-retry-policy.js';
+export {
+  DefaultConnectionRetryPolicyFactory,
+  DefaultConnectionRetryPolicyConfig,
+} from './default-connection-retry-policy-factory.js';

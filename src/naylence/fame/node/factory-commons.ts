@@ -3,6 +3,11 @@ import { createResource } from '@naylence/factory';
 
 import type { AdmissionClient } from './admission/admission-client.js';
 import { AdmissionClientFactory } from './admission/admission-client-factory.js';
+import type { ConnectionRetryPolicy } from './connection-retry-policy.js';
+import {
+  ConnectionRetryPolicyFactory,
+  type ConnectionRetryPolicyConfig,
+} from './connection-retry-policy-factory.js';
 import type { NodeIdentityPolicy } from './node-identity-policy.js';
 import { DefaultNodeIdentityPolicy } from './default-node-identity-policy.js';
 import {
@@ -76,6 +81,7 @@ export interface CommonNodeComponents {
   transportListeners: TransportListener[];
   traceEmitter: TraceEmitter | null;
   identityPolicy?: NodeIdentityPolicy;
+  connectionRetryPolicy?: ConnectionRetryPolicy;
 }
 
 interface SecurityManagerOverrides {
@@ -299,6 +305,13 @@ export async function makeCommonOptions(
     'node_identity_policy'
   );
 
+  const connectionRetryPolicyConfig = pickOption(
+    config.connectionRetryPolicy ?? null,
+    aliasRecord,
+    'connection_retry_policy',
+    'retry_policy'
+  );
+
   const publicUrl =
     pickString(config.publicUrl ?? null, aliasRecord, 'public_url') ?? null;
 
@@ -333,6 +346,11 @@ export async function makeCommonOptions(
 
   const identityPolicy = await resolveNodeIdentityPolicy(
     identityPolicyConfig ?? null,
+    expressionOptions
+  );
+
+  const connectionRetryPolicy = await resolveConnectionRetryPolicy(
+    connectionRetryPolicyConfig ?? null,
     expressionOptions
   );
 
@@ -463,6 +481,7 @@ export async function makeCommonOptions(
     transportListeners,
     traceEmitter,
     identityPolicy: identityPolicy ?? undefined,
+    connectionRetryPolicy: connectionRetryPolicy ?? undefined,
   };
 }
 
@@ -477,6 +496,23 @@ async function resolveNodeIdentityPolicy(
     );
   } catch (error) {
     logger.warning('node_identity_policy_creation_failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+async function resolveConnectionRetryPolicy(
+  config: ConnectionRetryPolicyConfig | Record<string, unknown> | null,
+  options: CreateResourceOptions
+): Promise<ConnectionRetryPolicy | null> {
+  try {
+    return await ConnectionRetryPolicyFactory.createConnectionRetryPolicy(
+      config ?? undefined,
+      cloneCreateOptions(options)
+    );
+  } catch (error) {
+    logger.warning('connection_retry_policy_creation_failed', {
       error: error instanceof Error ? error.message : String(error),
     });
     return null;

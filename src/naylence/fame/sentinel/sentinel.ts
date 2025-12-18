@@ -72,6 +72,7 @@ import type {
   AttachInfo,
 } from '../node/admission/node-attach-client.js';
 import type { AdmissionClient } from '../node/admission/admission-client.js';
+import type { ConnectionRetryPolicy } from '../node/connection-retry-policy.js';
 import type { AttachmentKeyValidator } from '../security/keys/attachment-key-validator.js';
 import type { LoadBalancerStickinessManager } from '../stickiness/load-balancer-stickiness-manager.js';
 import type { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
@@ -223,6 +224,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
   private readonly maxAttachTtlSec: number | null;
   private readonly requestedLogicals: string[];
   private readonly attachClient: NodeAttachClient | null;
+  private readonly connectionRetryPolicy: ConnectionRetryPolicy | null;
   private readonly attachTimeoutMs: number | null;
   private readonly cleanupDelayMs: number;
   private readonly rebindOnAttach: boolean;
@@ -301,6 +303,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     this.maxAttachTtlSec = opts.maxAttachTtlSec ?? null;
     this.requestedLogicals = opts.requestedLogicals ?? [];
     this.attachClient = opts.attachClient ?? null;
+    this.connectionRetryPolicy = opts.connectionRetryPolicy ?? null;
 
     this.nodeAttachFrameHandler = new NodeAttachFrameHandler({
       routingNode: this,
@@ -1168,6 +1171,7 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         this.onNodeAttachToPeer(info, connector),
       onEpochChange: (epoch: string) => this.onEpochChange(epoch),
       onWelcome: async () => undefined,
+      retryPolicy: this.connectionRetryPolicy,
     });
 
     await sessionManager.start();

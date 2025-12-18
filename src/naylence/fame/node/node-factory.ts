@@ -50,6 +50,7 @@ export class NodeFactory extends NodeLikeFactory<FameNodeConfig> {
       nodeMetaStore: components.nodeMetaStore,
       transportListeners: components.transportListeners,
       defaultServiceConfigs: serviceConfigs,
+      connectionRetryPolicy: components.connectionRetryPolicy,
     });
 
     return node;

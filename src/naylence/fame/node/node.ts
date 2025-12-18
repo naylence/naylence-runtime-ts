@@ -22,6 +22,7 @@ import type { DeliveryPolicy } from '../delivery/delivery-policy.js';
 import type { SecurityManager } from '../security/security-manager.js';
 import type { CryptoProvider } from '../security/crypto/providers/crypto-provider.js';
 import type { AdmissionClient } from './admission/admission-client.js';
+import type { ConnectionRetryPolicy } from './connection-retry-policy.js';
 import type { NodeEventListener } from './node-event-listener.js';
 import type { StorageProvider, KeyValueStore } from '../storage/index.js';
 import { InMemoryStorageProvider } from '../storage/in-memory-storage.js';
@@ -142,6 +143,7 @@ export interface FameNodeOptions {
   nodeMetaStore?: KeyValueStore<NodeMetaRecord> | null;
   transportListeners?: TransportListener[];
   cryptoProvider?: CryptoProvider | null;
+  connectionRetryPolicy?: ConnectionRetryPolicy | null;
 }
 
 type FameNodeOptionsInput = FameNodeOptions & Record<string, unknown>;
@@ -277,6 +279,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
   private _handshakeCompleted: boolean;
   private _welcomeExpiresAt: string | null;
   private _attachExpiresAt: Date | null;
+  private readonly _connectionRetryPolicy: ConnectionRetryPolicy | null;
 
   constructor(options: FameNodeOptionsInput = {}) {
     super();
@@ -324,6 +327,13 @@ export class FameNode extends TaskSpawner implements NodeLike {
       'delivery_policy'
     );
     this._deliveryPolicy = deliveryPolicyOption ?? null;
+
+    const connectionRetryPolicyOption = resolveOption<ConnectionRetryPolicy | null>(
+      options,
+      'connectionRetryPolicy',
+      'connection_retry_policy'
+    );
+    this._connectionRetryPolicy = connectionRetryPolicyOption ?? null;
 
     const admissionClientOption = resolveOption<AdmissionClient | null>(
       options,
@@ -601,6 +611,7 @@ export class FameNode extends TaskSpawner implements NodeLike {
       onAttach: (info, connector) => this.handleAttach(info, connector),
       onEpochChange: (epoch) => this.handleEpochChange(epoch),
       admissionClient: this._admissionClient,
+      retryPolicy: this._connectionRetryPolicy,
     });
 
     this._sessionManager = manager;
