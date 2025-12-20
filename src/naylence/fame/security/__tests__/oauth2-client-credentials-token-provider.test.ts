@@ -70,4 +70,96 @@ describe('OAuth2ClientCredentialsTokenProvider', () => {
     expect(refreshedToken.value).toBe('token-value');
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
+
+  describe('getIdentity', () => {
+    function createJwt(payload: Record<string, unknown>): string {
+      const header = { alg: 'HS256', typ: 'JWT' };
+      const encodeBase64Url = (obj: unknown) => {
+        const json = JSON.stringify(obj);
+        const base64 = Buffer.from(json).toString('base64');
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+      };
+      return `${encodeBase64Url(header)}.${encodeBase64Url(payload)}.signature`;
+    }
+
+    it('extracts subject from valid JWT token', async () => {
+      const jwtToken = createJwt({ sub: 'user-123', aud: 'test-audience' });
+      const fetchImpl = jest.fn(async () =>
+        new Response(
+          JSON.stringify({ access_token: jwtToken, expires_in: 3600 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+      const provider = new OAuth2ClientCredentialsTokenProvider({
+        tokenUrl: 'https://issuer.example/oauth/token',
+        clientIdProvider: new StaticCredentialProvider('client-id'),
+        clientSecretProvider: new StaticCredentialProvider('client-secret'),
+        fetchImpl,
+      });
+
+      const identity = await provider.getIdentity();
+      expect(identity).toBeDefined();
+      expect(identity?.subject).toBe('user-123');
+      expect(identity?.claims).toEqual({ sub: 'user-123', aud: 'test-audience' });
+    });
+
+    it('returns undefined for non-JWT token', async () => {
+      const fetchImpl = jest.fn(async () =>
+        new Response(
+          JSON.stringify({ access_token: 'opaque-token-value', expires_in: 3600 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+      const provider = new OAuth2ClientCredentialsTokenProvider({
+        tokenUrl: 'https://issuer.example/oauth/token',
+        clientIdProvider: new StaticCredentialProvider('client-id'),
+        clientSecretProvider: new StaticCredentialProvider('client-secret'),
+        fetchImpl,
+      });
+
+      const identity = await provider.getIdentity();
+      expect(identity).toBeUndefined();
+    });
+
+    it('returns undefined when JWT payload has no sub claim', async () => {
+      const jwtToken = createJwt({ aud: 'test-audience', iss: 'issuer' });
+      const fetchImpl = jest.fn(async () =>
+        new Response(
+          JSON.stringify({ access_token: jwtToken, expires_in: 3600 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+      const provider = new OAuth2ClientCredentialsTokenProvider({
+        tokenUrl: 'https://issuer.example/oauth/token',
+        clientIdProvider: new StaticCredentialProvider('client-id'),
+        clientSecretProvider: new StaticCredentialProvider('client-secret'),
+        fetchImpl,
+      });
+
+      const identity = await provider.getIdentity();
+      expect(identity).toBeUndefined();
+    });
+
+    it('returns undefined for malformed JWT', async () => {
+      const fetchImpl = jest.fn(async () =>
+        new Response(
+          JSON.stringify({ access_token: 'header.invalid-base64.signature', expires_in: 3600 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+      const provider = new OAuth2ClientCredentialsTokenProvider({
+        tokenUrl: 'https://issuer.example/oauth/token',
+        clientIdProvider: new StaticCredentialProvider('client-id'),
+        clientSecretProvider: new StaticCredentialProvider('client-secret'),
+        fetchImpl,
+      });
+
+      const identity = await provider.getIdentity();
+      expect(identity).toBeUndefined();
+    });
+  });
 });

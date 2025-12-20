@@ -4,7 +4,8 @@ import {
   type CredentialProvider,
 } from '../credential/credential-provider.js';
 import type { Token } from './token.js';
-import type { TokenProvider } from './token-provider.js';
+import type { IdentityExposingTokenProvider } from './token-provider.js';
+import type { AuthIdentity } from './auth-identity.js';
 
 const logger = getLogger(
   'naylence.fame.security.auth.oauth2_client_credentials_token_provider'
@@ -123,7 +124,9 @@ interface OAuth2TokenResponse {
 const DEFAULT_EXPIRY_SECONDS = 3600;
 const DEFAULT_CLOCK_SKEW_SECONDS = 30;
 
-export class OAuth2ClientCredentialsTokenProvider implements TokenProvider {
+export class OAuth2ClientCredentialsTokenProvider
+  implements IdentityExposingTokenProvider
+{
   private cachedToken: Token | undefined;
   private readonly options: OAuth2ClientCredentialsTokenProviderOptions;
 
@@ -253,5 +256,52 @@ export class OAuth2ClientCredentialsTokenProvider implements TokenProvider {
     }
 
     return DEFAULT_EXPIRY_SECONDS;
+  }
+
+  public async getIdentity(): Promise<AuthIdentity | undefined> {
+    const token = await this.getToken();
+    const tokenValue = token.value;
+    const parts = tokenValue.split('.');
+    if (parts.length !== 3) {
+      return undefined;
+    }
+
+    try {
+      const payloadSegment = parts[1];
+      // Fix padding for base64url
+      const padding = '='.repeat((4 - (payloadSegment.length % 4)) % 4);
+      const base64 = (payloadSegment + padding)
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+
+      let jsonString: string;
+      if (typeof Buffer !== 'undefined') {
+        jsonString = Buffer.from(base64, 'base64').toString('utf-8');
+      } else if (typeof atob === 'function') {
+        jsonString = atob(base64);
+        try {
+          jsonString = decodeURIComponent(
+            jsonString
+              .split('')
+              .map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+              })
+              .join('')
+          );
+        } catch {
+          // ignore
+        }
+      } else {
+        return undefined;
+      }
+
+      const payload = JSON.parse(jsonString);
+      if (payload && typeof payload.sub === 'string') {
+        return { subject: payload.sub, claims: payload };
+      }
+    } catch {
+      // ignore decoding errors
+    }
+    return undefined;
   }
 }
