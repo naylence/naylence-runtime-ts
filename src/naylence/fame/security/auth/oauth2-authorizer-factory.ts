@@ -229,12 +229,11 @@ function normalizeConfig(
         ? source.reverse_auth_ttl_sec
         : DEFAULT_REVERSE_AUTH_TTL_SEC;
 
-  const enforceTokenSubjectNodeIdentity =
-    typeof source.enforceTokenSubjectNodeIdentity === 'boolean'
-      ? source.enforceTokenSubjectNodeIdentity
-      : typeof source.enforce_token_subject_node_identity === 'boolean'
-        ? source.enforce_token_subject_node_identity
-        : false;
+  const enforceTokenSubjectNodeIdentity = normalizeBooleanOption(
+    source.enforceTokenSubjectNodeIdentity ??
+      source.enforce_token_subject_node_identity,
+    false
+  );
 
   const tokenVerifierConfigInput =
     source.tokenVerifierConfig ?? source.token_verifier_config ?? null;
@@ -294,6 +293,25 @@ function normalizeTokenVerifierConfig({
   };
 
   return defaultConfig;
+}
+
+function normalizeBooleanOption(
+  value: unknown,
+  defaultValue: boolean
+): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const lower = value.toLowerCase().trim();
+    if (lower === 'true' || lower === '1' || lower === 'yes') {
+      return true;
+    }
+    if (lower === 'false' || lower === '0' || lower === 'no') {
+      return false;
+    }
+  }
+  return defaultValue;
 }
 
 export default OAuth2AuthorizerFactory;

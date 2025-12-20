@@ -29,6 +29,8 @@ export const ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER =
   'FAME_JWT_REVERSE_AUTH_TRUSTED_ISSUER';
 export const ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE =
   'FAME_JWT_REVERSE_AUTH_AUDIENCE';
+export const ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY =
+  'FAME_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY';
 
 export const PROFILE_NAME_STRICT_OVERLAY = 'strict-overlay';
 export const PROFILE_NAME_OVERLAY = 'overlay';
@@ -285,6 +287,10 @@ const GATED_PROFILE: DefaultSecurityManagerConfig = {
     max_ttl_sec: 86400,
     algorithm: Expressions.env(ENV_VAR_JWT_ALGORITHM, 'RS256'),
     audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
+    enforce_token_subject_node_identity: Expressions.env(
+      ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY,
+      'false'
+    ),
   },
 };
 
