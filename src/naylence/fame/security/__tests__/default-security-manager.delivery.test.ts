@@ -323,4 +323,91 @@ describe('DefaultSecurityManager.onDeliver', () => {
     );
     expect(result).toBeNull();
   });
+
+  it('rejects NodeAttach when validateNodeAttachRequest returns undefined', async () => {
+    const policy = createPolicy();
+    const authorize = jest.fn(async () => ({ principal: 'alice', authorized: true }));
+    const validateNodeAttachRequest = jest.fn(async () => undefined);
+    const manager = new DefaultSecurityManager(policy, null, null, null, null, {
+      authorize,
+      validateNodeAttachRequest,
+    } as any);
+
+    const envelope = createEnvelope({
+      sec: { sig: { val: 'sig-data' } } as FameEnvelope['sec'],
+      frame: {
+        type: 'NodeAttach',
+        systemId: 'child-node-123',
+        originType: DeliveryOriginType.DOWNSTREAM,
+      } as FameEnvelope['frame'],
+    });
+
+    const result = await manager.onDeliver(
+      createNode(),
+      envelope,
+      createContext()
+    );
+
+    expect(result).toBeNull();
+    expect(validateNodeAttachRequest).toHaveBeenCalled();
+  });
+
+  it('accepts NodeAttach when validateNodeAttachRequest returns context', async () => {
+    const policy = createPolicy();
+    const authorize = jest.fn(async () => ({ principal: 'alice', authorized: true }));
+    const validateNodeAttachRequest = jest.fn(async () => ({
+      principal: 'validated-alice',
+      authorized: true,
+    }));
+    const manager = new DefaultSecurityManager(policy, null, null, null, null, {
+      authorize,
+      validateNodeAttachRequest,
+    } as any);
+
+    const context = createContext();
+    const envelope = createEnvelope({
+      sec: { sig: { val: 'sig-data' } } as FameEnvelope['sec'],
+      frame: {
+        type: 'NodeAttach',
+        systemId: 'child-node-123',
+        originType: DeliveryOriginType.DOWNSTREAM,
+      } as FameEnvelope['frame'],
+    });
+
+    const result = await manager.onDeliver(createNode(), envelope, context);
+
+    expect(result).toBe(envelope);
+    expect(validateNodeAttachRequest).toHaveBeenCalled();
+    expect(context.security?.authorization?.principal).toBe('validated-alice');
+  });
+
+  it('rejects NodeAttach when validateNodeAttachRequest throws', async () => {
+    const policy = createPolicy();
+    const authorize = jest.fn(async () => ({ principal: 'alice', authorized: true }));
+    const validateNodeAttachRequest = jest.fn(async () => {
+      throw new Error('validation error');
+    });
+    const manager = new DefaultSecurityManager(policy, null, null, null, null, {
+      authorize,
+      validateNodeAttachRequest,
+    } as any);
+
+    const envelope = createEnvelope({
+      sec: { sig: { val: 'sig-data' } } as FameEnvelope['sec'],
+      frame: {
+        type: 'NodeAttach',
+        systemId: 'child-node-123',
+        originType: DeliveryOriginType.DOWNSTREAM,
+      } as FameEnvelope['frame'],
+    });
+
+    const result = await manager.onDeliver(
+      createNode(),
+      envelope,
+      createContext()
+    );
+
+    expect(result).toBeNull();
+    expect(validateNodeAttachRequest).toHaveBeenCalled();
+  });
 });

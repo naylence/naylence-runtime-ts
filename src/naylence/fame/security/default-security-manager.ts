@@ -1019,9 +1019,15 @@ export class DefaultSecurityManager implements SecurityManager {
               envelope.frame as NodeAttachFrame,
               authResult
             );
-            if (validated) {
-              finalAuthResult = validated;
+            if (validated === undefined) {
+              logger.warning('node_attach_validation_rejected', {
+                envp_id: envelope.id,
+                frame_type: envelope.frame.type,
+                origin_type: context.originType ?? 'unknown',
+              });
+              return null;
             }
+            finalAuthResult = validated;
           } catch (error) {
             logger.error('node_attach_authorization_validation_failed', {
               envp_id: envelope.id,
