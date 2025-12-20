@@ -4,7 +4,7 @@ import type {
   FameEnvelope,
   NodeAttachFrame,
 } from '@naylence/core';
-import { createAuthorizationContext } from '@naylence/core';
+import { createAuthorizationContext, generateIdAsync } from '@naylence/core';
 import { DEFAULT_REVERSE_AUTH_TTL_SEC } from '../../constants/ttl-constants.js';
 import { getLogger } from '../../util/logging.js';
 import type { NodeLike } from '../../node/node-like.js';
@@ -36,6 +36,7 @@ export interface OAuth2AuthorizerOptions {
   defaultTtlSec?: number;
   maxTtlSec?: number;
   reverseAuthTtlSec?: number;
+  enforceTokenSubjectNodeIdentity?: boolean;
 }
 
 type SnakeCaseOAuth2AuthorizerOptions = Partial<
@@ -48,7 +49,8 @@ type SnakeCaseOAuth2AuthorizerOptions = Partial<
     | 'require_scope'
     | 'default_ttl_sec'
     | 'max_ttl_sec'
-    | 'reverse_auth_ttl_sec',
+    | 'reverse_auth_ttl_sec'
+    | 'enforce_token_subject_node_identity',
     unknown
   >
 >;
@@ -103,6 +105,12 @@ function normalizeOptions(
         ? snake.aud
         : undefined);
 
+  const enforceTokenSubjectNodeIdentity =
+    camel.enforceTokenSubjectNodeIdentity ??
+    (typeof snake.enforce_token_subject_node_identity === 'boolean'
+      ? snake.enforce_token_subject_node_identity
+      : undefined);
+
   return {
     tokenVerifier,
     tokenIssuer,
@@ -112,6 +120,7 @@ function normalizeOptions(
     defaultTtlSec,
     maxTtlSec,
     reverseAuthTtlSec,
+    enforceTokenSubjectNodeIdentity,
   };
 }
 
@@ -126,6 +135,7 @@ export class OAuth2Authorizer
   private readonly requiredScopes: Set<string>;
   private readonly requireScope: boolean;
   private readonly reverseAuthTtlSec: number;
+  private readonly enforceTokenSubjectNodeIdentity: boolean;
   private node?: NodeLike;
 
   constructor(rawOptions: OAuth2AuthorizerOptions | Record<string, unknown>) {
@@ -140,6 +150,8 @@ export class OAuth2Authorizer
     this.requireScope = options.requireScope ?? true;
     this.reverseAuthTtlSec =
       options.reverseAuthTtlSec ?? DEFAULT_REVERSE_AUTH_TTL_SEC;
+    this.enforceTokenSubjectNodeIdentity =
+      options.enforceTokenSubjectNodeIdentity ?? false;
   }
 
   get tokenVerifier(): TokenVerifier {
@@ -317,6 +329,17 @@ export class OAuth2Authorizer
       return undefined;
     }
 
+    // Enforce token subject node identity if enabled
+    if (this.enforceTokenSubjectNodeIdentity) {
+      const validationResult = await this.validateTokenSubjectNodeIdentity(
+        frame.systemId,
+        claims
+      );
+      if (!validationResult) {
+        return undefined;
+      }
+    }
+
     claims.instance_id = claims.instance_id ?? frame.instanceId;
     claims.assigned_path = claims.assigned_path ?? frame.assignedPath;
     claims.accepted_capabilities =
@@ -407,5 +430,41 @@ export class OAuth2Authorizer
       }
     }
     return false;
+  }
+
+  private async validateTokenSubjectNodeIdentity(
+    systemId: string,
+    claims: Record<string, unknown>
+  ): Promise<boolean> {
+    const sub = claims.sub;
+
+    if (typeof sub !== 'string' || sub.trim().length === 0) {
+      logger.warning('oauth2_attach_missing_subject_claim', {
+        system_id: systemId,
+      });
+      return false;
+    }
+
+    const expectedPrefix = await generateIdAsync({
+      mode: 'fingerprint',
+      material: sub,
+      length: 8,
+    });
+
+    if (!systemId.startsWith(`${expectedPrefix}-`)) {
+      logger.warning('oauth2_attach_node_identity_mismatch', {
+        system_id: systemId,
+        expected_prefix: expectedPrefix,
+        subject: sub,
+      });
+      return false;
+    }
+
+    logger.debug('oauth2_attach_node_identity_verified', {
+      system_id: systemId,
+      expected_prefix: expectedPrefix,
+    });
+
+    return true;
   }
 }

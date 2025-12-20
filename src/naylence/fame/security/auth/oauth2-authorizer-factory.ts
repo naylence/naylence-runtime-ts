@@ -65,6 +65,8 @@ export interface OAuth2AuthorizerConfig extends AuthorizerConfig {
   token_issuer_config?: TokenIssuerConfig;
   reverseAuthTtlSec?: number;
   reverse_auth_ttl_sec?: number;
+  enforceTokenSubjectNodeIdentity?: boolean;
+  enforce_token_subject_node_identity?: boolean;
 }
 
 interface NormalizedOAuth2AuthorizerConfig {
@@ -79,6 +81,7 @@ interface NormalizedOAuth2AuthorizerConfig {
   tokenVerifierConfig: TokenVerifierConfig;
   tokenIssuerConfig?: TokenIssuerConfig;
   reverseAuthTtlSec: number;
+  enforceTokenSubjectNodeIdentity: boolean;
 }
 
 export const FACTORY_META = {
@@ -126,6 +129,7 @@ export class OAuth2AuthorizerFactory extends AuthorizerFactory<OAuth2AuthorizerC
       defaultTtlSec: normalized.defaultTtlSec,
       maxTtlSec: normalized.maxTtlSec,
       reverseAuthTtlSec: normalized.reverseAuthTtlSec,
+      enforceTokenSubjectNodeIdentity: normalized.enforceTokenSubjectNodeIdentity,
     };
 
     if (tokenIssuer) {
@@ -225,6 +229,13 @@ function normalizeConfig(
         ? source.reverse_auth_ttl_sec
         : DEFAULT_REVERSE_AUTH_TTL_SEC;
 
+  const enforceTokenSubjectNodeIdentity =
+    typeof source.enforceTokenSubjectNodeIdentity === 'boolean'
+      ? source.enforceTokenSubjectNodeIdentity
+      : typeof source.enforce_token_subject_node_identity === 'boolean'
+        ? source.enforce_token_subject_node_identity
+        : false;
+
   const tokenVerifierConfigInput =
     source.tokenVerifierConfig ?? source.token_verifier_config ?? null;
 
@@ -248,6 +259,7 @@ function normalizeConfig(
     maxTtlSec,
     tokenVerifierConfig,
     reverseAuthTtlSec: reverseAuthCandidate,
+    enforceTokenSubjectNodeIdentity,
     ...(audience ? { audience } : {}),
   };
 

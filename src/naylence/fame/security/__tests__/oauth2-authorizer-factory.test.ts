@@ -165,4 +165,100 @@ describe('OAuth2AuthorizerFactory', () => {
 
     nowSpy.mockRestore();
   });
+
+  it('passes enforceTokenSubjectNodeIdentity via factory config', async () => {
+    const factory = new OAuth2AuthorizerFactory();
+
+    const config: OAuth2AuthorizerConfig = {
+      type: 'OAuth2Authorizer',
+      issuer: 'https://issuer.example',
+      enforceTokenSubjectNodeIdentity: true,
+      tokenVerifierConfig: {
+        type: 'JWTTokenVerifier',
+        issuer: 'https://issuer.example',
+        hmacSecret: HMAC_SECRET,
+        algorithms: ['HS256'],
+      },
+    };
+
+    const authorizer = (await factory.create(config)) as OAuth2Authorizer;
+    expect(authorizer).toBeInstanceOf(OAuth2Authorizer);
+
+    // Verify enforcement is enabled by testing that it rejects attach without proper prefix
+    const { DeliveryOriginType } = await import('@naylence/core');
+
+    const frame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'wrong-prefix-node-id',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as any;
+
+    const authContext = {
+      authenticated: true,
+      authorized: false,
+      principal: 'user',
+      claims: { sub: 'user@example.com' },
+      grantedScopes: [],
+      restrictions: {},
+    };
+
+    const node = { id: 'node-1', physicalPath: '/nodes/node-1' } as any;
+    const result = await authorizer.validateNodeAttachRequest(
+      node,
+      frame,
+      authContext
+    );
+    // Should be undefined because the node ID doesn't have the correct prefix
+    expect(result).toBeUndefined();
+  });
+
+  it('passes enforce_token_subject_node_identity via snake_case config', async () => {
+    const factory = new OAuth2AuthorizerFactory();
+
+    const config = {
+      type: 'OAuth2Authorizer',
+      issuer: 'https://issuer.example',
+      enforce_token_subject_node_identity: true,
+      token_verifier_config: {
+        type: 'JWTTokenVerifier',
+        issuer: 'https://issuer.example',
+        hmac_secret: HMAC_SECRET,
+        algorithms: ['HS256'],
+      },
+    } as const;
+
+    const authorizer = (await factory.create(config)) as OAuth2Authorizer;
+    expect(authorizer).toBeInstanceOf(OAuth2Authorizer);
+
+    // Verify enforcement is enabled by testing that it rejects attach without proper prefix
+    const { DeliveryOriginType } = await import('@naylence/core');
+
+    const frame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'wrong-prefix-node-id',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as any;
+
+    const authContext = {
+      authenticated: true,
+      authorized: false,
+      principal: 'user',
+      claims: { sub: 'user@example.com' },
+      grantedScopes: [],
+      restrictions: {},
+    };
+
+    const node = { id: 'node-1', physicalPath: '/nodes/node-1' } as any;
+    const result = await authorizer.validateNodeAttachRequest(
+      node,
+      frame,
+      authContext
+    );
+    // Should be undefined because the node ID doesn't have the correct prefix
+    expect(result).toBeUndefined();
+  });
 });

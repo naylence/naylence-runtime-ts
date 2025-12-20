@@ -19,6 +19,7 @@ function createNodeStub(overrides: Partial<NodeLike> = {}): NodeLike {
   const base: NodeLike = {
     id: 'node-1',
     sid: null,
+    provisionalId: 'node-1',
     physicalPath: NODE_PHYSICAL_PATH,
     acceptedLogicals: new Set(),
     envelopeFactory: {} as any,
@@ -607,6 +608,213 @@ describe('OAuth2Authorizer edge cases', () => {
       ...baseAuthContext,
       authenticated: true,
       grantedScopes: ['scope:other'],
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeDefined();
+    expect(result?.authorized).toBe(true);
+  });
+});
+
+describe('OAuth2Authorizer token subject node identity enforcement', () => {
+  const createVerifierMock = () => {
+    const verify = jest.fn();
+    return {
+      mock: verify,
+      verifier: { verify } as unknown as TokenVerifier,
+    };
+  };
+
+  const baseAuthContext: AuthorizationContext = {
+    authenticated: true,
+    authorized: false,
+    principal: 'stub-user',
+    claims: {},
+    grantedScopes: [],
+    restrictions: {},
+  };
+
+  it('does not enforce node identity when disabled (default)', async () => {
+    const authorizer = new OAuth2Authorizer({
+      tokenVerifier: createVerifierMock().verifier,
+    });
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'any-system-id',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub: 'user@example.com' },
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeDefined();
+    expect(result?.authorized).toBe(true);
+  });
+
+  it('rejects attach when enforcement is enabled and sub claim is missing', async () => {
+    const authorizer = new OAuth2Authorizer({
+      tokenVerifier: createVerifierMock().verifier,
+      enforceTokenSubjectNodeIdentity: true,
+    });
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'any-system-id',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: {}, // No sub claim
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('rejects attach when enforcement is enabled and sub claim is empty', async () => {
+    const authorizer = new OAuth2Authorizer({
+      tokenVerifier: createVerifierMock().verifier,
+      enforceTokenSubjectNodeIdentity: true,
+    });
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'any-system-id',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub: '   ' }, // Whitespace-only sub claim
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('rejects attach when enforcement is enabled and node ID prefix does not match', async () => {
+    const authorizer = new OAuth2Authorizer({
+      tokenVerifier: createVerifierMock().verifier,
+      enforceTokenSubjectNodeIdentity: true,
+    });
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'wrong-prefix-my-node-id', // Wrong prefix
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub: 'user@example.com' },
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('accepts attach when enforcement is enabled and node ID prefix matches hashed subject', async () => {
+    const { generateIdAsync } = await import('@naylence/core');
+
+    const sub = 'user@example.com';
+    const expectedPrefix = await generateIdAsync({
+      mode: 'fingerprint',
+      material: sub,
+      length: 8,
+    });
+
+    const authorizer = new OAuth2Authorizer({
+      tokenVerifier: createVerifierMock().verifier,
+      enforceTokenSubjectNodeIdentity: true,
+    });
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: `${expectedPrefix}-my-node-id`,
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub },
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeDefined();
+    expect(result?.authorized).toBe(true);
+  });
+
+  it('accepts snake_case option enforce_token_subject_node_identity', async () => {
+    const { generateIdAsync } = await import('@naylence/core');
+
+    const sub = 'another-user';
+    const expectedPrefix = await generateIdAsync({
+      mode: 'fingerprint',
+      material: sub,
+      length: 8,
+    });
+
+    const authorizer = new OAuth2Authorizer({
+      token_verifier: createVerifierMock().verifier,
+      enforce_token_subject_node_identity: true,
+    } as any);
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: `${expectedPrefix}-test-node`,
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub },
     };
 
     const result = await authorizer.validateNodeAttachRequest(
