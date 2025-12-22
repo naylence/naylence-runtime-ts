@@ -64,6 +64,12 @@ export abstract class TransportListenerFactory<
     const listeners: TransportListener[] = [];
 
     for (const config of configs) {
+      // Skip disabled listeners (enabled defaults to true if not specified)
+      const configRecord = config as Record<string, unknown> | null;
+      if (configRecord && configRecord.enabled === false) {
+        continue;
+      }
+
       const listener = await this.createTransportListener(
         config ?? undefined,
         eventListeners,
