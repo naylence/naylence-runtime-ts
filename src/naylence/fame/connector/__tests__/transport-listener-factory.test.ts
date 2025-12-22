@@ -11,10 +11,13 @@ import {
 import type { TransportListenerConfig } from '../transport-listener-config.js';
 import type { TransportListener } from '../transport-listener.js';
 
-const mockListener: Partial<TransportListener> = {
-  listenerType: 'MockListener',
-  isRunning: false,
-};
+const mockListener = {
+  priority: 1000,
+  onNodeStarted: jest.fn(),
+  onNodeStopped: jest.fn(),
+  getCallbackGrant: () => null,
+  asCallbackGrant: () => null,
+} as unknown as TransportListener;
 
 describe('TransportListenerFactory', () => {
   let TransportListenerFactory: typeof import('../transport-listener-factory.js').TransportListenerFactory;
