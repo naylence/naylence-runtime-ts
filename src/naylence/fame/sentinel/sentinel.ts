@@ -76,7 +76,12 @@ import type { ConnectionRetryPolicy } from '../node/connection-retry-policy.js';
 import type { AttachmentKeyValidator } from '../security/keys/attachment-key-validator.js';
 import type { LoadBalancerStickinessManager } from '../stickiness/load-balancer-stickiness-manager.js';
 import type { DefaultDeliveryTracker } from '../delivery/default-delivery-tracker.js';
-import { emitDeliveryNack, RouterState, type RoutingAction } from './router.js';
+import {
+  Drop,
+  emitDeliveryNack,
+  RouterState,
+  type RoutingAction,
+} from './router.js';
 import type { AddressRouteInfo } from './key-frame-handler.js';
 import type { NodeLike } from '../node/node-like.js';
 
@@ -490,12 +495,22 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
     }
 
     const state = this.buildRouterState();
-    const action: RoutingAction = await this.routingPolicy.decide(
+    let action: RoutingAction = await this.routingPolicy.decide(
       processedEnvelope,
       state,
       context
     );
-    await action.execute(processedEnvelope, this, state, context);
+
+    // Dispatch onRoutingActionSelected hook to allow authorization/replacement
+    // The hook must return the action to execute; null/undefined/throw => Drop
+    const actionToExecute = await this.dispatchRoutingActionSelected(
+      processedEnvelope,
+      action,
+      state,
+      context
+    );
+
+    await actionToExecute.execute(processedEnvelope, this, state, context);
   }
 
   async forwardToRoute(
@@ -1332,6 +1347,63 @@ export class Sentinel extends FameNode implements RoutingNodeLike {
         }
       });
     }
+  }
+
+  /**
+   * Dispatches the onRoutingActionSelected event to all event listeners.
+   *
+   * This allows listeners (like DefaultSecurityManager) to authorize
+   * routing actions and optionally replace them with Deny actions.
+   *
+   * The hook must return the RoutingAction to execute. If a listener returns
+   * null, undefined, or throws, the router will execute a Drop action.
+   *
+   * @param envelope - The envelope being routed
+   * @param selected - The RoutingAction selected by the routing policy
+   * @param state - The current router state
+   * @param context - Optional delivery context
+   * @returns The RoutingAction to execute (never null/undefined)
+   */
+  private async dispatchRoutingActionSelected(
+    envelope: FameEnvelope,
+    selected: RoutingAction,
+    state: RouterState,
+    context?: FameDeliveryContext
+  ): Promise<RoutingAction> {
+    let currentAction = selected;
+
+    for (const listener of this.eventListeners) {
+      if (typeof listener.onRoutingActionSelected !== 'function') {
+        continue;
+      }
+
+      try {
+        const result = await listener.onRoutingActionSelected(
+          this,
+          envelope,
+          currentAction,
+          state,
+          context
+        );
+
+        // null/undefined => treat as denial, execute Drop
+        if (result == null) {
+          return new Drop();
+        }
+
+        // Update current action for next listener in chain
+        currentAction = result;
+      } catch (error) {
+        // Hook threw => treat as denial, execute Drop
+        logger.warning('routing_action_hook_error', {
+          envp_id: envelope.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return new Drop();
+      }
+    }
+
+    return currentAction;
   }
 
   static async aserve(options: SentinelServeOptions = {}): Promise<void> {

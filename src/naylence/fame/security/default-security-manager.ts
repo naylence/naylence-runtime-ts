@@ -35,6 +35,13 @@ import type { RoutingNodeLike } from '../node/routing-node-like.js';
 import { EnvelopeSecurityHandler } from '../node/envelope-security-handler.js';
 import { SecureChannelFrameHandler } from '../node/secure-channel-frame-handler.js';
 import { KeyFrameHandler } from '../sentinel/key-frame-handler.js';
+import {
+  Deny,
+  mapRoutingActionToAuthorizationAction,
+  type RouterState,
+  type RoutingAction,
+  type NackDisclosureMode,
+} from '../sentinel/router.js';
 import { getLogger } from '../util/logging.js';
 import { secureDigest } from '../util/util.js';
 import { canonicalJson } from '../security/signing/eddsa-signer-verifier.js';
@@ -1145,6 +1152,121 @@ export class DefaultSecurityManager implements SecurityManager {
       envp_id: envelope.id,
     });
     return envelope;
+  }
+
+  /**
+   * Route authorization hook - invoked after routing policy selects an action.
+   *
+   * This method provides centralized route authorization by:
+   * 1. Mapping the RoutingAction to an authorization action token
+   * 2. Calling authorizer.authorizeRoute() if available
+   * 3. Returning a Deny action on authorization failure (opaque on wire)
+   *
+   * @param node - The node performing the routing
+   * @param envelope - The envelope being routed
+   * @param selected - The RoutingAction selected by routing policy
+   * @param state - The current router state
+   * @param context - Optional delivery context
+   * @returns The action to execute (selected if authorized, Deny if denied)
+   */
+  public async onRoutingActionSelected(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    selected: RoutingAction,
+    _state: RouterState,
+    context?: FameDeliveryContext | null
+  ): Promise<RoutingAction | null | undefined> {
+    // If no authorizer or authorizer doesn't implement authorizeRoute, allow
+    if (!this._authorizer) {
+      return selected;
+    }
+
+    if (typeof this._authorizer.authorizeRoute !== 'function') {
+      return selected;
+    }
+
+    // Map RoutingAction to authorization action token
+    const actionToken = mapRoutingActionToAuthorizationAction(selected);
+
+    // Terminal actions (Drop, Deny) don't need authorization
+    if (actionToken === null) {
+      return selected;
+    }
+
+    try {
+      const authResult = await this._authorizer.authorizeRoute(
+        node,
+        envelope,
+        actionToken,
+        context ?? undefined
+      );
+
+      // undefined means allow (authorizer has no opinion)
+      if (authResult === undefined) {
+        return selected;
+      }
+
+      // Check authorization result
+      if (authResult.authorized) {
+        logger.debug('route_authorization_allowed', {
+          envp_id: envelope.id,
+          action: actionToken,
+          frame_type: envelope.frame?.type ?? null,
+          matched_rule: authResult.matchedRule ?? null,
+        });
+        return selected;
+      }
+
+      // Authorization denied - return Deny action with opaque NACK
+      logger.warning('route_authorization_denied_by_policy', {
+        envp_id: envelope.id,
+        action: actionToken,
+        frame_type: envelope.frame?.type ?? null,
+        origin_type: context?.originType ?? null,
+        to: envelope.to?.toString() ?? null,
+        denial_reason: authResult.denialReason ?? 'policy_denied',
+        matched_rule: authResult.matchedRule ?? null,
+      });
+
+      // Determine disclosure mode from configuration
+      const disclosure: NackDisclosureMode = this.getNackDisclosureMode();
+
+      return new Deny({
+        internalReason: authResult.denialReason ?? 'unauthorized_route',
+        deniedAction: actionToken,
+        matchedRule: authResult.matchedRule,
+        disclosure,
+        context: {
+          frame_type: envelope.frame?.type ?? null,
+          origin_type: context?.originType ?? null,
+        },
+      });
+    } catch (error) {
+      logger.error('route_authorization_error', {
+        envp_id: envelope.id,
+        action: actionToken,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      // On error, deny by default (fail-safe)
+      return new Deny({
+        internalReason: 'authorization_error',
+        deniedAction: actionToken,
+        disclosure: 'opaque',
+        context: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+  }
+
+  /**
+   * Gets the NACK disclosure mode from configuration.
+   * Default is 'opaque' to avoid leaking route existence.
+   */
+  private getNackDisclosureMode(): NackDisclosureMode {
+    // Future: Could be made configurable via _policy or constructor options
+    return 'opaque';
   }
 
   public async onForwardToRoute(

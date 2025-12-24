@@ -216,6 +216,153 @@ export class ForwardPeer implements RoutingAction {
   }
 }
 
+/**
+ * Nack disclosure mode for authorization denials.
+ * - 'opaque': Emit generic NO_ROUTE (default, does not leak route existence)
+ * - 'verbose': Emit UNAUTHORIZED_ROUTE (only if safe to disclose)
+ */
+export type NackDisclosureMode = 'opaque' | 'verbose';
+
+/**
+ * Options for creating a Deny action.
+ */
+export interface DenyOptions {
+  /**
+   * Internal reason for denial (logged but not sent on wire).
+   */
+  internalReason: string;
+
+  /**
+   * The action token that was denied.
+   */
+  deniedAction?: string;
+
+  /**
+   * Matched rule ID (for logging/audit).
+   */
+  matchedRule?: string;
+
+  /**
+   * Additional context for internal logging.
+   */
+  context?: Record<string, unknown>;
+
+  /**
+   * Nack disclosure mode.
+   * @default 'opaque'
+   */
+  disclosure?: NackDisclosureMode;
+}
+
+/**
+ * RoutingAction that denies an envelope due to authorization failure.
+ *
+ * Emits an opaque NO_ROUTE NACK on wire (by default) to avoid leaking
+ * route existence, while logging the true denial reason internally.
+ */
+export class Deny implements RoutingAction {
+  private readonly options: DenyOptions;
+
+  constructor(options: DenyOptions) {
+    this.options = options;
+  }
+
+  public async execute(
+    envelope: FameEnvelope,
+    router: RoutingNodeLike,
+    state: RouterState,
+    context?: FameDeliveryContext | null
+  ): Promise<void> {
+    const {
+      internalReason,
+      deniedAction,
+      matchedRule,
+      context: extraContext,
+      disclosure = 'opaque',
+    } = this.options;
+
+    // Log detailed denial internally
+    logger.warning('route_authorization_denied', {
+      envp_id: envelope.id,
+      frame_type: envelope.frame?.type ?? null,
+      to: envelope.to?.toString() ?? null,
+      internal_reason: internalReason,
+      denied_action: deniedAction ?? null,
+      matched_rule: matchedRule ?? null,
+      origin_type: context?.originType ?? null,
+      ...extraContext,
+    });
+
+    // Emit opaque NACK on wire (or verbose if configured)
+    const wireCode =
+      disclosure === 'verbose' ? 'UNAUTHORIZED_ROUTE' : 'NO_ROUTE';
+
+    await emitDeliveryNack(
+      envelope,
+      router,
+      state,
+      wireCode,
+      context ?? undefined
+    );
+  }
+}
+
+/**
+ * Route-oriented authorization action tokens.
+ *
+ * These tokens map RoutingAction instances to policy-friendly action names:
+ * - ForwardUp -> 'ForwardUpstream'
+ * - ForwardChild -> 'ForwardDownstream'
+ * - ForwardPeer -> 'ForwardPeer'
+ * - DeliverLocal -> 'DeliverLocal'
+ * - Drop/Deny -> null (no authorization needed, already terminal)
+ */
+export type AuthorizationAction =
+  | 'Connect'
+  | 'ForwardUpstream'
+  | 'ForwardDownstream'
+  | 'ForwardPeer'
+  | 'DeliverLocal';
+
+/**
+ * Maps a RoutingAction instance to an authorization action token.
+ *
+ * This function uses instanceof checks to determine the action type,
+ * avoiding the need to expose action objects to the authorizer.
+ *
+ * For unknown/custom RoutingAction types, returns null. Callers should
+ * treat null as "deny by default" for security (unknown actions are not
+ * authorized).
+ *
+ * @param action - The RoutingAction instance to map
+ * @returns The authorization action token, or null for terminal/unknown actions
+ */
+export function mapRoutingActionToAuthorizationAction(
+  action: RoutingAction
+): AuthorizationAction | null {
+  if (action instanceof ForwardUp) {
+    return 'ForwardUpstream';
+  }
+  if (action instanceof ForwardChild) {
+    return 'ForwardDownstream';
+  }
+  if (action instanceof ForwardPeer) {
+    return 'ForwardPeer';
+  }
+  if (action instanceof DeliverLocal) {
+    return 'DeliverLocal';
+  }
+  // Drop and Deny are terminal actions that don't need authorization
+  if (action instanceof Drop || action instanceof Deny) {
+    return null;
+  }
+  // Unknown RoutingAction: return null, caller should deny by default
+  logger.warning('unknown_routing_action_for_authorization', {
+    action_type: action?.constructor?.name ?? 'unknown',
+  });
+  return null;
+}
+
 export interface RouterCapabilitiesMap {
   [capability: string]: Record<string, string>;
 }

@@ -13,6 +13,8 @@ import type {
 import type { AttachInfo } from './admission/node-attach-client.js';
 // Import NodeLike from the proper module
 import type { NodeLike } from './node-like.js';
+// Import RouterState and RoutingAction for onRoutingActionSelected hook
+import type { RouterState, RoutingAction } from '../sentinel/router.js';
 
 /**
  * Protocol for components that need to respond to node lifecycle events.
@@ -172,6 +174,42 @@ export interface NodeEventListener {
     envelope: FameEnvelope,
     context?: FameDeliveryContext
   ): Promise<FameEnvelope | null>;
+
+  /**
+   * Called after routing policy has selected a RoutingAction but before it executes.
+   *
+   * This hook provides a single, centralized entry point for route authorization.
+   * It is invoked AFTER `routingPolicy.decide(...)` returns a RoutingAction and
+   * BEFORE `action.execute(...)` is called.
+   *
+   * Components implementing this hook can:
+   * - Authorize the selected routing action (ForwardUpstream, ForwardDownstream, etc.)
+   * - Replace the action with a Deny/Drop action to block unauthorized routes
+   * - Apply route-level security policies
+   * - Log or audit routing decisions
+   *
+   * Return semantics:
+   * - Return the RoutingAction to execute (either the `selected` action or a replacement).
+   * - If the hook returns `null`, `undefined`, or throws, the router will execute a
+   *   Drop action (envelope is dropped with NO_ROUTE nack).
+   *
+   * To allow the originally selected action, return `selected` directly.
+   * To deny/block, return a `Drop` or `Deny` action.
+   *
+   * @param node - The node performing the routing
+   * @param envelope - The envelope being routed
+   * @param selected - The RoutingAction selected by the routing policy
+   * @param state - The current router state (for context, not modification)
+   * @param context - Optional delivery context
+   * @returns The RoutingAction to execute (null/undefined/throw => Drop)
+   */
+  onRoutingActionSelected?(
+    node: NodeLike,
+    envelope: FameEnvelope,
+    selected: RoutingAction,
+    state: RouterState,
+    context?: FameDeliveryContext | null
+  ): Promise<RoutingAction | null | undefined>;
 
   /**
    * Called when a node is about to forward an envelope upstream.
@@ -484,6 +522,17 @@ export abstract class BaseNodeEventListener implements NodeEventListener {
   ): Promise<FameEnvelope | null> {
     // Default implementation passes envelope through unchanged
     return envelope;
+  }
+
+  async onRoutingActionSelected?(
+    _node: NodeLike,
+    _envelope: FameEnvelope,
+    selected: RoutingAction,
+    _state: RouterState,
+    _context?: FameDeliveryContext | null
+  ): Promise<RoutingAction | null | undefined> {
+    // Default implementation returns the selected action unchanged
+    return selected;
   }
 
   async onForwardUpstream?(

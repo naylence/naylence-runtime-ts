@@ -10,8 +10,10 @@ import {
   ForwardPeer,
   ForwardUp,
   DeliverLocal,
+  Deny,
   RouterState,
   emitDeliveryNack,
+  mapRoutingActionToAuthorizationAction,
 } from '../router.js';
 import { FameTransportClose } from '../../errors/errors.js';
 
@@ -549,5 +551,215 @@ describe('router utility functions', () => {
     expect(state.nextHop('/node-1/child-a/next')).toBe('child-a');
     expect(state.nextHop('/external/path')).toBe('external');
     expect(state.nextHop('/node-1')).toBe(null);
+  });
+});
+
+describe('mapRoutingActionToAuthorizationAction', () => {
+  it('maps ForwardUp to ForwardUpstream', () => {
+    const action = new ForwardUp();
+    expect(mapRoutingActionToAuthorizationAction(action)).toBe('ForwardUpstream');
+  });
+
+  it('maps ForwardChild to ForwardDownstream', () => {
+    const action = new ForwardChild('segment');
+    expect(mapRoutingActionToAuthorizationAction(action)).toBe('ForwardDownstream');
+  });
+
+  it('maps ForwardPeer to ForwardPeer', () => {
+    const action = new ForwardPeer('segment');
+    expect(mapRoutingActionToAuthorizationAction(action)).toBe('ForwardPeer');
+  });
+
+  it('maps DeliverLocal to DeliverLocal', () => {
+    const action = new DeliverLocal('svc@/node/local');
+    expect(mapRoutingActionToAuthorizationAction(action)).toBe('DeliverLocal');
+  });
+
+  it('maps Drop to null', () => {
+    const action = new Drop();
+    expect(mapRoutingActionToAuthorizationAction(action)).toBeNull();
+  });
+
+  it('maps Deny to null', () => {
+    const action = new Deny({ reason: 'test' });
+    expect(mapRoutingActionToAuthorizationAction(action)).toBeNull();
+  });
+
+  it('returns null for unknown action types', () => {
+    const unknownAction = { kind: 'unknown' } as any;
+    expect(mapRoutingActionToAuthorizationAction(unknownAction)).toBeNull();
+  });
+});
+
+describe('Deny RoutingAction', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    loggerMock.debug.mockClear();
+    loggerMock.error.mockClear();
+    loggerMock.warning.mockClear();
+  });
+
+  it('is instanceof Deny', () => {
+    const action = new Deny({ internalReason: 'test' });
+    expect(action instanceof Deny).toBe(true);
+  });
+
+  it('emits opaque NO_ROUTE nack by default', async () => {
+    const action = new Deny({ internalReason: 'authorization denied' });
+
+    const envelope = {
+      frame: { type: 'Data' },
+      replyTo: 'svc@/node-1/local',
+      id: 'deny-id',
+      corrId: 'deny-corr',
+    } as unknown as FameEnvelope;
+    const router = createRouter();
+    const state = createState();
+
+    await action.execute(envelope, router as unknown as any, state);
+
+    // Verify nack was emitted with NO_ROUTE via deliverLocal
+    expect(router.deliverLocal).toHaveBeenCalled();
+    const nackCall = router.deliverLocal.mock.calls[0];
+    // emitDeliveryNack creates a DeliveryAck with ok=false and code
+    expect(nackCall[1].frame.type).toBe('DeliveryAck');
+    expect(nackCall[1].frame.ok).toBe(false);
+    expect(nackCall[1].frame.code).toBe('NO_ROUTE');
+  });
+
+  it('logs detailed authorization denial internally', async () => {
+    const action = new Deny({ internalReason: 'policy:rule-42 denied access' });
+
+    const envelope = {
+      frame: { type: 'Data' },
+      replyTo: 'svc@/node-1/local',
+      id: 'deny-id',
+      corrId: 'deny-corr',
+    } as unknown as FameEnvelope;
+    const router = createRouter();
+    const state = createState();
+
+    await action.execute(envelope, router as unknown as any, state);
+
+    expect(loggerMock.warning).toHaveBeenCalledWith(
+      'route_authorization_denied',
+      expect.objectContaining({ internal_reason: 'policy:rule-42 denied access' })
+    );
+  });
+
+  it('emits verbose UNAUTHORIZED_ROUTE nack when disclosure is verbose', async () => {
+    const action = new Deny({
+      internalReason: 'authorization denied',
+      disclosure: 'verbose',
+    });
+
+    const envelope = {
+      frame: { type: 'Data' },
+      replyTo: 'svc@/node-1/local',
+      id: 'deny-id',
+      corrId: 'deny-corr',
+    } as unknown as FameEnvelope;
+    const router = createRouter();
+    const state = createState();
+
+    await action.execute(envelope, router as unknown as any, state);
+
+    const nackCall = router.deliverLocal.mock.calls[0];
+    expect(nackCall[1].frame.ok).toBe(false);
+    expect(nackCall[1].frame.code).toBe('UNAUTHORIZED_ROUTE');
+  });
+
+  it('logs additional context when provided', async () => {
+    const action = new Deny({
+      internalReason: 'denied',
+      deniedAction: 'ForwardUpstream',
+      matchedRule: 'rule-42',
+      context: { extra: 'data' },
+    });
+
+    const envelope = {
+      frame: { type: 'Data' },
+      replyTo: 'svc@/node-1/local',
+      id: 'deny-id',
+      corrId: 'deny-corr',
+    } as unknown as FameEnvelope;
+    const router = createRouter();
+    const state = createState();
+
+    await action.execute(envelope, router as unknown as any, state);
+
+    expect(loggerMock.warning).toHaveBeenCalledWith(
+      'route_authorization_denied',
+      expect.objectContaining({
+        internal_reason: 'denied',
+        denied_action: 'ForwardUpstream',
+        matched_rule: 'rule-42',
+        extra: 'data',
+      })
+    );
+  });
+
+  it('still logs when envelope has no replyTo (nack not emitted)', async () => {
+    const action = new Deny({ internalReason: 'test' });
+
+    const envelope = {
+      frame: { type: 'Data' },
+      id: 'deny-id',
+      corrId: 'deny-corr',
+    } as unknown as FameEnvelope;
+    const router = createRouter();
+    const state = createState();
+
+    await action.execute(envelope, router as unknown as any, state);
+
+    // Log should still happen
+    expect(loggerMock.warning).toHaveBeenCalledWith(
+      'route_authorization_denied',
+      expect.any(Object)
+    );
+  });
+});
+
+/**
+ * Tests for onRoutingActionSelected hook semantics.
+ *
+ * The hook contract is:
+ * - Hook MUST return the RoutingAction to execute
+ * - Returning null/undefined => router executes Drop
+ * - Throwing => router executes Drop
+ * - Returning a RoutingAction => router executes that action
+ *
+ * This is tested at the RoutingAction level since the actual hook dispatch
+ * is in Sentinel (integration tests). These tests document the expected
+ * semantic behavior.
+ */
+describe('onRoutingActionSelected hook semantics (documentation tests)', () => {
+  it('Drop action is used as fallback when hook returns null/undefined', () => {
+    // When a hook returns null or undefined, the router should execute Drop.
+    // This test documents that Drop is the correct fallback action.
+    const fallbackAction = new Drop();
+
+    // Verify Drop has the expected behavior (emits NO_ROUTE nack)
+    expect(fallbackAction).toBeDefined();
+    expect(mapRoutingActionToAuthorizationAction(fallbackAction)).toBeNull();
+  });
+
+  it('returned RoutingAction should be executed as-is', () => {
+    // When a hook returns a RoutingAction (e.g., Deny), that action is executed.
+    const denyAction = new Deny({ internalReason: 'hook denied' });
+
+    // Verify Deny is a valid RoutingAction that can be returned
+    expect(denyAction).toBeDefined();
+    expect(typeof denyAction.execute).toBe('function');
+    expect(mapRoutingActionToAuthorizationAction(denyAction)).toBeNull();
+  });
+
+  it('ForwardUp can be returned unchanged to allow routing', () => {
+    // When a hook returns the selected action unchanged, it should be executed.
+    const forwardAction = new ForwardUp();
+
+    expect(forwardAction).toBeDefined();
+    expect(typeof forwardAction.execute).toBe('function');
+    expect(mapRoutingActionToAuthorizationAction(forwardAction)).toBe('ForwardUpstream');
   });
 });

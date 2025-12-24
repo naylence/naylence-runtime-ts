@@ -31,6 +31,7 @@ export const ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE =
   'FAME_JWT_REVERSE_AUTH_AUDIENCE';
 export const ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY =
   'FAME_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY';
+export const ENV_VAR_TRUSTED_CLIENT_SCOPE = 'FAME_TRUSTED_CLIENT_SCOPE';
 
 export const PROFILE_NAME_STRICT_OVERLAY = 'strict-overlay';
 export const PROFILE_NAME_OVERLAY = 'overlay';
@@ -290,6 +291,10 @@ const GATED_PROFILE: DefaultSecurityManagerConfig = {
     enforce_token_subject_node_identity: Expressions.env(
       ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY,
       'false'
+    ),
+    trusted_client_scope: Expressions.env(
+      ENV_VAR_TRUSTED_CLIENT_SCOPE,
+      'node.trusted'
     ),
   },
 };

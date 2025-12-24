@@ -25,6 +25,8 @@ const NODE_ONLY_FACTORY_MODULES = new Set<FactoryModuleSpec>([
   './connector/websocket-listener-factory.js',
   './telemetry/open-telemetry-trace-emitter-factory.js',
   './security/credential/prompt-credential-provider-factory.js',
+  './security/auth/default-policy-authorizer-factory.js',
+  './security/auth/policy/local-file-authorization-policy-source-factory.js',
 ]);
 const BROWSER_ONLY_FACTORY_MODULES = new Set<FactoryModuleSpec>([
   './security/auth/oauth2-pkce-token-provider-factory.js',

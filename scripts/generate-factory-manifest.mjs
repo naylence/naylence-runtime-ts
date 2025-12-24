@@ -98,6 +98,8 @@ function buildManifest(modules) {
     "./connector/http-listener-factory.js",
     "./connector/websocket-listener-factory.js",
     "./security/credential/prompt-credential-provider-factory.js",
+    "./security/auth/default-policy-authorizer-factory.js",
+    "./security/auth/policy/local-file-authorization-policy-source-factory.js",
   ]);
 
   const loaderEntries = modules

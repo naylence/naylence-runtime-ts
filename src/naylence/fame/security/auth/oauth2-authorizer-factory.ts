@@ -67,6 +67,8 @@ export interface OAuth2AuthorizerConfig extends AuthorizerConfig {
   reverse_auth_ttl_sec?: number;
   enforceTokenSubjectNodeIdentity?: boolean;
   enforce_token_subject_node_identity?: boolean;
+  trustedClientScope?: string;
+  trusted_client_scope?: string;
 }
 
 interface NormalizedOAuth2AuthorizerConfig {
@@ -82,6 +84,7 @@ interface NormalizedOAuth2AuthorizerConfig {
   tokenIssuerConfig?: TokenIssuerConfig;
   reverseAuthTtlSec: number;
   enforceTokenSubjectNodeIdentity: boolean;
+  trustedClientScope?: string;
 }
 
 export const FACTORY_META = {
@@ -130,6 +133,7 @@ export class OAuth2AuthorizerFactory extends AuthorizerFactory<OAuth2AuthorizerC
       maxTtlSec: normalized.maxTtlSec,
       reverseAuthTtlSec: normalized.reverseAuthTtlSec,
       enforceTokenSubjectNodeIdentity: normalized.enforceTokenSubjectNodeIdentity,
+      trustedClientScope: normalized.trustedClientScope,
     };
 
     if (tokenIssuer) {
@@ -235,6 +239,13 @@ function normalizeConfig(
     false
   );
 
+  const trustedClientScope =
+    typeof source.trustedClientScope === 'string'
+      ? source.trustedClientScope
+      : typeof source.trusted_client_scope === 'string'
+        ? source.trusted_client_scope
+        : undefined;
+
   const tokenVerifierConfigInput =
     source.tokenVerifierConfig ?? source.token_verifier_config ?? null;
 
@@ -260,6 +271,7 @@ function normalizeConfig(
     reverseAuthTtlSec: reverseAuthCandidate,
     enforceTokenSubjectNodeIdentity,
     ...(audience ? { audience } : {}),
+    ...(trustedClientScope ? { trustedClientScope } : {}),
   };
 
   if (tokenIssuerConfig) {

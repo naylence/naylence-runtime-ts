@@ -1,11 +1,15 @@
 export * from './auth/authorizer.js';
 export * from './auth/auth-identity.js';
+export * from './auth/policy-authorizer.js';
 export {
   AUTHORIZER_FACTORY_BASE_TYPE,
   AuthorizerFactory,
 } from './auth/authorizer-factory.js';
 export type * from './auth/authorizer-factory.js';
 export * from './auth/auth-injection-strategy.js';
+
+// Authorization policy exports
+export * from './auth/policy/index.js';
 export {
   AUTH_INJECTION_STRATEGY_FACTORY_BASE_TYPE,
   AuthInjectionStrategyFactory,

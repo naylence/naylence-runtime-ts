@@ -37,6 +37,7 @@ export interface OAuth2AuthorizerOptions {
   maxTtlSec?: number;
   reverseAuthTtlSec?: number;
   enforceTokenSubjectNodeIdentity?: boolean;
+  trustedClientScope?: string;
 }
 
 type SnakeCaseOAuth2AuthorizerOptions = Partial<
@@ -50,7 +51,8 @@ type SnakeCaseOAuth2AuthorizerOptions = Partial<
     | 'default_ttl_sec'
     | 'max_ttl_sec'
     | 'reverse_auth_ttl_sec'
-    | 'enforce_token_subject_node_identity',
+    | 'enforce_token_subject_node_identity'
+    | 'trusted_client_scope',
     unknown
   >
 >;
@@ -111,6 +113,12 @@ function normalizeOptions(
       ? snake.enforce_token_subject_node_identity
       : undefined);
 
+  const trustedClientScope =
+    camel.trustedClientScope ??
+    (typeof snake.trusted_client_scope === 'string'
+      ? snake.trusted_client_scope
+      : undefined);
+
   return {
     tokenVerifier,
     tokenIssuer,
@@ -121,6 +129,7 @@ function normalizeOptions(
     maxTtlSec,
     reverseAuthTtlSec,
     enforceTokenSubjectNodeIdentity,
+    trustedClientScope,
   };
 }
 
@@ -136,6 +145,7 @@ export class OAuth2Authorizer
   private readonly requireScope: boolean;
   private readonly reverseAuthTtlSec: number;
   private readonly enforceTokenSubjectNodeIdentity: boolean;
+  private readonly trustedClientScope: string;
   private node?: NodeLike;
 
   constructor(rawOptions: OAuth2AuthorizerOptions | Record<string, unknown>) {
@@ -152,6 +162,7 @@ export class OAuth2Authorizer
       options.reverseAuthTtlSec ?? DEFAULT_REVERSE_AUTH_TTL_SEC;
     this.enforceTokenSubjectNodeIdentity =
       options.enforceTokenSubjectNodeIdentity ?? false;
+    this.trustedClientScope = options.trustedClientScope ?? 'node.trusted';
   }
 
   get tokenVerifier(): TokenVerifier {
@@ -329,14 +340,22 @@ export class OAuth2Authorizer
       return undefined;
     }
 
-    // Enforce token subject node identity if enabled
+    // Enforce token subject node identity if enabled and not a trusted client
     if (this.enforceTokenSubjectNodeIdentity) {
-      const validationResult = await this.validateTokenSubjectNodeIdentity(
-        frame.systemId,
-        claims
-      );
-      if (!validationResult) {
-        return undefined;
+      const isTrustedClient = scopes.has(this.trustedClientScope);
+      if (isTrustedClient) {
+        logger.debug('oauth2_attach_trusted_client_bypass', {
+          system_id: frame.systemId,
+          trusted_scope: this.trustedClientScope,
+        });
+      } else {
+        const validationResult = await this.validateTokenSubjectNodeIdentity(
+          frame.systemId,
+          claims
+        );
+        if (!validationResult) {
+          return undefined;
+        }
       }
     }
 

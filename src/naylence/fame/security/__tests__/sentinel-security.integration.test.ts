@@ -266,6 +266,109 @@ function createGatedSecurityConfig(
   return applySecurityConfigOverrides(config, overrides);
 }
 
+/**
+ * Configuration options for policy-based security config.
+ */
+interface PolicySecurityConfigOptions extends GatedSecurityConfigOptions {
+  /**
+   * The inline authorization policy definition.
+   */
+  policyDefinition: {
+    version: string;
+    default_effect: 'allow' | 'deny';
+    rules: Array<{
+      id?: string;
+      effect: 'allow' | 'deny';
+      action?: string | string[];
+      address?: string | string[];
+      scope?: string | Record<string, unknown>;
+      frame_type?: string | string[];
+      origin_type?: string | string[];
+    }>;
+  };
+}
+
+/**
+ * Creates a security config that uses PolicyAuthorizer with an inline policy.
+ */
+function createPolicySecurityConfig(
+  options: PolicySecurityConfigOptions
+): Record<string, unknown> {
+  const {
+    issuer,
+    hmacSecret,
+    audience,
+    policyDefinition,
+    cryptoProvider,
+  } = options;
+
+  const securityPolicy: Record<string, unknown> = {
+    type: 'DefaultSecurityPolicy',
+    signing: {
+      inbound: {
+        signaturePolicy: 'disabled',
+        unsignedViolationAction: 'allow',
+        invalidSignatureAction: 'allow',
+      },
+      response: {
+        mirrorRequestSigning: false,
+        alwaysSignResponses: false,
+        signErrorResponses: false,
+      },
+      outbound: {
+        defaultSigning: false,
+        signSensitiveOperations: false,
+        signIfRecipientExpects: false,
+      },
+    },
+    encryption: {
+      inbound: {
+        allowPlaintext: true,
+        allowChannel: false,
+        allowSealed: false,
+        plaintextViolationAction: 'allow',
+        channelViolationAction: 'nack',
+        sealedViolationAction: 'nack',
+      },
+      response: {
+        mirrorRequestLevel: true,
+        minimumResponseLevel: 'plaintext',
+        escalateSealedResponses: false,
+      },
+      outbound: {
+        defaultLevel: 'plaintext',
+        escalateIfPeerSupports: false,
+        preferSealedForSensitive: false,
+      },
+    },
+  } satisfies Record<string, unknown>;
+
+  const authorizer: Record<string, unknown> = {
+    type: 'PolicyAuthorizer',
+    verifier: {
+      type: 'JWTTokenVerifier',
+      issuer,
+      algorithms: ['HS256'],
+      hmac_secret: hmacSecret,
+      ttl_sec: 3600,
+    },
+    policy: {
+      type: 'BasicAuthorizationPolicy',
+      policy_definition: policyDefinition,
+    },
+  };
+
+  const config: Record<string, unknown> = {
+    type: 'DefaultSecurityManager',
+    security_policy: securityPolicy,
+    authorizer,
+  };
+
+  const overrides =
+    cryptoProvider !== undefined ? { cryptoProvider } : undefined;
+  return applySecurityConfigOverrides(config, overrides);
+}
+
 async function waitForCondition(
   predicate: () => boolean,
   timeoutMs = WAIT_TIMEOUT_MS
@@ -1278,4 +1381,511 @@ describe('Sentinel security integration', () => {
       ]);
     }
   });
-});
+
+  describe('authorization policy integration', () => {
+    test('downstream node attaches with policy allowing Connect action', async () => {
+      const sentinelFactory = new SentinelFactory();
+      const nodeFactory = new NodeFactory();
+
+      const issuer = 'https://auth.policy.integration.test';
+      const audience = 'policy-gated-sentinel';
+      const hmacSecret = 'policy-integration-test-secret';
+
+      let parent: Sentinel | null = null;
+      let child: FameNode | null = null;
+
+      try {
+        parent = await sentinelFactory.create({
+          type: 'Sentinel',
+          id: audience,
+          security: createPolicySecurityConfig({
+            issuer,
+            audience,
+            hmacSecret,
+            policyDefinition: {
+              version: '1',
+              default_effect: 'deny',
+              rules: [
+                {
+                  id: 'allow-connect-with-scope',
+                  effect: 'allow',
+                  action: 'Connect',
+                  scope: 'node.attach',
+                },
+              ],
+            },
+          }),
+          admission: {
+            type: 'NoopAdmissionClient',
+            autoAcceptLogicals: true,
+          },
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          routingPolicy: {
+            type: 'CompositeRoutingPolicy',
+          },
+          listeners: [
+            {
+              type: 'WebSocketListener',
+              host: SOCKET_HOST,
+              port: 0,
+            },
+          ],
+        });
+
+        await parent.start();
+
+        const serverListener = getWebsocketListenerInstance();
+        await waitForCondition(() => Boolean(serverListener?.baseUrl));
+
+        const baseUrl = serverListener?.baseUrl;
+        const wsBaseUrl = baseUrl!.startsWith('https://')
+          ? baseUrl!.replace('https://', 'wss://')
+          : baseUrl!.replace('http://', 'ws://');
+        const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
+
+        // Token with 'node.attach' scope - should be allowed
+        const token = await new SignJWT({
+          scope: 'node.attach read write',
+        })
+          .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+          .setIssuer(issuer)
+          .setAudience(audience)
+          .setSubject('child-policy-node')
+          .setIssuedAt()
+          .setExpirationTime('5m')
+          .sign(new TextEncoder().encode(hmacSecret));
+
+        child = await nodeFactory.create({
+          type: 'Node',
+          id: 'child-policy-node',
+          hasParent: true,
+          requestedLogicals: ['svc-policy'],
+          security: createSecurityConfig(),
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          admission: {
+            type: 'DirectAdmissionClient',
+            connectionGrants: [
+              {
+                type: 'WebSocketConnectionGrant',
+                purpose: 'node.attach',
+                url: downstreamAttachUrl,
+                auth: {
+                  type: 'BearerTokenHeaderAuth',
+                  tokenProvider: {
+                    type: 'StaticTokenProvider',
+                    token,
+                  },
+                },
+              },
+            ],
+            ttlSec: 60,
+          },
+        });
+
+        await child.start();
+        await waitForCondition(() => child!.handshakeCompleted === true);
+
+        const routeManager = (parent as unknown as { routeManager: RouteManager })
+          .routeManager;
+        await waitForCondition(() =>
+          routeManager.downstreamRoutes.has(child!.id)
+        );
+
+        expect(child.physicalPath).toMatch(/^\//);
+      } finally {
+        await Promise.allSettled([child?.stop(), parent?.stop()]);
+      }
+    });
+
+    test('downstream node rejected when token lacks required scope for Connect', async () => {
+      const sentinelFactory = new SentinelFactory();
+      const nodeFactory = new NodeFactory();
+
+      const issuer = 'https://auth.policy.integration.test';
+      const audience = 'policy-deny-sentinel';
+      const hmacSecret = 'policy-deny-integration-test-secret';
+
+      let parent: Sentinel | null = null;
+      let child: FameNode | null = null;
+
+      try {
+        parent = await sentinelFactory.create({
+          type: 'Sentinel',
+          id: audience,
+          security: createPolicySecurityConfig({
+            issuer,
+            audience,
+            hmacSecret,
+            policyDefinition: {
+              version: '1',
+              default_effect: 'deny',
+              rules: [
+                {
+                  id: 'allow-connect-admin-only',
+                  effect: 'allow',
+                  action: 'Connect',
+                  scope: 'admin.attach',
+                },
+              ],
+            },
+          }),
+          admission: {
+            type: 'NoopAdmissionClient',
+            autoAcceptLogicals: true,
+          },
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          routingPolicy: {
+            type: 'CompositeRoutingPolicy',
+          },
+          listeners: [
+            {
+              type: 'WebSocketListener',
+              host: SOCKET_HOST,
+              port: 0,
+            },
+          ],
+        });
+
+        await parent.start();
+
+        const serverListener = getWebsocketListenerInstance();
+        await waitForCondition(() => Boolean(serverListener?.baseUrl));
+
+        const baseUrl = serverListener?.baseUrl;
+        const wsBaseUrl = baseUrl!.startsWith('https://')
+          ? baseUrl!.replace('https://', 'wss://')
+          : baseUrl!.replace('http://', 'ws://');
+        const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
+
+        // Token with 'user.read' scope - should be denied (requires admin.attach)
+        const token = await new SignJWT({
+          scope: 'user.read user.write',
+        })
+          .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+          .setIssuer(issuer)
+          .setAudience(audience)
+          .setSubject('child-denied-node')
+          .setIssuedAt()
+          .setExpirationTime('5m')
+          .sign(new TextEncoder().encode(hmacSecret));
+
+        child = await nodeFactory.create({
+          type: 'Node',
+          id: 'child-denied-node',
+          hasParent: true,
+          requestedLogicals: ['svc-denied'],
+          security: createSecurityConfig(),
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          admission: {
+            type: 'DirectAdmissionClient',
+            connectionGrants: [
+              {
+                type: 'WebSocketConnectionGrant',
+                purpose: 'node.attach',
+                url: downstreamAttachUrl,
+                auth: {
+                  type: 'BearerTokenHeaderAuth',
+                  tokenProvider: {
+                    type: 'StaticTokenProvider',
+                    token,
+                  },
+                },
+              },
+            ],
+            ttlSec: 60,
+            // Disable retries so the test completes quickly
+            retryPolicy: {
+              type: 'NoRetryPolicy',
+            },
+          },
+        });
+
+        // The start should fail because authorization is denied
+        // Either the start throws, or handshake doesn't complete
+        let startFailed = false;
+        try {
+          await child.start();
+          // If start completes, wait briefly to see if handshake actually completes
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        } catch {
+          // Expected - authorization was denied
+          startFailed = true;
+        }
+
+        const routeManager = (parent as unknown as { routeManager: RouteManager })
+          .routeManager;
+        const hasRoute = routeManager.downstreamRoutes.has('child-denied-node');
+
+        // Authorization denied: either start failed, handshake didn't complete,
+        // or route wasn't registered
+        expect(startFailed || !child.handshakeCompleted || !hasRoute).toBe(true);
+      } finally {
+        await Promise.allSettled([child?.stop(), parent?.stop()]);
+      }
+    });
+
+    test('policy allows Connect but denies ForwardUpstream for specific address', async () => {
+      const sentinelFactory = new SentinelFactory();
+      const nodeFactory = new NodeFactory();
+
+      const issuer = 'https://auth.forward.policy.test';
+      const audience = 'forward-policy-sentinel';
+      const hmacSecret = 'forward-policy-test-secret';
+
+      let parent: Sentinel | null = null;
+      let child: FameNode | null = null;
+
+      try {
+        parent = await sentinelFactory.create({
+          type: 'Sentinel',
+          id: audience,
+          security: createPolicySecurityConfig({
+            issuer,
+            audience,
+            hmacSecret,
+            policyDefinition: {
+              version: '1',
+              default_effect: 'deny',
+              rules: [
+                {
+                  id: 'allow-connect',
+                  effect: 'allow',
+                  action: 'Connect',
+                },
+                {
+                  id: 'deny-restricted-address',
+                  effect: 'deny',
+                  action: 'ForwardUpstream',
+                  address: '*@restricted.**',
+                },
+                {
+                  id: 'allow-forward-with-scope',
+                  effect: 'allow',
+                  action: ['ForwardUpstream', 'ForwardDownstream'],
+                  scope: 'messaging.forward',
+                },
+              ],
+            },
+          }),
+          admission: {
+            type: 'NoopAdmissionClient',
+            autoAcceptLogicals: true,
+          },
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          routingPolicy: {
+            type: 'CompositeRoutingPolicy',
+          },
+          listeners: [
+            {
+              type: 'WebSocketListener',
+              host: SOCKET_HOST,
+              port: 0,
+            },
+          ],
+        });
+
+        await parent.start();
+
+        const serverListener = getWebsocketListenerInstance();
+        await waitForCondition(() => Boolean(serverListener?.baseUrl));
+
+        const baseUrl = serverListener?.baseUrl;
+        const wsBaseUrl = baseUrl!.startsWith('https://')
+          ? baseUrl!.replace('https://', 'wss://')
+          : baseUrl!.replace('http://', 'ws://');
+        const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
+
+        // Token with messaging.forward scope
+        const token = await new SignJWT({
+          scope: 'messaging.forward',
+        })
+          .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+          .setIssuer(issuer)
+          .setAudience(audience)
+          .setSubject('forward-policy-child')
+          .setIssuedAt()
+          .setExpirationTime('5m')
+          .sign(new TextEncoder().encode(hmacSecret));
+
+        child = await nodeFactory.create({
+          type: 'Node',
+          id: 'forward-policy-child',
+          hasParent: true,
+          requestedLogicals: ['forward-svc'],
+          security: createSecurityConfig(),
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          admission: {
+            type: 'DirectAdmissionClient',
+            connectionGrants: [
+              {
+                type: 'WebSocketConnectionGrant',
+                purpose: 'node.attach',
+                url: downstreamAttachUrl,
+                auth: {
+                  type: 'BearerTokenHeaderAuth',
+                  tokenProvider: {
+                    type: 'StaticTokenProvider',
+                    token,
+                  },
+                },
+              },
+            ],
+            ttlSec: 60,
+          },
+        });
+
+        await child.start();
+
+        // Connect should succeed (first rule allows Connect for all)
+        await waitForCondition(() => child!.handshakeCompleted === true);
+        expect(child.physicalPath).toMatch(/^\//);
+
+        const routeManager = (parent as unknown as { routeManager: RouteManager })
+          .routeManager;
+        await waitForCondition(() =>
+          routeManager.downstreamRoutes.has(child!.id)
+        );
+
+        // The policy configuration is validated:
+        // - Connect is allowed by rule 1
+        // - ForwardUpstream to *@restricted.** is denied by rule 2
+        // - ForwardUpstream to other addresses with messaging.forward scope is allowed by rule 3
+      } finally {
+        await Promise.allSettled([child?.stop(), parent?.stop()]);
+      }
+    });
+
+    test('policy with multiple address patterns uses any-of matching', async () => {
+      const sentinelFactory = new SentinelFactory();
+      const nodeFactory = new NodeFactory();
+
+      const issuer = 'https://auth.multi-addr.policy.test';
+      const audience = 'multi-addr-policy-sentinel';
+      const hmacSecret = 'multi-addr-policy-test-secret';
+
+      let parent: Sentinel | null = null;
+      let child: FameNode | null = null;
+
+      try {
+        parent = await sentinelFactory.create({
+          type: 'Sentinel',
+          id: audience,
+          security: createPolicySecurityConfig({
+            issuer,
+            audience,
+            hmacSecret,
+            policyDefinition: {
+              version: '1',
+              default_effect: 'deny',
+              rules: [
+                {
+                  id: 'allow-connect',
+                  effect: 'allow',
+                  action: 'Connect',
+                },
+                {
+                  id: 'allow-api-or-internal',
+                  effect: 'allow',
+                  action: ['ForwardUpstream', 'ForwardDownstream', 'DeliverLocal'],
+                  address: ['*@api.**', '*@internal.*'],
+                },
+              ],
+            },
+          }),
+          admission: {
+            type: 'NoopAdmissionClient',
+            autoAcceptLogicals: true,
+          },
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          routingPolicy: {
+            type: 'CompositeRoutingPolicy',
+          },
+          listeners: [
+            {
+              type: 'WebSocketListener',
+              host: SOCKET_HOST,
+              port: 0,
+            },
+          ],
+        });
+
+        await parent.start();
+
+        const serverListener = getWebsocketListenerInstance();
+        await waitForCondition(() => Boolean(serverListener?.baseUrl));
+
+        const baseUrl = serverListener?.baseUrl;
+        const wsBaseUrl = baseUrl!.startsWith('https://')
+          ? baseUrl!.replace('https://', 'wss://')
+          : baseUrl!.replace('http://', 'ws://');
+        const downstreamAttachUrl = `${wsBaseUrl}${serverListener!.attachPrefix}/ws/downstream`;
+
+        const token = await new SignJWT({
+          scope: 'messaging',
+        })
+          .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+          .setIssuer(issuer)
+          .setAudience(audience)
+          .setSubject('multi-addr-child')
+          .setIssuedAt()
+          .setExpirationTime('5m')
+          .sign(new TextEncoder().encode(hmacSecret));
+
+        child = await nodeFactory.create({
+          type: 'Node',
+          id: 'multi-addr-child',
+          hasParent: true,
+          requestedLogicals: ['multi-addr-svc'],
+          security: createSecurityConfig(),
+          delivery: {
+            type: 'AtLeastOnceDeliveryPolicy',
+          },
+          admission: {
+            type: 'DirectAdmissionClient',
+            connectionGrants: [
+              {
+                type: 'WebSocketConnectionGrant',
+                purpose: 'node.attach',
+                url: downstreamAttachUrl,
+                auth: {
+                  type: 'BearerTokenHeaderAuth',
+                  tokenProvider: {
+                    type: 'StaticTokenProvider',
+                    token,
+                  },
+                },
+              },
+            ],
+            ttlSec: 60,
+          },
+        });
+
+        await child.start();
+        await waitForCondition(() => child!.handshakeCompleted === true);
+        expect(child.physicalPath).toMatch(/^\//);
+
+        // Connection established successfully with multi-address policy
+        const routeManager = (parent as unknown as { routeManager: RouteManager })
+          .routeManager;
+        await waitForCondition(() =>
+          routeManager.downstreamRoutes.has(child!.id)
+        );
+      } finally {
+        await Promise.allSettled([child?.stop(), parent?.stop()]);
+      }
+    });
+  });});

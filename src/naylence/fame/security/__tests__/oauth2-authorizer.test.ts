@@ -825,4 +825,92 @@ describe('OAuth2Authorizer token subject node identity enforcement', () => {
     expect(result).toBeDefined();
     expect(result?.authorized).toBe(true);
   });
+
+  it('bypasses identity enforcement when token has trusted client scope', async () => {
+    const authorizer = new OAuth2Authorizer({
+      token_verifier: createVerifierMock().verifier,
+      enforce_token_subject_node_identity: true,
+      trustedClientScope: 'node.trusted',
+    } as any);
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'any-node-id-without-prefix',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub: 'client-id', scope: 'node.connect node.trusted' },
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeDefined();
+    expect(result?.authorized).toBe(true);
+  });
+
+  it('uses default trusted scope node.trusted when not specified', async () => {
+    const authorizer = new OAuth2Authorizer({
+      token_verifier: createVerifierMock().verifier,
+      enforce_token_subject_node_identity: true,
+    } as any);
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'any-node-id-without-prefix',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub: 'client-id', scope: 'node.connect node.trusted' },
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeDefined();
+    expect(result?.authorized).toBe(true);
+  });
+
+  it('enforces identity when token lacks trusted client scope', async () => {
+    const authorizer = new OAuth2Authorizer({
+      token_verifier: createVerifierMock().verifier,
+      enforce_token_subject_node_identity: true,
+      trustedClientScope: 'node.trusted',
+    } as any);
+
+    const frame: NodeAttachFrame = {
+      type: 'NodeAttach',
+      originType: DeliveryOriginType.DOWNSTREAM,
+      systemId: 'any-node-id-without-prefix',
+      instanceId: 'instance',
+      assignedPath: '/assigned',
+    } as NodeAttachFrame;
+
+    const authContext: AuthorizationContext = {
+      ...baseAuthContext,
+      authenticated: true,
+      claims: { sub: 'client-id', scope: 'node.connect' },
+    };
+
+    const result = await authorizer.validateNodeAttachRequest(
+      createNodeStub(),
+      frame,
+      authContext
+    );
+    expect(result).toBeUndefined();
+  });
 });
