@@ -21,6 +21,7 @@ import type {
   AuthorizationPolicyDefinition,
   AuthorizationRuleDefinition,
   RuleAction,
+  RuleActionInput,
   ScopeRequirement,
 } from './authorization-policy-definition.js';
 import {
@@ -184,6 +185,8 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
     // Action must be explicitly provided; default to wildcard if omitted
     // for backward compatibility during transition
     const resolvedAction: RuleAction = action ?? '*';
+    const resolvedActionNormalized =
+      this.normalizeActionToken(resolvedAction) ?? resolvedAction;
     const address = extractAddress(envelope);
     const grantedScopes = extractGrantedScopes(context);
     const rawFrameType = (envelope.frame as { type?: string } | undefined)
@@ -195,8 +198,8 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
     // Extract and normalize origin type for rule matching
     const rawOriginType = context?.originType;
     const originTypeNormalized =
-      typeof rawOriginType === 'string' && rawOriginType.trim().length > 0
-        ? rawOriginType.trim().toLowerCase()
+      typeof rawOriginType === 'string'
+        ? this.normalizeOriginTypeToken(rawOriginType) ?? undefined
         : undefined;
 
     const evaluationTrace: AuthorizationEvaluationStep[] = [];
@@ -251,8 +254,8 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
       }
 
       // Check action match
-      if (!rule.actions.has('*') && !rule.actions.has(resolvedAction)) {
-        step.expression = `action: ${resolvedAction} not in [${Array.from(rule.actions).join(', ')}]`;
+      if (!rule.actions.has('*') && !rule.actions.has(resolvedActionNormalized)) {
+        step.expression = `action: ${resolvedActionNormalized} not in [${Array.from(rule.actions).join(', ')}]`;
         step.result = false;
         evaluationTrace.push(step);
         continue;
@@ -328,6 +331,9 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
   }
 
   private validateDefaultEffect(effect: unknown): 'allow' | 'deny' {
+    if (effect === undefined || effect === null) {
+      return 'deny';
+    }
     if (effect !== 'allow' && effect !== 'deny') {
       throw new Error(
         `Invalid default_effect: "${String(effect)}". Must be "allow" or "deny"`
@@ -423,7 +429,7 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
    * Supports single RuleAction or array of RuleAction (implicit any-of).
    */
   private compileActions(
-    action: RuleAction | RuleAction[] | undefined,
+    action: RuleActionInput | RuleActionInput[] | undefined,
     ruleId: string
   ): Set<RuleAction> {
     // Default to wildcard if not specified
@@ -433,12 +439,13 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
 
     // Handle single action
     if (typeof action === 'string') {
-      if (!VALID_ACTIONS.includes(action)) {
+      const normalized = this.normalizeActionToken(action);
+      if (!normalized) {
         throw new Error(
           `Invalid action in rule "${ruleId}": "${action}". Must be one of: ${VALID_ACTIONS.join(', ')}`
         );
       }
-      return new Set([action]);
+      return new Set([normalized]);
     }
 
     // Handle array of actions
@@ -461,12 +468,13 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
           `Invalid action in rule "${ruleId}": all values must be strings`
         );
       }
-      if (!VALID_ACTIONS.includes(a as RuleAction)) {
+      const normalized = this.normalizeActionToken(a);
+      if (!normalized) {
         throw new Error(
           `Invalid action in rule "${ruleId}": "${a}". Must be one of: ${VALID_ACTIONS.join(', ')}`
         );
       }
-      actions.add(a as RuleAction);
+      actions.add(normalized);
     }
 
     return actions;
@@ -616,13 +624,14 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
 
     // Handle single origin type
     if (typeof originType === 'string') {
-      const normalized = originType.trim().toLowerCase();
-      if (!normalized) {
+      const trimmed = originType.trim();
+      if (!trimmed) {
         throw new Error(
           `Invalid origin_type in rule "${ruleId}": value must not be empty`
         );
       }
-      if (!VALID_ORIGIN_TYPES.includes(normalized)) {
+      const normalized = this.normalizeOriginTypeToken(trimmed);
+      if (!normalized) {
         throw new Error(
           `Invalid origin_type in rule "${ruleId}": "${originType}". Must be one of: ${VALID_ORIGIN_TYPES.join(', ')}`
         );
@@ -650,13 +659,14 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
           `Invalid origin_type in rule "${ruleId}": all values must be strings`
         );
       }
-      const normalized = ot.trim().toLowerCase();
-      if (!normalized) {
+      const trimmed = ot.trim();
+      if (!trimmed) {
         throw new Error(
           `Invalid origin_type in rule "${ruleId}": values must not be empty`
         );
       }
-      if (!VALID_ORIGIN_TYPES.includes(normalized)) {
+      const normalized = this.normalizeOriginTypeToken(trimmed);
+      if (!normalized) {
         throw new Error(
           `Invalid origin_type in rule "${ruleId}": "${ot}". Must be one of: ${VALID_ORIGIN_TYPES.join(', ')}`
         );
@@ -665,5 +675,39 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
     }
 
     return originTypes;
+  }
+
+  private normalizeActionToken(value: string): RuleAction | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (trimmed === '*') {
+      return '*';
+    }
+    const normalized = trimmed.replace(/[\s_-]+/g, '').toLowerCase();
+    const map: Record<string, RuleAction> = {
+      connect: 'Connect',
+      forwardupstream: 'ForwardUpstream',
+      forwarddownstream: 'ForwardDownstream',
+      forwardpeer: 'ForwardPeer',
+      deliverlocal: 'DeliverLocal',
+    };
+    return map[normalized] ?? null;
+  }
+
+  private normalizeOriginTypeToken(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const normalized = trimmed.replace(/[\s_-]+/g, '').toLowerCase();
+    const map: Record<string, string> = {
+      downstream: 'downstream',
+      upstream: 'upstream',
+      peer: 'peer',
+      local: 'local',
+    };
+    return map[normalized] ?? null;
   }
 }

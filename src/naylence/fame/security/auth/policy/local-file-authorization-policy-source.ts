@@ -151,20 +151,26 @@ export class LocalFileAuthorizationPolicySource
 
     // Ensure we have a type field for the factory
     if (!('type' in factoryConfig) || typeof factoryConfig.type !== 'string') {
-      throw new Error(
-        `Policy definition at ${this.path} must have a 'type' field, ` +
-          `or policyFactory config must be provided`
-      );
+      logger.warning('policy_type_missing_defaulting_to_basic', {
+        path: this.path,
+      });
+      (factoryConfig as Record<string, unknown>).type =
+        'BasicAuthorizationPolicy';
     }
 
     // Build the factory config with the policy definition
     // The file content IS the policy definition, so we extract the type
     // and wrap the remaining content as the policyDefinition
-    const { type, ...restOfFile } = policyDefinition as { type?: string } & Record<string, unknown>;
+    const { type: fileType, ...restOfFile } = policyDefinition as { type?: string } &
+      Record<string, unknown>;
+    const resolvedType =
+      typeof fileType === 'string' && fileType.trim().length > 0
+        ? fileType
+        : (factoryConfig as Record<string, unknown>).type;
     const mergedConfig =
       this.policyFactoryConfig != null
         ? { ...this.policyFactoryConfig, policyDefinition }
-        : { type: factoryConfig.type, policyDefinition: restOfFile };
+        : { type: resolvedType, policyDefinition: restOfFile };
 
     // Create the policy using the factory system
     const policy =

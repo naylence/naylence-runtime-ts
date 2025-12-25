@@ -343,6 +343,30 @@ describe('BasicAuthorizationPolicy origin_type gating', () => {
       expect(result.matchedRule).toBe('allow-downstream-trimmed');
     });
 
+    it('accepts snake_case origin_type values', async () => {
+      const policy = new BasicAuthorizationPolicy({
+        policyDefinition: {
+          version: '1',
+          default_effect: 'deny',
+          rules: [
+            {
+              id: 'allow-downstream-snake',
+              effect: 'allow',
+              origin_type: 'down_stream',
+            },
+          ],
+        },
+      });
+
+      const envelope = makeEnvelope();
+      const context = makeContext({ originType: DeliveryOriginType.DOWNSTREAM });
+
+      const result = await policy.evaluateRequest(mockNode, envelope, context);
+
+      expect(result.effect).toBe('allow');
+      expect(result.matchedRule).toBe('allow-downstream-snake');
+    });
+
     it('accepts whitespace and different cases in origin_type (array)', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {

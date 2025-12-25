@@ -268,6 +268,23 @@ describe('BasicAuthorizationPolicy', () => {
   });
 
   describe('default effect', () => {
+    it('defaults to deny when default_effect is missing', async () => {
+      const policy = new BasicAuthorizationPolicy({
+        policyDefinition: {
+          version: '1',
+          rules: [],
+        } as any,
+      });
+
+      const envelope = makeEnvelope({ frame: { type: 'Data' } as any });
+      const context = makeContext({ originType: DeliveryOriginType.LOCAL });
+
+      const result = await policy.evaluateRequest(mockNode, envelope, context);
+
+      expect(result.effect).toBe('deny');
+      expect(result.reason).toContain('No rule matched');
+    });
+
     it('should return allow when no rules match and default is allow', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
@@ -350,6 +367,24 @@ describe('BasicAuthorizationPolicy', () => {
           version: '1',
           default_effect: 'deny',
           rules: [{ id: 'allow-forward-down', effect: 'allow', action: 'ForwardDownstream' }],
+        },
+      });
+
+      const envelope = makeEnvelope({ frame: { type: 'Data' } as any });
+      const context = makeContext({ originType: DeliveryOriginType.DOWNSTREAM });
+
+      const result = await policy.evaluateRequest(mockNode, envelope, context, 'ForwardDownstream');
+
+      expect(result.effect).toBe('allow');
+      expect(result.matchedRule).toBe('allow-forward-down');
+    });
+
+    it('should match snake_case action values', async () => {
+      const policy = new BasicAuthorizationPolicy({
+        policyDefinition: {
+          version: '1',
+          default_effect: 'deny',
+          rules: [{ id: 'allow-forward-down', effect: 'allow', action: 'forward_downstream' as any }],
         },
       });
 

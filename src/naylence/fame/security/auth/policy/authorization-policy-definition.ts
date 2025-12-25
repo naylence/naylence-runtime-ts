@@ -30,6 +30,12 @@ export type RuleAction =
   | '*';
 
 /**
+ * Action input tokens accepted in policy definitions.
+ * Values are normalized case-insensitively and support snake_case.
+ */
+export type RuleActionInput = RuleAction | string;
+
+/**
  * Scope requirement using logical operators.
  *
  * Supports recursive nesting with a maximum depth enforced at parse time.
@@ -72,9 +78,10 @@ export interface AuthorizationRuleDefinition {
   /**
    * The action type this rule applies to.
    * Can be a single action or an array of actions (implicit any-of).
+   * Values are matched case-insensitively and support snake_case equivalents.
    * @default '*' (all actions)
    */
-  action?: RuleAction | RuleAction[];
+  action?: RuleActionInput | RuleActionInput[];
 
   /**
    * Address pattern(s) to match using glob syntax.
@@ -140,7 +147,7 @@ export interface AuthorizationPolicyDefinition {
   /**
    * Default effect when no rule matches.
    */
-  default_effect: RuleEffect;
+  default_effect?: RuleEffect;
 
   /**
    * List of authorization rules, evaluated in order.
