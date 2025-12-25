@@ -6,6 +6,7 @@ import {
   AuthorizationProfileFactory,
   PROFILE_NAME_NOOP,
   PROFILE_NAME_OAUTH2,
+  PROFILE_NAME_POLICY_LOCALFILE,
 } from '../auth/authorization-profile-factory.js';
 
 describe('AuthorizationProfileFactory', () => {
@@ -102,4 +103,21 @@ describe('AuthorizationProfileFactory', () => {
     const [profileConfig] = createAuthorizerSpy.mock.calls[0];
     expect(profileConfig).toMatchObject({ type: 'OAuth2Authorizer' });
   });
+
+  it('resolves policy-localfile profile name to PolicyAuthorizer with policySource', async () => {
+    await factory.create({
+      type: 'AuthorizationProfile',
+      profile: PROFILE_NAME_POLICY_LOCALFILE,
+    });
+
+    expect(createAuthorizerSpy).toHaveBeenCalledTimes(1);
+    const [profileConfig] = createAuthorizerSpy.mock.calls[0];
+    expect(profileConfig).toMatchObject({
+      type: 'PolicyAuthorizer',
+      policySource: expect.objectContaining({
+        type: 'LocalFileAuthorizationPolicySource',
+      }),
+    });
+  });
+
 });
