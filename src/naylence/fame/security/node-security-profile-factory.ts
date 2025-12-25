@@ -32,6 +32,7 @@ export const ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE =
 export const ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY =
   'FAME_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY';
 export const ENV_VAR_TRUSTED_CLIENT_SCOPE = 'FAME_TRUSTED_CLIENT_SCOPE';
+export const ENV_VAR_AUTHORIZATION_PROFILE = 'FAME_AUTHORIZATION_PROFILE';
 
 export const PROFILE_NAME_STRICT_OVERLAY = 'strict-overlay';
 export const PROFILE_NAME_OVERLAY = 'overlay';
@@ -39,9 +40,6 @@ export const PROFILE_NAME_OVERLAY_CALLBACK = 'overlay-callback';
 export const PROFILE_NAME_GATED = 'gated';
 export const PROFILE_NAME_GATED_CALLBACK = 'gated-callback';
 export const PROFILE_NAME_OPEN = 'open';
-
-const DEFAULT_REVERSE_AUTH_ISSUER = 'reverse-auth.naylence.ai';
-const DEFAULT_REVERSE_AUTH_AUDIENCE = 'dev.naylence.ai';
 
 const STRICT_OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
   type: 'DefaultSecurityManager',
@@ -91,12 +89,8 @@ const STRICT_OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
     },
   },
   authorizer: {
-    type: 'DefaultAuthorizer',
-    verifier: {
-      type: 'JWKSJWTTokenVerifier',
-      jwks_url: Expressions.env(ENV_VAR_JWKS_URL),
-      issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
-    },
+    type: 'AuthorizationProfile',
+    profile: Expressions.env(ENV_VAR_AUTHORIZATION_PROFILE, 'jwt'),
   },
 };
 
@@ -144,14 +138,8 @@ const OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
-    issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
-    required_scopes: ['node.connect'],
-    require_scope: true,
-    default_ttl_sec: 3600,
-    max_ttl_sec: 86400,
-    algorithm: Expressions.env(ENV_VAR_JWT_ALGORITHM, 'RS256'),
-    audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
+    type: 'AuthorizationProfile',
+    profile: Expressions.env(ENV_VAR_AUTHORIZATION_PROFILE, 'oauth2'),
   },
 };
 
@@ -199,41 +187,8 @@ const OVERLAY_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
-    issuer: Expressions.env(
-      ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER,
-      DEFAULT_REVERSE_AUTH_ISSUER
-    ),
-    audience: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE),
-    require_scope: true,
-    default_ttl_sec: 3600,
-    max_ttl_sec: 86400,
-    reverse_auth_ttl_sec: 86400,
-    token_verifier_config: {
-      type: 'JWTTokenVerifier',
-      algorithm: 'HS256',
-      hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
-      issuer: Expressions.env(
-        ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER,
-        DEFAULT_REVERSE_AUTH_ISSUER
-      ),
-      ttl_sec: 86400,
-    },
-    token_issuer_config: {
-      type: 'JWTTokenIssuer',
-      algorithm: 'HS256',
-      hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
-      kid: 'hmac-reverse-auth-key',
-      issuer: Expressions.env(
-        ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER,
-        DEFAULT_REVERSE_AUTH_ISSUER
-      ),
-      ttl_sec: 86400,
-      audience: Expressions.env(
-        ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE,
-        DEFAULT_REVERSE_AUTH_AUDIENCE
-      ),
-    },
+    type: 'AuthorizationProfile',
+    profile: Expressions.env(ENV_VAR_AUTHORIZATION_PROFILE, 'oauth2-callback'),
   },
 };
 
@@ -280,22 +235,8 @@ const GATED_PROFILE: DefaultSecurityManagerConfig = {
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
-    issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
-    required_scopes: ['node.connect'],
-    require_scope: true,
-    default_ttl_sec: 3600,
-    max_ttl_sec: 86400,
-    algorithm: Expressions.env(ENV_VAR_JWT_ALGORITHM, 'RS256'),
-    audience: Expressions.env(ENV_VAR_JWT_AUDIENCE),
-    enforce_token_subject_node_identity: Expressions.env(
-      ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY,
-      'false'
-    ),
-    trusted_client_scope: Expressions.env(
-      ENV_VAR_TRUSTED_CLIENT_SCOPE,
-      'node.trusted'
-    ),
+    type: 'AuthorizationProfile',
+    profile: Expressions.env(ENV_VAR_AUTHORIZATION_PROFILE, 'oauth2-gated'),
   },
 };
 
@@ -342,41 +283,8 @@ const GATED_CALLBACK_PROFILE: DefaultSecurityManagerConfig = {
     },
   },
   authorizer: {
-    type: 'OAuth2Authorizer',
-    issuer: Expressions.env(
-      ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER,
-      DEFAULT_REVERSE_AUTH_ISSUER
-    ),
-    audience: Expressions.env(ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE),
-    require_scope: true,
-    default_ttl_sec: 3600,
-    max_ttl_sec: 86400,
-    reverse_auth_ttl_sec: 86400,
-    token_verifier_config: {
-      type: 'JWTTokenVerifier',
-      algorithm: 'HS256',
-      hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
-      issuer: Expressions.env(
-        ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER,
-        DEFAULT_REVERSE_AUTH_ISSUER
-      ),
-      ttl_sec: 86400,
-    },
-    token_issuer_config: {
-      type: 'JWTTokenIssuer',
-      algorithm: 'HS256',
-      hmac_secret: Expressions.env(ENV_VAR_HMAC_SECRET),
-      kid: 'hmac-reverse-auth-key',
-      issuer: Expressions.env(
-        ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER,
-        DEFAULT_REVERSE_AUTH_ISSUER
-      ),
-      ttl_sec: 86400,
-      audience: Expressions.env(
-        ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE,
-        DEFAULT_REVERSE_AUTH_AUDIENCE
-      ),
-    },
+    type: 'AuthorizationProfile',
+    profile: Expressions.env(ENV_VAR_AUTHORIZATION_PROFILE, 'oauth2-callback'),
   },
 };
 
@@ -386,7 +294,8 @@ const OPEN_PROFILE: DefaultSecurityManagerConfig = {
     type: 'NoSecurityPolicy',
   },
   authorizer: {
-    type: 'NoopAuthorizer',
+    type: 'AuthorizationProfile',
+    profile: Expressions.env(ENV_VAR_AUTHORIZATION_PROFILE, 'noop'),
   },
 };
 

@@ -116,7 +116,8 @@ describe('NodeSecurityProfileFactory', () => {
     const policy = config.security_policy as Record<string, any> | undefined;
     const authorizer = config.authorizer as Record<string, any> | undefined;
     expect(policy?.signing?.signing_material).toBe('raw-key');
-    expect(authorizer?.type).toBe('OAuth2Authorizer');
+    expect(authorizer?.type).toBe('AuthorizationProfile');
+    expect(authorizer?.profile).toBe('oauth2');
   });
 
   it('accepts profile names in a case-insensitive manner', async () => {
@@ -130,14 +131,15 @@ describe('NodeSecurityProfileFactory', () => {
     const policy = config.security_policy as Record<string, any> | undefined;
     const authorizer = config.authorizer as Record<string, any> | undefined;
     expect(policy?.signing?.signing_material).toBe('x509-chain');
-    expect(authorizer?.verifier?.type).toBe('JWKSJWTTokenVerifier');
+    expect(authorizer?.type).toBe('AuthorizationProfile');
+    expect(authorizer?.profile).toBe('jwt');
   });
 
   it('supports overlay-callback profile with reverse-auth token settings', async () => {
     const { config } = await captureInvocation(PROFILE_NAME_OVERLAY_CALLBACK);
     const authorizer = config.authorizer as Record<string, any> | undefined;
-    expect(authorizer?.token_verifier_config?.type).toBe('JWTTokenVerifier');
-    expect(authorizer?.token_issuer_config?.type).toBe('JWTTokenIssuer');
+    expect(authorizer?.type).toBe('AuthorizationProfile');
+    expect(authorizer?.profile).toBe('oauth2-callback');
   });
 
   it('supports gated profile with relaxed inbound signing', async () => {
@@ -145,13 +147,15 @@ describe('NodeSecurityProfileFactory', () => {
     const policy = config.security_policy as Record<string, any> | undefined;
     const authorizer = config.authorizer as Record<string, any> | undefined;
     expect(policy?.signing?.inbound?.signature_policy).toBe('disabled');
-    expect(authorizer?.type).toBe('OAuth2Authorizer');
+    expect(authorizer?.type).toBe('AuthorizationProfile');
+    expect(authorizer?.profile).toBe('oauth2-gated');
   });
 
   it('supports gated-callback profile with HMAC verifier configuration', async () => {
     const { config } = await captureInvocation(PROFILE_NAME_GATED_CALLBACK);
     const authorizer = config.authorizer as Record<string, any> | undefined;
-    expect(authorizer?.token_verifier_config?.algorithm).toBe('HS256');
+    expect(authorizer?.type).toBe('AuthorizationProfile');
+    expect(authorizer?.profile).toBe('oauth2-callback');
   });
 
   it('supports open profile that disables authorizer and policy enforcement', async () => {
@@ -159,7 +163,8 @@ describe('NodeSecurityProfileFactory', () => {
     const policy = config.security_policy as Record<string, any> | undefined;
     const authorizer = config.authorizer as Record<string, any> | undefined;
     expect(policy?.type).toBe('NoSecurityPolicy');
-    expect(authorizer?.type).toBe('NoopAuthorizer');
+    expect(authorizer?.type).toBe('AuthorizationProfile');
+    expect(authorizer?.profile).toBe('noop');
   });
 
   it('passes overrides as factory arguments to createResource', async () => {
@@ -209,7 +214,8 @@ describe('NodeSecurityProfileFactory', () => {
     const authorizer = capturedConfig?.authorizer as
       | Record<string, unknown>
       | undefined;
-    expect(authorizer?.type).toBe('NoopAuthorizer');
+    expect(authorizer?.type).toBe('AuthorizationProfile');
+    expect(authorizer?.profile).toBe('noop');
 
     createSpy.mockRestore();
   });
