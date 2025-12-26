@@ -1,4 +1,5 @@
-import { Expressions, ExpressionEvaluator } from '@naylence/factory';
+import { Expressions, configValidator } from '@naylence/factory';
+import type { ValidationContext } from '@naylence/factory';
 
 import { getLogger } from '../../util/logging.js';
 import type { Authorizer } from './authorizer.js';
@@ -7,11 +8,8 @@ import {
   AuthorizerFactory,
   type AuthorizerConfig,
 } from './authorizer-factory.js';
-import type { DefaultPolicyAuthorizerConfig } from './default-policy-authorizer-factory.js';
 import type { OAuth2AuthorizerConfig } from './oauth2-authorizer-factory.js';
 import type { NoopAuthorizerConfig } from './noop-authorizer-factory.js';
-import type { LocalFileAuthorizationPolicySourceConfig } from './policy/local-file-authorization-policy-source-factory.js';
-import type { TokenVerifierConfig } from './token-verifier-factory.js';
 
 const logger = getLogger(
   'naylence.fame.security.auth.authorization_profile_factory'
@@ -26,7 +24,6 @@ export const PROFILE_NAME_DEFAULT = 'jwt';
 export const PROFILE_NAME_OAUTH2 = 'oauth2';
 export const PROFILE_NAME_OAUTH2_GATED = 'oauth2-gated';
 export const PROFILE_NAME_OAUTH2_CALLBACK = 'oauth2-callback';
-export const PROFILE_NAME_POLICY_LOCALFILE = 'policy-localfile';
 export const PROFILE_NAME_NOOP = 'noop';
 
 export const ENV_VAR_JWT_TRUSTED_ISSUER = 'FAME_JWT_TRUSTED_ISSUER';
@@ -36,8 +33,6 @@ export const ENV_VAR_JWKS_URL = 'FAME_JWKS_URL';
 export const ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY =
   'FAME_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY';
 export const ENV_VAR_TRUSTED_CLIENT_SCOPE = 'FAME_TRUSTED_CLIENT_SCOPE';
-export const ENV_VAR_AUTH_POLICY_PATH = 'FAME_AUTH_POLICY_PATH';
-export const ENV_VAR_AUTH_POLICY_FORMAT = 'FAME_AUTH_POLICY_FORMAT';
 export const ENV_VAR_JWT_REVERSE_AUTH_TRUSTED_ISSUER =
   'FAME_JWT_REVERSE_AUTH_TRUSTED_ISSUER';
 export const ENV_VAR_JWT_REVERSE_AUTH_AUDIENCE =
@@ -47,15 +42,13 @@ export const ENV_VAR_HMAC_SECRET = 'FAME_HMAC_SECRET';
 const DEFAULT_REVERSE_AUTH_ISSUER = 'reverse-auth.naylence.ai';
 const DEFAULT_REVERSE_AUTH_AUDIENCE = 'dev.naylence.ai';
 
-const DEFAULT_VERIFIER_CONFIG: TokenVerifierConfig = {
-  type: 'JWKSJWTTokenVerifier',
-  jwks_url: Expressions.env(ENV_VAR_JWKS_URL),
-  issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
-};
-
 const DEFAULT_PROFILE: AuthorizerConfig = {
   type: 'DefaultAuthorizer',
-  verifier: DEFAULT_VERIFIER_CONFIG,
+  verifier: {
+    type: 'JWKSJWTTokenVerifier',
+    jwks_url: Expressions.env(ENV_VAR_JWKS_URL),
+    issuer: Expressions.env(ENV_VAR_JWT_TRUSTED_ISSUER),
+  },
 };
 
 const OAUTH2_PROFILE: OAuth2AuthorizerConfig = {
@@ -123,27 +116,11 @@ const NOOP_PROFILE: NoopAuthorizerConfig = {
   type: 'NoopAuthorizer',
 };
 
-const DEFAULT_POLICY_SOURCE: LocalFileAuthorizationPolicySourceConfig = {
-  type: 'LocalFileAuthorizationPolicySource',
-  path: Expressions.env(ENV_VAR_AUTH_POLICY_PATH, './auth-policy.yaml'),
-  format: Expressions.env(ENV_VAR_AUTH_POLICY_FORMAT, 'auto') as
-    | 'auto'
-    | 'yaml'
-    | 'json',
-};
-
-const POLICY_LOCALFILE_PROFILE: DefaultPolicyAuthorizerConfig = {
-  type: 'PolicyAuthorizer',
-  verifier: DEFAULT_VERIFIER_CONFIG,
-  policySource: DEFAULT_POLICY_SOURCE,
-};
-
 const PROFILE_MAP: Record<string, AuthorizerConfig> = {
   [PROFILE_NAME_DEFAULT]: DEFAULT_PROFILE,
   [PROFILE_NAME_OAUTH2]: OAUTH2_PROFILE,
   [PROFILE_NAME_OAUTH2_GATED]: OAUTH2_GATED_PROFILE,
   [PROFILE_NAME_OAUTH2_CALLBACK]: OAUTH2_CALLBACK_PROFILE,
-  [PROFILE_NAME_POLICY_LOCALFILE]: POLICY_LOCALFILE_PROFILE,
   [PROFILE_NAME_NOOP]: NOOP_PROFILE,
 };
 
@@ -158,9 +135,6 @@ const PROFILE_ALIASES: Record<string, string> = {
   'oauth2-callback': PROFILE_NAME_OAUTH2_CALLBACK,
   oauth2_callback: PROFILE_NAME_OAUTH2_CALLBACK,
   'reverse-auth': PROFILE_NAME_OAUTH2_CALLBACK,
-  policy: PROFILE_NAME_POLICY_LOCALFILE,
-  'policy-localfile': PROFILE_NAME_POLICY_LOCALFILE,
-  policy_localfile: PROFILE_NAME_POLICY_LOCALFILE,
   noop: PROFILE_NAME_NOOP,
   'no-op': PROFILE_NAME_NOOP,
   no_op: PROFILE_NAME_NOOP,
@@ -185,9 +159,33 @@ export class AuthorizationProfileFactory extends AuthorizerFactory<Authorization
       profile: normalized.profile,
     });
 
+    // Extract CreateResourceOptions from factoryArgs - it's typically the last object with env/config/variables
+    const createOptions = extractCreateResourceOptions(factoryArgs);
+
+    // Build validation context from createOptions to evaluate expressions
+    const validationContext: ValidationContext = {
+      env: createOptions.env as Record<string, string> | undefined,
+      config: createOptions.config as Record<string, unknown> | undefined,
+      variables: createOptions.variables as Record<string, unknown> | undefined,
+      allowUnknownProperties: true,
+    };
+
+    // Evaluate expressions in the profile config
+    const validationResult = configValidator.validate(profileConfig, validationContext);
+    if (!validationResult.valid) {
+      const errorMessages = validationResult.errors
+        .map((error) => `${error.path || 'root'}: ${error.message}`)
+        .join('; ');
+      throw new Error(
+        `Failed to evaluate authorization profile configuration: ${errorMessages}`
+      );
+    }
+
+    const evaluatedConfig = validationResult.config ?? profileConfig;
+
     const authorizer = await AuthorizerFactory.createAuthorizer(
-      profileConfig,
-      { factoryArgs }
+      evaluatedConfig as AuthorizerConfig,
+      { validate: false } // Already validated
     );
 
     if (!authorizer) {
@@ -198,6 +196,27 @@ export class AuthorizationProfileFactory extends AuthorizerFactory<Authorization
 
     return authorizer;
   }
+}
+
+/**
+ * Extracts CreateResourceOptions from factoryArgs.
+ * The factory system passes CreateResourceOptions as an object in factoryArgs.
+ */
+function extractCreateResourceOptions(
+  factoryArgs: unknown[]
+): Record<string, unknown> {
+  // Find the last object argument that looks like CreateResourceOptions
+  for (let i = factoryArgs.length - 1; i >= 0; i--) {
+    const arg = factoryArgs[i];
+    if (arg && typeof arg === 'object' && !Array.isArray(arg)) {
+      const candidate = arg as Record<string, unknown>;
+      // Check if it has typical CreateResourceOptions properties
+      if ('env' in candidate || 'config' in candidate || 'variables' in candidate || 'factoryArgs' in candidate) {
+        return candidate;
+      }
+    }
+  }
+  return {};
 }
 
 interface NormalizedAuthorizationProfileConfig {
@@ -225,26 +244,14 @@ function normalizeConfig(
 }
 
 function resolveProfileName(candidate: Record<string, unknown>): string {
-  let direct = coerceProfileString(candidate.profile);
-
-  if (direct && ExpressionEvaluator.isExpression(direct)) {
-    const evaluated = ExpressionEvaluator.evaluate(direct);
-    direct = coerceProfileString(evaluated);
-  }
-
+  const direct = coerceProfileString(candidate.profile);
   if (direct) {
     return direct;
   }
 
   const legacyKeys = ['profile_name', 'profileName'] as const;
   for (const legacyKey of legacyKeys) {
-    let legacyValue = coerceProfileString(candidate[legacyKey]);
-
-    if (legacyValue && ExpressionEvaluator.isExpression(legacyValue)) {
-      const evaluated = ExpressionEvaluator.evaluate(legacyValue);
-      legacyValue = coerceProfileString(evaluated);
-    }
-
+    const legacyValue = coerceProfileString(candidate[legacyKey]);
     if (legacyValue) {
       return legacyValue;
     }

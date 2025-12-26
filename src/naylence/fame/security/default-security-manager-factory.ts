@@ -387,7 +387,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
       authorizer =
         await DefaultSecurityManagerFactory.createAuthorizerFromConfig(
           config,
-          policy
+          policy,
+          createOptions
         );
     }
 
@@ -750,7 +751,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
 
   private static async createAuthorizerFromConfig(
     config: Record<string, unknown>,
-    policy: SecurityPolicy
+    policy: SecurityPolicy,
+    createOptions?: CreateResourceOptions | null
   ): Promise<Authorizer | null> {
     let authorizerConfig = config.authorizer ?? null;
     if (!authorizerConfig) {
@@ -763,7 +765,8 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
     ) {
       return (
         (await AuthorizerFactory.createAuthorizer(
-          authorizerConfig as Record<string, unknown>
+          authorizerConfig as Record<string, unknown>,
+          createOptions ?? undefined
         )) ?? null
       );
     }
@@ -784,6 +787,7 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
       const tokenVerifier = new NoopTokenVerifier();
       return (
         (await AuthorizerFactory.createAuthorizer(null, {
+          ...createOptions,
           factoryArgs: [tokenVerifier],
         })) ?? null
       );
