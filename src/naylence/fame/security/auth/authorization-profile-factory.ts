@@ -1,4 +1,4 @@
-import { Expressions } from '@naylence/factory';
+import { Expressions, ExpressionEvaluator } from '@naylence/factory';
 
 import { getLogger } from '../../util/logging.js';
 import type { Authorizer } from './authorizer.js';
@@ -225,14 +225,26 @@ function normalizeConfig(
 }
 
 function resolveProfileName(candidate: Record<string, unknown>): string {
-  const direct = coerceProfileString(candidate.profile);
+  let direct = coerceProfileString(candidate.profile);
+
+  if (direct && ExpressionEvaluator.isExpression(direct)) {
+    const evaluated = ExpressionEvaluator.evaluate(direct);
+    direct = coerceProfileString(evaluated);
+  }
+
   if (direct) {
     return direct;
   }
 
   const legacyKeys = ['profile_name', 'profileName'] as const;
   for (const legacyKey of legacyKeys) {
-    const legacyValue = coerceProfileString(candidate[legacyKey]);
+    let legacyValue = coerceProfileString(candidate[legacyKey]);
+
+    if (legacyValue && ExpressionEvaluator.isExpression(legacyValue)) {
+      const evaluated = ExpressionEvaluator.evaluate(legacyValue);
+      legacyValue = coerceProfileString(evaluated);
+    }
+
     if (legacyValue) {
       return legacyValue;
     }
