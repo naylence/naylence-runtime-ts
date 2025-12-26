@@ -8,6 +8,7 @@ export * from './node/index.js';
 export * from './delivery/index.js';
 export * from './security/index.js';
 export * from './storage/index.js';
+export * from './profile/index.js';
 export * from './util/index.js';
 export * from './constants/index.js';
 export * from './stickiness/index.js';

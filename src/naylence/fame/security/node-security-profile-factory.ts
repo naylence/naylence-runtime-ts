@@ -14,6 +14,10 @@ import {
 } from './security-manager-factory.js';
 import { type DefaultSecurityManagerConfig } from './default-security-manager-factory.js';
 import { getLogger } from '../util/logging.js';
+import {
+  getProfile,
+  registerProfile,
+} from '../profile/profile-registry.js';
 
 const logger = getLogger(
   'naylence.fame.security.node_security_profile_factory'
@@ -299,14 +303,42 @@ const OPEN_PROFILE: DefaultSecurityManagerConfig = {
   },
 };
 
-const PROFILE_MAP: Record<string, DefaultSecurityManagerConfig> = {
-  [PROFILE_NAME_OVERLAY]: OVERLAY_PROFILE,
-  [PROFILE_NAME_OVERLAY_CALLBACK]: OVERLAY_CALLBACK_PROFILE,
-  [PROFILE_NAME_STRICT_OVERLAY]: STRICT_OVERLAY_PROFILE,
-  [PROFILE_NAME_GATED]: GATED_PROFILE,
-  [PROFILE_NAME_GATED_CALLBACK]: GATED_CALLBACK_PROFILE,
-  [PROFILE_NAME_OPEN]: OPEN_PROFILE,
-};
+registerProfile(
+  SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OVERLAY,
+  OVERLAY_PROFILE,
+  { source: 'node-security-profile-factory' }
+);
+registerProfile(
+  SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OVERLAY_CALLBACK,
+  OVERLAY_CALLBACK_PROFILE,
+  { source: 'node-security-profile-factory' }
+);
+registerProfile(
+  SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_STRICT_OVERLAY,
+  STRICT_OVERLAY_PROFILE,
+  { source: 'node-security-profile-factory' }
+);
+registerProfile(
+  SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_GATED,
+  GATED_PROFILE,
+  { source: 'node-security-profile-factory' }
+);
+registerProfile(
+  SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_GATED_CALLBACK,
+  GATED_CALLBACK_PROFILE,
+  { source: 'node-security-profile-factory' }
+);
+registerProfile(
+  SECURITY_MANAGER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OPEN,
+  OPEN_PROFILE,
+  { source: 'node-security-profile-factory' }
+);
 
 export const FACTORY_META = {
   base: SECURITY_MANAGER_FACTORY_BASE_TYPE,
@@ -468,16 +500,15 @@ function normalizeProfile(
 function resolveProfileConfig(
   profileName: string
 ): DefaultSecurityManagerConfig {
-  const template = PROFILE_MAP[profileName];
+  const template = getProfile(
+    SECURITY_MANAGER_FACTORY_BASE_TYPE,
+    profileName
+  ) as DefaultSecurityManagerConfig | null;
   if (!template) {
     throw new Error(`Unknown security profile: ${profileName}`);
   }
 
-  return deepClone(template);
-}
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return template;
 }
 
 export default NodeSecurityProfileFactory;

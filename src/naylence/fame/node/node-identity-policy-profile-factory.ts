@@ -5,6 +5,10 @@ import {
 } from './node-identity-policy-factory.js';
 import type { NodeIdentityPolicy } from './node-identity-policy.js';
 import { getLogger } from '../util/logging.js';
+import {
+  getProfile,
+  registerProfile,
+} from '../profile/profile-registry.js';
 
 const logger = getLogger(
   'naylence.fame.node.node_identity_policy_profile_factory'
@@ -28,11 +32,24 @@ const TOKEN_SUBJECT_PROFILE: NodeIdentityPolicyConfig = {
   type: 'TokenSubjectNodeIdentityPolicy',
 };
 
-const PROFILE_MAP: Record<string, NodeIdentityPolicyConfig> = {
-  [PROFILE_NAME_DEFAULT]: DEFAULT_PROFILE,
-  [PROFILE_NAME_TOKEN_SUBJECT]: TOKEN_SUBJECT_PROFILE,
-  [PROFILE_NAME_TOKEN_SUBJECT_ALIAS]: TOKEN_SUBJECT_PROFILE,
-};
+registerProfile(
+  NODE_IDENTITY_POLICY_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DEFAULT,
+  DEFAULT_PROFILE,
+  { source: 'node-identity-policy-profile-factory' }
+);
+registerProfile(
+  NODE_IDENTITY_POLICY_FACTORY_BASE_TYPE,
+  PROFILE_NAME_TOKEN_SUBJECT,
+  TOKEN_SUBJECT_PROFILE,
+  { source: 'node-identity-policy-profile-factory' }
+);
+registerProfile(
+  NODE_IDENTITY_POLICY_FACTORY_BASE_TYPE,
+  PROFILE_NAME_TOKEN_SUBJECT_ALIAS,
+  TOKEN_SUBJECT_PROFILE,
+  { source: 'node-identity-policy-profile-factory' }
+);
 
 export const FACTORY_META = {
   base: NODE_IDENTITY_POLICY_FACTORY_BASE_TYPE,
@@ -90,16 +107,15 @@ function normalizeConfig(
 }
 
 function resolveProfileConfig(profileName: string): NodeIdentityPolicyConfig {
-  const profile = PROFILE_MAP[profileName];
+  const profile = getProfile(
+    NODE_IDENTITY_POLICY_FACTORY_BASE_TYPE,
+    profileName
+  ) as NodeIdentityPolicyConfig | null;
   if (!profile) {
     throw new Error(`Unknown node identity policy profile: ${profileName}`);
   }
 
-  return deepClone(profile);
-}
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return profile;
 }
 
 export default NodeIdentityPolicyProfileFactory;

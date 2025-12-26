@@ -17,6 +17,7 @@ export { VERSION } from './version.js';
 export * from './naylence/fame/errors/index.js';
 export * from './naylence/fame/util/index.js';
 export * from './naylence/fame/channel/index.js';
+export * from './naylence/fame/profile/index.js';
 
 // Storage providers that are safe for browsers (in-memory + IndexedDB)
 export * from './naylence/fame/storage/index.js';

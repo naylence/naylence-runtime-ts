@@ -13,6 +13,10 @@ import type { NoopAuthorizerConfig } from './noop-authorizer-factory.js';
 import type { DefaultPolicyAuthorizerConfig } from './default-policy-authorizer-factory.js';
 import type { LocalFileAuthorizationPolicySourceConfig } from './policy/local-file-authorization-policy-source-factory.js';
 import type { TokenVerifierConfig } from './token-verifier-factory.js';
+import {
+  getProfile,
+  registerProfile,
+} from '../../profile/profile-registry.js';
 
 const logger = getLogger(
   'naylence.fame.security.auth.authorization_profile_factory'
@@ -143,14 +147,42 @@ const POLICY_LOCALFILE_PROFILE: DefaultPolicyAuthorizerConfig = {
   policySource: DEFAULT_POLICY_SOURCE,
 };
 
-const PROFILE_MAP: Record<string, AuthorizerConfig> = {
-  [PROFILE_NAME_DEFAULT]: DEFAULT_PROFILE,
-  [PROFILE_NAME_OAUTH2]: OAUTH2_PROFILE,
-  [PROFILE_NAME_OAUTH2_GATED]: OAUTH2_GATED_PROFILE,
-  [PROFILE_NAME_OAUTH2_CALLBACK]: OAUTH2_CALLBACK_PROFILE,
-  [PROFILE_NAME_POLICY_LOCALFILE]: POLICY_LOCALFILE_PROFILE,
-  [PROFILE_NAME_NOOP]: NOOP_PROFILE,
-};
+registerProfile(
+  AUTHORIZER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DEFAULT,
+  DEFAULT_PROFILE,
+  { source: 'authorization-profile-factory' }
+);
+registerProfile(
+  AUTHORIZER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OAUTH2,
+  OAUTH2_PROFILE,
+  { source: 'authorization-profile-factory' }
+);
+registerProfile(
+  AUTHORIZER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OAUTH2_GATED,
+  OAUTH2_GATED_PROFILE,
+  { source: 'authorization-profile-factory' }
+);
+registerProfile(
+  AUTHORIZER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OAUTH2_CALLBACK,
+  OAUTH2_CALLBACK_PROFILE,
+  { source: 'authorization-profile-factory' }
+);
+registerProfile(
+  AUTHORIZER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_POLICY_LOCALFILE,
+  POLICY_LOCALFILE_PROFILE,
+  { source: 'authorization-profile-factory' }
+);
+registerProfile(
+  AUTHORIZER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_NOOP,
+  NOOP_PROFILE,
+  { source: 'authorization-profile-factory' }
+);
 
 const PROFILE_ALIASES: Record<string, string> = {
   jwt: PROFILE_NAME_DEFAULT,
@@ -312,16 +344,15 @@ function canonicalizeProfileName(value: string): string {
 }
 
 function resolveProfileConfig(profileName: string): AuthorizerConfig {
-  const profile = PROFILE_MAP[profileName];
+  const profile = getProfile(
+    AUTHORIZER_FACTORY_BASE_TYPE,
+    profileName
+  ) as AuthorizerConfig | null;
   if (!profile) {
     throw new Error(`Unknown authorization profile: ${profileName}`);
   }
 
-  return deepClone(profile);
-}
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return profile;
 }
 
 export default AuthorizationProfileFactory;

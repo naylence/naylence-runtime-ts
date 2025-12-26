@@ -1,6 +1,10 @@
 import { createResource } from '@naylence/factory';
 import { getLogger } from '../util/logging.js';
 import {
+  getProfile,
+  registerProfile,
+} from '../profile/profile-registry.js';
+import {
   ROUTING_POLICY_FACTORY_BASE,
   RoutingPolicyFactory,
   type RoutingPolicy,
@@ -47,13 +51,36 @@ const HYBRID_ONLY_PROFILE: RoutingPolicyConfig = {
   loadBalancingStrategy: { type: 'HRWLoadBalancingStrategy' },
 };
 
-const PROFILE_MAP: Record<string, RoutingPolicyConfig> = {
-  [PROFILE_NAME_DEVELOPMENT]: DEVELOPMENT_PROFILE,
-  [PROFILE_NAME_PRODUCTION]: PRODUCTION_PROFILE,
-  [PROFILE_NAME_BASIC]: BASIC_PROFILE,
-  [PROFILE_NAME_CAPABILITY_AWARE]: CAPABILITY_AWARE_PROFILE,
-  [PROFILE_NAME_HYBRID_ONLY]: HYBRID_ONLY_PROFILE,
-};
+registerProfile(
+  ROUTING_POLICY_FACTORY_BASE,
+  PROFILE_NAME_DEVELOPMENT,
+  DEVELOPMENT_PROFILE,
+  { source: 'routing-profile-factory' }
+);
+registerProfile(
+  ROUTING_POLICY_FACTORY_BASE,
+  PROFILE_NAME_PRODUCTION,
+  PRODUCTION_PROFILE,
+  { source: 'routing-profile-factory' }
+);
+registerProfile(
+  ROUTING_POLICY_FACTORY_BASE,
+  PROFILE_NAME_BASIC,
+  BASIC_PROFILE,
+  { source: 'routing-profile-factory' }
+);
+registerProfile(
+  ROUTING_POLICY_FACTORY_BASE,
+  PROFILE_NAME_CAPABILITY_AWARE,
+  CAPABILITY_AWARE_PROFILE,
+  { source: 'routing-profile-factory' }
+);
+registerProfile(
+  ROUTING_POLICY_FACTORY_BASE,
+  PROFILE_NAME_HYBRID_ONLY,
+  HYBRID_ONLY_PROFILE,
+  { source: 'routing-profile-factory' }
+);
 
 export interface RoutingProfileConfig extends RoutingPolicyConfig {
   type: 'RoutingProfile';
@@ -146,7 +173,10 @@ export class RoutingProfileFactory extends RoutingPolicyFactory {
   }
 
   private getProfileConfig(profile: string): RoutingPolicyConfig {
-    const routingConfig = PROFILE_MAP[profile];
+    const routingConfig = getProfile(
+      ROUTING_POLICY_FACTORY_BASE,
+      profile
+    ) as RoutingPolicyConfig | null;
     if (!routingConfig) {
       throw new Error('Unknown routing profile');
     }

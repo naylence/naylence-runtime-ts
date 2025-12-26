@@ -12,6 +12,11 @@ import {
   registerStorageProviderFactory,
   STORAGE_PROVIDER_FACTORY_BASE_TYPE,
 } from './storage-provider-factory.js';
+import {
+  getProfile,
+  listProfiles,
+  registerProfile,
+} from '../profile/profile-registry.js';
 
 const ENV_VAR_STORAGE_DB_DIRECTORY = 'FAME_STORAGE_DB_DIRECTORY';
 const ENV_VAR_STORAGE_MASTER_KEY = 'FAME_STORAGE_MASTER_KEY';
@@ -58,23 +63,27 @@ const ENCRYPTED_SQLITE_PROFILE_CONFIG = {
   isCached: true,
 } as const;
 
-// Base profile map with browser-safe options
-const BASE_PROFILE_MAP: Record<string, Record<string, unknown>> = {
-  [PROFILE_NAME_MEMORY]: MEMORY_PROFILE_CONFIG,
-  [PROFILE_NAME_INDEXEDDB]: INDEXEDDB_PROFILE_CONFIG,
-};
-
-// Extended profile map - can be augmented by Node.js environment
-const PROFILE_MAP: Record<string, Record<string, unknown>> = {
-  ...BASE_PROFILE_MAP,
-};
+registerProfile(
+  STORAGE_PROVIDER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_MEMORY,
+  MEMORY_PROFILE_CONFIG,
+  { source: 'storage-profile-factory' }
+);
+registerProfile(
+  STORAGE_PROVIDER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_INDEXEDDB,
+  INDEXEDDB_PROFILE_CONFIG,
+  { source: 'storage-profile-factory' }
+);
 
 // Function to register additional profiles (used by Node.js build)
 export function registerStorageProfile(
   name: string,
   config: Record<string, unknown>
 ): void {
-  PROFILE_MAP[name] = config;
+  registerProfile(STORAGE_PROVIDER_FACTORY_BASE_TYPE, name, config, {
+    source: 'storage-profile-factory',
+  });
 }
 
 // Export the SQLite configs so they can be registered from node-index.ts
@@ -102,10 +111,13 @@ export class StorageProfileFactory extends StorageProviderFactory<StorageProfile
     });
 
     const profileName = (parsed.profile ?? PROFILE_NAME_MEMORY).toLowerCase();
-    const profileConfig = PROFILE_MAP[profileName];
+    const profileConfig = getProfile(
+      STORAGE_PROVIDER_FACTORY_BASE_TYPE,
+      profileName
+    );
     if (!profileConfig) {
       throw new Error(
-        `Unknown storage profile '${profileName}'. Supported profiles: ${Object.keys(PROFILE_MAP).join(', ')}`
+        `Unknown storage profile '${profileName}'. Supported profiles: ${listProfiles(STORAGE_PROVIDER_FACTORY_BASE_TYPE).join(', ')}`
       );
     }
 

@@ -2,6 +2,10 @@ import { Expressions } from '@naylence/factory';
 import { GRANT_PURPOSE_NODE_ATTACH } from '../../grants/grant.js';
 import { getLogger } from '../../util/logging.js';
 import {
+  getProfile,
+  registerProfile,
+} from '../../profile/profile-registry.js';
+import {
   ADMISSION_CLIENT_FACTORY_BASE_TYPE,
   AdmissionClientFactory,
   type AdmissionConfig,
@@ -266,20 +270,78 @@ const NOOP_PROFILE: AdmissionConfig = {
   autoAcceptLogicals: true,
 };
 
-const PROFILE_MAP: Record<string, AdmissionConfig> = {
-  [PROFILE_NAME_WELCOME]: WELCOME_SERVICE_PROFILE,
-  [PROFILE_NAME_WELCOME_PKCE]: WELCOME_SERVICE_PKCE_PROFILE,
-  [PROFILE_NAME_WELCOME_PKCE_ALIAS]: WELCOME_SERVICE_PKCE_PROFILE,
-  [PROFILE_NAME_DIRECT]: DIRECT_PROFILE,
-  [PROFILE_NAME_DIRECT_PKCE]: DIRECT_PKCE_PROFILE,
-  [PROFILE_NAME_DIRECT_PKCE_ALIAS]: DIRECT_PKCE_PROFILE,
-  [PROFILE_NAME_DIRECT_HTTP]: DIRECT_HTTP_PROFILE,
-  [PROFILE_NAME_DIRECT_INPAGE]: DIRECT_INPAGE_PROFILE,
-  [PROFILE_NAME_DIRECT_INPAGE_ALIAS]: DIRECT_INPAGE_PROFILE,
-  [PROFILE_NAME_OPEN]: OPEN_PROFILE,
-  [PROFILE_NAME_NOOP]: NOOP_PROFILE,
-  [PROFILE_NAME_NONE]: NOOP_PROFILE,
-};
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_WELCOME,
+  WELCOME_SERVICE_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_WELCOME_PKCE,
+  WELCOME_SERVICE_PKCE_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_WELCOME_PKCE_ALIAS,
+  WELCOME_SERVICE_PKCE_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DIRECT,
+  DIRECT_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DIRECT_PKCE,
+  DIRECT_PKCE_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DIRECT_PKCE_ALIAS,
+  DIRECT_PKCE_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DIRECT_HTTP,
+  DIRECT_HTTP_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DIRECT_INPAGE,
+  DIRECT_INPAGE_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_DIRECT_INPAGE_ALIAS,
+  DIRECT_INPAGE_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OPEN,
+  OPEN_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_NOOP,
+  NOOP_PROFILE,
+  { source: 'admission-profile-factory' }
+);
+registerProfile(
+  ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+  PROFILE_NAME_NONE,
+  NOOP_PROFILE,
+  { source: 'admission-profile-factory' }
+);
 
 export const FACTORY_META = {
   base: ADMISSION_CLIENT_FACTORY_BASE_TYPE,
@@ -333,16 +395,15 @@ function normalizeConfig(
 }
 
 function resolveProfileConfig(profileName: string): AdmissionConfig {
-  const profile = PROFILE_MAP[profileName];
+  const profile = getProfile(
+    ADMISSION_CLIENT_FACTORY_BASE_TYPE,
+    profileName
+  ) as AdmissionConfig | null;
   if (!profile) {
     throw new Error(`Unknown admission profile: ${profileName}`);
   }
 
-  return deepClone(profile);
-}
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return profile;
 }
 
 export default AdmissionProfileFactory;

@@ -1,5 +1,9 @@
 import { createResource } from '@naylence/factory';
 import { getLogger } from '../../util/logging.js';
+import {
+  getProfile,
+  registerProfile,
+} from '../../profile/profile-registry.js';
 
 import type { LoadBalancingStrategy } from './load-balancing-strategy.js';
 import {
@@ -34,6 +38,37 @@ const STICKY_HRW_PROFILE: LoadBalancingStrategyConfig = {
 const DEVELOPMENT_PROFILE: LoadBalancingStrategyConfig = {
   type: 'RoundRobinLoadBalancingStrategy',
 };
+
+registerProfile(
+  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  PROFILE_NAME_RANDOM,
+  RANDOM_PROFILE,
+  { source: 'load-balancing-profile-factory' }
+);
+registerProfile(
+  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  PROFILE_NAME_ROUND_ROBIN,
+  ROUND_ROBIN_PROFILE,
+  { source: 'load-balancing-profile-factory' }
+);
+registerProfile(
+  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  PROFILE_NAME_HRW,
+  HRW_PROFILE,
+  { source: 'load-balancing-profile-factory' }
+);
+registerProfile(
+  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  PROFILE_NAME_STICKY_HRW,
+  STICKY_HRW_PROFILE,
+  { source: 'load-balancing-profile-factory' }
+);
+registerProfile(
+  LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+  PROFILE_NAME_DEVELOPMENT,
+  DEVELOPMENT_PROFILE,
+  { source: 'load-balancing-profile-factory' }
+);
 
 export interface LoadBalancingProfileConfig
   extends LoadBalancingStrategyConfig {
@@ -127,20 +162,15 @@ export class LoadBalancingProfileFactory extends LoadBalancingStrategyFactory {
   }
 
   private resolveProfile(profile: string): LoadBalancingStrategyConfig {
-    switch (profile) {
-      case PROFILE_NAME_RANDOM:
-        return RANDOM_PROFILE;
-      case PROFILE_NAME_ROUND_ROBIN:
-        return ROUND_ROBIN_PROFILE;
-      case PROFILE_NAME_HRW:
-        return HRW_PROFILE;
-      case PROFILE_NAME_STICKY_HRW:
-        return STICKY_HRW_PROFILE;
-      case PROFILE_NAME_DEVELOPMENT:
-        return DEVELOPMENT_PROFILE;
-      default:
-        throw new Error(`Unknown load balancing profile: ${profile}`);
+    const strategyConfig = getProfile(
+      LOAD_BALANCING_STRATEGY_FACTORY_BASE,
+      profile
+    ) as LoadBalancingStrategyConfig | null;
+    if (!strategyConfig) {
+      throw new Error(`Unknown load balancing profile: ${profile}`);
     }
+
+    return strategyConfig;
   }
 }
 

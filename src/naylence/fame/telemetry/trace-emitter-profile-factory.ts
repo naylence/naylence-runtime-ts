@@ -8,6 +8,10 @@ import {
 } from './trace-emitter-factory.js';
 import type { NoopTraceEmitterConfig } from './noop-trace-emitter-factory.js';
 import type { OpenTelemetryTraceEmitterConfig } from './open-telemetry-trace-emitter-factory.js';
+import {
+  getProfile,
+  registerProfile,
+} from '../profile/profile-registry.js';
 
 const logger = getLogger(
   'naylence.fame.telemetry.trace_emitter_profile_factory'
@@ -36,10 +40,18 @@ const OPEN_TELEMETRY_PROFILE: OpenTelemetryTraceEmitterConfig = {
   headers: {},
 };
 
-const PROFILE_MAP: Record<string, TraceEmitterConfig> = {
-  [PROFILE_NAME_NOOP]: NOOP_PROFILE,
-  [PROFILE_NAME_OPEN_TELEMETRY]: OPEN_TELEMETRY_PROFILE,
-};
+registerProfile(
+  TRACE_EMITTER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_NOOP,
+  NOOP_PROFILE,
+  { source: 'trace-emitter-profile-factory' }
+);
+registerProfile(
+  TRACE_EMITTER_FACTORY_BASE_TYPE,
+  PROFILE_NAME_OPEN_TELEMETRY,
+  OPEN_TELEMETRY_PROFILE,
+  { source: 'trace-emitter-profile-factory' }
+);
 
 export const FACTORY_META = {
   base: TRACE_EMITTER_FACTORY_BASE_TYPE,
@@ -138,15 +150,14 @@ function canonicalizeProfileName(value: string): string {
 }
 
 function resolveProfileConfig(profileName: string): TraceEmitterConfig {
-  const profile = PROFILE_MAP[profileName];
+  const profile = getProfile(
+    TRACE_EMITTER_FACTORY_BASE_TYPE,
+    profileName
+  ) as TraceEmitterConfig | null;
   if (!profile) {
     throw new Error(`Unknown trace emitter profile: ${profileName}`);
   }
-  return deepClone(profile);
-}
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return profile;
 }
 
 export default TraceEmitterProfileFactory;

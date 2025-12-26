@@ -9,6 +9,10 @@ import {
 import type { AtLeastOnceDeliveryPolicyConfig } from './at-least-once-delivery-policy-factory.js';
 import type { AtMostOnceDeliveryPolicyConfig } from './at-most-once-delivery-policy-factory.js';
 import { getLogger } from '../util/logging.js';
+import {
+  getProfile,
+  registerProfile,
+} from '../profile/profile-registry.js';
 
 const logger = getLogger('naylence.fame.delivery.delivery_profile_factory');
 
@@ -48,10 +52,18 @@ const AT_MOST_ONCE_PROFILE: AtMostOnceDeliveryPolicyConfig = {
   type: 'AtMostOnceDeliveryPolicy',
 };
 
-const PROFILE_MAP: Record<string, DeliveryPolicyConfig> = {
-  [PROFILE_NAME_AT_LEAST_ONCE]: AT_LEAST_ONCE_PROFILE,
-  [PROFILE_NAME_AT_MOST_ONCE]: AT_MOST_ONCE_PROFILE,
-};
+registerProfile(
+  DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  PROFILE_NAME_AT_LEAST_ONCE,
+  AT_LEAST_ONCE_PROFILE,
+  { source: 'delivery-profile-factory' }
+);
+registerProfile(
+  DELIVERY_POLICY_FACTORY_BASE_TYPE,
+  PROFILE_NAME_AT_MOST_ONCE,
+  AT_MOST_ONCE_PROFILE,
+  { source: 'delivery-profile-factory' }
+);
 
 export class DeliveryProfileFactory extends DeliveryPolicyFactory<DeliveryProfileConfig> {
   public readonly type = 'DeliveryProfile';
@@ -121,16 +133,15 @@ function coerceProfileString(value: unknown): string | null {
 }
 
 function resolveProfileConfig(profileName: string): DeliveryPolicyConfig {
-  const profile = PROFILE_MAP[profileName];
+  const profile = getProfile(
+    DELIVERY_POLICY_FACTORY_BASE_TYPE,
+    profileName
+  ) as DeliveryPolicyConfig | null;
   if (!profile) {
     throw new Error(`Unknown delivery profile: ${profileName}`);
   }
 
-  return deepClone(profile);
-}
-
-function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
+  return profile;
 }
 
 export const FACTORY_META = {
