@@ -140,41 +140,8 @@ describe('BasicAuthorizationPolicy', () => {
       }).toThrow('Invalid action in rule "bad-array-action": "invalid"');
     });
 
-    it('should throw on empty frame_type string', () => {
-      expect(() => {
-        new BasicAuthorizationPolicy({
-          policyDefinition: {
-            version: '1',
-            default_effect: 'deny',
-            rules: [{ id: 'empty-frame', effect: 'allow', frame_type: '  ' as any }],
-          },
-        });
-      }).toThrow('Invalid frame_type in rule "empty-frame": value must not be empty');
-    });
-
-    it('should throw on empty frame_type array', () => {
-      expect(() => {
-        new BasicAuthorizationPolicy({
-          policyDefinition: {
-            version: '1',
-            default_effect: 'deny',
-            rules: [{ id: 'empty-frame-arr', effect: 'allow', frame_type: [] as any }],
-          },
-        });
-      }).toThrow('Invalid frame_type in rule "empty-frame-arr": array must not be empty');
-    });
-
-    it('should throw on empty string in frame_type array', () => {
-      expect(() => {
-        new BasicAuthorizationPolicy({
-          policyDefinition: {
-            version: '1',
-            default_effect: 'deny',
-            rules: [{ id: 'empty-in-arr', effect: 'allow', frame_type: ['Data', '  '] as any }],
-          },
-        });
-      }).toThrow('Invalid frame_type in rule "empty-in-arr": values must not be empty');
-    });
+    // frame_type validation tests removed - frame_type is now reserved for advanced-security
+    // Rules with frame_type are accepted but skipped during evaluation
 
     it('should throw on empty address string', () => {
       expect(() => {
@@ -583,8 +550,8 @@ describe('BasicAuthorizationPolicy', () => {
     });
   });
 
-  describe('frame_type matching', () => {
-    it('should match single frame_type string', async () => {
+  describe('frame_type field (reserved for advanced-security)', () => {
+    it('should skip rules with frame_type field', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
           version: '1',
@@ -595,11 +562,12 @@ describe('BasicAuthorizationPolicy', () => {
 
       const dataEnvelope = makeEnvelope({ frame: { type: 'Data' } as any });
       const result = await policy.evaluateRequest(mockNode, dataEnvelope);
-      expect(result.effect).toBe('allow');
-      expect(result.matchedRule).toBe('data-only');
+      // Rule is skipped, falls back to default
+      expect(result.effect).toBe('deny');
+      expect(result.evaluationTrace?.[0].expression).toContain('frame_type clause (skipped by basic policy)');
     });
 
-    it('should not match when frame_type does not match', async () => {
+    it('should skip all rules with frame_type regardless of frame content', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
           version: '1',
@@ -610,24 +578,26 @@ describe('BasicAuthorizationPolicy', () => {
 
       const attachEnvelope = makeEnvelope({ frame: { type: 'NodeAttach' } as any });
       const result = await policy.evaluateRequest(mockNode, attachEnvelope);
+      // Rule is skipped regardless of frame type
       expect(result.effect).toBe('deny');
     });
 
-    it('should match frame_type case-insensitively', async () => {
+    it('should skip rules with frame_type regardless of case', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
           version: '1',
-          default_effect: 'deny',
-          rules: [{ id: 'data-case', effect: 'allow', frame_type: 'DATA' }],
+          default_effect: 'allow',
+          rules: [{ id: 'data-case', effect: 'deny', frame_type: 'DATA' }],
         },
       });
 
       const dataEnvelope = makeEnvelope({ frame: { type: 'data' } as any });
       const result = await policy.evaluateRequest(mockNode, dataEnvelope);
+      // Rule is skipped, falls back to default
       expect(result.effect).toBe('allow');
     });
 
-    it('should match frame_type with trimming', async () => {
+    it('should skip rules with frame_type even with whitespace', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
           version: '1',
@@ -638,10 +608,11 @@ describe('BasicAuthorizationPolicy', () => {
 
       const dataEnvelope = makeEnvelope({ frame: { type: 'Data' } as any });
       const result = await policy.evaluateRequest(mockNode, dataEnvelope);
-      expect(result.effect).toBe('allow');
+      // Rule is skipped
+      expect(result.effect).toBe('deny');
     });
 
-    it('should match frame_type array (any-of)', async () => {
+    it('should skip rules with frame_type array', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
           version: '1',
@@ -650,23 +621,21 @@ describe('BasicAuthorizationPolicy', () => {
         },
       });
 
-      // Test Data
+      // All envelopes should be denied because rule is skipped
       const dataEnvelope = makeEnvelope({ frame: { type: 'Data' } as any });
       const dataResult = await policy.evaluateRequest(mockNode, dataEnvelope);
-      expect(dataResult.effect).toBe('allow');
+      expect(dataResult.effect).toBe('deny');
 
-      // Test NodeAttach
       const attachEnvelope = makeEnvelope({ frame: { type: 'NodeAttach' } as any });
       const attachResult = await policy.evaluateRequest(mockNode, attachEnvelope);
-      expect(attachResult.effect).toBe('allow');
+      expect(attachResult.effect).toBe('deny');
 
-      // Test other - should not match
       const otherEnvelope = makeEnvelope({ frame: { type: 'Control' } as any });
       const otherResult = await policy.evaluateRequest(mockNode, otherEnvelope);
       expect(otherResult.effect).toBe('deny');
     });
 
-    it('should handle frame_type array case-insensitively', async () => {
+    it('should skip rules with frame_type array regardless of case', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
           version: '1',
@@ -677,10 +646,11 @@ describe('BasicAuthorizationPolicy', () => {
 
       const dataEnvelope = makeEnvelope({ frame: { type: 'data' } as any });
       const result = await policy.evaluateRequest(mockNode, dataEnvelope);
-      expect(result.effect).toBe('allow');
+      // Rule is skipped
+      expect(result.effect).toBe('deny');
     });
 
-    it('should not match when frame is missing and frame_type is specified', async () => {
+    it('should skip rules with frame_type even when frame is missing', async () => {
       const policy = new BasicAuthorizationPolicy({
         policyDefinition: {
           version: '1',
@@ -691,6 +661,7 @@ describe('BasicAuthorizationPolicy', () => {
 
       const noFrameEnvelope = makeEnvelope({ frame: undefined as any });
       const result = await policy.evaluateRequest(mockNode, noFrameEnvelope);
+      // Rule is skipped, not because frame is missing but because frame_type is reserved
       expect(result.effect).toBe('deny');
     });
 

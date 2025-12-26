@@ -100,9 +100,13 @@ export interface AuthorizationRuleDefinition {
   address?: string | string[];
 
   /**
-   * Optional frame type gating.
+   * Optional frame type gating (reserved for advanced-security package).
    * Can be a single frame type string or an array (implicit any-of).
    * Matching is case-insensitive.
+   * 
+   * WARNING: Basic policy parser will skip rules containing this field
+   * and log a warning during policy construction. This field is only
+   * supported in the advanced-security package.
    */
   frame_type?: string | string[];
 
@@ -185,7 +189,7 @@ export const KNOWN_RULE_FIELDS = new Set([
   'effect',
   'action',
   'address',
-  'frame_type',
+  'frame_type', // Reserved for advanced-security
   'origin_type',
   'scope',
   'when', // Reserved for advanced-security

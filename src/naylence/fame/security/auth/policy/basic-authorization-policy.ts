@@ -54,6 +54,7 @@ interface CompiledRule {
   addressPatterns?: CompiledPattern[];
   scopeMatcher?: (grantedScopes: readonly string[]) => boolean;
   hasWhenClause: boolean;
+  hasFrameTypeClause: boolean;
 }
 
 /**
@@ -189,12 +190,6 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
       this.normalizeActionToken(resolvedAction) ?? resolvedAction;
     const address = extractAddress(envelope);
     const grantedScopes = extractGrantedScopes(context);
-    const rawFrameType = (envelope.frame as { type?: string } | undefined)
-      ?.type;
-    const frameTypeNormalized =
-      typeof rawFrameType === 'string' && rawFrameType.trim().length > 0
-        ? rawFrameType.trim().toLowerCase()
-        : '';
     // Extract and normalize origin type for rule matching
     const rawOriginType = context?.originType;
     const originTypeNormalized =
@@ -216,24 +211,17 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
         step.expression = 'when clause (skipped by basic policy)';
         step.result = false;
         evaluationTrace.push(step);
+        logger.debug('rule_skipped_when_clause', { ruleId: rule.id });
         continue;
       }
 
-      // Check frame type match
-      if (rule.frameTypes) {
-        if (!frameTypeNormalized) {
-          step.expression = 'frame_type: missing';
-          step.result = false;
-          evaluationTrace.push(step);
-          continue;
-        }
-
-        if (!rule.frameTypes.has(frameTypeNormalized)) {
-          step.expression = `frame_type: ${rawFrameType ?? 'unknown'} not in rule set`;
-          step.result = false;
-          evaluationTrace.push(step);
-          continue;
-        }
+      // Skip rules with 'frame_type' clause (reserved for advanced-security package)
+      if (rule.hasFrameTypeClause) {
+        step.expression = 'frame_type clause (skipped by basic policy)';
+        step.result = false;
+        evaluationTrace.push(step);
+        logger.debug('rule_skipped_frame_type_clause', { ruleId: rule.id });
+        continue;
       }
 
       // Check origin type match (early gate for efficiency)
@@ -380,8 +368,14 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
     // Compile address patterns (glob-only, no regex)
     const addressPatterns = this.compileAddress(rule.address, id);
 
-    // Compile frame type gating
-    const frameTypes = this.compileFrameTypes(rule.frame_type, id);
+    // Check for frame_type clause (reserved for advanced-security)
+    const hasFrameTypeClause = rule.frame_type !== undefined;
+    if (hasFrameTypeClause && warnOnUnknown) {
+      logger.warning('reserved_field_frame_type_will_be_skipped', {
+        ruleId: id,
+        message: `Rule "${id}" uses reserved field "frame_type" which is only supported in advanced-security package. This rule will be skipped during evaluation.`,
+      });
+    }
 
     // Compile origin type gating
     const originTypes = this.compileOriginTypes(rule.origin_type, id);
@@ -416,11 +410,12 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
       description: rule.description,
       effect: rule.effect,
       actions,
-      frameTypes,
+      frameTypes: undefined, // No longer used; reserved for advanced-security
       originTypes,
       addressPatterns,
       scopeMatcher,
       hasWhenClause: typeof rule.when === 'string' && rule.when.length > 0,
+      hasFrameTypeClause,
     };
   }
 
@@ -550,62 +545,6 @@ export class BasicAuthorizationPolicy implements AuthorizationPolicy {
     }
 
     return patterns;
-  }
-
-  /**
-   * Compiles frame_type field into a Set of normalized frame types.
-   * Supports single string or array of strings (implicit any-of).
-   * Returns undefined if not specified (no frame type gating).
-   */
-  private compileFrameTypes(
-    frameType: string | string[] | undefined,
-    ruleId: string
-  ): Set<string> | undefined {
-    if (frameType === undefined) {
-      return undefined;
-    }
-
-    // Handle single frame type
-    if (typeof frameType === 'string') {
-      const normalized = frameType.trim().toLowerCase();
-      if (!normalized) {
-        throw new Error(
-          `Invalid frame_type in rule "${ruleId}": value must not be empty`
-        );
-      }
-      return new Set([normalized]);
-    }
-
-    // Handle array of frame types
-    if (!Array.isArray(frameType)) {
-      throw new Error(
-        `Invalid frame_type in rule "${ruleId}": must be a string or array of strings`
-      );
-    }
-
-    if (frameType.length === 0) {
-      throw new Error(
-        `Invalid frame_type in rule "${ruleId}": array must not be empty`
-      );
-    }
-
-    const frameTypes = new Set<string>();
-    for (const ft of frameType) {
-      if (typeof ft !== 'string') {
-        throw new Error(
-          `Invalid frame_type in rule "${ruleId}": all values must be strings`
-        );
-      }
-      const normalized = ft.trim().toLowerCase();
-      if (!normalized) {
-        throw new Error(
-          `Invalid frame_type in rule "${ruleId}": values must not be empty`
-        );
-      }
-      frameTypes.add(normalized);
-    }
-
-    return frameTypes;
   }
 
   /**
