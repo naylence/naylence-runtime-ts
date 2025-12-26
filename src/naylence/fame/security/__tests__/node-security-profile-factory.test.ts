@@ -8,7 +8,6 @@ import {
   PROFILE_NAME_OPEN,
   PROFILE_NAME_OVERLAY,
   PROFILE_NAME_OVERLAY_CALLBACK,
-  PROFILE_NAME_STRICT_OVERLAY,
   ENV_VAR_JWT_TRUSTED_ISSUER,
   ENV_VAR_JWKS_URL,
   ENV_VAR_JWT_AUDIENCE,
@@ -126,15 +125,6 @@ describe('NodeSecurityProfileFactory', () => {
     expect(policy?.signing?.signing_material).toBe('raw-key');
   });
 
-  it('supports strict-overlay profile with x509 signing material', async () => {
-    const { config } = await captureInvocation(PROFILE_NAME_STRICT_OVERLAY);
-    const policy = config.security_policy as Record<string, any> | undefined;
-    const authorizer = config.authorizer as Record<string, any> | undefined;
-    expect(policy?.signing?.signing_material).toBe('x509-chain');
-    expect(authorizer?.type).toBe('AuthorizationProfile');
-    expect(authorizer?.profile).toBe('jwt');
-  });
-
   it('supports overlay-callback profile with reverse-auth token settings', async () => {
     const { config } = await captureInvocation(PROFILE_NAME_OVERLAY_CALLBACK);
     const authorizer = config.authorizer as Record<string, any> | undefined;
@@ -184,7 +174,7 @@ describe('NodeSecurityProfileFactory', () => {
       });
 
     const factory = new NodeSecurityProfileFactory();
-    await factory.create({ profile_name: PROFILE_NAME_STRICT_OVERLAY } as any);
+    await factory.create({ profile_name: PROFILE_NAME_OVERLAY } as any);
 
     const capturedConfig = createSpy.mock.calls[0]?.[1] as
       | DefaultSecurityManagerConfig
@@ -193,7 +183,7 @@ describe('NodeSecurityProfileFactory', () => {
       | Record<string, unknown>
       | undefined;
     const signing = policy?.signing as Record<string, unknown> | undefined;
-    expect(signing?.signing_material).toBe('x509-chain');
+    expect(signing?.signing_material).toBe('raw-key');
 
     createSpy.mockRestore();
   });

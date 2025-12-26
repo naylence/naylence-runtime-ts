@@ -38,65 +38,11 @@ export const ENV_VAR_ENFORCE_TOKEN_SUBJECT_NODE_IDENTITY =
 export const ENV_VAR_TRUSTED_CLIENT_SCOPE = 'FAME_TRUSTED_CLIENT_SCOPE';
 export const ENV_VAR_AUTHORIZATION_PROFILE = 'FAME_AUTHORIZATION_PROFILE';
 
-export const PROFILE_NAME_STRICT_OVERLAY = 'strict-overlay';
 export const PROFILE_NAME_OVERLAY = 'overlay';
 export const PROFILE_NAME_OVERLAY_CALLBACK = 'overlay-callback';
 export const PROFILE_NAME_GATED = 'gated';
 export const PROFILE_NAME_GATED_CALLBACK = 'gated-callback';
 export const PROFILE_NAME_OPEN = 'open';
-
-const STRICT_OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
-  type: 'DefaultSecurityManager',
-  security_policy: {
-    type: 'DefaultSecurityPolicy',
-    signing: {
-      signing_material: 'x509-chain',
-      require_cert_sid_match: true,
-      inbound: {
-        signature_policy: 'required',
-        unsigned_violation_action: 'nack',
-        invalid_signature_action: 'nack',
-      },
-      response: {
-        mirror_request_signing: true,
-        always_sign_responses: false,
-        sign_error_responses: true,
-      },
-      outbound: {
-        default_signing: true,
-        sign_sensitive_operations: true,
-        sign_if_recipient_expects: true,
-      },
-    },
-    encryption: {
-      inbound: {
-        allow_plaintext: true,
-        allow_channel: true,
-        allow_sealed: true,
-        plaintext_violation_action: 'nack',
-        channel_violation_action: 'nack',
-        sealed_violation_action: 'nack',
-      },
-      response: {
-        mirror_request_level: true,
-        minimum_response_level: 'plaintext',
-        escalate_sealed_responses: false,
-      },
-      outbound: {
-        default_level: Expressions.env(
-          ENV_VAR_DEFAULT_ENCRYPTION_LEVEL,
-          'channel'
-        ),
-        escalate_if_peer_supports: false,
-        prefer_sealed_for_sensitive: false,
-      },
-    },
-  },
-  authorizer: {
-    type: 'AuthorizationProfile',
-    profile: Expressions.env(ENV_VAR_AUTHORIZATION_PROFILE, 'jwt'),
-  },
-};
 
 const OVERLAY_PROFILE: DefaultSecurityManagerConfig = {
   type: 'DefaultSecurityManager',
@@ -313,12 +259,6 @@ registerProfile(
   SECURITY_MANAGER_FACTORY_BASE_TYPE,
   PROFILE_NAME_OVERLAY_CALLBACK,
   OVERLAY_CALLBACK_PROFILE,
-  { source: 'node-security-profile-factory' }
-);
-registerProfile(
-  SECURITY_MANAGER_FACTORY_BASE_TYPE,
-  PROFILE_NAME_STRICT_OVERLAY,
-  STRICT_OVERLAY_PROFILE,
   { source: 'node-security-profile-factory' }
 );
 registerProfile(

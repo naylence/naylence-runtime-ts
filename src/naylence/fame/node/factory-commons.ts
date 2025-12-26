@@ -869,11 +869,8 @@ function requiresCryptoProvider(
     const profile = record.profile;
     if (typeof profile === 'string') {
       const profileLower = profile.toLowerCase();
-      // Overlay variants require crypto provider for envelope signing
-      if (
-        profileLower.includes('overlay') ||
-        profileLower === 'strict-overlay'
-      ) {
+      // Overlay variants (including strict-overlay) require crypto provider for envelope signing
+      if (profileLower.includes('overlay')) {
         return true;
       }
     }
