@@ -1,6 +1,6 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime",
   "author": "Naylence Dev <naylencedev@gmail.com>",
@@ -176,7 +176,7 @@
   "dependencies": {
     "@fastify/formbody": "^8.0.2",
     "@fastify/websocket": "^11.2.0",
-    "@naylence/core": "^0.3.6",
+    "@naylence/core": "^0.3.7",
     "@noble/ciphers": "^2.0.1",
     "@noble/curves": "^2.0.1",
     "@noble/ed25519": "^3.0.0",
