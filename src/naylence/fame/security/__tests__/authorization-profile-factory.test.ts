@@ -104,7 +104,7 @@ describe('AuthorizationProfileFactory', () => {
     expect(profileConfig).toMatchObject({ type: 'OAuth2Authorizer' });
   });
 
-  it('resolves policy-localfile profile name to PolicyAuthorizer with policySource', async () => {
+  it('resolves policy-localfile profile name to PolicyAuthorizer with policy_source', async () => {
     await factory.create({
       type: 'AuthorizationProfile',
       profile: PROFILE_NAME_POLICY_LOCALFILE,
@@ -114,7 +114,7 @@ describe('AuthorizationProfileFactory', () => {
     const [profileConfig] = createAuthorizerSpy.mock.calls[0];
     expect(profileConfig).toMatchObject({
       type: 'PolicyAuthorizer',
-      policySource: expect.objectContaining({
+      policy_source: expect.objectContaining({
         type: 'LocalFileAuthorizationPolicySource',
       }),
     });

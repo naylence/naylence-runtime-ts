@@ -144,7 +144,7 @@ const DEFAULT_POLICY_SOURCE: LocalFileAuthorizationPolicySourceConfig = {
 const POLICY_LOCALFILE_PROFILE: DefaultPolicyAuthorizerConfig = {
   type: 'PolicyAuthorizer',
   verifier: DEFAULT_VERIFIER_CONFIG,
-  policySource: DEFAULT_POLICY_SOURCE,
+  policy_source: DEFAULT_POLICY_SOURCE,
 };
 
 registerProfile(
