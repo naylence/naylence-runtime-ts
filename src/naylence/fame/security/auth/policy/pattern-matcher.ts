@@ -5,6 +5,10 @@
  * - Glob patterns: `*` (single segment), `**` (any depth), `?` (single char)
  * - Regex patterns: patterns starting with `^` (for advanced/BSL use only)
  *
+ * Segment separators: `.`, `/`, and `@` are all treated as equivalent segment
+ * boundaries. The `*` wildcard matches any characters except these separators,
+ * while `**` matches across all separators.
+ *
  * The OSS/basic policy uses glob-only matching via `compileGlobPattern()`.
  * The advanced/BSL policy may use `compilePattern()` which interprets `^` as regex.
  */
@@ -60,9 +64,14 @@ function escapeRegex(str: string): string {
  * Converts a glob pattern to a regex pattern.
  *
  * Glob syntax:
- * - `*` matches a single segment (no dots)
- * - `**` matches any number of segments (including zero)
+ * - `*` matches a single segment (not crossing `.`, `/`, or `@` separators)
+ * - `**` matches any number of segments (including zero), crossing all separators
+ * - `?` matches a single character (not a separator)
  * - Other characters are matched literally
+ *
+ * The multi-separator approach treats `.`, `/`, and `@` as equivalent segment
+ * separators. This provides clean semantics for both logical addresses
+ * (e.g., `name@domain.fabric`) and physical addresses (e.g., `name@/path/to/node`).
  *
  * @param glob - The glob pattern to convert
  * @returns A regex pattern string (without anchors)
@@ -74,17 +83,17 @@ function globToRegex(glob: string): string {
   while (i < glob.length) {
     if (glob[i] === '*') {
       if (glob[i + 1] === '*') {
-        // `**` matches any characters (including dots)
+        // `**` matches any characters (including all separators)
         parts.push('.*');
         i += 2;
       } else {
-        // `*` matches any characters except dots (single segment)
-        parts.push('[^.]*');
+        // `*` matches any characters except separators (., /, @)
+        parts.push('[^./@]*');
         i += 1;
       }
     } else if (glob[i] === '?') {
-      // `?` matches a single character (not a dot)
-      parts.push('[^.]');
+      // `?` matches a single character (not a separator)
+      parts.push('[^./@]');
       i += 1;
     } else {
       // Escape and add literal character
