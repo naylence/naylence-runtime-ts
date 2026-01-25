@@ -1,0 +1,44 @@
+name: Browser Smoke
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build workspace
+        run: npm run build
+
+      - name: Check browser bundle size
+        run: npm run analyze:size
+
+      - name: Run browser-focused tests
+        run: npm run test:browser
+
+      - name: Install example dependencies
+        working-directory: examples/browser-vite
+        run: npm install
+
+      - name: Build browser example
+        working-directory: examples/browser-vite
+        run: npm run build
