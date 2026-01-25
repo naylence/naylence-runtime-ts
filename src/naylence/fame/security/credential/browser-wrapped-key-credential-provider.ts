@@ -162,7 +162,7 @@ async function deriveKEK(
   return subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: salt as Uint8Array<ArrayBuffer>,
       iterations,
       hash: 'SHA-256',
     },
