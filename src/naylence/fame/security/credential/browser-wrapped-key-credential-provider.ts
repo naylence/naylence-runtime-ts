@@ -102,6 +102,7 @@ async function getRandomBytes(length: number): Promise<Uint8Array> {
   throw new Error('Unable to generate secure random bytes in this environment');
 }
 
+// @ts-expect-error Kept for potential browser compatibility - Node.js prefers TypedArray
 function toArrayBuffer(data: Uint8Array): ArrayBuffer {
   const buffer = new ArrayBuffer(data.byteLength);
   new Uint8Array(buffer).set(data);
@@ -184,9 +185,9 @@ async function aesGcmEncrypt(
   const subtle = cryptoObject.subtle;
   const iv = await getRandomBytes(GCM_IV_LENGTH);
   const ciphertextBuffer = await subtle.encrypt(
-    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
+    { name: 'AES-GCM', iv: iv as Uint8Array<ArrayBuffer> },
     key,
-    toArrayBuffer(data)
+    data as Uint8Array<ArrayBuffer>
   );
   return { iv, ciphertext: new Uint8Array(ciphertextBuffer as ArrayBuffer) };
 }
@@ -199,9 +200,9 @@ async function aesGcmDecrypt(
   const cryptoObject = await getCrypto();
   const subtle = cryptoObject.subtle;
   const plaintextBuffer = await subtle.decrypt(
-    { name: 'AES-GCM', iv: toArrayBuffer(iv) },
+    { name: 'AES-GCM', iv: iv as Uint8Array<ArrayBuffer> },
     key,
-    toArrayBuffer(data)
+    data as Uint8Array<ArrayBuffer>
   );
   return new Uint8Array(plaintextBuffer as ArrayBuffer);
 }
