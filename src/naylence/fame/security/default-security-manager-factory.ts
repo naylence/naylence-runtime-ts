@@ -1,7 +1,6 @@
 import type { CreateResourceOptions } from '@naylence/factory';
 import type { Authorizer } from './auth/authorizer.js';
 import { AuthorizerFactory } from './auth/authorizer-factory.js';
-import { NoopTokenVerifier } from './auth/noop-token-verifier.js';
 import type { CertificateManager } from './cert/certificate-manager.js';
 import { CertificateManagerFactory } from './cert/certificate-manager-factory.js';
 import type { EncryptionManager } from './encryption/encryption-manager.js';
@@ -784,13 +783,14 @@ export class DefaultSecurityManagerFactory extends SecurityManagerFactory<Defaul
         return null;
       }
 
-      const tokenVerifier = new NoopTokenVerifier();
-      return (
-        (await AuthorizerFactory.createAuthorizer(null, {
-          ...createOptions,
-          factoryArgs: [tokenVerifier],
-        })) ?? null
-      );
+      // If authorization is required but no config provided, return null
+      // The caller should explicitly configure an authorizer with policy
+      // rather than relying on auto-creation which requires policy config
+      logger.debug('skipping_authorizer_auto_creation', {
+        reason: 'no_config_provided',
+        authorization_required: shouldCreate,
+      });
+      return null;
     } catch (error) {
       logger.error('failed_to_auto_create_authorizer', {
         error: error instanceof Error ? error.message : String(error),
