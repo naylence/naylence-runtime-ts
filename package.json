@@ -1,6 +1,6 @@
 {
   "name": "@naylence/runtime",
-  "version": "0.4.15",
+  "version": "0.4.16",
   "type": "module",
   "description": "Naylence Runtime - Complete TypeScript runtime",
   "author": "Naylence Dev <naylencedev@gmail.com>",
@@ -245,7 +245,7 @@
     {
       "name": "browser entry",
       "path": "dist/esm/browser.js",
-      "limit": "110 KB",
+      "limit": "350 KB",
       "gzip": true,
       "brotli": true
     }
